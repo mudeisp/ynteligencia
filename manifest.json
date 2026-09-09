@@ -1,0 +1,17 @@
+{
+  "short_name": "Ynteligencia",
+  "name": "Ynteligencia - Inteligência Imobiliária",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/10024/10024021.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "display": "standalone",
+  "orientation": "portrait"
+}
