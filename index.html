@@ -4,497 +4,662 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101a2b">
-<title>Ynteligencia | Imóveis</title>
+<meta name="description" content="Ynteligencia — encontre imóveis que fazem sentido para você.">
+<title>Ynteligencia | Seu imóvel por MATCH</title>
 <style>
-:root{--dark:#101a2b;--dark2:#1d304c;--orange:#ff914d;--bg:#f5f6f8;--text:#182232;--muted:#697487;--line:#e2e6eb;--white:#fff}
+:root{
+  --dark:#101a2b;
+  --dark2:#1d304c;
+  --orange:#ff914d;
+  --bg:#f5f6f8;
+  --text:#182232;
+  --muted:#697487;
+  --line:#e2e6eb;
+  --white:#fff;
+  --green:#17835b;
+  --greenbg:#eaf7f1;
+}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif}
-a{text-decoration:none;color:inherit}
 button,input,select{font:inherit}
 button{cursor:pointer}
-.container{width:min(1180px,calc(100% - 32px));margin:auto}
-header{position:sticky;top:0;z-index:10;background:rgba(16,26,43,.97);border-bottom:1px solid rgba(255,255,255,.08)}
+a{text-decoration:none;color:inherit}
+.container{width:min(1120px,calc(100% - 32px));margin:auto}
+
+header{
+  position:sticky;top:0;z-index:30;
+  background:rgba(16,26,43,.97);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
 .nav{min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:20px}
 .logo{display:flex;align-items:center;gap:10px;color:#fff;font-size:21px;font-weight:900}
-.logo-mark{width:37px;height:37px;display:grid;place-items:center;border-radius:11px;background:var(--orange);color:var(--dark)}
-.nav-links{display:flex;align-items:center;gap:24px;color:#dce2ea;font-size:14px}
-.hero{padding:72px 0 116px;color:#fff;background:radial-gradient(circle at 85% 10%,rgba(255,145,77,.25),transparent 30%),linear-gradient(135deg,var(--dark),var(--dark2))}
-.eyebrow{color:var(--orange);font-size:12px;font-weight:900;letter-spacing:1.6px}
-h1{max-width:800px;margin:14px 0 18px;font-size:clamp(40px,6vw,67px);line-height:1;letter-spacing:-2.7px}
-h1 span{color:var(--orange)}
-.hero p{max-width:720px;margin:0;color:#d6dde6;font-size:17px;line-height:1.65}
-.filters-wrap{position:relative;margin-top:-58px}
-.filters{display:grid;grid-template-columns:2fr 1.2fr 1fr 1.2fr auto;gap:10px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 15px 40px rgba(9,20,36,.12)}
-.field,.button{min-height:49px;border-radius:11px}
-.field{width:100%;padding:0 13px;border:1px solid var(--line);background:#fff;color:var(--text);outline:0}
-.field:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,145,77,.14)}
-.button{padding:0 18px;border:1px solid var(--line);background:#fff;color:var(--dark);font-weight:850}
-.upload{margin:22px 0 16px;padding:17px 19px;display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid var(--line);border-radius:14px}
-.upload p{margin:0;color:var(--muted);font-size:14px;line-height:1.4}
-.file-button{flex:none;padding:12px 16px;border-radius:10px;background:var(--orange);color:var(--dark);font-size:14px;font-weight:900;cursor:pointer}
-.file-button input{display:none}
-.status{margin:0 0 18px;color:var(--muted);font-size:14px}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding-bottom:35px}
-.card{overflow:hidden;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 25px rgba(16,26,43,.06);transition:.2s}
-.card:hover{transform:translateY(-4px);box-shadow:0 15px 38px rgba(9,20,36,.13)}
-.cover{position:relative;height:215px;overflow:hidden;background:linear-gradient(135deg,#263e5b,#101a2b)}
-.cover:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,rgba(7,15,27,.78))}
-.skyline{position:absolute;inset:0}
+.logo-mark{width:37px;height:37px;display:grid;place-items:center;border-radius:11px;background:var(--orange);color:var(--dark);font-size:21px}
+.nav-links{display:flex;gap:25px;color:#dce2ea;font-size:14px}
+.nav-links button{background:none;border:0;color:#dce2ea;padding:8px 0}
+
+.hero{
+  padding:78px 0 92px;color:#fff;
+  background:
+    radial-gradient(circle at 82% 12%,rgba(255,145,77,.25),transparent 31%),
+    linear-gradient(135deg,var(--dark),var(--dark2));
+}
+.eyebrow{color:var(--orange);font-size:12px;font-weight:900;letter-spacing:1.7px}
+.hero h1{max-width:800px;margin:15px 0 18px;font-size:clamp(42px,6vw,68px);line-height:.99;letter-spacing:-2.8px}
+.hero h1 span{color:var(--orange)}
+.hero p{max-width:680px;margin:0;color:#d6dde6;font-size:18px;line-height:1.6}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.primary,.secondary{
+  min-height:50px;padding:0 20px;border-radius:12px;font-weight:900;border:1px solid transparent;
+}
+.primary{background:var(--orange);color:var(--dark)}
+.secondary{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.18);color:#fff}
+
+.section{padding:58px 0}
+.section-head{margin-bottom:25px}
+.section-head h2{margin:0 0 8px;font-size:30px;letter-spacing:-.8px}
+.section-head p{margin:0;color:var(--muted)}
+
+.wizard-wrap{margin-top:-42px;position:relative;z-index:5}
+.wizard{
+  background:#fff;border:1px solid var(--line);border-radius:22px;
+  box-shadow:0 18px 50px rgba(9,20,36,.14);overflow:hidden;
+}
+.progress{height:5px;background:#edf0f3}
+.progress span{display:block;height:100%;width:14.28%;background:var(--orange);transition:.25s}
+.wizard-inner{padding:30px}
+.step-label{color:var(--orange);font-size:11px;font-weight:900;letter-spacing:1.5px}
+.step h2{margin:9px 0 8px;font-size:29px;letter-spacing:-.7px}
+.step p{margin:0 0 23px;color:var(--muted)}
+.options{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+.option{
+  min-height:72px;padding:14px;border:1px solid var(--line);border-radius:13px;
+  background:#fff;text-align:left;color:var(--text);font-weight:800;transition:.15s;
+}
+.option small{display:block;margin-top:5px;color:var(--muted);font-size:11px;font-weight:600}
+.option:hover,.option.selected{border-color:var(--orange);background:#fff8f3;box-shadow:0 0 0 2px rgba(255,145,77,.12)}
+.wizard-actions{display:flex;justify-content:space-between;gap:10px;margin-top:25px}
+.back,.next{
+  min-height:46px;padding:0 17px;border-radius:11px;font-weight:850;border:1px solid var(--line);
+}
+.back{background:#fff;color:var(--text)}
+.next{background:var(--dark);color:#fff;border-color:var(--dark)}
+.next:disabled{opacity:.35;cursor:not-allowed}
+
+.results{display:none}
+.results.visible{display:block}
+.result-top{
+  display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:20px
+}
+.result-top h2{margin:0;font-size:32px;letter-spacing:-1px}
+.result-top p{margin:7px 0 0;color:var(--muted)}
+.reset-link{border:0;background:none;color:var(--dark);font-weight:850;text-decoration:underline}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{
+  overflow:hidden;display:flex;flex-direction:column;background:#fff;
+  border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 7px 24px rgba(16,26,43,.06);transition:.2s;
+}
+.card:hover{transform:translateY(-4px);box-shadow:0 14px 35px rgba(9,20,36,.12)}
+.cover{
+  height:205px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#263e5b,#101a2b);
+}
+.cover.has-image{background-size:cover;background-position:center}
+.cover:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(7,15,27,.72))}
+.cover-art{position:absolute;inset:0}
 .building{position:absolute;bottom:0;background:linear-gradient(#dce4eb,#8798a8);border-radius:4px 4px 0 0}
-.building.one{right:9%;width:37%;height:75%}
-.building.two{right:42%;width:29%;height:53%}
-.building:after{content:"";position:absolute;inset:12% 12%;background:repeating-linear-gradient(90deg,#29425e 0 17%,transparent 17% 28%),repeating-linear-gradient(0deg,transparent 0 18%,#29425e 18% 29%)}
-.code{position:absolute;z-index:2;top:13px;left:13px;padding:7px 10px;border-radius:999px;background:rgba(16,26,43,.92);color:#fff;font-size:11px;font-weight:850}
-.location{position:absolute;z-index:2;right:15px;bottom:14px;left:15px;color:#fff;font-size:13px;font-weight:800}
-.content{flex:1;display:flex;flex-direction:column;padding:18px}
-.content h2{margin:0 0 7px;font-size:20px;line-height:1.25}
-.address{min-height:38px;margin:0;color:var(--muted);font-size:13px;line-height:1.45}
-.price{margin:16px 0 3px;color:var(--dark);font-size:24px;font-weight:900}
-.m2{color:var(--muted);font-size:12px}
-.features{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0}
-.feature{padding:7px 9px;border-radius:9px;background:#f0f3f6;color:#4f5c6e;font-size:12px;font-weight:750}
-.description{flex:1;margin:0 0 16px;color:#566274;font-size:13px;line-height:1.5}
-.photos{min-height:48px;display:grid;place-items:center;border-radius:11px;background:var(--orange);color:var(--dark);font-size:14px;font-weight:900}
-.pagination{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;padding:5px 0 65px}
-.page{min-width:42px;height:42px;padding:0 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--dark);font-weight:800}
-.page.active{border-color:var(--dark);background:var(--dark);color:#fff}
-.page:disabled{opacity:.4;cursor:not-allowed}
-.message{grid-column:1/-1;padding:52px 22px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:18px}
-.message h2{margin:0 0 9px}
-.message p{margin:0;color:var(--muted);line-height:1.5}
-footer{padding:30px 0;background:var(--dark);color:#c0c9d4;text-align:center;font-size:13px}
-@media(max-width:980px){.filters{grid-template-columns:1fr 1fr}.search{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:650px){.nav-links{display:none}.hero{padding:52px 0 98px}.filters{grid-template-columns:1fr}.search{grid-column:auto}.upload{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}}
+.building.one{right:8%;width:38%;height:77%}
+.building.two{right:43%;width:27%;height:55%}
+.building:after{content:"";position:absolute;inset:12%;background:repeating-linear-gradient(90deg,#29425e 0 17%,transparent 17% 28%),repeating-linear-gradient(0deg,transparent 0 18%,#29425e 18% 29%)}
+.match{
+  position:absolute;z-index:3;top:13px;left:13px;padding:8px 10px;border-radius:999px;
+  background:#fff;color:var(--green);font-size:12px;font-weight:950;
+}
+.cover-location{position:absolute;z-index:3;right:14px;bottom:13px;left:14px;color:#fff;font-size:13px;font-weight:850}
+.card-body{padding:18px;display:flex;flex-direction:column;flex:1}
+.card h3{margin:0 0 6px;font-size:19px;line-height:1.25}
+.card-address{margin:0;min-height:35px;color:var(--muted);font-size:12px;line-height:1.4}
+.price{margin:15px 0 3px;font-size:23px;font-weight:950}
+.m2{font-size:12px;color:var(--muted)}
+.features{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+.feature{padding:7px 8px;border-radius:8px;background:#f0f3f6;color:#4f5c6e;font-size:11px;font-weight:800}
+.reasons{margin:0 0 15px;padding:12px;border-radius:11px;background:var(--greenbg);color:#27674e;font-size:12px;line-height:1.45}
+.reasons strong{display:block;margin-bottom:4px}
+.card-actions{display:flex;gap:8px;margin-top:auto}
+.view,.interest{
+  flex:1;min-height:45px;display:grid;place-items:center;border-radius:10px;font-size:13px;font-weight:900
+}
+.view{background:var(--dark);color:#fff}
+.interest{background:var(--orange);color:var(--dark);border:0}
+
+.explore{
+  padding:54px 0 70px;background:#fff;border-top:1px solid var(--line)
+}
+.explore-box{
+  display:grid;grid-template-columns:1.2fr 2fr auto;gap:10px;align-items:center;
+  padding:20px;background:#f7f8fa;border:1px solid var(--line);border-radius:16px
+}
+.field{width:100%;min-height:48px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0 13px;color:var(--text);outline:0}
+.field:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,145,77,.12)}
+.catalog{display:none;padding:0 0 70px;background:#fff}
+.catalog.visible{display:block}
+.catalog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+
+.empty{
+  grid-column:1/-1;padding:50px 20px;text-align:center;background:#fff;
+  border:1px solid var(--line);border-radius:18px
+}
+.empty h3{margin:0 0 8px}.empty p{margin:0;color:var(--muted)}
+
+.toast{
+  position:fixed;right:18px;bottom:18px;z-index:100;
+  max-width:340px;padding:14px 16px;border-radius:12px;background:var(--dark);color:#fff;
+  box-shadow:0 15px 35px rgba(0,0,0,.18);font-size:13px;display:none
+}
+.toast.show{display:block}
+
+footer{padding:28px 0;background:var(--dark);color:#c0c9d4;text-align:center;font-size:13px}
+
+@media(max-width:900px){
+  .options{grid-template-columns:repeat(2,1fr)}
+  .grid,.catalog-grid{grid-template-columns:repeat(2,1fr)}
+  .explore-box{grid-template-columns:1fr 1fr}
+  .explore-box button{grid-column:1/-1}
+}
+@media(max-width:650px){
+  .nav-links{display:none}
+  .hero{padding:55px 0 75px}
+  .hero h1{font-size:44px}
+  .wizard-wrap{margin-top:-28px}
+  .wizard-inner{padding:22px}
+  .options{grid-template-columns:1fr}
+  .grid,.catalog-grid{grid-template-columns:1fr}
+  .result-top{align-items:flex-start;flex-direction:column}
+  .explore-box{grid-template-columns:1fr}
+  .explore-box button{grid-column:auto}
+}
 </style>
 </head>
 <body>
+
 <header>
   <div class="container nav">
     <div class="logo"><span class="logo-mark">Y</span>Ynteligencia</div>
-    <nav class="nav-links"><a href="#resultados">Resultados</a><a href="#resultados">Explorar</a></nav>
+    <nav class="nav-links">
+      <button id="navMatch">Encontrar meu imóvel</button>
+      <button id="navExplore">Explorar imóveis</button>
+    </nav>
   </div>
 </header>
 
-<section class="hero">
+<section class="hero" id="inicio">
   <div class="container">
     <div class="eyebrow">INTELIGÊNCIA IMOBILIÁRIA</div>
     <h1>Encontre o imóvel que <span>faz sentido</span> para você.</h1>
-    <p>Explore os imóveis disponíveis e encontre as melhores opções por bairro, empreendimento, dormitórios e faixa de preço.</p>
+    <p>Você não precisa procurar entre centenas de imóveis. Conte o que procura e a Ynteligencia encontra as opções mais compatíveis com o seu perfil.</p>
+    <div class="hero-actions">
+      <button class="primary" id="startHero">Descobrir meu imóvel</button>
+      <button class="secondary" id="exploreHero">Explorar imóveis</button>
+    </div>
   </div>
 </section>
 
-<main id="resultados">
-  <div class="container filters-wrap">
-    <div class="filters">
-      <input id="search" class="field search" type="search" placeholder="Empreendimento, bairro, endereço ou código">
-      <select id="neighborhood" class="field"><option value="">Todos os bairros</option></select>
-      <select id="bedrooms" class="field">
-        <option value="">Dormitórios</option>
-        <option value="0">Comercial</option>
-        <option value="1">1 dormitório</option>
-        <option value="2">2 dormitórios</option>
-        <option value="3">3 dormitórios</option>
-        <option value="4">4 ou mais</option>
-      </select>
-      <select id="price" class="field">
-        <option value="">Qualquer preço</option>
-        <option value="500000">Até R$ 500 mil</option>
-        <option value="750000">Até R$ 750 mil</option>
-        <option value="1000000">Até R$ 1 milhão</option>
-        <option value="2000000">Até R$ 2 milhões</option>
-        <option value="5000000">Até R$ 5 milhões</option>
-      </select>
-      <button id="clear" class="button" type="button">Limpar</button>
-    </div>
-  </div>
-
+<main>
+<section class="wizard-wrap" id="match">
   <div class="container">
-    <div id="upload" class="upload">
-      <p id="loadMessage">Carregando automaticamente o arquivo Remax.teste2.csv...</p>
-      <label class="file-button">Selecionar CSV<input id="file" type="file" accept=".csv,text/csv"></label>
+    <div class="wizard">
+      <div class="progress"><span id="progress"></span></div>
+      <div class="wizard-inner">
+
+        <div class="step" data-step="0">
+          <div class="step-label">01 · OBJETIVO</div>
+          <h2>O que você está procurando?</h2>
+          <p>Isso ajuda a Ynteligencia a entender o que importa para você.</p>
+          <div class="options">
+            <button class="option" data-key="purpose" data-value="morar">Morar<small>Meu próximo lar</small></button>
+            <button class="option" data-key="purpose" data-value="investir">Investir<small>Renda ou valorização</small></button>
+            <button class="option" data-key="purpose" data-value="alugar">Alugar<small>Encontrar um imóvel para locação</small></button>
+            <button class="option" data-key="purpose" data-value="pesquisar">Pesquisar<small>Ainda estou avaliando</small></button>
+          </div>
+        </div>
+
+        <div class="step" data-step="1" hidden>
+          <div class="step-label">02 · REGIÃO</div>
+          <h2>Onde você quer estar?</h2>
+          <p>Escolha a região que mais combina com sua busca.</p>
+          <div class="options">
+            <button class="option" data-key="region" data-value="perdizes">Perdizes</button>
+            <button class="option" data-key="region" data-value="pinheiros">Pinheiros</button>
+            <button class="option" data-key="region" data-value="vila madalena">Vila Madalena</button>
+            <button class="option" data-key="region" data-value="moema">Moema</button>
+            <button class="option" data-key="region" data-value="chácara klabin">Chácara Klabin</button>
+            <button class="option" data-key="region" data-value="brooklin">Brooklin</button>
+            <button class="option" data-key="region" data-value="vila mariana">Vila Mariana</button>
+            <button class="option" data-key="region" data-value="outra">Outra região</button>
+          </div>
+        </div>
+
+        <div class="step" data-step="2" hidden>
+          <div class="step-label">03 · ORÇAMENTO</div>
+          <h2>Qual faixa de investimento?</h2>
+          <p>Não precisa ser exato. Use a faixa que melhor representa sua busca.</p>
+          <div class="options">
+            <button class="option" data-key="budget" data-value="400000">Até R$ 400 mil</button>
+            <button class="option" data-key="budget" data-value="600000">R$ 400–600 mil</button>
+            <button class="option" data-key="budget" data-value="900000">R$ 600–900 mil</button>
+            <button class="option" data-key="budget" data-value="1500000">R$ 900 mil–1,5 mi</button>
+            <button class="option" data-key="budget" data-value="3000000">Acima de R$ 1,5 mi</button>
+          </div>
+        </div>
+
+        <div class="step" data-step="3" hidden>
+          <div class="step-label">04 · TAMANHO</div>
+          <h2>Quantos dormitórios você procura?</h2>
+          <p>Podemos ampliar o MATCH quando houver opções próximas.</p>
+          <div class="options">
+            <button class="option" data-key="bedrooms" data-value="0">Comercial</button>
+            <button class="option" data-key="bedrooms" data-value="1">1 dormitório</button>
+            <button class="option" data-key="bedrooms" data-value="2">2 dormitórios</button>
+            <button class="option" data-key="bedrooms" data-value="3">3 dormitórios</button>
+            <button class="option" data-key="bedrooms" data-value="4">4 ou mais</button>
+          </div>
+        </div>
+
+        <div class="step" data-step="4" hidden>
+          <div class="step-label">05 · PRIORIDADES</div>
+          <h2>O que é importante para você?</h2>
+          <p>Você pode escolher mais de uma opção.</p>
+          <div class="options">
+            <button class="option multi" data-key="feature" data-value="balcony">Varanda</button>
+            <button class="option multi" data-key="feature" data-value="parking">Vaga</button>
+            <button class="option multi" data-key="feature" data-value="pool">Piscina</button>
+            <button class="option multi" data-key="feature" data-value="metro">Metrô próximo</button>
+          </div>
+        </div>
+
+        <div class="step" data-step="5" hidden>
+          <div class="step-label">06 · MOMENTO</div>
+          <h2>Quando você pretende comprar?</h2>
+          <p>Isso também ajuda a entender seu nível de intenção.</p>
+          <div class="options">
+            <button class="option" data-key="timing" data-value="agora">Agora</button>
+            <button class="option" data-key="timing" data-value="1-3">Nos próximos 1–3 meses</button>
+            <button class="option" data-key="timing" data-value="3-6">Nos próximos 3–6 meses</button>
+            <button class="option" data-key="timing" data-value="pesquisando">Só pesquisando</button>
+          </div>
+        </div>
+
+        <div class="step" data-step="6" hidden>
+          <div class="step-label">07 · SEU PERFIL</div>
+          <h2>Pronto. Vamos encontrar seus MATCHs.</h2>
+          <p id="summary">A Ynteligencia vai cruzar suas preferências com os imóveis disponíveis.</p>
+          <div style="padding:17px;border-radius:13px;background:#f7f8fa;border:1px solid var(--line);font-size:14px;line-height:1.7">
+            <strong>Como funciona</strong><br>
+            Seus critérios recebem pesos diferentes. Quanto mais um imóvel combina com o que você procura, maior o MATCH.
+          </div>
+        </div>
+
+        <div class="wizard-actions">
+          <button class="back" id="back" type="button">Voltar</button>
+          <button class="next" id="next" type="button" disabled>Continuar</button>
+        </div>
+      </div>
     </div>
-    <p id="status" class="status">Aguardando os dados...</p>
-    <div id="grid" class="grid">
-      <div class="message"><h2>Carregando imóveis</h2><p>Aguarde enquanto a base é processada.</p></div>
-    </div>
-    <div id="pagination" class="pagination"></div>
   </div>
+</section>
+
+<section class="section results" id="results">
+  <div class="container">
+    <div class="result-top">
+      <div>
+        <h2>Seus imóveis</h2>
+        <p id="resultSummary">Encontramos opções compatíveis com o seu perfil.</p>
+      </div>
+      <button class="reset-link" id="newSearch">Refazer busca</button>
+    </div>
+    <div class="grid" id="matchGrid"></div>
+  </div>
+</section>
+
+<section class="explore" id="explore">
+  <div class="container">
+    <div class="section-head">
+      <h2>Prefere procurar sozinho?</h2>
+      <p>Explore a base disponível e use os filtros para encontrar uma oportunidade.</p>
+    </div>
+    <div class="explore-box">
+      <select id="catalogNeighborhood" class="field"><option value="">Todos os bairros</option></select>
+      <input id="catalogSearch" class="field" placeholder="Empreendimento, bairro, endereço ou código">
+      <button class="primary" id="showCatalog">Explorar</button>
+    </div>
+  </div>
+</section>
+
+<section class="catalog" id="catalog">
+  <div class="container">
+    <div class="result-top">
+      <div>
+        <h2>Imóveis disponíveis</h2>
+        <p id="catalogStatus">Carregando estoque...</p>
+      </div>
+    </div>
+    <div class="catalog-grid" id="catalogGrid"></div>
+  </div>
+</section>
 </main>
+
+<div class="toast" id="toast"></div>
 
 <footer>Ynteligencia · Inteligência imobiliária</footer>
 
 <script>
 const CSV_FILE="Remax.teste2.csv";
-const PER_PAGE=18;
-let properties=[],filtered=[],page=1;
+let properties=[];
+let profile={
+  purpose:"",
+  region:"",
+  budget:0,
+  bedrooms:null,
+  feature:[],
+  timing:""
+};
+let step=0;
 
 const $=id=>document.getElementById(id);
-const el={
- search:$("search"),neighborhood:$("neighborhood"),bedrooms:$("bedrooms"),
- price:$("price"),clear:$("clear"),file:$("file"),upload:$("upload"),
- loadMessage:$("loadMessage"),status:$("status"),grid:$("grid"),
- pagination:$("pagination")
-};
+const steps=[...document.querySelectorAll(".step")];
 
-function clean(v){
- return String(v??"").replace(/\s+/g," ").trim();
-}
-function norm(v){
- return clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-}
-function html(v){
- return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
+function clean(v){return String(v??"").replace(/\s+/g," ").trim()}
+function norm(v){return clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function numberBR(v){
- let s=String(v??"").replace(/R\$/gi,"").replace(/\s/g,"").replace(/[^\d,.-]/g,"");
- if(!s)return 0;
- if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");
- else if(s.includes(","))s=s.replace(",",".");
- else if((s.match(/\./g)||[]).length>1)s=s.replace(/\./g,"");
- return Number(s)||0;
+  let s=String(v??"").replace(/R\$/gi,"").replace(/\s/g,"").replace(/[^\d,.-]/g,"");
+  if(!s)return 0;
+  if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");
+  else if(s.includes(","))s=s.replace(",",".");
+  else if((s.match(/\./g)||[]).length>1)s=s.replace(/\./g,"");
+  return Number(s)||0;
 }
 function money(v){
- return v?new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}).format(v):"Valor sob consulta";
+  return v?new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}).format(v):"Valor sob consulta";
 }
-function area(v){
- return new Intl.NumberFormat("pt-BR",{maximumFractionDigits:2}).format(v);
-}
+function area(v){return new Intl.NumberFormat("pt-BR",{maximumFractionDigits:2}).format(v)}
+function validURL(v){try{let u=new URL(v);return u.protocol==="http:"||u.protocol==="https:"}catch{return false}}
 
 function parseCSV(text){
- const rows=[];
- let row=[],field="",quoted=false;
- text=String(text).replace(/^\uFEFF/,"");
-
- for(let i=0;i<text.length;i++){
-   const c=text[i],next=text[i+1];
-   if(c==='"'){
-     if(quoted&&next==='"'){field+='"';i++}
-     else quoted=!quoted;
-   }else if(c===";"&&!quoted){
-     row.push(field);field="";
-   }else if((c==="\n"||c==="\r")&&!quoted){
-     if(c==="\r"&&next==="\n")i++;
-     row.push(field);field="";
-     if(row.some(v=>clean(v)!==""))rows.push(row);
-     row=[];
-   }else field+=c;
- }
- row.push(field);
- if(row.some(v=>clean(v)!==""))rows.push(row);
- if(rows.length<2)return [];
-
- const headers=rows.shift().map(norm);
- return rows.map(cols=>{
-   const obj={};
-   headers.forEach((key,i)=>obj[key]=clean(cols[i]));
-   return obj;
- });
+  const rows=[];let row=[],field="",quoted=false;
+  text=String(text).replace(/^\uFEFF/,"");
+  for(let i=0;i<text.length;i++){
+    const c=text[i],n=text[i+1];
+    if(c==='"'){
+      if(quoted&&n==='"'){field+='"';i++}else quoted=!quoted;
+    }else if(c===";"&&!quoted){row.push(field);field=""}
+    else if((c==="\n"||c==="\r")&&!quoted){
+      if(c==="\r"&&n==="\n")i++;
+      row.push(field);field="";
+      if(row.some(v=>clean(v)!==""))rows.push(row);
+      row=[];
+    }else field+=c;
+  }
+  row.push(field);
+  if(row.some(v=>clean(v)!==""))rows.push(row);
+  if(rows.length<2)return [];
+  const headers=rows.shift().map(norm);
+  return rows.map(cols=>{
+    const obj={};headers.forEach((key,i)=>obj[key]=clean(cols[i]));return obj;
+  });
 }
-
 function field(row,names){
- for(const name of names){
-   const value=row[norm(name)];
-   if(clean(value)!=="")return clean(value);
- }
- return "";
+  for(const name of names){const value=row[norm(name)];if(clean(value)!=="")return clean(value)}
+  return "";
 }
-
 function mapProperty(row,index){
- return {
-   id:clean(field(row,["ID"]))||`IMOVEL-${index+1}`,
-   name:clean(field(row,["EMPRENDIMENTO"]))||"Imóvel disponível",
-   neighborhood:clean(field(row,["Bairro"]))||"Bairro não informado",
-   address:clean(field(row,["Endereço"])),
-   unit:clean(field(row,["Nº da unidade"])),
-   area:numberBR(field(row,["Área Privativa (m2)"])),
-   bedrooms:numberBR(field(row,["N˚ Dorms.","Nº Dorms."])),
-   suites:numberBR(field(row,["Nº Suítes"])),
-   parking:numberBR(field(row,["N˚ Vagas","Nº Vagas"])),
-   year:clean(field(row,["Ano Const."])),
-   description:clean(field(row,["Observações"])),
-   condominium:clean(field(row,["Valor Condomínio"])),
-   iptu:clean(field(row,["Valor IPTU"])),
-   value:numberBR(field(row,["Valor de venda (R$)"])),
-   m2:numberBR(field(row,["Valor M2 (R$ / m2)"])),
-   photos:clean(field(row,["Link das Fotos sem marca d´água"]))
- };
+  return {
+    id:clean(field(row,["ID"]))||`IMOVEL-${index+1}`,
+    name:clean(field(row,["EMPRENDIMENTO"]))||"Imóvel disponível",
+    neighborhood:clean(field(row,["Bairro"]))||"Bairro não informado",
+    address:clean(field(row,["Endereço"])),
+    unit:clean(field(row,["Nº da unidade"])),
+    area:numberBR(field(row,["Área Privativa (m2)"])),
+    bedrooms:numberBR(field(row,["N˚ Dorms.","Nº Dorms."])),
+    suites:numberBR(field(row,["Nº Suítes"])),
+    parking:numberBR(field(row,["N˚ Vagas","Nº Vagas"])),
+    year:clean(field(row,["Ano Const."])),
+    description:clean(field(row,["Observações"])),
+    condominium:clean(field(row,["Valor Condomínio"])),
+    iptu:clean(field(row,["Valor IPTU"])),
+    value:numberBR(field(row,["Valor de venda (R$)"])),
+    m2:numberBR(field(row,["Valor M2 (R$ / m2)"])),
+    photos:clean(field(row,["Link das Fotos sem marca d´água"]))
+  };
 }
-
 function deduplicate(items){
- const unique=new Map();
- items.forEach(item=>{
-   const key=norm(item.id);
-   if(key&&!unique.has(key))unique.set(key,item);
- });
- return [...unique.values()];
+  const map=new Map();
+  items.forEach(p=>{const k=norm(p.id);if(k&&!map.has(k))map.set(k,p)});
+  return [...map.values()];
 }
 
-function load(text){
- try{
-   const parsed=parseCSV(text);
-   properties=deduplicate(parsed.map(mapProperty)).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
-   if(!properties.length)throw new Error("Nenhum imóvel encontrado.");
-   fillNeighborhoods();
-   el.upload.style.display="none";
-   applyFilters();
- }catch(error){
-   el.loadMessage.textContent="Não foi possível processar o CSV. Selecione novamente o arquivo Remax.teste2.csv.";
-   el.status.textContent="Base não carregada.";
-   el.grid.innerHTML=`<div class="message"><h2>Não foi possível carregar os imóveis</h2><p>${html(error.message)}</p></div>`;
- }
+function setStep(n){
+  step=Math.max(0,Math.min(6,n));
+  steps.forEach((s,i)=>s.hidden=i!==step);
+  $("progress").style.width=`${((step+1)/7)*100}%`;
+  $("back").style.visibility=step===0?"hidden":"visible";
+  $("next").textContent=step===6?"Encontrar meus MATCHs":"Continuar";
+  updateNext();
+  if(step===6)updateSummary();
+  document.getElementById("match").scrollIntoView({behavior:"smooth",block:"center"});
 }
-
-function fillNeighborhoods(){
- const selected=el.neighborhood.value;
- const list=[...new Set(properties.map(p=>p.neighborhood).filter(Boolean))]
-   .sort((a,b)=>a.localeCompare(b,"pt-BR"));
- el.neighborhood.innerHTML='<option value="">Todos os bairros</option>'+
-   list.map(v=>`<option value="${html(v)}">${html(v)}</option>`).join("");
- el.neighborhood.value=selected;
+function currentValid(){
+  if(step===4)return profile.feature.length>0;
+  if(step===6)return true;
+  const key=["purpose","region","budget","bedrooms","feature","timing"][step];
+  if(key==="budget")return Number(profile.budget)>0;
+  return profile[key]!=="" && profile[key]!==null && profile[key]!==undefined;
 }
+function updateNext(){$("next").disabled=!currentValid()}
 
-function applyFilters(){
- const query=norm(el.search.value);
- const neighborhood=el.neighborhood.value;
- const bedrooms=el.bedrooms.value;
- const maxPrice=Number(el.price.value)||0;
-
- filtered=properties.filter(property=>{
-   const searchable=norm([
-     property.id,
-     property.name,
-     property.neighborhood,
-     property.address,
-     property.unit,
-     property.description
-   ].join(" "));
-
-   const matchesQuery=!query||searchable.includes(query);
-   const matchesNeighborhood=!neighborhood||property.neighborhood===neighborhood;
-
-   let matchesBedrooms=true;
-   if(bedrooms==="0")matchesBedrooms=property.bedrooms===0;
-   else if(bedrooms==="4")matchesBedrooms=property.bedrooms>=4;
-   else if(bedrooms!=="")matchesBedrooms=property.bedrooms===Number(bedrooms);
-
-   const matchesPrice=!maxPrice||(property.value>0&&property.value<=maxPrice);
-
-   return matchesQuery&&matchesNeighborhood&&matchesBedrooms&&matchesPrice;
- });
-
- page=1;
- render();
-}
-
-function validURL(value){
- try{
-   const url=new URL(value);
-   return url.protocol==="http:"||url.protocol==="https:";
- }catch{
-   return false;
- }
-}
-
-function feature(value){
- return `<span class="feature">${html(value)}</span>`;
-}
-
-function card(property){
- const features=[];
-
- if(property.area)features.push(feature(`${area(property.area)} m²`));
- if(property.bedrooms)features.push(feature(`${property.bedrooms} ${property.bedrooms===1?"dormitório":"dormitórios"}`));
- if(property.suites)features.push(feature(`${property.suites} ${property.suites===1?"suíte":"suítes"}`));
- if(property.parking)features.push(feature(`${property.parking} ${property.parking===1?"vaga":"vagas"}`));
- if(property.year)features.push(feature(`Construção: ${property.year}`));
-
- const fullAddress=[
-   property.address,
-   property.unit?`Unidade ${property.unit}`:"",
-   property.neighborhood
- ].filter(Boolean).join(" · ");
-
- const pricePerSquareMeter=property.m2||(property.value&&property.area?property.value/property.area:0);
-
- const extraCosts=[
-   property.condominium?`Condomínio: ${property.condominium}`:"",
-   property.iptu?`IPTU: ${property.iptu}`:""
- ].filter(Boolean).join(" · ");
-
- const description=property.description||extraCosts||"Consulte a disponibilidade e as condições deste imóvel.";
-
- const photos=validURL(property.photos)
-   ? `<a class="photos" href="${html(property.photos)}" target="_blank" rel="noopener noreferrer">Ver imagens</a>`
-   : `<span class="photos" style="opacity:.55;cursor:not-allowed" aria-disabled="true">Imagens indisponíveis</span>`;
-
- return `
-   <article class="card">
-     <div class="cover">
-       <div class="skyline" aria-hidden="true">
-         <span class="building one"></span>
-         <span class="building two"></span>
-       </div>
-       <span class="code">ID ${html(property.id)}</span>
-       <span class="location">${html(property.neighborhood)}</span>
-     </div>
-
-     <div class="content">
-       <h2>${html(property.name)}</h2>
-       <p class="address">${html(fullAddress||"Endereço não informado")}</p>
-
-       <div class="price">${money(property.value)}</div>
-       <div class="m2">${pricePerSquareMeter?`${money(pricePerSquareMeter)} por m²`:"Valor por m² não informado"}</div>
-
-       <div class="features">${features.join("")}</div>
-       <p class="description">${html(description)}</p>
-       ${photos}
-     </div>
-   </article>
- `;
-}
-
-function render(){
- const total=filtered.length;
- const totalPages=Math.max(1,Math.ceil(total/PER_PAGE));
-
- if(page>totalPages)page=totalPages;
-
- const start=(page-1)*PER_PAGE;
- const visible=filtered.slice(start,start+PER_PAGE);
-
- el.status.textContent=total===1
-   ?"1 imóvel encontrado."
-   :`${total} imóveis encontrados.`;
-
- if(!visible.length){
-   el.grid.innerHTML=`
-     <div class="message">
-       <h2>Nenhum imóvel encontrado</h2>
-       <p>Altere ou limpe os filtros para consultar outras opções.</p>
-     </div>
-   `;
-   el.pagination.innerHTML="";
-   return;
- }
-
- el.grid.innerHTML=visible.map(card).join("");
- renderPagination(totalPages);
-}
-
-function renderPagination(totalPages){
- if(totalPages<=1){
-   el.pagination.innerHTML="";
-   return;
- }
-
- const buttons=[];
- const first=Math.max(1,page-2);
- const last=Math.min(totalPages,page+2);
-
- buttons.push(`
-   <button class="page" type="button" data-page="${page-1}" ${page===1?"disabled":""}>
-     Anterior
-   </button>
- `);
-
- if(first>1){
-   buttons.push(`<button class="page" type="button" data-page="1">1</button>`);
-   if(first>2)buttons.push(`<button class="page" type="button" disabled>…</button>`);
- }
-
- for(let current=first;current<=last;current++){
-   buttons.push(`
-     <button
-       class="page ${current===page?"active":""}"
-       type="button"
-       data-page="${current}"
-       ${current===page?'aria-current="page"':""}
-     >
-       ${current}
-     </button>
-   `);
- }
-
- if(last<totalPages){
-   if(last<totalPages-1)buttons.push(`<button class="page" type="button" disabled>…</button>`);
-   buttons.push(`<button class="page" type="button" data-page="${totalPages}">${totalPages}</button>`);
- }
-
- buttons.push(`
-   <button class="page" type="button" data-page="${page+1}" ${page===totalPages?"disabled":""}>
-     Próxima
-   </button>
- `);
-
- el.pagination.innerHTML=buttons.join("");
-}
-
-el.search.addEventListener("input",applyFilters);
-el.neighborhood.addEventListener("change",applyFilters);
-el.bedrooms.addEventListener("change",applyFilters);
-el.price.addEventListener("change",applyFilters);
-
-el.clear.addEventListener("click",()=>{
- el.search.value="";
- el.neighborhood.value="";
- el.bedrooms.value="";
- el.price.value="";
- applyFilters();
+document.querySelectorAll(".option").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const key=btn.dataset.key,value=btn.dataset.value;
+    if(btn.classList.contains("multi")){
+      const arr=profile[key];
+      const i=arr.indexOf(value);
+      if(i>=0)arr.splice(i,1);else arr.push(value);
+      btn.classList.toggle("selected",arr.includes(value));
+    }else{
+      profile[key]=key==="budget"?Number(value):value;
+      document.querySelectorAll(`.option[data-key="${key}"]:not(.multi)`).forEach(x=>x.classList.remove("selected"));
+      btn.classList.add("selected");
+    }
+    updateNext();
+  });
 });
 
-el.file.addEventListener("change",event=>{
- const selectedFile=event.target.files[0];
- if(!selectedFile)return;
-
- const reader=new FileReader();
-
- reader.onload=()=>{
-   el.loadMessage.textContent=`Arquivo carregado: ${selectedFile.name}`;
-   load(reader.result);
- };
-
- reader.onerror=()=>{
-   el.loadMessage.textContent="Não foi possível ler o arquivo selecionado.";
- };
-
- reader.readAsText(selectedFile,"UTF-8");
+$("next").addEventListener("click",()=>{
+  if(!currentValid())return;
+  if(step<6)setStep(step+1);else showMatches();
+});
+$("back").addEventListener("click",()=>{if(step>0)setStep(step-1)});
+$("startHero").addEventListener("click",()=>{$("match").scrollIntoView({behavior:"smooth",block:"center"})});
+$("navMatch").addEventListener("click",()=>{$("match").scrollIntoView({behavior:"smooth",block:"center"})});
+$("exploreHero").addEventListener("click",()=>{$("explore").scrollIntoView({behavior:"smooth"})});
+$("navExplore").addEventListener("click",()=>{$("explore").scrollIntoView({behavior:"smooth"})});
+$("newSearch").addEventListener("click",()=>{
+  profile={purpose:"",region:"",budget:0,bedrooms:null,feature:[],timing:""};
+  document.querySelectorAll(".option").forEach(x=>x.classList.remove("selected"));
+  $("results").classList.remove("visible");
+  setStep(0);
 });
 
-el.pagination.addEventListener("click",event=>{
- const button=event.target.closest("[data-page]");
- if(!button||button.disabled)return;
+function updateSummary(){
+  const p=profile;
+  const region=p.region==="outra"?"outra região":p.region;
+  const budget=p.budget?money(p.budget):"qualquer faixa";
+  const beds=p.bedrooms===4?"4+":p.bedrooms!==null?p.bedrooms:"qualquer número";
+  $("summary").textContent=`Você busca ${p.purpose||"um imóvel"} em ${region||"São Paulo"}, até ${budget}, com ${beds} dormitório(s). ${p.feature.length?"Prioridades: "+p.feature.join(", ")+".":""}`;
+}
 
- const requestedPage=Number(button.dataset.page);
- const totalPages=Math.max(1,Math.ceil(filtered.length/PER_PAGE));
+function scoreProperty(p){
+  let score=0,reasons=[];
+  const region=norm(profile.region);
+  const neighborhood=norm(p.neighborhood);
 
- if(requestedPage<1||requestedPage>totalPages)return;
+  if(region && region!=="outra"){
+    if(neighborhood.includes(region)||region.includes(neighborhood)){score+=30;reasons.push("Região desejada")}
+    else score+=0;
+  }else score+=30;
 
- page=requestedPage;
- render();
- document.getElementById("resultados").scrollIntoView({behavior:"smooth"});
+  if(profile.budget){
+    if(p.value>0 && p.value<=profile.budget){score+=30;reasons.push("Dentro do orçamento")}
+    else if(p.value>0 && p.value<=profile.budget*1.1){score+=20;reasons.push("Próximo do orçamento")}
+  }else score+=30;
+
+  if(profile.bedrooms!==null){
+    if(profile.bedrooms===4){
+      if(p.bedrooms>=4){score+=15;reasons.push("Número de dormitórios")}
+      else if(p.bedrooms===3)score+=8;
+    }else if(p.bedrooms===0){
+      if(p.bedrooms===0){score+=15;reasons.push("Perfil comercial")}
+    }else if(p.bedrooms===profile.bedrooms){score+=15;reasons.push(`${p.bedrooms} dormitórios`)}
+    else if(Math.abs(p.bedrooms-profile.bedrooms)===1){score+=8}
+  }else score+=15;
+
+  const features=profile.feature;
+  if(features.includes("balcony")){if(norm(p.description).includes("varanda")){score+=2;reasons.push("Varanda")}}
+  if(features.includes("parking")){if(p.parking>0){score+=3;reasons.push("Vaga")}}
+  if(features.includes("pool")){if(norm(p.description).includes("piscina")){score+=2;reasons.push("Piscina")}}
+  if(features.includes("metro")){if(/metr[oô]|estação|estacao/.test(norm(p.description+" "+p.address))){score+=3;reasons.push("Metrô próximo")}}
+
+  return {score:Math.min(100,score),reasons:[...new Set(reasons)].slice(0,4)};
+}
+
+function showMatches(){
+  const scored=properties.map(p=>({...p,match:scoreProperty(p)}))
+    .filter(x=>x.match.score>=45)
+    .sort((a,b)=>b.match.score-a.match.score||a.value-b.value)
+    .slice(0,12);
+
+  $("results").classList.add("visible");
+  $("resultSummary").textContent=scored.length
+    ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
+    : "Não encontramos uma combinação forte. Vamos ampliar sua busca.";
+
+  $("matchGrid").innerHTML=scored.length
+    ? scored.map(p=>card(p,true)).join("")
+    : `<div class="empty"><h3>Vamos ampliar o MATCH</h3><p>Tente uma região ou faixa de preço um pouco mais ampla para encontrarmos mais opções.</p></div>`;
+
+  $("results").scrollIntoView({behavior:"smooth"});
+}
+
+function coverHTML(p){
+  if(validURL(p.photos)){
+    return `<div class="cover has-image" style="background-image:url('${esc(p.photos)}')">
+      <span class="match">${p.match?`${p.match.score}% MATCH`:"IMÓVEL DISPONÍVEL"}</span>
+      <span class="cover-location">${esc(p.neighborhood)}</span>
+    </div>`;
+  }
+  return `<div class="cover">
+    <div class="cover-art" aria-hidden="true">
+      <span class="building one"></span><span class="building two"></span>
+    </div>
+    <span class="match">${p.match?`${p.match.score}% MATCH`:"IMÓVEL DISPONÍVEL"}</span>
+    <span class="cover-location">${esc(p.neighborhood)}</span>
+  </div>`;
+}
+
+function card(p,isMatch=false){
+  const features=[];
+  if(p.area)features.push(`${area(p.area)} m²`);
+  if(p.bedrooms)features.push(`${p.bedrooms} ${p.bedrooms===1?"dorm.":"dorms."}`);
+  if(p.suites)features.push(`${p.suites} ${p.suites===1?"suíte":"suítes"}`);
+  if(p.parking)features.push(`${p.parking} ${p.parking===1?"vaga":"vagas"}`);
+
+  const addr=[p.address,p.unit?`Unidade ${p.unit}`:""].filter(Boolean).join(" · ");
+  const priceM2=p.m2||(p.value&&p.area?p.value/p.area:0);
+  const reasons=isMatch && p.match ? p.match.reasons : [];
+  const reasonHTML=isMatch
+    ? `<div class="reasons"><strong>Por que apareceu para você?</strong>${reasons.length?reasons.map(r=>`✓ ${esc(r)}`).join(" · "):"Combinação com seus critérios."}</div>`
+    : "";
+
+  const photoButton=validURL(p.photos)
+    ? `<a class="view" href="${esc(p.photos)}" target="_blank" rel="noopener noreferrer">Ver imóvel</a>`
+    : `<button class="view" type="button" onclick="showToast('As imagens deste imóvel ainda estão sendo atualizadas.')">Ver imóvel</button>`;
+
+  return `<article class="card">
+    ${coverHTML(p)}
+    <div class="card-body">
+      <h3>${esc(p.name)}</h3>
+      <p class="card-address">${esc(addr||p.neighborhood||"São Paulo")}</p>
+      <div class="price">${money(p.value)}</div>
+      <div class="m2">${priceM2?`${money(priceM2)} por m²`:"Valor por m² não informado"}</div>
+      <div class="features">${features.map(x=>`<span class="feature">${esc(x)}</span>`).join("")}</div>
+      ${reasonHTML}
+      <div class="card-actions">
+        ${photoButton}
+        <button class="interest" type="button" onclick="interest('${esc(p.id)}','${esc(p.name)}')">Tenho interesse</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+function fillCatalogNeighborhoods(){
+  const list=[...new Set(properties.map(p=>p.neighborhood).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  $("catalogNeighborhood").innerHTML='<option value="">Todos os bairros</option>'+
+    list.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+}
+
+function renderCatalog(){
+  const q=norm($("catalogSearch").value);
+  const n=$("catalogNeighborhood").value;
+  const list=properties.filter(p=>{
+    const searchable=norm([p.id,p.name,p.neighborhood,p.address,p.unit,p.description].join(" "));
+    return (!q||searchable.includes(q))&&(!n||p.neighborhood===n);
+  });
+  $("catalogStatus").textContent=`${list.length} imóveis disponíveis`;
+  $("catalogGrid").innerHTML=list.length
+    ? list.slice(0,60).map(p=>card(p,false)).join("")
+    : `<div class="empty"><h3>Nenhum imóvel encontrado</h3><p>Tente outro termo ou bairro.</p></div>`;
+}
+
+$("showCatalog").addEventListener("click",()=>{
+  $("catalog").classList.add("visible");
+  renderCatalog();
+  $("catalog").scrollIntoView({behavior:"smooth"});
 });
+$("catalogSearch").addEventListener("input",renderCatalog);
+$("catalogNeighborhood").addEventListener("change",renderCatalog);
 
-fetch(CSV_FILE,{cache:"no-store"})
- .then(response=>{
-   if(!response.ok)throw new Error("Arquivo CSV não encontrado.");
-   return response.text();
- })
- .then(text=>{
-   el.loadMessage.textContent=`Arquivo carregado: ${CSV_FILE}`;
-   load(text);
- })
- .catch(()=>{
-   el.loadMessage.textContent=`Selecione o arquivo ${CSV_FILE} para exibir os imóveis.`;
-   el.status.textContent="Aguardando o arquivo CSV.";
-   el.grid.innerHTML=`
-     <div class="message">
-       <h2>Selecione a base de imóveis</h2>
-       <p>O navegador não conseguiu abrir automaticamente o CSV. Use o botão “Selecionar CSV” acima.</p>
-     </div>
-   `;
- });
+function interest(id,name){
+  showToast(`Interesse registrado em ${name}. Em breve podemos conectar este contato ao atendimento da Yincorp.`);
+  try{
+    const events=JSON.parse(localStorage.getItem("ynteligencia_events")||"[]");
+    events.push({type:"interest",property_id:id,name,profile,created_at:new Date().toISOString()});
+    localStorage.setItem("ynteligencia_events",JSON.stringify(events.slice(-100)));
+  }catch{}
+}
+
+function showToast(message){
+  const t=$("toast");t.textContent=message;t.classList.add("show");
+  clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove("show"),3500);
+}
+
+async function loadInventory(){
+  try{
+    const response=await fetch(CSV_FILE,{cache:"no-store"});
+    if(!response.ok)throw new Error("CSV não encontrado");
+    const text=await response.text();
+    properties=deduplicate(parseCSV(text).map(mapProperty));
+    fillCatalogNeighborhoods();
+  }catch(error){
+    properties=[];
+    showToast("Estamos atualizando o estoque de imóveis. A busca continua disponível.");
+  }
+}
+
+setStep(0);
+loadInventory();
 </script>
 </body>
 </html>
-```
