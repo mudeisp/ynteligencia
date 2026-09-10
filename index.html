@@ -493,7 +493,16 @@ $("navMatch").addEventListener("click",()=>$("match").scrollIntoView({behavior:"
 $("exploreHero").addEventListener("click",()=>$("explore").scrollIntoView({behavior:"smooth"}));
 $("navExplore").addEventListener("click",()=>$("explore").scrollIntoView({behavior:"smooth"}));
 $("newSearch").addEventListener("click",()=>{profile={purpose:"",region:"",budget:0,bedrooms:null,feature:[],timing:"",types:[]};document.querySelectorAll(".option").forEach(x=>x.classList.remove("selected"));$("results").classList.remove("visible");setStep(0)});
-function updateSummary(){const p=profile;const region=p.region==="outra"?"outra região":p.region;const budget=p.budget?money(p.budget):"qualquer faixa";const beds=p.bedrooms===4?"4+":p.bedrooms??"qualquer número";const types=p.types.join(", ");$("summary").textContent=`Você busca ${types||"um imóvel"} para ${p.purpose||"comprar"}, em ${region||"São Paulo"}, até ${budget}, com ${beds} dormitório(s). ${p.feature.length?"Prioridades: "+p.feature.join(", ")+".":""}`}
+function updateSummary(){
+  const el=$("summary");
+  if(!el)return;
+  const p=profile;
+  const region=p.region==="outra"?"outra região":p.region;
+  const budget=p.budget?money(p.budget):"qualquer faixa";
+  const beds=p.bedrooms===4?"4+":p.bedrooms??"qualquer número";
+  const types=p.types.join(", ");
+  el.textContent=`Você busca ${types||"um imóvel"} para ${p.purpose||"comprar"}, em ${region||"São Paulo"}, até ${budget}, com ${beds} dormitório(s). ${p.feature.length?"Prioridades: "+p.feature.join(", ")+".":""}`;
+}
 function textHas(p,terms){const t=norm([p.description,p.name,p.address].join(" "));return terms.some(x=>t.includes(norm(x)))}
 function scoreProperty(p){
   let score=0,reasons=[];const region=norm(profile.region),neighborhood=norm(p.neighborhood);
@@ -594,7 +603,9 @@ async function loadInventory(){
 }
 
 setStep(0);
-loadInventory();
+Promise.all([loadPhotoManifest(), loadInventory()]).then(()=>{
+  console.log(`Ynteligencia pronta: ${properties.length} imóveis · ${Object.keys(photoManifest).length} registros de fotos`);
+});
 </script>
 </body>
 </html>
