@@ -1,50 +1,44 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <!-- Tags para PWA -->
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#2563eb">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ynteligencia">
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/10024/10024021.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1220">
+<meta name="description" content="Ynteligencia — inteligência imobiliária para encontrar o imóvel certo para você.">
 
 <title>Ynteligencia | Inteligência imobiliária</title>
 
-<meta name="description" content="A Ynteligencia entende o que você procura e encontra os imóveis mais compatíveis com seu perfil.">
-
 <style>
 :root{
-  --azul:#102f52;
-  --azul2:#195c91;
-  --azul-claro:#edf5fb;
-  --laranja:#ef8d22;
-  --texto:#172033;
-  --cinza:#64748b;
-  --borda:#e2e8f0;
-  --fundo:#f6f8fb;
-  --branco:#fff;
-  --verde:#16845b;
+  --bg:#f5f7fa;
+  --card:#ffffff;
+  --dark:#0b1220;
+  --text:#172033;
+  --muted:#718096;
+  --line:#e5e9ef;
+  --accent:#e99b36;
+  --accent-dark:#c97d20;
+  --green:#15966c;
+  --shadow:0 18px 45px rgba(15,23,42,.10);
+  --radius:22px;
 }
 
 *{
   box-sizing:border-box;
-}
-
-html{
-  scroll-behavior:smooth;
+  margin:0;
+  padding:0;
 }
 
 body{
-  margin:0;
   font-family:Arial,Helvetica,sans-serif;
-  color:var(--texto);
-  background:var(--fundo);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
 }
 
-button,input,select{
+button,
+input,
+select{
   font:inherit;
 }
 
@@ -52,604 +46,590 @@ button{
   cursor:pointer;
 }
 
-/* ================= HEADER ================= */
-
-header{
-  color:white;
-  padding:20px 6vw 120px;
-  background:
-    radial-gradient(circle at 85% 20%,rgba(45,130,190,.35),transparent 30%),
-    linear-gradient(125deg,#092542,#176aa6);
+.app{
+  min-height:100vh;
 }
 
-nav{
-  max-width:1180px;
-  margin:auto;
+/* HEADER */
+
+header{
+  height:70px;
+  background:var(--dark);
+  color:white;
   display:flex;
   align-items:center;
   justify-content:space-between;
+  padding:0 28px;
+  position:sticky;
+  top:0;
+  z-index:20;
 }
 
 .logo{
-  font-size:27px;
+  font-size:23px;
   font-weight:800;
-  letter-spacing:-1.5px;
-}
-
-.logo span{
-  color:#ffad42;
-}
-
-nav a{
-  color:#dcecf9;
-  text-decoration:none;
-  margin-left:25px;
-  font-size:14px;
-}
-
-/* ================= HERO ================= */
-
-.hero{
-  max-width:1180px;
-  margin:75px auto 0;
-}
-
-.hero-content{
-  max-width:720px;
-}
-
-.badge{
-  display:inline-block;
-  padding:7px 11px;
-  border:1px solid rgba(255,255,255,.25);
-  border-radius:30px;
-  color:#e6f4ff;
-  background:rgba(255,255,255,.08);
-  font-size:12px;
-  font-weight:bold;
-  margin-bottom:18px;
-}
-
-.hero h1{
-  margin:0 0 18px;
-  font-size:clamp(38px,5.5vw,62px);
-  line-height:1.02;
-  letter-spacing:-2.7px;
-}
-
-.hero h1 span{
-  color:#ffad42;
-}
-
-.hero p{
-  max-width:650px;
-  margin:0;
-  color:#d7e8f7;
-  font-size:18px;
-  line-height:1.55;
-}
-
-/* ================= CTA ================= */
-
-.hero-buttons{
-  display:flex;
-  gap:12px;
-  margin-top:30px;
-}
-
-.btn-principal{
-  padding:14px 21px;
-  border:0;
-  border-radius:9px;
-  color:white;
-  background:var(--laranja);
-  font-weight:bold;
-}
-
-.btn-secundario{
-  padding:14px 21px;
-  border:1px solid rgba(255,255,255,.35);
-  border-radius:9px;
-  color:white;
-  background:rgba(255,255,255,.08);
-  font-weight:bold;
-}
-
-/* ================= BUSCA ================= */
-
-.busca{
-  max-width:1080px;
-  margin:45px auto -150px;
-  padding:17px;
-  display:grid;
-  grid-template-columns:1.7fr 1fr 1fr 1fr auto;
-  gap:10px;
-  background:white;
-  border-radius:15px;
-  box-shadow:0 18px 42px rgba(5,27,49,.23);
-}
-
-.campo{
-  padding:7px 12px;
-  border:1px solid var(--borda);
-  border-radius:8px;
-}
-
-.campo label{
-  display:block;
-  margin-bottom:4px;
-  color:var(--cinza);
-  font-size:10px;
-  font-weight:bold;
-}
-
-.campo input,
-.campo select{
-  width:100%;
-  border:0;
-  outline:0;
-  background:transparent;
-  color:var(--texto);
-}
-
-.btn-buscar{
-  padding:12px 18px;
-  border:0;
-  border-radius:8px;
-  color:white;
-  background:var(--azul);
-  font-weight:bold;
-}
-
-/* ================= MAIN ================= */
-
-main{
-  max-width:1180px;
-  margin:205px auto 70px;
-  padding:0 20px;
-}
-
-/* ================= COMO FUNCIONA ================= */
-
-.intro{
-  max-width:760px;
-  margin:0 auto 60px;
-  text-align:center;
-}
-
-.intro h2{
-  margin:0 0 12px;
-  font-size:34px;
   letter-spacing:-1px;
 }
 
-.intro p{
-  margin:0;
-  color:var(--cinza);
-  line-height:1.6;
+.logo span{
+  color:var(--accent);
 }
 
-.passos{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:18px;
-  margin-bottom:75px;
-}
-
-.passo{
-  padding:25px;
-  border:1px solid var(--borda);
-  border-radius:14px;
-  background:white;
-}
-
-.numero{
-  width:38px;
-  height:38px;
+.header-right{
   display:flex;
   align-items:center;
-  justify-content:center;
-  margin-bottom:18px;
-  border-radius:50%;
-  color:white;
-  background:var(--azul);
-  font-weight:bold;
-}
-
-.passo h3{
-  margin:0 0 8px;
-  font-size:17px;
-}
-
-.passo p{
-  margin:0;
-  color:var(--cinza);
-  font-size:14px;
-  line-height:1.5;
-}
-
-/* ================= LISTA ================= */
-
-.cabecalho-lista{
-  display:flex;
-  justify-content:space-between;
-  align-items:end;
-  margin-bottom:24px;
-}
-
-.cabecalho-lista h2{
-  margin:0;
-  font-size:30px;
-}
-
-.subtitulo{
-  margin:7px 0 0;
-  color:var(--cinza);
-}
-
-#resultado{
-  color:var(--cinza);
-  font-size:14px;
-}
-
-.imoveis{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
   gap:18px;
 }
 
-.card{
-  overflow:hidden;
-  border:1px solid var(--borda);
+.header-link{
+  color:#cbd5e1;
+  text-decoration:none;
+  font-size:14px;
+}
+
+.profile-btn{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  border:1px solid #344054;
+  background:#172033;
+  color:white;
+}
+
+/* HERO */
+
+.hero{
+  background:
+    radial-gradient(circle at 85% 20%,rgba(233,155,54,.18),transparent 30%),
+    var(--dark);
+  color:white;
+  padding:70px 24px 85px;
+}
+
+.hero-inner{
+  max-width:1050px;
+  margin:auto;
+}
+
+.badge{
+  display:inline-flex;
+  padding:7px 12px;
+  border-radius:30px;
+  background:rgba(233,155,54,.13);
+  border:1px solid rgba(233,155,54,.3);
+  color:#f2b461;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:1.5px;
+  margin-bottom:22px;
+}
+
+.hero h1{
+  font-size:clamp(38px,6vw,68px);
+  line-height:1.02;
+  max-width:760px;
+  letter-spacing:-3px;
+}
+
+.hero h1 span{
+  color:var(--accent);
+}
+
+.hero p{
+  margin-top:22px;
+  color:#aeb9ca;
+  font-size:18px;
+  line-height:1.6;
+  max-width:620px;
+}
+
+.hero-actions{
+  display:flex;
+  gap:12px;
+  margin-top:32px;
+  flex-wrap:wrap;
+}
+
+.btn{
+  border:none;
   border-radius:14px;
-  background:white;
+  padding:15px 22px;
+  font-weight:700;
   transition:.2s;
 }
 
-.card:hover{
-  transform:translateY(-4px);
-  box-shadow:0 14px 30px rgba(15,23,42,.10);
+.btn-primary{
+  background:var(--accent);
+  color:white;
 }
 
-.foto{
-  position:relative;
-  height:195px;
-  overflow:hidden;
+.btn-primary:hover{
+  background:var(--accent-dark);
+  transform:translateY(-1px);
 }
 
-.foto img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-
-.tag{
-  position:absolute;
-  top:12px;
-  left:12px;
-  padding:6px 9px;
-  border-radius:6px;
-  color:var(--azul);
+.btn-secondary{
   background:white;
-  font-size:11px;
-  font-weight:bold;
+  color:var(--dark);
+}
+
+/* MAIN */
+
+main{
+  max-width:1100px;
+  margin:auto;
+  padding:55px 22px 110px;
+}
+
+.section-title{
+  font-size:30px;
+  letter-spacing:-1px;
+}
+
+.section-subtitle{
+  margin-top:8px;
+  color:var(--muted);
+}
+
+/* ONBOARDING */
+
+.onboarding{
+  margin-top:-45px;
+  position:relative;
+  z-index:5;
+}
+
+.question-card{
+  background:white;
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:32px;
+  max-width:850px;
+}
+
+.progress-top{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:13px;
+}
+
+.progress{
+  height:5px;
+  background:#edf0f4;
+  border-radius:10px;
+  overflow:hidden;
+  margin-bottom:30px;
+}
+
+.progress-bar{
+  height:100%;
+  width:14%;
+  background:var(--accent);
+  transition:.3s;
+}
+
+.question{
+  display:none;
+}
+
+.question.active{
+  display:block;
+}
+
+.question h2{
+  font-size:29px;
+  letter-spacing:-1px;
+  margin-bottom:8px;
+}
+
+.question p{
+  color:var(--muted);
+  margin-bottom:25px;
+}
+
+.options{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
+
+.option{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:15px;
+  padding:17px;
+  text-align:left;
+  color:var(--text);
+  transition:.2s;
+}
+
+.option:hover{
+  border-color:var(--accent);
+}
+
+.option.selected{
+  border-color:var(--accent);
+  background:#fff8ef;
+}
+
+.option strong{
+  display:block;
+  margin-bottom:4px;
+}
+
+.option small{
+  color:var(--muted);
+}
+
+.question-actions{
+  display:flex;
+  justify-content:space-between;
+  margin-top:25px;
+}
+
+.back-btn{
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  padding:12px;
+}
+
+.continue-btn{
+  border:none;
+  background:var(--dark);
+  color:white;
+  border-radius:13px;
+  padding:13px 23px;
+  font-weight:700;
+}
+
+/* RESULTADO */
+
+.results{
+  display:none;
+  margin-top:35px;
+}
+
+.results.active{
+  display:block;
+}
+
+.result-header{
+  background:var(--dark);
+  color:white;
+  border-radius:22px;
+  padding:28px;
+  margin-bottom:25px;
+}
+
+.result-header small{
+  color:#9ca9bb;
+}
+
+.result-header h2{
+  margin-top:7px;
+  font-size:30px;
+}
+
+.result-header p{
+  margin-top:8px;
+  color:#b7c1cf;
+}
+
+/* CARDS */
+
+.properties{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+}
+
+.property{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 7px 25px rgba(15,23,42,.05);
+}
+
+.property-image{
+  height:210px;
+  background-size:cover;
+  background-position:center;
+  position:relative;
 }
 
 .score{
   position:absolute;
-  right:12px;
-  bottom:12px;
-  padding:7px 9px;
-  border-radius:7px;
-  color:white;
-  background:var(--verde);
+  top:13px;
+  left:13px;
+  background:white;
+  color:var(--green);
   font-size:12px;
-  font-weight:bold;
+  font-weight:800;
+  padding:8px 10px;
+  border-radius:20px;
 }
 
-.favorito{
+.favorite{
   position:absolute;
-  top:11px;
-  right:11px;
+  right:13px;
+  top:13px;
+  border:none;
+  background:white;
   width:36px;
   height:36px;
-  border:0;
   border-radius:50%;
-  color:#e11d48;
-  background:rgba(255,255,255,.94);
   font-size:18px;
 }
 
-.dados{
-  padding:16px;
+.property-body{
+  padding:19px;
 }
 
-.preco{
-  color:var(--azul);
-  font-size:20px;
-  font-weight:bold;
+.property-body h3{
+  font-size:19px;
 }
 
-.dados h3{
-  margin:8px 0 5px;
-  font-size:16px;
-}
-
-.local{
-  margin:0;
-  color:var(--cinza);
+.location{
+  color:var(--muted);
   font-size:13px;
+  margin-top:5px;
 }
 
-.detalhes{
+.price{
+  font-size:22px;
+  font-weight:800;
+  margin-top:15px;
+}
+
+.details{
   display:flex;
-  gap:13px;
-  margin-top:14px;
-  padding-top:12px;
-  border-top:1px solid var(--borda);
-  color:#475569;
+  gap:12px;
+  margin-top:10px;
+  font-size:13px;
+  color:var(--muted);
+}
+
+.why{
+  margin-top:17px;
+  padding-top:15px;
+  border-top:1px solid var(--line);
+}
+
+.why strong{
   font-size:13px;
 }
 
-.compatibilidade{
-  margin-top:13px;
-  padding:10px;
-  border-radius:8px;
-  color:#155487;
-  background:var(--azul-claro);
+.why ul{
+  list-style:none;
+  margin-top:8px;
+}
+
+.why li{
   font-size:12px;
-  line-height:1.4;
+  color:#667085;
+  margin-top:5px;
 }
 
-.botao-card{
+.why li::before{
+  content:"✓";
+  color:var(--green);
+  font-weight:bold;
+  margin-right:6px;
+}
+
+.property-btn{
+  margin-top:16px;
   width:100%;
-  margin-top:13px;
-  padding:10px;
-  border:1px solid #cfddea;
-  border-radius:7px;
-  color:var(--azul);
-  background:white;
-  font-weight:bold;
-}
-
-/* ================= PERFIL ================= */
-
-.perfil-banner{
-  margin:75px 0;
-  padding:40px;
-  border-radius:18px;
+  border:none;
+  border-radius:12px;
+  background:var(--dark);
   color:white;
-  background:linear-gradient(135deg,#102f52,#1b70ad);
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:30px;
+  padding:12px;
+  font-weight:700;
 }
 
-.perfil-banner h2{
-  margin:0 0 10px;
-  font-size:30px;
+/* COMO FUNCIONA */
+
+.how{
+  margin-top:75px;
 }
 
-.perfil-banner p{
-  max-width:650px;
-  margin:0;
-  color:#dbeefd;
-  line-height:1.5;
+.steps{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:18px;
+  margin-top:25px;
 }
 
-.perfil-banner button{
-  flex-shrink:0;
-  padding:13px 18px;
-  border:0;
-  border-radius:8px;
-  color:var(--azul);
+.step{
   background:white;
-  font-weight:bold;
+  border:1px solid var(--line);
+  padding:25px;
+  border-radius:20px;
 }
 
-/* ================= MODAL ================= */
-
-.modal{
-  display:none;
-  position:fixed;
-  inset:0;
-  z-index:20;
-  padding:18px;
+.step-number{
+  width:38px;
+  height:38px;
+  background:#fff1df;
+  color:var(--accent-dark);
+  border-radius:50%;
+  display:flex;
   align-items:center;
   justify-content:center;
-  background:rgba(15,23,42,.75);
+  font-weight:800;
+  margin-bottom:18px;
 }
 
-.modal.ativo{
-  display:flex;
+.step h3{
+  font-size:17px;
+  margin-bottom:7px;
 }
 
-.caixa-modal{
-  position:relative;
-  width:min(620px,100%);
-  max-height:92vh;
-  overflow-y:auto;
-  padding:30px;
-  border-radius:16px;
-  background:white;
-}
-
-.fechar{
-  position:absolute;
-  top:12px;
-  right:12px;
-  width:35px;
-  height:35px;
-  border:0;
-  border-radius:50%;
-  font-size:20px;
-  background:#eef3f8;
-}
-
-.caixa-modal h2{
-  margin:0 35px 8px 0;
-}
-
-.caixa-modal > p{
-  color:var(--cinza);
-  line-height:1.5;
-}
-
-.formulario{
-  display:grid;
-  gap:12px;
-  margin-top:20px;
-}
-
-.formulario input,
-.formulario select{
-  width:100%;
-  padding:13px;
-  border:1px solid var(--borda);
-  border-radius:8px;
-  outline-color:var(--azul);
-}
-
-.checks{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  margin-top:4px;
-}
-
-.check{
-  padding:11px;
-  border:1px solid var(--borda);
-  border-radius:8px;
-  font-size:13px;
-}
-
-.check input{
-  margin-right:7px;
-}
-
-/* ================= RESULTADO IA ================= */
-
-.resultado-ia{
-  display:none;
-  margin-top:22px;
-}
-
-.resultado-ia h3{
-  margin-bottom:12px;
-}
-
-.perfil-resumo{
-  padding:15px;
-  border-radius:10px;
-  background:var(--azul-claro);
-  color:#155487;
+.step p{
+  color:var(--muted);
   font-size:14px;
   line-height:1.5;
 }
 
-.recomendacao{
-  margin-top:12px;
-  padding:14px;
-  border:1px solid var(--borda);
-  border-radius:10px;
+/* EXPLORAR */
+
+.explore{
+  margin-top:75px;
 }
 
-.recomendacao strong{
-  color:var(--azul);
+.search{
+  margin-top:22px;
+  background:white;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:15px;
+  display:flex;
+  gap:10px;
 }
 
-.recomendacao small{
-  display:block;
-  margin-top:5px;
-  color:var(--cinza);
+.search input{
+  flex:1;
+  border:none;
+  outline:none;
+  padding:8px;
 }
 
-/* ================= FOOTER ================= */
+/* FOOTER */
 
 footer{
-  padding:35px 20px;
-  color:var(--cinza);
+  background:var(--dark);
+  color:#8f9bad;
+  padding:35px 22px;
   text-align:center;
   font-size:13px;
 }
 
-/* ================= RESPONSIVO ================= */
-
-@media(max-width:900px){
-
-  .busca{
-    grid-template-columns:1fr 1fr;
-  }
-
-  main{
-    margin-top:270px;
-  }
-
-  .imoveis{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .passos{
-    grid-template-columns:1fr;
-  }
-
-  .perfil-banner{
-    display:block;
-  }
-
-  .perfil-banner button{
-    margin-top:20px;
-  }
+footer strong{
+  color:white;
 }
 
-@media(max-width:560px){
+/* MOBILE */
+
+@media(max-width:800px){
 
   header{
-    padding-bottom:70px;
+    height:62px;
+    padding:0 17px;
   }
 
-  nav a{
+  .header-link{
     display:none;
   }
 
   .hero{
-    margin-top:50px;
+    padding:48px 20px 75px;
   }
 
-  .hero-buttons{
-    flex-direction:column;
+  .hero h1{
+    font-size:42px;
+    letter-spacing:-2px;
   }
 
-  .busca{
-    grid-template-columns:1fr;
-    margin-bottom:-290px;
+  .hero p{
+    font-size:16px;
   }
 
   main{
-    margin-top:330px;
+    padding:45px 15px 90px;
   }
 
-  .imoveis{
+  .onboarding{
+    margin-top:-35px;
+  }
+
+  .question-card{
+    padding:22px;
+    border-radius:20px;
+  }
+
+  .question h2{
+    font-size:25px;
+  }
+
+  .options{
     grid-template-columns:1fr;
   }
 
-  .cabecalho-lista{
-    display:block;
-  }
-
-  #resultado{
-    display:block;
-    margin-top:10px;
-  }
-
-  .perfil-banner{
-    padding:28px;
-  }
-
-  .checks{
+  .properties{
     grid-template-columns:1fr;
+  }
+
+  .steps{
+    grid-template-columns:1fr;
+  }
+
+  .property-image{
+    height:225px;
+  }
+
+  .search{
+    flex-direction:column;
+  }
+
+}
+
+/* APP BOTTOM NAV */
+
+.bottom-nav{
+  display:none;
+}
+
+@media(max-width:800px){
+
+  .bottom-nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    height:68px;
+    background:rgba(255,255,255,.96);
+    border-top:1px solid var(--line);
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    z-index:50;
+  }
+
+  .bottom-nav button{
+    border:none;
+    background:none;
+    color:#8a94a6;
+    font-size:11px;
+  }
+
+  .bottom-nav button.active{
+    color:var(--accent-dark);
+    font-weight:800;
   }
 }
 </style>
@@ -657,133 +637,373 @@ footer{
 
 <body>
 
+<div class="app">
+
 <header>
 
-<nav>
-  <div class="logo">Ynteligencia</div>
-
-  <div>
-    <a href="#como">Como funciona</a>
-    <a href="#imoveis">Imóveis</a>
-    <a href="#perfil">Meu perfil</a>
-  </div>
-</nav>
-
-<section class="hero">
-
-  <div class="hero-content">
-
-    <div class="badge">INTELIGÊNCIA IMOBILIÁRIA</div>
-
-    <h1>
-      Encontre o imóvel que
-      <span>faz sentido para você.</span>
-    </h1>
-
-    <p>
-      A Ynteligencia entende seu momento, cruza suas preferências
-      com os imóveis disponíveis e apresenta as oportunidades
-      mais compatíveis com o seu perfil.
-    </p>
-
-    <div class="hero-buttons">
-      <button class="btn-principal" onclick="abrirModal('modalPerfil')">
-        Descobrir meu imóvel
-      </button>
-
-      <button class="btn-secundario" onclick="document.getElementById('imoveis').scrollIntoView()">
-        Explorar imóveis
-      </button>
-    </div>
-
+  <div class="logo">
+    Y<span>n</span>teligencia
   </div>
 
-</section>
-
-<form class="busca" onsubmit="event.preventDefault(); filtrarImoveis();">
-
-  <div class="campo">
-    <label>ONDE VOCÊ PROCURA?</label>
-    <input id="buscaTexto" placeholder="Bairro, cidade ou endereço">
+  <div class="header-right">
+    <a href="#explorar" class="header-link">Explorar</a>
+    <a href="#como-funciona" class="header-link">Como funciona</a>
+    <button class="profile-btn" onclick="startProfile()">●</button>
   </div>
-
-  <div class="campo">
-    <label>FINALIDADE</label>
-    <select id="finalidade">
-      <option value="">Comprar ou alugar</option>
-      <option value="Venda">Comprar</option>
-      <option value="Aluguel">Alugar</option>
-    </select>
-  </div>
-
-  <div class="campo">
-    <label>TIPO</label>
-    <select id="tipo">
-      <option value="">Todos</option>
-      <option value="Apartamento">Apartamento</option>
-      <option value="Casa">Casa</option>
-      <option value="Studio">Studio</option>
-    </select>
-  </div>
-
-  <div class="campo">
-    <label>QUARTOS</label>
-    <select id="quartos">
-      <option value="0">Qualquer</option>
-      <option value="1">1+</option>
-      <option value="2">2+</option>
-      <option value="3">3+</option>
-    </select>
-  </div>
-
-  <button class="btn-buscar">Buscar</button>
-
-</form>
 
 </header>
 
 
+<section class="hero">
+
+  <div class="hero-inner">
+
+    <div class="badge">
+      INTELIGÊNCIA IMOBILIÁRIA
+    </div>
+
+    <h1>
+      Encontre o imóvel que
+      <span>faz sentido</span> para você.
+    </h1>
+
+    <p>
+      Conte o que você procura. A Ynteligencia cruza suas preferências
+      com os imóveis disponíveis e encontra as combinações mais relevantes.
+    </p>
+
+    <div class="hero-actions">
+
+      <button class="btn btn-primary" onclick="startProfile()">
+        Descobrir meu imóvel
+      </button>
+
+      <button class="btn btn-secondary" onclick="document.getElementById('explorar').scrollIntoView({behavior:'smooth'})">
+        Explorar imóveis
+      </button>
+
+    </div>
+
+  </div>
+
+</section>
+
+
 <main>
 
-<section id="como">
+<section class="onboarding" id="perfil">
 
-  <div class="intro">
+<div class="question-card">
 
-    <h2>Não procure entre milhares. Deixe a Ynteligencia procurar por você.</h2>
+  <div class="progress-top">
+    <span id="progressText">1 de 7</span>
+    <span>Seu perfil imobiliário</span>
+  </div>
+
+  <div class="progress">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+
+  <!-- 1 -->
+
+  <div class="question active" data-step="1">
+
+    <h2>O que você procura?</h2>
 
     <p>
-      Quanto mais entendemos o seu perfil, melhores ficam as recomendações.
-      Você conta o que procura. A Ynteligencia encontra as combinações.
+      Isso ajuda a Ynteligencia a entender sua intenção.
+    </p>
+
+    <div class="options">
+
+      <button class="option" onclick="selectOption(this,'purpose','Morar')">
+        <strong>🏠 Morar</strong>
+        <small>Quero encontrar meu próximo lar.</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'purpose','Investir')">
+        <strong>📈 Investir</strong>
+        <small>Busco uma oportunidade imobiliária.</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'purpose','Alugar')">
+        <strong>🔑 Alugar</strong>
+        <small>Quero encontrar um imóvel para locação.</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'purpose','Ainda não sei')">
+        <strong>💡 Quero descobrir</strong>
+        <small>Ainda estou avaliando possibilidades.</small>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- 2 -->
+
+  <div class="question" data-step="2">
+
+    <h2>Qual região interessa?</h2>
+
+    <p>Você pode escolher mais de uma região depois.</p>
+
+    <div class="options">
+
+      <button class="option" onclick="selectOption(this,'region','Perdizes')">
+        <strong>Perdizes</strong>
+        <small>Zona Oeste</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'region','Pinheiros')">
+        <strong>Pinheiros</strong>
+        <small>Zona Oeste</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'region','Vila Madalena')">
+        <strong>Vila Madalena</strong>
+        <small>Zona Oeste</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'region','Moema')">
+        <strong>Moema</strong>
+        <small>Zona Sul</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'region','Chácara Klabin')">
+        <strong>Chácara Klabin</strong>
+        <small>Zona Sul</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'region','Outra')">
+        <strong>Outra região</strong>
+        <small>Quero ampliar a busca.</small>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- 3 -->
+
+  <div class="question" data-step="3">
+
+    <h2>Qual é seu orçamento?</h2>
+
+    <p>Considere o valor aproximado que pretende investir.</p>
+
+    <div class="options">
+
+      <button class="option" onclick="selectOption(this,'budget','Até R$ 400 mil')">
+        <strong>Até R$ 400 mil</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'budget','R$ 400–600 mil')">
+        <strong>R$ 400–600 mil</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'budget','R$ 600–900 mil')">
+        <strong>R$ 600–900 mil</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'budget','Acima de R$ 900 mil')">
+        <strong>Acima de R$ 900 mil</strong>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- 4 -->
+
+  <div class="question" data-step="4">
+
+    <h2>Quantos dormitórios?</h2>
+
+    <p>Qual configuração combina com você?</p>
+
+    <div class="options">
+
+      <button class="option" onclick="selectOption(this,'bedrooms','Studio')">
+        <strong>Studio</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'bedrooms','1 dormitório')">
+        <strong>1 dormitório</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'bedrooms','2 dormitórios')">
+        <strong>2 dormitórios</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'bedrooms','3+ dormitórios')">
+        <strong>3 ou mais</strong>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- 5 -->
+
+  <div class="question" data-step="5">
+
+    <h2>O que é importante para você?</h2>
+
+    <p>Escolha uma preferência principal.</p>
+
+    <div class="options">
+
+      <button class="option" onclick="selectOption(this,'feature','Varanda')">
+        <strong>🌿 Varanda</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'feature','Vaga')">
+        <strong>🚗 Vaga</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'feature','Piscina')">
+        <strong>🏊 Piscina</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'feature','Metrô')">
+        <strong>🚇 Próximo ao metrô</strong>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- 6 -->
+
+  <div class="question" data-step="6">
+
+    <h2>Quando pretende comprar?</h2>
+
+    <p>Não precisa ter certeza.</p>
+
+    <div class="options">
+
+      <button class="option" onclick="selectOption(this,'timing','Agora')">
+        <strong>Agora</strong>
+        <small>Estou procurando ativamente.</small>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'timing','1–3 meses')">
+        <strong>1–3 meses</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'timing','3–6 meses')">
+        <strong>3–6 meses</strong>
+      </button>
+
+      <button class="option" onclick="selectOption(this,'timing','Só pesquisando')">
+        <strong>Só pesquisando</strong>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- 7 -->
+
+  <div class="question" data-step="7">
+
+    <h2>Pronto para descobrir?</h2>
+
+    <p>
+      A Ynteligencia vai usar suas respostas para encontrar
+      os imóveis mais compatíveis.
+    </p>
+
+    <div style="background:#f7f8fa;padding:20px;border-radius:16px;line-height:1.7;font-size:14px;">
+      <strong>Seu perfil</strong>
+      <div id="profileSummary" style="margin-top:8px;color:#667085;"></div>
+    </div>
+
+  </div>
+
+
+  <div class="question-actions">
+
+    <button class="back-btn" id="backBtn" onclick="previousStep()">
+      ← Voltar
+    </button>
+
+    <button class="continue-btn" id="continueBtn" onclick="nextStep()">
+      Continuar →
+    </button>
+
+  </div>
+
+</div>
+
+</section>
+
+
+<!-- RESULTADOS -->
+
+<section class="results" id="resultados">
+
+  <div class="result-header">
+
+    <small>YNTELIGENCIA MATCH</small>
+
+    <h2>Encontramos boas combinações.</h2>
+
+    <p>
+      Estes imóveis foram selecionados com base no seu perfil.
     </p>
 
   </div>
 
-  <div class="passos">
+  <div class="properties" id="propertyList"></div>
 
-    <div class="passo">
-      <div class="numero">1</div>
+</section>
+
+
+<!-- COMO FUNCIONA -->
+
+<section class="how" id="como-funciona">
+
+  <h2 class="section-title">
+    Não procure entre milhares.
+  </h2>
+
+  <p class="section-subtitle">
+    Deixe a Ynteligencia procurar por você.
+  </p>
+
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-number">1</div>
       <h3>Conte o que você procura</h3>
       <p>
-        Região, orçamento, tamanho, dormitórios e o que realmente
-        importa para você.
+        Região, orçamento, tamanho, dormitórios e aquilo que realmente importa.
       </p>
     </div>
 
-    <div class="passo">
-      <div class="numero">2</div>
+    <div class="step">
+      <div class="step-number">2</div>
       <h3>A Ynteligencia cruza os dados</h3>
       <p>
-        Seu perfil é comparado com os imóveis disponíveis
-        na plataforma.
+        Seu perfil é comparado com o inventário disponível.
       </p>
     </div>
 
-    <div class="passo">
-      <div class="numero">3</div>
-      <h3>Receba suas melhores combinações</h3>
+    <div class="step">
+      <div class="step-number">3</div>
+      <h3>Receba seus melhores matches</h3>
       <p>
-        Em vez de centenas de anúncios, você recebe
-        uma seleção mais relevante.
+        Em vez de milhares de anúncios, você recebe uma seleção relevante.
       </p>
     </div>
 
@@ -792,697 +1012,166 @@ footer{
 </section>
 
 
-<section id="imoveis">
+<!-- EXPLORAR -->
 
-  <div class="cabecalho-lista">
+<section class="explore" id="explorar">
 
-    <div>
-      <h2>Imóveis selecionados</h2>
-      <p class="subtitulo">
-        O catálogo abaixo é uma demonstração do conceito Ynteligencia.
-      </p>
-    </div>
+  <h2 class="section-title">
+    Ou explore imóveis
+  </h2>
 
-    <span id="resultado"></span>
+  <p class="section-subtitle">
+    Se preferir, você também pode pesquisar diretamente.
+  </p>
+
+  <div class="search">
+
+    <input
+      id="searchInput"
+      type="text"
+      placeholder="Digite bairro, empreendimento ou região..."
+    >
+
+    <button class="btn btn-primary" onclick="searchProperties()">
+      Buscar
+    </button>
 
   </div>
-
-  <div class="imoveis" id="listaImoveis"></div>
-
-</section>
-
-
-<section class="perfil-banner" id="perfil">
-
-  <div>
-    <h2>Quer parar de procurar?</h2>
-
-    <p>
-      Conte seu perfil para a Ynteligencia e descubra quais imóveis
-      têm maior compatibilidade com o que você procura.
-    </p>
-  </div>
-
-  <button onclick="abrirModal('modalPerfil')">
-    Criar meu perfil
-  </button>
 
 </section>
 
 </main>
 
 
-<!-- MODAL PERFIL -->
+<footer>
+  <strong>Ynteligencia</strong> · Inteligência imobiliária
+  <br><br>
+  Tecnologia para encontrar imóveis que fazem sentido.
+</footer>
 
-<div class="modal" id="modalPerfil">
 
-  <div class="caixa-modal">
+<!-- BOTTOM NAV -->
 
-    <button class="fechar" onclick="fecharModal('modalPerfil')">×</button>
+<nav class="bottom-nav">
 
-    <h2>Vamos entender o que você procura.</h2>
+  <button class="active" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+    🏠<br>Início
+  </button>
 
-    <p>
-      Leva menos de um minuto. Essas informações ajudam a Ynteligencia
-      a encontrar imóveis mais compatíveis com você.
-    </p>
+  <button onclick="document.getElementById('explorar').scrollIntoView({behavior:'smooth'})">
+    🔎<br>Explorar
+  </button>
 
-    <form class="formulario" onsubmit="gerarPerfil(event)">
+  <button onclick="showFavorites()">
+    ♡<br>Salvos
+  </button>
 
-      <input id="nomeLead" required placeholder="Seu nome">
+  <button onclick="startProfile()">
+    ●<br>Perfil
+  </button>
 
-      <select id="finalidadeLead" required>
-        <option value="">O que você pretende fazer?</option>
-        <option value="moradia">Comprar para morar</option>
-        <option value="investimento">Comprar para investir</option>
-        <option value="aluguel">Alugar</option>
-      </select>
-
-      <input id="regiaoLead" placeholder="Região ou bairros de interesse">
-
-      <select id="orcamentoLead" required>
-        <option value="">Qual seu orçamento?</option>
-        <option value="500000">Até R$ 500 mil</option>
-        <option value="700000">Até R$ 700 mil</option>
-        <option value="900000">Até R$ 900 mil</option>
-        <option value="1200000">Até R$ 1,2 milhão</option>
-        <option value="2000000">Até R$ 2 milhões</option>
-        <option value="99999999">Acima de R$ 2 milhões</option>
-      </select>
-
-      <select id="entradaLead">
-        <option value="">Quanto pretende dar de entrada?</option>
-        <option value="50000">Até R$ 50 mil</option>
-        <option value="100000">Até R$ 100 mil</option>
-        <option value="200000">Até R$ 200 mil</option>
-        <option value="300000">Até R$ 300 mil</option>
-        <option value="500000">Acima de R$ 300 mil</option>
-      </select>
-
-      <select id="quartosLead">
-        <option value="">Quantos dormitórios?</option>
-        <option value="1">1+</option>
-        <option value="2">2+</option>
-        <option value="3">3+</option>
-        <option value="4">4+</option>
-      </select>
-
-      <input
-        id="metragemLead"
-        type="number"
-        placeholder="Metragem mínima desejada (m²)"
-      >
-
-      <div>
-
-        <strong style="font-size:14px;">
-          O que é importante para você?
-        </strong>
-
-        <div class="checks">
-
-          <label class="check">
-            <input type="checkbox" value="Varanda" class="preferencia">
-            Varanda
-          </label>
-
-          <label class="check">
-            <input type="checkbox" value="Vaga" class="preferencia">
-            Vaga
-          </label>
-
-          <label class="check">
-            <input type="checkbox" value="Piscina" class="preferencia">
-            Piscina
-          </label>
-
-          <label class="check">
-            <input type="checkbox" value="Metrô" class="preferencia">
-            Próximo ao metrô
-          </label>
-
-        </div>
-
-      </div>
-
-      <button class="btn-principal">
-        Encontrar meus imóveis
-      </button>
-
-    </form>
-
-    <div class="resultado-ia" id="resultadoIA"></div>
-
-  </div>
+</nav>
 
 </div>
 
 
-<footer>
-  Ynteligencia • Inteligência imobiliária
-</footer>
-
-
 <script>
 
-/* =========================================================
-   BASE DEMONSTRATIVA
-   FUTURO: SUBSTITUIR POR API / BACKEND YNTELIGENCIA
-========================================================= */
+/* =========================
+   DADOS DEMO
+========================= */
 
 const imoveis = [
 
 {
-  id:1,
   nome:"Well Perdizes",
   bairro:"Perdizes",
   cidade:"São Paulo",
   preco:340000,
   quartos:2,
-  metragem:35,
+  metragem:40,
   tipo:"Apartamento",
-  finalidade:"Venda",
-  imagem:"https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=900&q=80",
-  recursos:["Varanda","Metrô"],
-  destaque:"Lançamento"
+  imagem:"https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=80",
+  score:96,
+  motivos:[
+    "Dentro da faixa de orçamento",
+    "Região compatível",
+    "2 dormitórios",
+    "Varanda"
+  ]
 },
 
 {
-  id:2,
-  nome:"Apartamento Vila Madalena",
+  nome:"Vila Madalena Residence",
   bairro:"Vila Madalena",
   cidade:"São Paulo",
-  preco:790000,
+  preco:590000,
   quartos:2,
-  metragem:68,
+  metragem:54,
   tipo:"Apartamento",
-  finalidade:"Venda",
-  imagem:"https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80",
-  recursos:["Varanda","Vaga","Metrô"],
-  destaque:"Oportunidade"
+  imagem:"https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1000&q=80",
+  score:91,
+  motivos:[
+    "Região desejada",
+    "Boa metragem",
+    "2 dormitórios"
+  ]
 },
 
 {
-  id:3,
   nome:"Studio Pinheiros",
   bairro:"Pinheiros",
   cidade:"São Paulo",
-  preco:520000,
+  preco:399000,
   quartos:1,
-  metragem:32,
+  metragem:29,
   tipo:"Studio",
-  finalidade:"Venda",
-  imagem:"https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=900&q=80",
-  recursos:["Piscina","Metrô"],
-  destaque:"Investimento"
+  imagem:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
+  score:88,
+  motivos:[
+    "Próximo ao metrô",
+    "Boa localização",
+    "Faixa de preço compatível"
+  ]
 },
 
 {
-  id:4,
-  nome:"Apartamento Moema",
+  nome:"Moema Living",
   bairro:"Moema",
   cidade:"São Paulo",
-  preco:980000,
-  quartos:3,
-  metragem:82,
+  preco:720000,
+  quartos:2,
+  metragem:61,
   tipo:"Apartamento",
-  finalidade:"Venda",
-  imagem:"https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=900&q=80",
-  recursos:["Vaga","Piscina"],
-  destaque:"Exclusivo"
+  imagem:"https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1000&q=80",
+  score:84,
+  motivos:[
+    "Região compatível",
+    "2 dormitórios",
+    "Boa metragem"
+  ]
 },
 
 {
-  id:5,
-  nome:"Apartamento Chácara Klabin",
+  nome:"Klabin Residence",
   bairro:"Chácara Klabin",
   cidade:"São Paulo",
   preco:389000,
   quartos:2,
   metragem:40,
   tipo:"Apartamento",
-  finalidade:"Venda",
-  imagem:"https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=80",
-  recursos:["Varanda","Vaga","Metrô"],
-  destaque:"Novo"
+  imagem:"https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1000&q=80",
+  score:82,
+  motivos:[
+    "2 dormitórios",
+    "Boa relação preço/m²",
+    "Região desejada"
+  ]
 },
 
 {
-  id:6,
-  nome:"Apartamento João Dias",
+  nome:"João Dias Living",
   bairro:"João Dias",
   cidade:"São Paulo",
-  preco:450000,
-  quartos:2,
-  metragem:48,
-  tipo:"Apartamento",
-  finalidade:"Venda",
-  imagem:"https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=900&q=80",
-  recursos:["Vaga","Piscina"],
-  destaque:"Oportunidade"
-}
-
-];
-
-
-/* =========================================================
-   RENDER
-========================================================= */
-
-function moeda(valor){
-
-  return valor.toLocaleString("pt-BR",{
-    style:"currency",
-    currency:"BRL",
-    maximumFractionDigits:0
-  });
-
-}
-
-
-function renderImoveis(lista=imoveis){
-
-  const container=document.getElementById("listaImoveis");
-
-  container.innerHTML="";
-
-  if(!lista.length){
-
-    container.innerHTML=`
-      <div style="
-        grid-column:1/-1;
-        padding:50px;
-        border-radius:14px;
-        background:white;
-        text-align:center;
-        color:#64748b;">
-        Nenhum imóvel encontrado com esses critérios.
-      </div>
-    `;
-
-    return;
-  }
-
-
-  lista.forEach(imovel=>{
-
-    const score=Math.floor(82+Math.random()*17);
-
-    container.innerHTML+=`
-
-      <article class="card">
-
-        <div class="foto">
-
-          <img
-            src="${imovel.imagem}"
-            alt="${imovel.nome}"
-            loading="lazy"
-          >
-
-          <div class="tag">
-            ${imovel.destaque}
-          </div>
-
-          <div class="score">
-            ${score}% compatível
-          </div>
-
-          <button
-            class="favorito"
-            onclick="favoritar(${imovel.id})"
-            aria-label="Favoritar imóvel">
-            ♡
-          </button>
-
-        </div>
-
-        <div class="dados">
-
-          <div class="preco">
-            ${moeda(imovel.preco)}
-          </div>
-
-          <h3>${imovel.nome}</h3>
-
-          <p class="local">
-            ${imovel.bairro} • ${imovel.cidade}
-          </p>
-
-          <div class="detalhes">
-            <span>${imovel.quartos} dorm.</span>
-            <span>${imovel.metragem} m²</span>
-            <span>${imovel.tipo}</span>
-          </div>
-
-          <div class="compatibilidade">
-            <strong>Por que recomendamos?</strong><br>
-            Região, faixa de preço e características
-            compatíveis com perfis de compradores semelhantes.
-          </div>
-
-          <button
-            class="botao-card"
-            onclick="interesse(${imovel.id})">
-            Quero conhecer
-          </button>
-
-        </div>
-
-      </article>
-
-    `;
-
-  });
-
-}
-
-
-renderImoveis();
-
-
-/* =========================================================
-   BUSCA
-========================================================= */
-
-function filtrarImoveis(){
-
-  const texto=
-    document.getElementById("buscaTexto").value
-    .toLowerCase();
-
-  const finalidade=
-    document.getElementById("finalidade").value;
-
-  const tipo=
-    document.getElementById("tipo").value;
-
-  const quartos=
-    Number(document.getElementById("quartos").value);
-
-
-  const filtrados=imoveis.filter(imovel=>{
-
-    const local=(
-      imovel.nome+" "+
-      imovel.bairro+" "+
-      imovel.cidade
-    ).toLowerCase();
-
-    return (
-
-      (!texto || local.includes(texto)) &&
-
-      (!finalidade ||
-       imovel.finalidade===finalidade) &&
-
-      (!tipo ||
-       imovel.tipo===tipo) &&
-
-      (!quartos ||
-       imovel.quartos>=quartos)
-
-    );
-
-  });
-
-
-  document.getElementById("resultado").textContent=
-    `${filtrados.length} imóvel(is) encontrado(s)`;
-
-  renderImoveis(filtrados);
-
-  document.getElementById("imoveis")
-    .scrollIntoView({behavior:"smooth"});
-
-}
-
-
-/* =========================================================
-   FAVORITO
-========================================================= */
-
-function favoritar(id){
-
-  let favoritos=
-    JSON.parse(localStorage.getItem("ynteligencia_favoritos")||"[]");
-
-  if(!favoritos.includes(id)){
-    favoritos.push(id);
-    localStorage.setItem(
-      "ynteligencia_favoritos",
-      JSON.stringify(favoritos)
-    );
-  }
-
-  alert("Imóvel salvo no seu perfil.");
-
-}
-
-
-/* =========================================================
-   INTERESSE
-========================================================= */
-
-function interesse(id){
-
-  const imovel=
-    imoveis.find(item=>item.id===id);
-
-  localStorage.setItem(
-    "ynteligencia_interesse",
-    JSON.stringify({
-      imovelId:id,
-      imovel:imovel.nome,
-      data:new Date().toISOString()
-    })
-  );
-
-  abrirModal("modalPerfil");
-
-}
-
-
-/* =========================================================
-   PERFIL
-========================================================= */
-
-function gerarPerfil(event){
-
-  event.preventDefault();
-
-
-  const nome=
-    document.getElementById("nomeLead").value;
-
-  const regiao=
-    document.getElementById("regiaoLead").value;
-
-  const orcamento=
-    Number(document.getElementById("orcamentoLead").value);
-
-  const quartos=
-    Number(document.getElementById("quartosLead").value);
-
-  const metragem=
-    Number(document.getElementById("metragemLead").value||0);
-
-
-  const preferencias=
-    [...document.querySelectorAll(".preferencia:checked")]
-    .map(item=>item.value);
-
-
-  const perfil={
-    nome,
-    regiao,
-    orcamento,
-    quartos,
-    metragem,
-    preferencias,
-    criadoEm:new Date().toISOString()
-  };
-
-
-  localStorage.setItem(
-    "ynteligencia_perfil",
-    JSON.stringify(perfil)
-  );
-
-
-  const recomendados=
-    imoveis
-      .map(imovel=>{
-
-        let pontos=0;
-
-        if(imovel.preco<=orcamento)
-          pontos+=30;
-
-        if(quartos && imovel.quartos>=quartos)
-          pontos+=20;
-
-        if(metragem && imovel.metragem>=metragem)
-          pontos+=15;
-
-        if(regiao &&
-          (
-            imovel.bairro.toLowerCase()
-              .includes(regiao.toLowerCase())
-          )
-        )
-          pontos+=20;
-
-        preferencias.forEach(preferencia=>{
-
-          if(imovel.recursos.includes(preferencia))
-            pontos+=5;
-
-        });
-
-
-        return {
-          ...imovel,
-          pontos:Math.min(pontos,100)
-        };
-
-      })
-      .sort((a,b)=>b.pontos-a.pontos)
-      .slice(0,3);
-
-
-  const resultado=
-    document.getElementById("resultadoIA");
-
-
-  resultado.style.display="block";
-
-
-  resultado.innerHTML=`
-
-    <h3>
-      ${nome}, encontramos algumas combinações para você.
-    </h3>
-
-    <div class="perfil-resumo">
-
-      <strong>Seu perfil</strong><br><br>
-
-      Região:
-      ${regiao||"Não definida"}<br>
-
-      Orçamento:
-      ${orcamento ? moeda(orcamento) : "Não informado"}<br>
-
-      Dormitórios:
-      ${quartos||"Não definido"}<br>
-
-      Metragem:
-      ${metragem ? metragem+" m²+" : "Não definida"}
-
-    </div>
-
-    <br>
-
-    <strong>Melhores combinações:</strong>
-
-    ${recomendados.map(item=>`
-
-      <div class="recomendacao">
-
-        <strong>
-          ${item.pontos}% compatível —
-          ${item.nome}
-        </strong>
-
-        <small>
-          ${item.bairro} •
-          ${item.quartos} dorm. •
-          ${item.metragem} m² •
-          ${moeda(item.preco)}
-        </small>
-
-      </div>
-
-    `).join("")}
-
-    <button
-      class="btn-principal"
-      style="margin-top:18px;width:100%;"
-      onclick="finalizarLead()">
-      Quero receber atendimento
-    </button>
-
-  `;
-
-}
-
-
-/* =========================================================
-   LEAD
-========================================================= */
-
-function finalizarLead(){
-
-  const perfil=
-    JSON.parse(
-      localStorage.getItem("ynteligencia_perfil")||"{}"
-    );
-
-  localStorage.setItem(
-    "ynteligencia_lead",
-    JSON.stringify({
-      ...perfil,
-      evento:"solicitou_atendimento",
-      data:new Date().toISOString()
-    })
-  );
-
-
-  alert(
-    "Perfeito. Seu perfil foi registrado. " +
-    "Na versão conectada, esse evento será enviado ao backend Ynteligencia."
-  );
-
-}
-
-
-/* =========================================================
-   MODAIS
-========================================================= */
-
-function abrirModal(id){
-
-  document
-    .getElementById(id)
-    .classList.add("ativo");
-
-}
-
-
-function fecharModal(id){
-
-  document
-    .getElementById(id)
-    .classList.remove("ativo");
-
-}
-
-
-document.querySelectorAll(".modal").forEach(modal=>{
-
-  modal.addEventListener("click",function(event){
-
-    if(event.target===modal){
-      modal.classList.remove("ativo");
-    }
-
-  });
-
-});
-
-</script>
-
-</body>
-</html>
-```
+  preco:320000,
+  quar
