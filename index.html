@@ -30,6 +30,7 @@
   --muted:#758195;
   --border:#e5e8ed;
   --green:#168765;
+  --danger:#c84b4b;
 }
 
 html{
@@ -625,7 +626,7 @@ footer strong{
 
 
 /* ===============================
-   INSTALL MODAL
+   MODAL INSTALAÇÃO
 ================================ */
 
 .install-modal{
@@ -703,6 +704,150 @@ footer strong{
   padding:13px;
   font-weight:bold;
   margin-top:8px;
+}
+
+
+/* ===============================
+   MODAL LEAD
+================================ */
+
+.lead-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(5,10,20,.72);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1200;
+  padding:18px;
+}
+
+.lead-modal.show{
+  display:flex;
+}
+
+.lead-box{
+  width:100%;
+  max-width:470px;
+  background:white;
+  border-radius:24px;
+  padding:28px;
+  box-shadow:0 25px 90px rgba(0,0,0,.28);
+}
+
+.lead-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:15px;
+}
+
+.lead-box h2{
+  font-size:25px;
+  letter-spacing:-.6px;
+}
+
+.lead-box .lead-subtitle{
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+  margin-top:8px;
+}
+
+.close-lead{
+  border:none;
+  background:#eef0f3;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  font-size:20px;
+  color:var(--dark);
+  flex:none;
+}
+
+.lead-property{
+  margin-top:18px;
+  padding:14px;
+  background:#f6f7f9;
+  border-radius:14px;
+  font-size:13px;
+}
+
+.lead-property strong{
+  display:block;
+  font-size:15px;
+  margin-bottom:4px;
+}
+
+.form-group{
+  margin-top:15px;
+}
+
+.form-group label{
+  display:block;
+  font-size:12px;
+  font-weight:bold;
+  margin-bottom:6px;
+}
+
+.form-group input{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:13px;
+  outline:none;
+  background:white;
+}
+
+.form-group input:focus{
+  border-color:var(--orange);
+}
+
+.lead-submit{
+  width:100%;
+  border:none;
+  border-radius:13px;
+  background:var(--dark);
+  color:white;
+  padding:14px;
+  font-weight:bold;
+  margin-top:20px;
+}
+
+.lead-submit:disabled{
+  opacity:.6;
+  cursor:wait;
+}
+
+.lead-privacy{
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.4;
+  margin-top:10px;
+  text-align:center;
+}
+
+.lead-message{
+  display:none;
+  margin-top:12px;
+  border-radius:10px;
+  padding:10px;
+  font-size:12px;
+  line-height:1.4;
+}
+
+.lead-message.show{
+  display:block;
+}
+
+.lead-message.error{
+  background:#fff0f0;
+  color:var(--danger);
+}
+
+.lead-message.success{
+  background:#edf9f4;
+  color:var(--green);
 }
 
 
@@ -809,6 +954,11 @@ footer strong{
   .bottom-nav button:first-child{
     color:#bd741c;
     font-weight:bold;
+  }
+
+  .lead-box{
+    padding:22px;
+    border-radius:21px;
   }
 
 }
@@ -936,55 +1086,28 @@ footer strong{
 
     <div class="options">
 
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'purpose','Morar')">
-
         <strong>🏠 Morar</strong>
-
-        <small>
-          Quero encontrar meu próximo lar.
-        </small>
-
+        <small>Quero encontrar meu próximo lar.</small>
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'purpose','Investir')">
-
         <strong>📈 Investir</strong>
-
-        <small>
-          Busco uma oportunidade.
-        </small>
-
+        <small>Busco uma oportunidade.</small>
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'purpose','Alugar')">
-
         <strong>🔑 Alugar</strong>
-
-        <small>
-          Quero encontrar um imóvel para locação.
-        </small>
-
+        <small>Quero encontrar um imóvel para locação.</small>
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'purpose','Pesquisar')">
-
         <strong>💡 Pesquisar</strong>
-
-        <small>
-          Ainda estou avaliando.
-        </small>
-
+        <small>Ainda estou avaliando.</small>
       </button>
 
     </div>
@@ -1006,71 +1129,40 @@ footer strong{
 
     <div class="options">
 
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'region','Perdizes')">
-
         <strong>Perdizes</strong>
-
         <small>Zona Oeste</small>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'region','Pinheiros')">
-
         <strong>Pinheiros</strong>
-
         <small>Zona Oeste</small>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'region','Vila Madalena')">
-
         <strong>Vila Madalena</strong>
-
         <small>Zona Oeste</small>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'region','Moema')">
-
         <strong>Moema</strong>
-
         <small>Zona Sul</small>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'region','Chácara Klabin')">
-
         <strong>Chácara Klabin</strong>
-
         <small>Zona Sul</small>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'region','Outra')">
-
         <strong>Outra região</strong>
-
-        <small>
-          Quero ampliar minha busca.
-        </small>
-
+        <small>Quero ampliar minha busca.</small>
       </button>
 
     </div>
@@ -1092,39 +1184,24 @@ footer strong{
 
     <div class="options">
 
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'budget','Até R$ 400 mil')">
-
         <strong>Até R$ 400 mil</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'budget','R$ 400–600 mil')">
-
         <strong>R$ 400–600 mil</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'budget','R$ 600–900 mil')">
-
         <strong>R$ 600–900 mil</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'budget','Acima de R$ 900 mil')">
-
         <strong>Acima de R$ 900 mil</strong>
-
       </button>
 
     </div>
@@ -1146,39 +1223,24 @@ footer strong{
 
     <div class="options">
 
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'bedrooms','Studio')">
-
         <strong>Studio</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'bedrooms','1 dormitório')">
-
         <strong>1 dormitório</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'bedrooms','2 dormitórios')">
-
         <strong>2 dormitórios</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'bedrooms','3+ dormitórios')">
-
         <strong>3 ou mais</strong>
-
       </button>
 
     </div>
@@ -1200,39 +1262,24 @@ footer strong{
 
     <div class="options">
 
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'feature','Varanda')">
-
         <strong>🌿 Varanda</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'feature','Vaga')">
-
         <strong>🚗 Vaga</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'feature','Piscina')">
-
         <strong>🏊 Piscina</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'feature','Metrô')">
-
         <strong>🚇 Próximo ao metrô</strong>
-
       </button>
 
     </div>
@@ -1254,43 +1301,25 @@ footer strong{
 
     <div class="options">
 
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'timing','Agora')">
-
         <strong>Agora</strong>
-
-        <small>
-          Estou procurando ativamente.
-        </small>
-
+        <small>Estou procurando ativamente.</small>
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'timing','1–3 meses')">
-
         <strong>1–3 meses</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'timing','3–6 meses')">
-
         <strong>3–6 meses</strong>
-
       </button>
 
-
-      <button
-        class="option"
+      <button class="option"
         onclick="choose(this,'timing','Pesquisando')">
-
         <strong>Só pesquisando</strong>
-
       </button>
 
     </div>
@@ -1377,8 +1406,6 @@ footer strong{
   </div>
 
 
-  <!-- CONVITE DE INSTALAÇÃO -->
-
   <div
     class="install-card"
     id="installCard">
@@ -1437,59 +1464,32 @@ footer strong{
     Deixe a Ynteligencia procurar por você.
   </p>
 
-
   <div class="steps">
 
     <div class="how">
-
-      <div class="number">
-        1
-      </div>
-
-      <h3>
-        Conte o que você procura
-      </h3>
-
+      <div class="number">1</div>
+      <h3>Conte o que você procura</h3>
       <p>
         Região, orçamento, dormitórios e aquilo
         que realmente importa para você.
       </p>
-
     </div>
 
-
     <div class="how">
-
-      <div class="number">
-        2
-      </div>
-
-      <h3>
-        A Ynteligencia cruza os dados
-      </h3>
-
+      <div class="number">2</div>
+      <h3>A Ynteligencia cruza os dados</h3>
       <p>
         Seu perfil é comparado com o inventário disponível.
       </p>
-
     </div>
 
-
     <div class="how">
-
-      <div class="number">
-        3
-      </div>
-
-      <h3>
-        Receba seus melhores matches
-      </h3>
-
+      <div class="number">3</div>
+      <h3>Receba seus melhores matches</h3>
       <p>
         Em vez de milhares de anúncios, você recebe
         uma seleção relevante.
       </p>
-
     </div>
 
   </div>
@@ -1556,23 +1556,19 @@ footer strong{
 
 <nav class="bottom-nav">
 
-  <button
-    onclick="window.scrollTo({top:0,behavior:'smooth'})">
+  <button onclick="window.scrollTo({top:0,behavior:'smooth'})">
     🏠<br>Início
   </button>
 
-  <button
-    onclick="scrollExplore()">
+  <button onclick="scrollExplore()">
     🔎<br>Explorar
   </button>
 
-  <button
-    onclick="showFavorites()">
+  <button onclick="showFavorites()">
     ♡<br>Salvos
   </button>
 
-  <button
-    onclick="startProfile()">
+  <button onclick="startProfile()">
     ●<br>Perfil
   </button>
 
@@ -1598,9 +1594,6 @@ footer strong{
       seus imóveis recomendados.
     </p>
 
-
-    <!-- ANDROID -->
-
     <div
       class="install-steps"
       id="androidInstructions"
@@ -1608,9 +1601,7 @@ footer strong{
 
       <div class="install-step">
 
-        <div class="install-step-number">
-          1
-        </div>
+        <div class="install-step-number">1</div>
 
         <div class="install-step-text">
           Toque em <strong>Instalar</strong> quando o navegador solicitar.
@@ -1621,8 +1612,6 @@ footer strong{
     </div>
 
 
-    <!-- IPHONE -->
-
     <div
       class="install-steps"
       id="iosInstructions"
@@ -1630,9 +1619,7 @@ footer strong{
 
       <div class="install-step">
 
-        <div class="install-step-number">
-          1
-        </div>
+        <div class="install-step-number">1</div>
 
         <div class="install-step-text">
           Toque no botão <strong>Compartilhar</strong>
@@ -1641,12 +1628,9 @@ footer strong{
 
       </div>
 
-
       <div class="install-step">
 
-        <div class="install-step-number">
-          2
-        </div>
+        <div class="install-step-number">2</div>
 
         <div class="install-step-text">
           Role o menu e escolha
@@ -1655,12 +1639,9 @@ footer strong{
 
       </div>
 
-
       <div class="install-step">
 
-        <div class="install-step-number">
-          3
-        </div>
+        <div class="install-step-number">3</div>
 
         <div class="install-step-text">
           Toque em <strong>Adicionar</strong>.
@@ -1669,7 +1650,6 @@ footer strong{
       </div>
 
     </div>
-
 
     <button
       class="close-install"
@@ -1682,12 +1662,396 @@ footer strong{
 </div>
 
 
+<!-- ===============================
+     MODAL LEAD
+================================ -->
+
+<div
+  class="lead-modal"
+  id="leadModal">
+
+  <div class="lead-box">
+
+    <div class="lead-top">
+
+      <div>
+
+        <h2>
+          Vamos avançar?
+        </h2>
+
+        <p class="lead-subtitle">
+          Deixe seus dados e um especialista poderá
+          apresentar esse imóvel para você.
+        </p>
+
+      </div>
+
+      <button
+        class="close-lead"
+        onclick="closeLeadModal()">
+        ×
+      </button>
+
+    </div>
+
+
+    <div
+      class="lead-property"
+      id="leadProperty">
+    </div>
+
+
+    <form
+      id="leadForm"
+      onsubmit="submitLead(event)">
+
+      <div class="form-group">
+
+        <label for="leadName">
+          Nome
+        </label>
+
+        <input
+          id="leadName"
+          type="text"
+          placeholder="Seu nome"
+          autocomplete="name"
+          required>
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="leadPhone">
+          WhatsApp
+        </label>
+
+        <input
+          id="leadPhone"
+          type="tel"
+          placeholder="(11) 99999-9999"
+          autocomplete="tel"
+          required>
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="leadEmail">
+          E-mail
+        </label>
+
+        <input
+          id="leadEmail"
+          type="email"
+          placeholder="seuemail@email.com"
+          autocomplete="email"
+          required>
+
+      </div>
+
+
+      <div
+        id="leadMessage"
+        class="lead-message">
+      </div>
+
+
+      <button
+        id="leadSubmit"
+        class="lead-submit"
+        type="submit">
+
+        Quero conhecer este imóvel
+
+      </button>
+
+      <div class="lead-privacy">
+        Seus dados serão utilizados para dar continuidade
+        ao atendimento sobre este imóvel.
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<!-- ===============================
+     SUPABASE
+================================ -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
 <script>
 
+/* =========================================================
+   SUPABASE
+========================================================= */
 
-/* ===============================
+const SUPABASE_URL =
+  "https://wzaegidwtdjuhqchpdpd.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable_YmN9DjeDgog_mlVw9EsDUQ_Z-4MJKsp";
+
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+
+
+/* =========================================================
+   SESSION ID
+========================================================= */
+
+function createUUID(){
+
+  if(window.crypto && crypto.randomUUID){
+
+    return crypto.randomUUID();
+
+  }
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+    /[xy]/g,
+    function(c){
+
+      const r =
+        Math.random() * 16 | 0;
+
+      const v =
+        c === "x"
+        ? r
+        : (r & 0x3 | 0x8);
+
+      return v.toString(16);
+
+    }
+  );
+
+}
+
+
+let sessionId =
+  localStorage.getItem(
+    "ynteligencia_session_id"
+  );
+
+
+if(!sessionId){
+
+  sessionId = createUUID();
+
+  localStorage.setItem(
+    "ynteligencia_session_id",
+    sessionId
+  );
+
+}
+
+
+/* =========================================================
+   TRACKING
+========================================================= */
+
+async function trackEvent(
+  eventType,
+  property = null,
+  metadata = {}
+){
+
+  try{
+
+    await supabaseClient
+      .from("events")
+      .insert({
+
+        session_id:sessionId,
+
+        property_id:null,
+
+        event_type:eventType,
+
+        metadata:{
+          ...metadata,
+
+          property:
+            property
+            ? {
+                name:property.name,
+                neighborhood:property.neighborhood,
+                price:property.price,
+                bedrooms:property.bedrooms,
+                size:property.size
+              }
+            : null
+
+        }
+
+      });
+
+  }catch(error){
+
+    console.warn(
+      "Ynteligencia tracking:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   CADASTRA VISITANTE
+========================================================= */
+
+async function registerBuyer(){
+
+  try{
+
+    await supabaseClient
+      .from("buyers")
+      .upsert(
+        {
+          session_id:sessionId,
+          source:"ynteligencia"
+        },
+        {
+          onConflict:"session_id"
+        }
+      );
+
+  }catch(error){
+
+    console.warn(
+      "Ynteligencia buyer:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   SALVA PERFIL NO SUPABASE
+========================================================= */
+
+async function saveProfileToSupabase(){
+
+  try{
+
+    await supabaseClient
+      .from("buyer_preferences")
+      .insert({
+
+        buyer_id:null,
+
+        session_id:sessionId,
+
+        purpose:profile.purpose || null,
+
+        region:profile.region || null,
+
+        budget_min:
+          getBudgetMin(profile.budget),
+
+        budget_max:
+          getBudgetMax(profile.budget),
+
+        bedrooms:
+          profile.bedrooms || null,
+
+        wants_balcony:
+          profile.feature === "Varanda",
+
+        wants_parking:
+          profile.feature === "Vaga",
+
+        wants_pool:
+          profile.feature === "Piscina",
+
+        wants_metro:
+          profile.feature === "Metrô",
+
+        purchase_timing:
+          profile.timing || null
+
+      });
+
+  }catch(error){
+
+    console.warn(
+      "Ynteligencia preferences:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   CONVERTE ORÇAMENTO
+========================================================= */
+
+function getBudgetMin(budget){
+
+  if(budget === "R$ 400–600 mil"){
+    return 400000;
+  }
+
+  if(budget === "R$ 600–900 mil"){
+    return 600000;
+  }
+
+  if(budget === "Acima de R$ 900 mil"){
+    return 900000;
+  }
+
+  if(budget === "Até R$ 400 mil"){
+    return 0;
+  }
+
+  return null;
+
+}
+
+
+function getBudgetMax(budget){
+
+  if(budget === "Até R$ 400 mil"){
+    return 400000;
+  }
+
+  if(budget === "R$ 400–600 mil"){
+    return 600000;
+  }
+
+  if(budget === "R$ 600–900 mil"){
+    return 900000;
+  }
+
+  if(budget === "Acima de R$ 900 mil"){
+    return null;
+  }
+
+  return null;
+
+}
+
+
+/* =========================================================
    DADOS DEMONSTRATIVOS
-================================ */
+========================================================= */
 
 const properties = [
 
@@ -1785,25 +2149,35 @@ const properties = [
 ];
 
 
-/* ===============================
+/* =========================================================
    PERFIL
-================================ */
+========================================================= */
 
 let step = 1;
 
 const total = 7;
 
 const profile = {
+
   purpose:"",
   region:"",
   budget:"",
   bedrooms:"",
   feature:"",
   timing:""
+
 };
 
 
+/* =========================================================
+   INÍCIO DO PERFIL
+========================================================= */
+
 function startProfile(){
+
+  trackEvent(
+    "profile_started"
+  );
 
   document
     .getElementById("perfil")
@@ -1814,54 +2188,86 @@ function startProfile(){
 }
 
 
-function choose(button,key,value){
+/* =========================================================
+   ESCOLHA
+========================================================= */
 
-  const parent = button.parentElement;
+function choose(
+  button,
+  key,
+  value
+){
+
+  const parent =
+    button.parentElement;
 
   parent
     .querySelectorAll(".option")
     .forEach(el=>{
-      el.classList.remove("selected");
+
+      el.classList.remove(
+        "selected"
+      );
+
     });
 
-  button.classList.add("selected");
+  button.classList.add(
+    "selected"
+  );
 
-  profile[key] = value;
+  profile[key] =
+    value;
 
 }
 
+
+/* =========================================================
+   ATUALIZA ETAPA
+========================================================= */
 
 function update(){
 
   document
     .querySelectorAll(".step")
     .forEach(el=>{
-      el.classList.remove("active");
+
+      el.classList.remove(
+        "active"
+      );
+
     });
 
   document
     .querySelector(
       `.step[data-step="${step}"]`
     )
-    .classList.add("active");
+    .classList.add(
+      "active"
+    );
 
 
-  document.getElementById("progressText")
+  document
+    .getElementById("progressText")
     .textContent =
       step + " de " + total;
 
 
-  document.getElementById("progressBar")
+  document
+    .getElementById("progressBar")
     .style.width =
       ((step / total) * 100) + "%";
 
 
-  document.getElementById("back")
+  document
+    .getElementById("back")
     .style.visibility =
-      step === 1 ? "hidden" : "visible";
+      step === 1
+      ? "hidden"
+      : "visible";
 
 
-  document.getElementById("continue")
+  document
+    .getElementById("continue")
     .textContent =
       step === total
       ? "Encontrar meus imóveis →"
@@ -1870,7 +2276,8 @@ function update(){
 
   if(step === 7){
 
-    document.getElementById("summary")
+    document
+      .getElementById("summary")
       .innerHTML = `
 
         <strong>Objetivo:</strong>
@@ -1898,6 +2305,10 @@ function update(){
 }
 
 
+/* =========================================================
+   PRÓXIMA ETAPA
+========================================================= */
+
 function nextStep(){
 
   if(step < total){
@@ -1915,6 +2326,10 @@ function nextStep(){
 }
 
 
+/* =========================================================
+   VOLTAR
+========================================================= */
+
 function backStep(){
 
   if(step > 1){
@@ -1928,110 +2343,31 @@ function backStep(){
 }
 
 
-/* ===============================
+/* =========================================================
    RESULTADOS
-================================ */
+========================================================= */
 
 function showResults(){
 
   const cards =
-    document.getElementById("cards");
+    document.getElementById(
+      "cards"
+    );
 
   cards.innerHTML = "";
 
 
-  properties.forEach(property=>{
+  properties.forEach(
+    property=>{
 
-    const article =
-      document.createElement("article");
+      cards.appendChild(
+        createPropertyCard(
+          property
+        )
+      );
 
-    article.className = "card";
-
-
-    article.innerHTML = `
-
-      <div
-        class="photo"
-        style="
-          background-image:url('${property.image}')
-        "
-      >
-
-        <div class="compatibility">
-          ${property.score}% compatível
-        </div>
-
-        <button
-          class="heart"
-          onclick="saveProperty('${property.name}')">
-          ♡
-        </button>
-
-      </div>
-
-
-      <div class="card-body">
-
-        <h3>
-          ${property.name}
-        </h3>
-
-        <div class="location">
-          ${property.neighborhood} · São Paulo
-        </div>
-
-        <div class="price">
-          ${money(property.price)}
-        </div>
-
-        <div class="details">
-
-          <span>
-            ${property.bedrooms} dorm.
-          </span>
-
-          <span>
-            ${property.size} m²
-          </span>
-
-          <span>
-            Apartamento
-          </span>
-
-        </div>
-
-
-        <div class="reasons">
-
-          <strong>
-            Por que recomendamos?
-          </strong>
-
-          ${property.reasons
-            .map(reason=>`
-              <div>${reason}</div>
-            `)
-            .join("")
-          }
-
-        </div>
-
-
-        <button
-          class="interest"
-          onclick="sendInterest('${property.name}')">
-
-          Quero conhecer
-
-        </button>
-
-      </div>
-
-    `;
-
-    cards.appendChild(article);
-
-  });
+    }
+  );
 
 
   document
@@ -2052,14 +2388,28 @@ function showResults(){
   );
 
 
-  /* MOSTRA CONVITE DE INSTALAÇÃO */
+  saveProfileToSupabase();
+
+
+  trackEvent(
+    "profile_completed",
+    null,
+    {
+      profile:{
+        ...profile
+      }
+    }
+  );
+
 
   setTimeout(()=>{
 
     if(!isInstalled()){
 
       document
-        .getElementById("installCard")
+        .getElementById(
+          "installCard"
+        )
         .classList.add("show");
 
     }
@@ -2069,9 +2419,137 @@ function showResults(){
 }
 
 
-/* ===============================
+/* =========================================================
+   CRIA CARD
+========================================================= */
+
+function createPropertyCard(
+  property
+){
+
+  const article =
+    document.createElement(
+      "article"
+    );
+
+  article.className =
+    "card";
+
+
+  article.innerHTML = `
+
+    <div
+      class="photo"
+      style="
+        background-image:url('${property.image}')
+      "
+    >
+
+      <div class="compatibility">
+        ${property.score}% compatível
+      </div>
+
+      <button
+        class="heart"
+        aria-label="Salvar imóvel"
+        onclick="saveProperty('${escapeQuotes(property.name)}')">
+        ♡
+      </button>
+
+    </div>
+
+
+    <div class="card-body">
+
+      <h3>
+        ${property.name}
+      </h3>
+
+      <div class="location">
+        ${property.neighborhood} · São Paulo
+      </div>
+
+      <div class="price">
+        ${money(property.price)}
+      </div>
+
+      <div class="details">
+
+        <span>
+          ${property.bedrooms} dorm.
+        </span>
+
+        <span>
+          ${property.size} m²
+        </span>
+
+        <span>
+          Apartamento
+        </span>
+
+      </div>
+
+
+      <div class="reasons">
+
+        <strong>
+          Por que recomendamos?
+        </strong>
+
+        ${property.reasons
+          .map(
+            reason=>`
+              <div>${reason}</div>
+            `
+          )
+          .join("")
+        }
+
+      </div>
+
+
+      <button
+        class="interest"
+        onclick="sendInterest('${escapeQuotes(property.name)}')">
+
+        Quero conhecer
+
+      </button>
+
+    </div>
+
+  `;
+
+
+  trackEvent(
+    "property_view",
+    property
+  );
+
+
+  return article;
+
+}
+
+
+/* =========================================================
+   ESCAPA APOSTROFE
+========================================================= */
+
+function escapeQuotes(
+  value
+){
+
+  return String(value)
+    .replace(/\\/g,"\\\\")
+    .replace(/'/g,"\\'");
+
+}
+
+
+/* =========================================================
    MOEDA
-================================ */
+========================================================= */
 
 function money(value){
 
@@ -2087,9 +2565,25 @@ function money(value){
 }
 
 
-/* ===============================
+/* =========================================================
+   BUSCA IMÓVEL PELO NOME
+========================================================= */
+
+function getPropertyByName(
+  name
+){
+
+  return properties.find(
+    property =>
+      property.name === name
+  ) || null;
+
+}
+
+
+/* =========================================================
    FAVORITOS
-================================ */
+========================================================= */
 
 function saveProperty(name){
 
@@ -2114,10 +2608,26 @@ function saveProperty(name){
   );
 
 
-  alert("Imóvel salvo.");
+  const property =
+    getPropertyByName(name);
+
+
+  trackEvent(
+    "property_save",
+    property
+  );
+
+
+  alert(
+    "Imóvel salvo."
+  );
 
 }
 
+
+/* =========================================================
+   FAVORITOS
+========================================================= */
 
 function showFavorites(){
 
@@ -2148,56 +2658,491 @@ function showFavorites(){
 }
 
 
-/* ===============================
-   INTERESSE
-================================ */
+/* =========================================================
+   ABRE FORMULÁRIO
+========================================================= */
 
-function sendInterest(property){
-
-  const lead = {
-
-    property:property,
-
-    profile:profile,
-
-    timestamp:new Date().toISOString()
-
-  };
+let selectedProperty = null;
 
 
-  localStorage.setItem(
-    "ynteligencia_interest",
-    JSON.stringify(lead)
+function sendInterest(
+  propertyName
+){
+
+  const property =
+    getPropertyByName(
+      propertyName
+    );
+
+
+  if(!property){
+
+    alert(
+      "Não conseguimos localizar esse imóvel."
+    );
+
+    return;
+
+  }
+
+
+  selectedProperty =
+    property;
+
+
+  document
+    .getElementById(
+      "leadProperty"
+    )
+    .innerHTML = `
+
+      <strong>
+        ${property.name}
+      </strong>
+
+      ${property.neighborhood}
+      · ${money(property.price)}
+      · ${property.bedrooms} dorm.
+      · ${property.size} m²
+
+    `;
+
+
+  document
+    .getElementById(
+      "leadMessage"
+    )
+    .className =
+      "lead-message";
+
+
+  document
+    .getElementById(
+      "leadMessage"
+    )
+    .textContent =
+      "";
+
+
+  document
+    .getElementById(
+      "leadModal"
+    )
+    .classList.add(
+      "show"
+    );
+
+
+  trackEvent(
+    "contact_click",
+    property
   );
 
 
-  alert(
-    "Seu interesse foi registrado em " +
-    property +
-    "."
+  setTimeout(()=>{
+
+    document
+      .getElementById(
+        "leadName"
+      )
+      .focus();
+
+  },100);
+
+}
+
+
+/* =========================================================
+   FECHA FORMULÁRIO
+========================================================= */
+
+function closeLeadModal(){
+
+  document
+    .getElementById(
+      "leadModal"
+    )
+    .classList.remove(
+      "show"
+    );
+
+}
+
+
+/* =========================================================
+   SUBMETER LEAD
+========================================================= */
+
+async function submitLead(
+  event
+){
+
+  event.preventDefault();
+
+
+  if(!selectedProperty){
+
+    return;
+
+  }
+
+
+  const name =
+    document
+      .getElementById(
+        "leadName"
+      )
+      .value
+      .trim();
+
+
+  const phone =
+    document
+      .getElementById(
+        "leadPhone"
+      )
+      .value
+      .trim();
+
+
+  const email =
+    document
+      .getElementById(
+        "leadEmail"
+      )
+      .value
+      .trim();
+
+
+  const button =
+    document
+      .getElementById(
+        "leadSubmit"
+      );
+
+
+  const message =
+    document
+      .getElementById(
+        "leadMessage"
+      );
+
+
+  if(
+    !name ||
+    !phone ||
+    !email
+  ){
+
+    showLeadMessage(
+      "Preencha nome, WhatsApp e e-mail.",
+      "error"
+    );
+
+    return;
+
+  }
+
+
+  button.disabled = true;
+
+  button.textContent =
+    "Enviando...";
+
+
+  message.className =
+    "lead-message";
+
+
+  try{
+
+    /*
+       1. SALVA LEAD
+    */
+
+    const leadResult =
+      await supabaseClient
+        .from("leads")
+        .insert({
+
+          buyer_id:null,
+
+          session_id:
+            sessionId,
+
+          name:name,
+
+          email:email,
+
+          phone:phone,
+
+          status:"novo",
+
+          lead_score:
+            calculateLeadScore(),
+
+          destination:"yincorp",
+
+          notes:
+            "Interesse em " +
+            selectedProperty.name,
+
+          metadata:{
+
+            property:{
+              name:
+                selectedProperty.name,
+
+              neighborhood:
+                selectedProperty.neighborhood,
+
+              price:
+                selectedProperty.price,
+
+              bedrooms:
+                selectedProperty.bedrooms,
+
+              size:
+                selectedProperty.size
+
+            },
+
+            profile:{
+              ...profile
+            },
+
+            source:
+              "ynteligencia"
+
+          }
+
+        });
+
+
+    if(leadResult.error){
+
+      throw leadResult.error;
+
+    }
+
+
+    /*
+       2. EVENTO DE LEAD
+    */
+
+    await trackEvent(
+      "lead_created",
+      selectedProperty,
+      {
+        name:name,
+        email:email,
+        phone:phone,
+        profile:{
+          ...profile
+        }
+      }
+    );
+
+
+    /*
+       3. GUARDA LOCALMENTE
+    */
+
+    localStorage.setItem(
+      "ynteligencia_interest",
+      JSON.stringify({
+
+        property:
+          selectedProperty.name,
+
+        profile:{
+          ...profile
+        },
+
+        name:name,
+
+        phone:phone,
+
+        email:email,
+
+        timestamp:
+          new Date().toISOString()
+
+      })
+    );
+
+
+    /*
+       4. SUCESSO
+    */
+
+    showLeadMessage(
+      "Perfeito. Seu interesse foi registrado. Em breve entraremos em contato.",
+      "success"
+    );
+
+
+    button.textContent =
+      "Interesse registrado ✓";
+
+
+    document
+      .getElementById(
+        "leadForm"
+      )
+      .reset();
+
+
+    setTimeout(()=>{
+
+      closeLeadModal();
+
+      button.disabled = false;
+
+      button.textContent =
+        "Quero conhecer este imóvel";
+
+    },1800);
+
+
+  }catch(error){
+
+    console.error(
+      "Erro ao registrar lead:",
+      error
+    );
+
+
+    showLeadMessage(
+      "Não conseguimos registrar agora. Tente novamente em alguns segundos.",
+      "error"
+    );
+
+
+    button.disabled = false;
+
+    button.textContent =
+      "Quero conhecer este imóvel";
+
+  }
+
+}
+
+
+/* =========================================================
+   MENSAGEM DO LEAD
+========================================================= */
+
+function showLeadMessage(
+  text,
+  type
+){
+
+  const message =
+    document
+      .getElementById(
+        "leadMessage"
+      );
+
+
+  message.textContent =
+    text;
+
+
+  message.className =
+    "lead-message show " +
+    type;
+
+}
+
+
+/* =========================================================
+   LEAD SCORE
+========================================================= */
+
+function calculateLeadScore(){
+
+  let score = 50;
+
+
+  if(
+    profile.timing === "Agora"
+  ){
+
+    score += 30;
+
+  }else if(
+    profile.timing === "1–3 meses"
+  ){
+
+    score += 20;
+
+  }else if(
+    profile.timing === "3–6 meses"
+  ){
+
+    score += 10;
+
+  }
+
+
+  if(
+    profile.purpose === "Morar"
+  ){
+
+    score += 10;
+
+  }
+
+
+  if(
+    profile.purpose === "Investir"
+  ){
+
+    score += 8;
+
+  }
+
+
+  return Math.min(
+    score,
+    100
   );
 
 }
 
 
-/* ===============================
+/* =========================================================
    BUSCA
-================================ */
+========================================================= */
 
 function searchProperties(){
 
   const query =
     document
-      .getElementById("search")
+      .getElementById(
+        "search"
+      )
       .value
       .toLowerCase()
       .trim();
 
 
+  trackEvent(
+    "search",
+    null,
+    {
+      query:query
+    }
+  );
+
+
   if(!query){
 
     document
-      .getElementById("resultado")
+      .getElementById(
+        "resultado"
+      )
       .scrollIntoView({
         behavior:"smooth"
       });
@@ -2208,93 +3153,41 @@ function searchProperties(){
 
 
   const filtered =
-    properties.filter(property=>
+    properties.filter(
+      property =>
 
-      property.name
-        .toLowerCase()
-        .includes(query)
+        property.name
+          .toLowerCase()
+          .includes(query)
 
-      ||
+        ||
 
-      property.neighborhood
-        .toLowerCase()
-        .includes(query)
+        property.neighborhood
+          .toLowerCase()
+          .includes(query)
 
     );
 
 
   const cards =
-    document.getElementById("cards");
+    document.getElementById(
+      "cards"
+    );
 
   cards.innerHTML = "";
 
 
-  filtered.forEach(property=>{
+  filtered.forEach(
+    property=>{
 
-    const article =
-      document.createElement("article");
+      cards.appendChild(
+        createPropertyCard(
+          property
+        )
+      );
 
-    article.className="card";
-
-
-    article.innerHTML=`
-
-      <div
-        class="photo"
-        style="
-          background-image:url('${property.image}')
-        "
-      >
-
-        <div class="compatibility">
-          ${property.score}% compatível
-        </div>
-
-      </div>
-
-
-      <div class="card-body">
-
-        <h3>
-          ${property.name}
-        </h3>
-
-        <div class="location">
-          ${property.neighborhood} · São Paulo
-        </div>
-
-        <div class="price">
-          ${money(property.price)}
-        </div>
-
-        <div class="details">
-
-          <span>
-            ${property.bedrooms} dorm.
-          </span>
-
-          <span>
-            ${property.size} m²
-          </span>
-
-        </div>
-
-
-        <button
-          class="interest"
-          onclick="sendInterest('${property.name}')">
-
-          Quero conhecer
-
-        </button>
-
-      </div>
-
-    `;
-
-    cards.appendChild(article);
-
-  });
+    }
+  );
 
 
   if(!filtered.length){
@@ -2329,12 +3222,18 @@ function searchProperties(){
 
 
   document
-    .getElementById("resultado")
-    .classList.add("show");
+    .getElementById(
+      "resultado"
+    )
+    .classList.add(
+      "show"
+    );
 
 
   document
-    .getElementById("resultado")
+    .getElementById(
+      "resultado"
+    )
     .scrollIntoView({
       behavior:"smooth"
     });
@@ -2342,14 +3241,16 @@ function searchProperties(){
 }
 
 
-/* ===============================
+/* =========================================================
    SCROLL
-================================ */
+========================================================= */
 
 function scrollExplore(){
 
   document
-    .getElementById("explorar")
+    .getElementById(
+      "explorar"
+    )
     .scrollIntoView({
       behavior:"smooth"
     });
@@ -2357,16 +3258,12 @@ function scrollExplore(){
 }
 
 
-/* ===============================
-   PWA — INSTALAÇÃO
-================================ */
+/* =========================================================
+   PWA
+========================================================= */
 
 let deferredPrompt = null;
 
-
-/*
-   Chrome / Android
-*/
 
 window.addEventListener(
   "beforeinstallprompt",
@@ -2374,7 +3271,8 @@ window.addEventListener(
 
     event.preventDefault();
 
-    deferredPrompt = event;
+    deferredPrompt =
+      event;
 
     showInstallButtons();
 
@@ -2382,64 +3280,68 @@ window.addEventListener(
 );
 
 
-/*
-   Detecta se está instalado
-*/
-
 function isInstalled(){
 
   return (
+
     window.matchMedia(
       "(display-mode: standalone)"
     ).matches
+
     ||
-    window.navigator.standalone === true
+
+    window.navigator
+      .standalone === true
+
   );
 
 }
 
 
-/*
-   Mostra botão no header
-*/
-
 function showInstallButtons(){
 
   if(isInstalled()){
+
     return;
+
   }
 
 
   const header =
-    document.getElementById("installHeader");
+    document.getElementById(
+      "installHeader"
+    );
+
 
   if(header){
-    header.classList.add("show");
+
+    header.classList.add(
+      "show"
+    );
+
   }
 
 }
 
 
-/*
-   Instalação
-*/
-
 async function installApp(){
-
-  /*
-     Android / Chrome
-  */
 
   if(deferredPrompt){
 
     deferredPrompt.prompt();
 
     const choice =
-      await deferredPrompt.userChoice;
+      await deferredPrompt
+        .userChoice;
 
-    if(choice.outcome === "accepted"){
 
-      deferredPrompt = null;
+    if(
+      choice.outcome ===
+      "accepted"
+    ){
+
+      deferredPrompt =
+        null;
 
       hideInstallButtons();
 
@@ -2450,56 +3352,71 @@ async function installApp(){
   }
 
 
-  /*
-     iPhone / iPad
-  */
-
   if(isIOS()){
 
     document
-      .getElementById("iosInstructions")
-      .style.display="block";
+      .getElementById(
+        "iosInstructions"
+      )
+      .style.display =
+        "block";
+
 
     document
-      .getElementById("androidInstructions")
-      .style.display="none";
+      .getElementById(
+        "androidInstructions"
+      )
+      .style.display =
+        "none";
+
 
     document
-      .getElementById("installModal")
-      .classList.add("show");
+      .getElementById(
+        "installModal"
+      )
+      .classList.add(
+        "show"
+      );
 
     return;
 
   }
 
 
-  /*
-     Navegador sem suporte
-  */
+  document
+    .getElementById(
+      "androidInstructions"
+    )
+    .style.display =
+      "none";
+
 
   document
-    .getElementById("androidInstructions")
-    .style.display="none";
+    .getElementById(
+      "iosInstructions"
+    )
+    .style.display =
+      "none";
+
 
   document
-    .getElementById("iosInstructions")
-    .style.display="none";
-
-  document
-    .getElementById("installModalText")
+    .getElementById(
+      "installModalText"
+    )
     .innerHTML =
       "Para instalar, abra o menu do navegador e procure pela opção <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.";
 
+
   document
-    .getElementById("installModal")
-    .classList.add("show");
+    .getElementById(
+      "installModal"
+    )
+    .classList.add(
+      "show"
+    );
 
 }
 
-
-/*
-   Detecta iOS
-*/
 
 function isIOS(){
 
@@ -2510,56 +3427,59 @@ function isIOS(){
 }
 
 
-/*
-   Fecha modal
-*/
-
 function closeInstallModal(){
 
   document
-    .getElementById("installModal")
-    .classList.remove("show");
+    .getElementById(
+      "installModal"
+    )
+    .classList.remove(
+      "show"
+    );
 
 }
 
 
-/*
-   Esconde botões
-*/
-
 function hideInstallButtons(){
 
   const header =
-    document.getElementById("installHeader");
+    document.getElementById(
+      "installHeader"
+    );
+
 
   if(header){
 
-    header.classList.remove("show");
+    header.classList.remove(
+      "show"
+    );
 
   }
 
 
   const card =
-    document.getElementById("installCard");
+    document.getElementById(
+      "installCard"
+    );
+
 
   if(card){
 
-    card.classList.remove("show");
+    card.classList.remove(
+      "show"
+    );
 
   }
 
 }
 
 
-/*
-   Quando o app for instalado
-*/
-
 window.addEventListener(
   "appinstalled",
   ()=>{
 
-    deferredPrompt = null;
+    deferredPrompt =
+      null;
 
     hideInstallButtons();
 
@@ -2567,11 +3487,14 @@ window.addEventListener(
 );
 
 
-/*
-   PWA
-*/
+/* =========================================================
+   PWA SERVICE WORKER
+========================================================= */
 
-if("serviceWorker" in navigator){
+if(
+  "serviceWorker"
+  in navigator
+){
 
   window.addEventListener(
     "load",
@@ -2603,11 +3526,50 @@ if("serviceWorker" in navigator){
 }
 
 
-/* ===============================
-   INICIALIZA
-================================ */
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
 
-update();
+document.addEventListener(
+  "DOMContentLoaded",
+  async ()=>{
+
+    await registerBuyer();
+
+    await trackEvent(
+      "app_open"
+    );
+
+    update();
+
+  }
+);
+
+
+/* =========================================================
+   FECHAR MODAL CLICANDO FORA
+========================================================= */
+
+document
+  .getElementById(
+    "leadModal"
+  )
+  .addEventListener(
+    "click",
+    function(event){
+
+      if(
+        event.target ===
+        this
+      ){
+
+        closeLeadModal();
+
+      }
+
+    }
+  );
+
 
 </script>
 
