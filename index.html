@@ -1,1068 +1,503 @@
-<!DOCTYPE html>
+Gerei o index.html completo. Ele lê o Remax.teste2.csv, remove duplicidades pelo ID e cria os cards com o botão “Ver imagens”.
+
+```html
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101a2b">
-  <title>Ynteligencia | Imóveis</title>
-
-  <style>
-    :root {
-      --navy: #101a2b;
-      --navy-light: #1b2b45;
-      --orange: #ff914d;
-      --background: #f5f6f8;
-      --white: #ffffff;
-      --text: #192231;
-      --muted: #687386;
-      --line: #e3e7ec;
-      --shadow: 0 15px 40px rgba(9, 20, 36, 0.12);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      margin: 0;
-      background: var(--background);
-      color: var(--text);
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    button,
-    input,
-    select {
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .container {
-      width: min(1180px, calc(100% - 32px));
-      margin: auto;
-    }
-
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: rgba(16, 26, 43, 0.97);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(14px);
-    }
-
-    .header-content {
-      min-height: 70px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--white);
-      font-size: 20px;
-      font-weight: 900;
-    }
-
-    .logo-symbol {
-      width: 36px;
-      height: 36px;
-      display: grid;
-      place-items: center;
-      border-radius: 11px;
-      background: var(--orange);
-      color: var(--navy);
-    }
-
-    #headerCount {
-      color: #dce2ea;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .hero {
-      padding: 70px 0 115px;
-      color: var(--white);
-      background:
-        radial-gradient(circle at 85% 10%, rgba(255, 145, 77, 0.25), transparent 31%),
-        linear-gradient(135deg, var(--navy), var(--navy-light));
-    }
-
-    .eyebrow {
-      color: var(--orange);
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 1.6px;
-      text-transform: uppercase;
-    }
-
-    h1 {
-      max-width: 790px;
-      margin: 13px 0 18px;
-      font-size: clamp(39px, 6vw, 66px);
-      line-height: 1;
-      letter-spacing: -2.6px;
-    }
-
-    h1 span {
-      color: var(--orange);
-    }
-
-    .hero p {
-      max-width: 700px;
-      margin: 0;
-      color: #d8dee7;
-      font-size: 17px;
-      line-height: 1.65;
-    }
-
-    .filter-wrapper {
-      position: relative;
-      margin-top: -58px;
-      margin-bottom: 30px;
-    }
-
-    .filters {
-      padding: 18px;
-      display: grid;
-      grid-template-columns: 2fr 1.2fr 1fr 1.2fr auto;
-      gap: 10px;
-      background: var(--white);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-    }
-
-    .field {
-      width: 100%;
-      min-height: 49px;
-      padding: 0 13px;
-      border: 1px solid var(--line);
-      border-radius: 11px;
-      background: var(--white);
-      color: var(--text);
-      outline: none;
-    }
-
-    .field:focus {
-      border-color: var(--orange);
-      box-shadow: 0 0 0 3px rgba(255, 145, 77, 0.14);
-    }
-
-    .button {
-      min-height: 49px;
-      padding: 0 18px;
-      border: 0;
-      border-radius: 11px;
-      font-weight: 850;
-    }
-
-    .button-light {
-      border: 1px solid var(--line);
-      background: var(--white);
-      color: var(--navy);
-    }
-
-    .button-orange {
-      display: inline-grid;
-      place-items: center;
-      background: var(--orange);
-      color: var(--navy);
-    }
-
-    .status {
-      margin: 0 0 19px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .property-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      padding-bottom: 35px;
-    }
-
-    .property-card {
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      background: var(--white);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      box-shadow: 0 8px 25px rgba(16, 26, 43, 0.06);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .property-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow);
-    }
-
-    .property-image {
-      position: relative;
-      width: 100%;
-      height: 215px;
-      overflow: hidden;
-      background: var(--navy-light);
-    }
-
-    .property-image img {
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: cover;
-      transition: transform 0.35s;
-    }
-
-    .property-card:hover .property-image img {
-      transform: scale(1.035);
-    }
-
-    .property-image::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, transparent 38%, rgba(8, 17, 30, 0.74));
-      pointer-events: none;
-    }
-
-    .property-id {
-      position: absolute;
-      z-index: 2;
-      top: 13px;
-      left: 13px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      background: rgba(16, 26, 43, 0.91);
-      color: var(--white);
-      font-size: 11px;
-      font-weight: 850;
-    }
-
-    .property-neighborhood {
-      position: absolute;
-      z-index: 2;
-      right: 15px;
-      bottom: 14px;
-      left: 15px;
-      color: var(--white);
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .property-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 18px;
-    }
-
-    .property-content h2 {
-      margin: 0 0 7px;
-      font-size: 20px;
-      line-height: 1.25;
-    }
-
-    .address {
-      min-height: 38px;
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .price {
-      margin: 16px 0 3px;
-      color: var(--navy);
-      font-size: 24px;
-      font-weight: 900;
-    }
-
-    .square-meter-price {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .features {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 15px 0;
-    }
-
-    .feature {
-      padding: 7px 9px;
-      border-radius: 9px;
-      background: #f1f3f6;
-      color: #4f5c6e;
-      font-size: 12px;
-      font-weight: 750;
-    }
-
-    .description {
-      flex: 1;
-      margin: 0 0 16px;
-      color: #566274;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .photo-button {
-      width: 100%;
-      min-height: 48px;
-      display: grid;
-      place-items: center;
-      border-radius: 11px;
-      background: var(--orange);
-      color: var(--navy);
-      font-size: 14px;
-      font-weight: 900;
-    }
-
-    .pagination {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 10px 0 65px;
-    }
-
-    .page-button {
-      min-width: 42px;
-      height: 42px;
-      padding: 0 11px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--white);
-      color: var(--navy);
-      font-weight: 800;
-    }
-
-    .page-button.active {
-      border-color: var(--navy);
-      background: var(--navy);
-      color: var(--white);
-    }
-
-    .page-button:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    .message {
-      grid-column: 1 / -1;
-      padding: 50px 22px;
-      text-align: center;
-      background: var(--white);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-    }
-
-    .message h2 {
-      margin: 0 0 8px;
-    }
-
-    .message p {
-      max-width: 620px;
-      margin: 0 auto 20px;
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    .file-label {
-      min-height: 48px;
-      display: inline-grid;
-      place-items: center;
-      padding: 0 18px;
-      border-radius: 11px;
-      background: var(--orange);
-      color: var(--navy);
-      font-weight: 850;
-      cursor: pointer;
-    }
-
-    .file-label input {
-      display: none;
-    }
-
-    footer {
-      padding: 29px 0;
-      background: var(--navy);
-      color: #bfc8d4;
-      text-align: center;
-      font-size: 13px;
-    }
-
-    @media (max-width: 980px) {
-      .filters {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .filters .search-field {
-        grid-column: 1 / -1;
-      }
-
-      .property-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 640px) {
-      .container {
-        width: min(100% - 22px, 1180px);
-      }
-
-      #headerCount {
-        display: none;
-      }
-
-      .hero {
-        padding: 50px 0 98px;
-      }
-
-      .filters {
-        grid-template-columns: 1fr;
-      }
-
-      .filters .search-field {
-        grid-column: auto;
-      }
-
-      .property-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101a2b">
+<title>Ynteligencia | Imóveis</title>
+<style>
+:root{--dark:#101a2b;--dark2:#1d304c;--orange:#ff914d;--bg:#f5f6f8;--text:#182232;--muted:#697487;--line:#e2e6eb;--white:#fff}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif}
+a{text-decoration:none;color:inherit}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.container{width:min(1180px,calc(100% - 32px));margin:auto}
+header{position:sticky;top:0;z-index:10;background:rgba(16,26,43,.97);border-bottom:1px solid rgba(255,255,255,.08)}
+.nav{min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.logo{display:flex;align-items:center;gap:10px;color:#fff;font-size:21px;font-weight:900}
+.logo-mark{width:37px;height:37px;display:grid;place-items:center;border-radius:11px;background:var(--orange);color:var(--dark)}
+.nav-links{display:flex;align-items:center;gap:24px;color:#dce2ea;font-size:14px}
+.hero{padding:72px 0 116px;color:#fff;background:radial-gradient(circle at 85% 10%,rgba(255,145,77,.25),transparent 30%),linear-gradient(135deg,var(--dark),var(--dark2))}
+.eyebrow{color:var(--orange);font-size:12px;font-weight:900;letter-spacing:1.6px}
+h1{max-width:800px;margin:14px 0 18px;font-size:clamp(40px,6vw,67px);line-height:1;letter-spacing:-2.7px}
+h1 span{color:var(--orange)}
+.hero p{max-width:720px;margin:0;color:#d6dde6;font-size:17px;line-height:1.65}
+.filters-wrap{position:relative;margin-top:-58px}
+.filters{display:grid;grid-template-columns:2fr 1.2fr 1fr 1.2fr auto;gap:10px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 15px 40px rgba(9,20,36,.12)}
+.field,.button{min-height:49px;border-radius:11px}
+.field{width:100%;padding:0 13px;border:1px solid var(--line);background:#fff;color:var(--text);outline:0}
+.field:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,145,77,.14)}
+.button{padding:0 18px;border:1px solid var(--line);background:#fff;color:var(--dark);font-weight:850}
+.upload{margin:22px 0 16px;padding:17px 19px;display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.upload p{margin:0;color:var(--muted);font-size:14px;line-height:1.4}
+.file-button{flex:none;padding:12px 16px;border-radius:10px;background:var(--orange);color:var(--dark);font-size:14px;font-weight:900;cursor:pointer}
+.file-button input{display:none}
+.status{margin:0 0 18px;color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding-bottom:35px}
+.card{overflow:hidden;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 25px rgba(16,26,43,.06);transition:.2s}
+.card:hover{transform:translateY(-4px);box-shadow:0 15px 38px rgba(9,20,36,.13)}
+.cover{position:relative;height:215px;overflow:hidden;background:linear-gradient(135deg,#263e5b,#101a2b)}
+.cover:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,rgba(7,15,27,.78))}
+.skyline{position:absolute;inset:0}
+.building{position:absolute;bottom:0;background:linear-gradient(#dce4eb,#8798a8);border-radius:4px 4px 0 0}
+.building.one{right:9%;width:37%;height:75%}
+.building.two{right:42%;width:29%;height:53%}
+.building:after{content:"";position:absolute;inset:12% 12%;background:repeating-linear-gradient(90deg,#29425e 0 17%,transparent 17% 28%),repeating-linear-gradient(0deg,transparent 0 18%,#29425e 18% 29%)}
+.code{position:absolute;z-index:2;top:13px;left:13px;padding:7px 10px;border-radius:999px;background:rgba(16,26,43,.92);color:#fff;font-size:11px;font-weight:850}
+.location{position:absolute;z-index:2;right:15px;bottom:14px;left:15px;color:#fff;font-size:13px;font-weight:800}
+.content{flex:1;display:flex;flex-direction:column;padding:18px}
+.content h2{margin:0 0 7px;font-size:20px;line-height:1.25}
+.address{min-height:38px;margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+.price{margin:16px 0 3px;color:var(--dark);font-size:24px;font-weight:900}
+.m2{color:var(--muted);font-size:12px}
+.features{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0}
+.feature{padding:7px 9px;border-radius:9px;background:#f0f3f6;color:#4f5c6e;font-size:12px;font-weight:750}
+.description{flex:1;margin:0 0 16px;color:#566274;font-size:13px;line-height:1.5}
+.photos{min-height:48px;display:grid;place-items:center;border-radius:11px;background:var(--orange);color:var(--dark);font-size:14px;font-weight:900}
+.pagination{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;padding:5px 0 65px}
+.page{min-width:42px;height:42px;padding:0 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--dark);font-weight:800}
+.page.active{border-color:var(--dark);background:var(--dark);color:#fff}
+.page:disabled{opacity:.4;cursor:not-allowed}
+.message{grid-column:1/-1;padding:52px 22px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:18px}
+.message h2{margin:0 0 9px}
+.message p{margin:0;color:var(--muted);line-height:1.5}
+footer{padding:30px 0;background:var(--dark);color:#c0c9d4;text-align:center;font-size:13px}
+@media(max-width:980px){.filters{grid-template-columns:1fr 1fr}.search{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.nav-links{display:none}.hero{padding:52px 0 98px}.filters{grid-template-columns:1fr}.search{grid-column:auto}.upload{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}}
+</style>
 </head>
-
 <body>
-  <header>
-    <div class="container header-content">
-      <div class="logo">
-        <span class="logo-symbol">Y</span>
-        Ynteligencia
-      </div>
+<header>
+  <div class="container nav">
+    <div class="logo"><span class="logo-mark">Y</span>Ynteligencia</div>
+    <nav class="nav-links"><a href="#resultados">Resultados</a><a href="#resultados">Explorar</a></nav>
+  </div>
+</header>
 
-      <div id="headerCount">Carregando imóveis...</div>
+<section class="hero">
+  <div class="container">
+    <div class="eyebrow">INTELIGÊNCIA IMOBILIÁRIA</div>
+    <h1>Encontre o imóvel que <span>faz sentido</span> para você.</h1>
+    <p>Explore os imóveis disponíveis e encontre as melhores opções por bairro, empreendimento, dormitórios e faixa de preço.</p>
+  </div>
+</section>
+
+<main id="resultados">
+  <div class="container filters-wrap">
+    <div class="filters">
+      <input id="search" class="field search" type="search" placeholder="Empreendimento, bairro, endereço ou código">
+      <select id="neighborhood" class="field"><option value="">Todos os bairros</option></select>
+      <select id="bedrooms" class="field">
+        <option value="">Dormitórios</option>
+        <option value="0">Comercial</option>
+        <option value="1">1 dormitório</option>
+        <option value="2">2 dormitórios</option>
+        <option value="3">3 dormitórios</option>
+        <option value="4">4 ou mais</option>
+      </select>
+      <select id="price" class="field">
+        <option value="">Qualquer preço</option>
+        <option value="500000">Até R$ 500 mil</option>
+        <option value="750000">Até R$ 750 mil</option>
+        <option value="1000000">Até R$ 1 milhão</option>
+        <option value="2000000">Até R$ 2 milhões</option>
+        <option value="5000000">Até R$ 5 milhões</option>
+      </select>
+      <button id="clear" class="button" type="button">Limpar</button>
     </div>
-  </header>
+  </div>
 
-  <section class="hero">
-    <div class="container">
-      <div class="eyebrow">Inteligência imobiliária</div>
-
-      <h1>
-        Encontre o imóvel que
-        <span>faz sentido</span>
-        para você.
-      </h1>
-
-      <p>
-        Explore os imóveis disponíveis e filtre por bairro, empreendimento,
-        dormitórios e faixa de preço.
-      </p>
+  <div class="container">
+    <div id="upload" class="upload">
+      <p id="loadMessage">Carregando automaticamente o arquivo Remax.teste2.csv...</p>
+      <label class="file-button">Selecionar CSV<input id="file" type="file" accept=".csv,text/csv"></label>
     </div>
-  </section>
-
-  <main>
-    <div class="container filter-wrapper">
-      <div class="filters">
-        <input
-          id="search"
-          class="field search-field"
-          type="search"
-          placeholder="Buscar empreendimento, bairro, endereço ou código"
-        >
-
-        <select id="neighborhood" class="field">
-          <option value="">Todos os bairros</option>
-        </select>
-
-        <select id="bedrooms" class="field">
-          <option value="">Dormitórios</option>
-          <option value="0">Comercial</option>
-          <option value="1">1 dormitório</option>
-          <option value="2">2 dormitórios</option>
-          <option value="3">3 dormitórios</option>
-          <option value="4">4 ou mais</option>
-        </select>
-
-        <select id="price" class="field">
-          <option value="">Qualquer preço</option>
-          <option value="500000">Até R$ 500 mil</option>
-          <option value="750000">Até R$ 750 mil</option>
-          <option value="1000000">Até R$ 1 milhão</option>
-          <option value="2000000">Até R$ 2 milhões</option>
-          <option value="5000000">Até R$ 5 milhões</option>
-        </select>
-
-        <button id="clearFilters" class="button button-light" type="button">
-          Limpar
-        </button>
-      </div>
+    <p id="status" class="status">Aguardando os dados...</p>
+    <div id="grid" class="grid">
+      <div class="message"><h2>Carregando imóveis</h2><p>Aguarde enquanto a base é processada.</p></div>
     </div>
-
-    <div class="container">
-      <p id="status" class="status">Carregando base de imóveis...</p>
-
-      <div id="propertyGrid" class="property-grid">
-        <div class="message">
-          <h2>Carregando imóveis</h2>
-          <p>Aguarde enquanto os dados são processados.</p>
-        </div>
-      </div>
-
-      <div id="pagination" class="pagination"></div>
-    </div>
-  </main>
-
-  <footer>
-    Ynteligencia · Inteligência imobiliária
-  </footer>
-
-  <script>
-    const CSV_FILE = "Remax.teste2.csv";
-    const ITEMS_PER_PAGE = 18;
-
-    let properties = [];
-    let filteredProperties = [];
-    let currentPage = 1;
-
-    const elements = {
-      search: document.getElementById("search"),
-      neighborhood: document.getElementById("neighborhood"),
-      bedrooms: document.getElementById("bedrooms"),
-      price: document.getElementById("price"),
-      clearFilters: document.getElementById("clearFilters"),
-      propertyGrid: document.getElementById("propertyGrid"),
-      pagination: document.getElementById("pagination"),
-      status: document.getElementById("status"),
-      headerCount: document.getElementById("headerCount")
-    };
-
-    function normalizeText(value) {
-      return String(value ?? "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .trim();
-    }
-
-    function normalizeHeader(value) {
-      return normalizeText(value)
-        .replace(/[^\w\s]/g, "")
-        .replace(/\s+/g, " ");
-    }
-
-    function escapeHTML(value) {
-      return String(value ?? "").replace(/[&<>"']/g, character => {
-        const entities = {
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;"
-        };
-
-        return entities[character];
-      });
-    }
-
-    function parseNumber(value) {
-      if (typeof value === "number") {
-        return Number.isFinite(value) ? value : 0;
-      }
-
-      let cleaned = String(value ?? "")
-        .replace(/R\$/gi, "")
-        .replace(/\s/g, "")
-        .replace(/[^\d,.-]/g, "");
-
-      if (!cleaned) {
-        return 0;
-      }
-
-      const hasComma = cleaned.includes(",");
-      const hasDot = cleaned.includes(".");
-
-      if (hasComma && hasDot) {
-        if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
-          cleaned = cleaned.replace(/\./g, "").replace(",", ".");
-        } else {
-          cleaned = cleaned.replace(/,/g, "");
-        }
-      } else if (hasComma) {
-        cleaned = cleaned.replace(/\./g, "").replace(",", ".");
-      } else if (hasDot) {
-        const parts = cleaned.split(".");
-
-        if (
-          parts.length > 2 ||
-          (parts.length === 2 && parts[1].length === 3)
-        ) {
-          cleaned = parts.join("");
-        }
-      }
-
-      const number = Number(cleaned);
-      return Number.isFinite(number) ? number : 0;
-    }
-
-    function formatMoney(value) {
-      if (!value) {
-        return "Valor sob consulta";
-      }
-
-      return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-        maximumFractionDigits: 0
-      }).format(value);
-    }
-
-    function formatArea(value) {
-      if (!value) {
-        return "";
-      }
-
-      return new Intl.NumberFormat("pt-BR", {
-        maximumFractionDigits: 2
-      }).format(value);
-    }
-
-    function isValidURL(value) {
-      try {
-        const url = new URL(String(value ?? "").trim());
-        return url.protocol === "http:" || url.protocol === "https:";
-      } catch {
-        return false;
-      }
-    }
-
-    function detectDelimiter(text) {
-      const firstLine = String(text ?? "")
-        .replace(/^\uFEFF/, "")
-        .split(/\r?\n/)
-        .find(line => line.trim());
-
-      if (!firstLine) {
-        return ";";
-      }
-
-      const delimiters = [";", ",", "\t"];
-      let selectedDelimiter = ";";
-      let highestCount = -1;
-
-      delimiters.forEach(delimiter => {
-        let count = 0;
-        let insideQuotes = false;
-
-        for (let index = 0; index < firstLine.length; index++) {
-          const character = firstLine[index];
-
-          if (character === '"') {
-            insideQuotes = !insideQuotes;
-          } else if (character === delimiter && !insideQuotes) {
-            count++;
-          }
-        }
-
-        if (count > highestCount) {
-          highestCount = count;
-          selectedDelimiter = delimiter;
-        }
-      });
-
-      return selectedDelimiter;
-    }
-
-    function parseCSV(text) {
-      const delimiter = detectDelimiter(text);
-      const rows = [];
-      let row = [];
-      let field = "";
-      let insideQuotes = false;
-
-      const content = String(text ?? "").replace(/^\uFEFF/, "");
-
-      for (let index = 0; index < content.length; index++) {
-        const character = content[index];
-        const nextCharacter = content[index + 1];
-
-        if (character === '"') {
-          if (insideQuotes && nextCharacter === '"') {
-            field += '"';
-            index++;
-          } else {
-            insideQuotes = !insideQuotes;
-          }
-        } else if (character === delimiter && !insideQuotes) {
-          row.push(field.trim());
-          field = "";
-        } else if (
-          (character === "\n" || character === "\r") &&
-          !insideQuotes
-        ) {
-          if (character === "\r" && nextCharacter === "\n") {
-            index++;
-          }
-
-          row.push(field.trim());
-          field = "";
-
-          if (row.some(cell => cell !== "")) {
-            rows.push(row);
-          }
-
-          row = [];
-        } else {
-          field += character;
-        }
-      }
-
-      row.push(field.trim());
-
-      if (row.some(cell => cell !== "")) {
-        rows.push(row);
-      }
-
-      if (rows.length < 2) {
-        return [];
-      }
-
-      const headers = rows[0].map(normalizeHeader);
-
-      return rows.slice(1).map(columns => {
-        const record = {};
-
-        headers.forEach((header, index) => {
-          record[header] = columns[index] ?? "";
-        });
-
-        return record;
-      });
-    }
-
-    function getField(record, aliases) {
-      for (const alias of aliases) {
-        const normalizedAlias = normalizeHeader(alias);
-
-        if (
-          Object.prototype.hasOwnProperty.call(record, normalizedAlias) &&
-          String(record[normalizedAlias]).trim() !== ""
-        ) {
-          return String(record[normalizedAlias]).trim();
-        }
-      }
-
-      return "";
-    }
-
-    function createProperty(record, index) {
-      const id =
-        getField(record, [
-          "id",
-          "codigo",
-          "código",
-          "referencia",
-          "referência",
-          "ref"
-        ]) || `IMOVEL-${index + 1}`;
-
-      const name =
-        getField(record, [
-          "imovel",
-          "imóvel",
-          "empreendimento",
-          "nome",
-          "titulo",
-          "título"
-        ]) || "Imóvel disponível";
-
-      const neighborhood =
-        getField(record, [
-          "bairro",
-          "regiao",
-          "região",
-          "localizacao",
-          "localização"
-        ]) || "Localização não informada";
-
-      const address = getField(record, [
-        "endereco",
-        "endereço",
-        "logradouro",
-        "rua",
-        "local"
-      ]);
-
-      const value = parseNumber(
-        getField(record, [
-          "valor",
-          "preco",
-          "preço",
-          "valor de venda",
-          "preco de venda",
-          "preço de venda"
-        ])
-      );
-
-      const area = parseNumber(
-        getField(record, [
-          "area",
-          "área",
-          "area privativa",
-          "área privativa",
-          "metragem",
-          "m2"
-        ])
-      );
-
-      const bedrooms = parseNumber(
-        getField(record, [
-          "dormitorios",
-          "dormitórios",
-          "quartos",
-          "dormitorio",
-          "dormitório"
-        ])
-      );
-
-      const parkingSpaces = parseNumber(
-        getField(record, [
-          "vagas",
-          "vaga",
-          "vagas de garagem",
-          "garagem"
-        ])
-      );
-
-      const photoLink = getField(record, [
-        "link de fotos",
-        "link fotos",
-        "fotos",
-        "imagens",
-        "link",
-        "link do drive",
-        "pasta de fotos",
-        "url fotos"
-      ]);
-
-      const coverImage = getField(record, [
-        "foto de capa",
-        "imagem de capa",
-        "capa",
-        "foto principal",
-        "imagem principal",
-        "url da imagem"
-      ]);
-
-      const responsible = getField(record, [
-        "responsavel",
-        "responsável",
-        "corretor",
-        "consultor"
-      ]);
-
-      const description = getField(record, [
-        "descricao",
-        "descrição",
-        "observacoes",
-        "observações",
-        "detalhes"
-      ]);
-
-      return {
-        id,
-        name,
-        neighborhood,
-        address,
-        value,
-        area,
-        bedrooms,
-        parkingSpaces,
-        photoLink,
-        coverImage,
-        responsible,
-        description
-      };
-    }
-
-    function removeDuplicates(items) {
-      const uniqueProperties = new Map();
-
-      items.forEach(property => {
-        const informedId = normalizeText(property.id);
-
-        const compositeKey = [
-          normalizeText(property.name),
-          normalizeText(property.neighborhood),
-          property.value,
-          property.area,
-          normalizeText(property.photoLink)
-        ].join("|");
-
-        const key = informedId || compositeKey;
-
-        if (!uniqueProperties.has(key)) {
-          uniqueProperties.set(key, property);
-        }
-      });
-
-      return Array.from(uniqueProperties.values());
-    }
-
-    function createPlaceholder(property) {
-      const title = escapeHTML(property.name.slice(0, 34));
-      const neighborhood = escapeHTML(property.neighborhood.slice(0, 30));
-
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
-          <defs>
-            <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#29435f"/>
-              <stop offset="1" stop-color="#101a2b"/>
-            </linearGradient>
-            <linearGradient id="building" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#dce5ec"/>
-              <stop offset="1" stop-color="#8293a4"/>
-            </linearGradient>
-          </defs>
-
-          <rect width="1200" height="760" fill="url(#background)"/>
-          <circle cx="980" cy="105" r="260" fill="#ff914d" opacity=".16"/>
-          <circle cx="1050" cy="80" r="150" fill="#ff914d" opacity=".12"/>
-
-          <rect x="655" y="128" width="390" height="520" rx="8" fill="url(#building)"/>
-          <rect x="385" y="255" width="315" height="393" rx="8" fill="#aebbc7"/>
-
-          <g fill="#29435f">
-            <rect x="705" y="180" width="80" height="56" rx="4"/>
-            <rect x="825" y="180" width="80" height="56" rx="4"/>
-            <rect x="945" y="180" width="55" height="56" rx="4"/>
-            <rect x="705" y="280" width="80" height="56" rx="4"/>
-            <rect x="825" y="280" width="80" height="56" rx="4"/>
-            <rect x="945" y="280" width="55" height="56" rx="4"/>
-            <rect x="705" y="380" width="80" height="56" rx="4"/>
-            <rect x="825" y="380" width="80" height="56" rx="4"/>
-            <rect x="945" y="380" width="55" height="56" rx="4"/>
-            <rect x="705" y="480" width="80" height="56" rx="4"/>
-            <rect x="825" y="480" width="80" height="56" rx="4"/>
-            <rect x="945" y="480" width="55" height="56" rx="4"/>
-
-            <rect x="430" y="310" width="70" height="52" rx="4"/>
-            <rect x="535" y="310" width="70" height="52" rx="4"/>
-            <rect x="430" y="405" width="70" height="52" rx="4"/>
-            <rect x="535" y="405" width="70" height="52" rx="4"/>
-            <rect x="430" y="500" width="70" height="52" rx="4"/>
-            <rect x="535" y="500" width="70" height="52" rx="4"/>
-          </g>
-
-          <rect x="0" y="590" width="1200" height="170" fill="#08111e" opacity=".68"/>
-          <text x="65" y="660" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="700">${title}</text>
-          <text x="65" y="710" fill="#ffb17f" font-family="Arial, sans-serif" font-size="27">${neighborhood}</text>
-        </svg>
-      `;
-
-      return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-    }
-
-    function createFeature(text) {
-      return `<span class="feature">${escapeHTML(text)}</span>`;
-    }
-
-    function createPropertyCard(property) {
-      const squareMeterPrice =
-        property.value && property.area
-          ? property.value / property.area
-          : 0;
-
-      const features = [];
-
-      if (property.area) {
-        features.push(createFeature(`${formatArea(property.area)} m²`));
-      }
-
-      if (property.bedrooms) {
-        features.push(
-          createFeature(
-            `${property.bedrooms} ${
-              property.bedrooms === 1 ? "dormitório" : "dormitórios"
-            }`
-          )
-        );
-      }
-
-      if (property.parkingSpaces) {
-        features.push(
-          createFeature(
-            `${property.parkingSpaces} ${
-              property.parkingSpaces === 1 ? "vaga" : "vagas"
-            }`
-          )
-        );
-      }
-
-      if (property.responsible) {
-        features.push(
-          createFeature(`Responsável: ${property.responsible}`)
-        );
-      }
-
-      const imageSource = isValidURL(property.coverImage)
-        ? property.coverImage
-        : createPlaceholder(property);
-
-      const photoButton = isValidURL(property.photoLink)
-        ? `
-          <a
-            class="photo-button"
-            href="${escapeHTML(property.photoLink)}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Ver imagens
-          </a>
-        `
-        : `
-          <span
-            class="photo-button"
-            style="opacity:.55; cursor:not-allowed"
-            aria-disabled="true"
-          >
-            Imagens indisponíveis
-          </span>
-        `;
-
-      const description =
-        property.description ||
-        (property.responsible
-          ? `Atendimento com ${property.responsible}.`
-          : "Consulte as informações e a disponibilidade deste imóvel.");
-
-      return `
-        <article class="property-card">
-          <div class="property-image">
-            <img
-              src="${escapeHTML(imageSource)}"
-              alt="Imagem de ${escapeHTML(property.name)}"
-              loading="lazy"
-              onerror="this.onerror=null;
+    <div id="pagination" class="pagination"></div>
+  </div>
+</main>
+
+<footer>Ynteligencia · Inteligência imobiliária</footer>
+
+<script>
+const CSV_FILE="Remax.teste2.csv";
+const PER_PAGE=18;
+let properties=[],filtered=[],page=1;
+
+const $=id=>document.getElementById(id);
+const el={
+ search:$("search"),neighborhood:$("neighborhood"),bedrooms:$("bedrooms"),
+ price:$("price"),clear:$("clear"),file:$("file"),upload:$("upload"),
+ loadMessage:$("loadMessage"),status:$("status"),grid:$("grid"),
+ pagination:$("pagination")
+};
+
+function clean(v){
+ return String(v??"").replace(/\s+/g," ").trim();
+}
+function norm(v){
+ return clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+}
+function html(v){
+ return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function numberBR(v){
+ let s=String(v??"").replace(/R\$/gi,"").replace(/\s/g,"").replace(/[^\d,.-]/g,"");
+ if(!s)return 0;
+ if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");
+ else if(s.includes(","))s=s.replace(",",".");
+ else if((s.match(/\./g)||[]).length>1)s=s.replace(/\./g,"");
+ return Number(s)||0;
+}
+function money(v){
+ return v?new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}).format(v):"Valor sob consulta";
+}
+function area(v){
+ return new Intl.NumberFormat("pt-BR",{maximumFractionDigits:2}).format(v);
+}
+
+function parseCSV(text){
+ const rows=[];
+ let row=[],field="",quoted=false;
+ text=String(text).replace(/^\uFEFF/,"");
+
+ for(let i=0;i<text.length;i++){
+   const c=text[i],next=text[i+1];
+   if(c==='"'){
+     if(quoted&&next==='"'){field+='"';i++}
+     else quoted=!quoted;
+   }else if(c===";"&&!quoted){
+     row.push(field);field="";
+   }else if((c==="\n"||c==="\r")&&!quoted){
+     if(c==="\r"&&next==="\n")i++;
+     row.push(field);field="";
+     if(row.some(v=>clean(v)!==""))rows.push(row);
+     row=[];
+   }else field+=c;
+ }
+ row.push(field);
+ if(row.some(v=>clean(v)!==""))rows.push(row);
+ if(rows.length<2)return [];
+
+ const headers=rows.shift().map(norm);
+ return rows.map(cols=>{
+   const obj={};
+   headers.forEach((key,i)=>obj[key]=clean(cols[i]));
+   return obj;
+ });
+}
+
+function field(row,names){
+ for(const name of names){
+   const value=row[norm(name)];
+   if(clean(value)!=="")return clean(value);
+ }
+ return "";
+}
+
+function mapProperty(row,index){
+ return {
+   id:clean(field(row,["ID"]))||`IMOVEL-${index+1}`,
+   name:clean(field(row,["EMPRENDIMENTO"]))||"Imóvel disponível",
+   neighborhood:clean(field(row,["Bairro"]))||"Bairro não informado",
+   address:clean(field(row,["Endereço"])),
+   unit:clean(field(row,["Nº da unidade"])),
+   area:numberBR(field(row,["Área Privativa (m2)"])),
+   bedrooms:numberBR(field(row,["N˚ Dorms.","Nº Dorms."])),
+   suites:numberBR(field(row,["Nº Suítes"])),
+   parking:numberBR(field(row,["N˚ Vagas","Nº Vagas"])),
+   year:clean(field(row,["Ano Const."])),
+   description:clean(field(row,["Observações"])),
+   condominium:clean(field(row,["Valor Condomínio"])),
+   iptu:clean(field(row,["Valor IPTU"])),
+   value:numberBR(field(row,["Valor de venda (R$)"])),
+   m2:numberBR(field(row,["Valor M2 (R$ / m2)"])),
+   photos:clean(field(row,["Link das Fotos sem marca d´água"]))
+ };
+}
+
+function deduplicate(items){
+ const unique=new Map();
+ items.forEach(item=>{
+   const key=norm(item.id);
+   if(key&&!unique.has(key))unique.set(key,item);
+ });
+ return [...unique.values()];
+}
+
+function load(text){
+ try{
+   const parsed=parseCSV(text);
+   properties=deduplicate(parsed.map(mapProperty)).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
+   if(!properties.length)throw new Error("Nenhum imóvel encontrado.");
+   fillNeighborhoods();
+   el.upload.style.display="none";
+   applyFilters();
+ }catch(error){
+   el.loadMessage.textContent="Não foi possível processar o CSV. Selecione novamente o arquivo Remax.teste2.csv.";
+   el.status.textContent="Base não carregada.";
+   el.grid.innerHTML=`<div class="message"><h2>Não foi possível carregar os imóveis</h2><p>${html(error.message)}</p></div>`;
+ }
+}
+
+function fillNeighborhoods(){
+ const selected=el.neighborhood.value;
+ const list=[...new Set(properties.map(p=>p.neighborhood).filter(Boolean))]
+   .sort((a,b)=>a.localeCompare(b,"pt-BR"));
+ el.neighborhood.innerHTML='<option value="">Todos os bairros</option>'+
+   list.map(v=>`<option value="${html(v)}">${html(v)}</option>`).join("");
+ el.neighborhood.value=selected;
+}
+
+function applyFilters(){
+ const query=norm(el.search.value);
+ const neighborhood=el.neighborhood.value;
+ const bedrooms=el.bedrooms.value;
+ const maxPrice=Number(el.price.value)||0;
+
+ filtered=properties.filter(property=>{
+   const searchable=norm([
+     property.id,
+     property.name,
+     property.neighborhood,
+     property.address,
+     property.unit,
+     property.description
+   ].join(" "));
+
+   const matchesQuery=!query||searchable.includes(query);
+   const matchesNeighborhood=!neighborhood||property.neighborhood===neighborhood;
+
+   let matchesBedrooms=true;
+   if(bedrooms==="0")matchesBedrooms=property.bedrooms===0;
+   else if(bedrooms==="4")matchesBedrooms=property.bedrooms>=4;
+   else if(bedrooms!=="")matchesBedrooms=property.bedrooms===Number(bedrooms);
+
+   const matchesPrice=!maxPrice||(property.value>0&&property.value<=maxPrice);
+
+   return matchesQuery&&matchesNeighborhood&&matchesBedrooms&&matchesPrice;
+ });
+
+ page=1;
+ render();
+}
+
+function validURL(value){
+ try{
+   const url=new URL(value);
+   return url.protocol==="http:"||url.protocol==="https:";
+ }catch{
+   return false;
+ }
+}
+
+function feature(value){
+ return `<span class="feature">${html(value)}</span>`;
+}
+
+function card(property){
+ const features=[];
+
+ if(property.area)features.push(feature(`${area(property.area)} m²`));
+ if(property.bedrooms)features.push(feature(`${property.bedrooms} ${property.bedrooms===1?"dormitório":"dormitórios"}`));
+ if(property.suites)features.push(feature(`${property.suites} ${property.suites===1?"suíte":"suítes"}`));
+ if(property.parking)features.push(feature(`${property.parking} ${property.parking===1?"vaga":"vagas"}`));
+ if(property.year)features.push(feature(`Construção: ${property.year}`));
+
+ const fullAddress=[
+   property.address,
+   property.unit?`Unidade ${property.unit}`:"",
+   property.neighborhood
+ ].filter(Boolean).join(" · ");
+
+ const pricePerSquareMeter=property.m2||(property.value&&property.area?property.value/property.area:0);
+
+ const extraCosts=[
+   property.condominium?`Condomínio: ${property.condominium}`:"",
+   property.iptu?`IPTU: ${property.iptu}`:""
+ ].filter(Boolean).join(" · ");
+
+ const description=property.description||extraCosts||"Consulte a disponibilidade e as condições deste imóvel.";
+
+ const photos=validURL(property.photos)
+   ? `<a class="photos" href="${html(property.photos)}" target="_blank" rel="noopener noreferrer">Ver imagens</a>`
+   : `<span class="photos" style="opacity:.55;cursor:not-allowed" aria-disabled="true">Imagens indisponíveis</span>`;
+
+ return `
+   <article class="card">
+     <div class="cover">
+       <div class="skyline" aria-hidden="true">
+         <span class="building one"></span>
+         <span class="building two"></span>
+       </div>
+       <span class="code">ID ${html(property.id)}</span>
+       <span class="location">${html(property.neighborhood)}</span>
+     </div>
+
+     <div class="content">
+       <h2>${html(property.name)}</h2>
+       <p class="address">${html(fullAddress||"Endereço não informado")}</p>
+
+       <div class="price">${money(property.value)}</div>
+       <div class="m2">${pricePerSquareMeter?`${money(pricePerSquareMeter)} por m²`:"Valor por m² não informado"}</div>
+
+       <div class="features">${features.join("")}</div>
+       <p class="description">${html(description)}</p>
+       ${photos}
+     </div>
+   </article>
+ `;
+}
+
+function render(){
+ const total=filtered.length;
+ const totalPages=Math.max(1,Math.ceil(total/PER_PAGE));
+
+ if(page>totalPages)page=totalPages;
+
+ const start=(page-1)*PER_PAGE;
+ const visible=filtered.slice(start,start+PER_PAGE);
+
+ el.status.textContent=total===1
+   ?"1 imóvel encontrado."
+   :`${total} imóveis encontrados.`;
+
+ if(!visible.length){
+   el.grid.innerHTML=`
+     <div class="message">
+       <h2>Nenhum imóvel encontrado</h2>
+       <p>Altere ou limpe os filtros para consultar outras opções.</p>
+     </div>
+   `;
+   el.pagination.innerHTML="";
+   return;
+ }
+
+ el.grid.innerHTML=visible.map(card).join("");
+ renderPagination(totalPages);
+}
+
+function renderPagination(totalPages){
+ if(totalPages<=1){
+   el.pagination.innerHTML="";
+   return;
+ }
+
+ const buttons=[];
+ const first=Math.max(1,page-2);
+ const last=Math.min(totalPages,page+2);
+
+ buttons.push(`
+   <button class="page" type="button" data-page="${page-1}" ${page===1?"disabled":""}>
+     Anterior
+   </button>
+ `);
+
+ if(first>1){
+   buttons.push(`<button class="page" type="button" data-page="1">1</button>`);
+   if(first>2)buttons.push(`<button class="page" type="button" disabled>…</button>`);
+ }
+
+ for(let current=first;current<=last;current++){
+   buttons.push(`
+     <button
+       class="page ${current===page?"active":""}"
+       type="button"
+       data-page="${current}"
+       ${current===page?'aria-current="page"':""}
+     >
+       ${current}
+     </button>
+   `);
+ }
+
+ if(last<totalPages){
+   if(last<totalPages-1)buttons.push(`<button class="page" type="button" disabled>…</button>`);
+   buttons.push(`<button class="page" type="button" data-page="${totalPages}">${totalPages}</button>`);
+ }
+
+ buttons.push(`
+   <button class="page" type="button" data-page="${page+1}" ${page===totalPages?"disabled":""}>
+     Próxima
+   </button>
+ `);
+
+ el.pagination.innerHTML=buttons.join("");
+}
+
+el.search.addEventListener("input",applyFilters);
+el.neighborhood.addEventListener("change",applyFilters);
+el.bedrooms.addEventListener("change",applyFilters);
+el.price.addEventListener("change",applyFilters);
+
+el.clear.addEventListener("click",()=>{
+ el.search.value="";
+ el.neighborhood.value="";
+ el.bedrooms.value="";
+ el.price.value="";
+ applyFilters();
+});
+
+el.file.addEventListener("change",event=>{
+ const selectedFile=event.target.files[0];
+ if(!selectedFile)return;
+
+ const reader=new FileReader();
+
+ reader.onload=()=>{
+   el.loadMessage.textContent=`Arquivo carregado: ${selectedFile.name}`;
+   load(reader.result);
+ };
+
+ reader.onerror=()=>{
+   el.loadMessage.textContent="Não foi possível ler o arquivo selecionado.";
+ };
+
+ reader.readAsText(selectedFile,"UTF-8");
+});
+
+el.pagination.addEventListener("click",event=>{
+ const button=event.target.closest("[data-page]");
+ if(!button||button.disabled)return;
+
+ const requestedPage=Number(button.dataset.page);
+ const totalPages=Math.max(1,Math.ceil(filtered.length/PER_PAGE));
+
+ if(requestedPage<1||requestedPage>totalPages)return;
+
+ page=requestedPage;
+ render();
+ document.getElementById("resultados").scrollIntoView({behavior:"smooth"});
+});
+
+fetch(CSV_FILE,{cache:"no-store"})
+ .then(response=>{
+   if(!response.ok)throw new Error("Arquivo CSV não encontrado.");
+   return response.text();
+ })
+ .then(text=>{
+   el.loadMessage.textContent=`Arquivo carregado: ${CSV_FILE}`;
+   load(text);
+ })
+ .catch(()=>{
+   el.loadMessage.textContent=`Selecione o arquivo ${CSV_FILE} para exibir os imóveis.`;
+   el.status.textContent="Aguardando o arquivo CSV.";
+   el.grid.innerHTML=`
+     <div class="message">
+       <h2>Selecione a base de imóveis</h2>
+       <p>O navegador não conseguiu abrir automaticamente o CSV. Use o botão “Selecionar CSV” acima.</p>
+     </div>
+   `;
+ });
+</script>
+</body>
+</html>
+```
