@@ -12,6 +12,7 @@
 <link rel="manifest" href="/manifest.json">
 
 <style>
+
 *{
   box-sizing:border-box;
   margin:0;
@@ -51,7 +52,10 @@ button{
   cursor:pointer;
 }
 
-/* HEADER */
+
+/* ===============================
+   HEADER
+================================ */
 
 header{
   height:68px;
@@ -88,7 +92,28 @@ header{
   font-size:14px;
 }
 
-/* HERO */
+
+/* BOTÃO INSTALAR */
+
+.install-header{
+  display:none;
+  border:1px solid rgba(231,160,74,.5);
+  background:rgba(231,160,74,.10);
+  color:var(--orange2);
+  border-radius:10px;
+  padding:9px 13px;
+  font-size:12px;
+  font-weight:bold;
+}
+
+.install-header.show{
+  display:block;
+}
+
+
+/* ===============================
+   HERO
+================================ */
 
 .hero{
   background:
@@ -159,7 +184,10 @@ header{
   color:var(--dark);
 }
 
-/* MAIN */
+
+/* ===============================
+   MAIN
+================================ */
 
 main{
   max-width:1100px;
@@ -167,7 +195,10 @@ main{
   padding:0 18px 80px;
 }
 
-/* PROFILE */
+
+/* ===============================
+   PROFILE
+================================ */
 
 .profile-box{
   margin-top:-45px;
@@ -276,7 +307,10 @@ main{
   font-weight:bold;
 }
 
-/* RESULTADOS */
+
+/* ===============================
+   RESULTADOS
+================================ */
 
 .results{
   display:none;
@@ -310,6 +344,73 @@ main{
   color:#aeb8c8;
   margin-top:7px;
 }
+
+
+/* ===============================
+   INSTALL CARD
+================================ */
+
+.install-card{
+  display:none;
+  background:white;
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:22px;
+  margin:0 0 25px;
+  box-shadow:0 12px 35px rgba(10,20,35,.07);
+}
+
+.install-card.show{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+}
+
+.install-content{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+
+.install-icon{
+  width:48px;
+  height:48px;
+  flex:none;
+  border-radius:14px;
+  background:#fff1df;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:23px;
+}
+
+.install-text strong{
+  display:block;
+  font-size:16px;
+}
+
+.install-text p{
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.4;
+  margin-top:4px;
+}
+
+.install-btn{
+  flex:none;
+  border:none;
+  border-radius:12px;
+  background:var(--dark);
+  color:white;
+  padding:12px 17px;
+  font-weight:bold;
+}
+
+
+/* ===============================
+   CARDS
+================================ */
 
 .cards{
   display:grid;
@@ -417,7 +518,10 @@ main{
   font-weight:bold;
 }
 
-/* COMO FUNCIONA */
+
+/* ===============================
+   COMO FUNCIONA
+================================ */
 
 .section{
   margin-top:75px;
@@ -471,7 +575,10 @@ main{
   margin-top:8px;
 }
 
-/* BUSCA */
+
+/* ===============================
+   BUSCA
+================================ */
 
 .search{
   margin-top:23px;
@@ -490,7 +597,10 @@ main{
   padding:8px;
 }
 
-/* FOOTER */
+
+/* ===============================
+   FOOTER
+================================ */
 
 footer{
   background:var(--dark);
@@ -504,13 +614,101 @@ footer strong{
   color:white;
 }
 
-/* BOTTOM NAV */
+
+/* ===============================
+   BOTTOM NAV
+================================ */
 
 .bottom-nav{
   display:none;
 }
 
-/* MOBILE */
+
+/* ===============================
+   INSTALL MODAL
+================================ */
+
+.install-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(5,10,20,.68);
+  display:none;
+  align-items:flex-end;
+  justify-content:center;
+  z-index:1000;
+  padding:18px;
+}
+
+.install-modal.show{
+  display:flex;
+}
+
+.install-modal-box{
+  width:100%;
+  max-width:430px;
+  background:white;
+  border-radius:24px;
+  padding:27px;
+  box-shadow:0 25px 80px rgba(0,0,0,.25);
+}
+
+.install-modal-box h2{
+  font-size:24px;
+  letter-spacing:-.5px;
+}
+
+.install-modal-box p{
+  color:var(--muted);
+  line-height:1.5;
+  margin-top:10px;
+  font-size:14px;
+}
+
+.install-steps{
+  margin-top:20px;
+}
+
+.install-step{
+  display:flex;
+  gap:12px;
+  margin-bottom:15px;
+  align-items:flex-start;
+}
+
+.install-step-number{
+  width:30px;
+  height:30px;
+  flex:none;
+  border-radius:50%;
+  background:#fff1df;
+  color:#bd741c;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  font-size:13px;
+}
+
+.install-step-text{
+  font-size:14px;
+  line-height:1.45;
+}
+
+.close-install{
+  width:100%;
+  border:none;
+  background:#eef0f3;
+  color:var(--dark);
+  border-radius:12px;
+  padding:13px;
+  font-weight:bold;
+  margin-top:8px;
+}
+
+
+/* ===============================
+   MOBILE
+================================ */
 
 @media(max-width:800px){
 
@@ -525,6 +723,10 @@ footer strong{
 
   .menu{
     display:none;
+  }
+
+  .install-header{
+    display:block;
   }
 
   .hero{
@@ -570,6 +772,19 @@ footer strong{
     flex-direction:column;
   }
 
+  .install-card.show{
+    display:block;
+  }
+
+  .install-content{
+    align-items:flex-start;
+  }
+
+  .install-btn{
+    width:100%;
+    margin-top:16px;
+  }
+
   .bottom-nav{
     position:fixed;
     bottom:0;
@@ -597,10 +812,28 @@ footer strong{
   }
 
 }
+
+
+/* DESKTOP */
+
+@media(min-width:801px){
+
+  .install-modal{
+    align-items:center;
+  }
+
+}
+
 </style>
 </head>
 
+
 <body>
+
+
+<!-- ===============================
+     HEADER
+================================ -->
 
 <header>
 
@@ -614,8 +847,19 @@ footer strong{
     <a href="#explorar">Explorar</a>
   </nav>
 
+  <button
+    id="installHeader"
+    class="install-header"
+    onclick="installApp()">
+    ＋ Instalar
+  </button>
+
 </header>
 
+
+<!-- ===============================
+     HERO
+================================ -->
 
 <section class="hero">
 
@@ -637,11 +881,15 @@ footer strong{
 
     <div class="hero-buttons">
 
-      <button class="btn primary" onclick="startProfile()">
+      <button
+        class="btn primary"
+        onclick="startProfile()">
         Descobrir meu imóvel
       </button>
 
-      <button class="btn secondary" onclick="scrollExplore()">
+      <button
+        class="btn secondary"
+        onclick="scrollExplore()">
         Explorar imóveis
       </button>
 
@@ -654,6 +902,11 @@ footer strong{
 
 <main>
 
+
+<!-- ===============================
+     PERFIL
+================================ -->
+
 <section class="profile-box" id="perfil">
 
   <div class="progress-info">
@@ -662,13 +915,18 @@ footer strong{
   </div>
 
   <div class="progress">
-    <div class="progress-bar" id="progressBar"></div>
+    <div
+      class="progress-bar"
+      id="progressBar">
+    </div>
   </div>
 
 
   <!-- PASSO 1 -->
 
-  <div class="step active" data-step="1">
+  <div
+    class="step active"
+    data-step="1">
 
     <h2>Você procura imóvel para quê?</h2>
 
@@ -678,28 +936,55 @@ footer strong{
 
     <div class="options">
 
-      <button class="option"
+      <button
+        class="option"
         onclick="choose(this,'purpose','Morar')">
+
         <strong>🏠 Morar</strong>
-        <small>Quero encontrar meu próximo lar.</small>
+
+        <small>
+          Quero encontrar meu próximo lar.
+        </small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'purpose','Investir')">
+
         <strong>📈 Investir</strong>
-        <small>Busco uma oportunidade.</small>
+
+        <small>
+          Busco uma oportunidade.
+        </small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'purpose','Alugar')">
+
         <strong>🔑 Alugar</strong>
-        <small>Quero encontrar um imóvel para locação.</small>
+
+        <small>
+          Quero encontrar um imóvel para locação.
+        </small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'purpose','Pesquisar')">
+
         <strong>💡 Pesquisar</strong>
-        <small>Ainda estou avaliando.</small>
+
+        <small>
+          Ainda estou avaliando.
+        </small>
+
       </button>
 
     </div>
@@ -709,7 +994,9 @@ footer strong{
 
   <!-- PASSO 2 -->
 
-  <div class="step" data-step="2">
+  <div
+    class="step"
+    data-step="2">
 
     <h2>Onde você gostaria de morar?</h2>
 
@@ -719,40 +1006,71 @@ footer strong{
 
     <div class="options">
 
-      <button class="option"
+      <button
+        class="option"
         onclick="choose(this,'region','Perdizes')">
+
         <strong>Perdizes</strong>
+
         <small>Zona Oeste</small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'region','Pinheiros')">
+
         <strong>Pinheiros</strong>
+
         <small>Zona Oeste</small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'region','Vila Madalena')">
+
         <strong>Vila Madalena</strong>
+
         <small>Zona Oeste</small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'region','Moema')">
+
         <strong>Moema</strong>
+
         <small>Zona Sul</small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'region','Chácara Klabin')">
+
         <strong>Chácara Klabin</strong>
+
         <small>Zona Sul</small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'region','Outra')">
+
         <strong>Outra região</strong>
-        <small>Quero ampliar minha busca.</small>
+
+        <small>
+          Quero ampliar minha busca.
+        </small>
+
       </button>
 
     </div>
@@ -762,7 +1080,9 @@ footer strong{
 
   <!-- PASSO 3 -->
 
-  <div class="step" data-step="3">
+  <div
+    class="step"
+    data-step="3">
 
     <h2>Qual é seu orçamento?</h2>
 
@@ -772,24 +1092,39 @@ footer strong{
 
     <div class="options">
 
-      <button class="option"
+      <button
+        class="option"
         onclick="choose(this,'budget','Até R$ 400 mil')">
+
         <strong>Até R$ 400 mil</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'budget','R$ 400–600 mil')">
+
         <strong>R$ 400–600 mil</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'budget','R$ 600–900 mil')">
+
         <strong>R$ 600–900 mil</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'budget','Acima de R$ 900 mil')">
+
         <strong>Acima de R$ 900 mil</strong>
+
       </button>
 
     </div>
@@ -799,7 +1134,9 @@ footer strong{
 
   <!-- PASSO 4 -->
 
-  <div class="step" data-step="4">
+  <div
+    class="step"
+    data-step="4">
 
     <h2>Quantos dormitórios?</h2>
 
@@ -809,24 +1146,39 @@ footer strong{
 
     <div class="options">
 
-      <button class="option"
+      <button
+        class="option"
         onclick="choose(this,'bedrooms','Studio')">
+
         <strong>Studio</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'bedrooms','1 dormitório')">
+
         <strong>1 dormitório</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'bedrooms','2 dormitórios')">
+
         <strong>2 dormitórios</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'bedrooms','3+ dormitórios')">
+
         <strong>3 ou mais</strong>
+
       </button>
 
     </div>
@@ -836,7 +1188,9 @@ footer strong{
 
   <!-- PASSO 5 -->
 
-  <div class="step" data-step="5">
+  <div
+    class="step"
+    data-step="5">
 
     <h2>O que é importante para você?</h2>
 
@@ -846,24 +1200,39 @@ footer strong{
 
     <div class="options">
 
-      <button class="option"
+      <button
+        class="option"
         onclick="choose(this,'feature','Varanda')">
+
         <strong>🌿 Varanda</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'feature','Vaga')">
+
         <strong>🚗 Vaga</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'feature','Piscina')">
+
         <strong>🏊 Piscina</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'feature','Metrô')">
+
         <strong>🚇 Próximo ao metrô</strong>
+
       </button>
 
     </div>
@@ -873,7 +1242,9 @@ footer strong{
 
   <!-- PASSO 6 -->
 
-  <div class="step" data-step="6">
+  <div
+    class="step"
+    data-step="6">
 
     <h2>Quando pretende comprar?</h2>
 
@@ -883,25 +1254,43 @@ footer strong{
 
     <div class="options">
 
-      <button class="option"
+      <button
+        class="option"
         onclick="choose(this,'timing','Agora')">
+
         <strong>Agora</strong>
-        <small>Estou procurando ativamente.</small>
+
+        <small>
+          Estou procurando ativamente.
+        </small>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'timing','1–3 meses')">
+
         <strong>1–3 meses</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'timing','3–6 meses')">
+
         <strong>3–6 meses</strong>
+
       </button>
 
-      <button class="option"
+
+      <button
+        class="option"
         onclick="choose(this,'timing','Pesquisando')">
+
         <strong>Só pesquisando</strong>
+
       </button>
 
     </div>
@@ -911,9 +1300,13 @@ footer strong{
 
   <!-- PASSO 7 -->
 
-  <div class="step" data-step="7">
+  <div
+    class="step"
+    data-step="7">
 
-    <h2>Pronto para encontrar seu imóvel?</h2>
+    <h2>
+      Pronto para encontrar seu imóvel?
+    </h2>
 
     <p class="step-description">
       A Ynteligencia vai cruzar suas respostas e apresentar
@@ -930,7 +1323,8 @@ footer strong{
 
       <strong>Seu perfil</strong>
 
-      <div id="summary"
+      <div
+        id="summary"
         style="color:#687386;margin-top:8px;">
       </div>
 
@@ -960,15 +1354,21 @@ footer strong{
 </section>
 
 
-<!-- RESULTADOS -->
+<!-- ===============================
+     RESULTADOS
+================================ -->
 
-<section class="results" id="resultado">
+<section
+  class="results"
+  id="resultado">
 
   <div class="result-header">
 
     <small>YNTELIGENCIA MATCH</small>
 
-    <h2>Encontramos imóveis para você.</h2>
+    <h2>
+      Encontramos imóveis para você.
+    </h2>
 
     <p>
       Selecionamos as opções mais compatíveis com seu perfil.
@@ -976,28 +1376,79 @@ footer strong{
 
   </div>
 
-  <div class="cards" id="cards"></div>
+
+  <!-- CONVITE DE INSTALAÇÃO -->
+
+  <div
+    class="install-card"
+    id="installCard">
+
+    <div class="install-content">
+
+      <div class="install-icon">
+        📲
+      </div>
+
+      <div class="install-text">
+
+        <strong>
+          Continue sua busca no celular
+        </strong>
+
+        <p>
+          Instale a Ynteligencia e deixe suas recomendações
+          sempre à mão.
+        </p>
+
+      </div>
+
+    </div>
+
+    <button
+      class="install-btn"
+      onclick="installApp()">
+      Instalar Ynteligencia
+    </button>
+
+  </div>
+
+
+  <div
+    class="cards"
+    id="cards">
+  </div>
 
 </section>
 
 
-<!-- COMO FUNCIONA -->
+<!-- ===============================
+     COMO FUNCIONA
+================================ -->
 
-<section class="section" id="como-funciona">
+<section
+  class="section"
+  id="como-funciona">
 
-  <h2>Não procure entre milhares.</h2>
+  <h2>
+    Não procure entre milhares.
+  </h2>
 
   <p class="section-sub">
     Deixe a Ynteligencia procurar por você.
   </p>
 
+
   <div class="steps">
 
     <div class="how">
 
-      <div class="number">1</div>
+      <div class="number">
+        1
+      </div>
 
-      <h3>Conte o que você procura</h3>
+      <h3>
+        Conte o que você procura
+      </h3>
 
       <p>
         Região, orçamento, dormitórios e aquilo
@@ -1009,9 +1460,13 @@ footer strong{
 
     <div class="how">
 
-      <div class="number">2</div>
+      <div class="number">
+        2
+      </div>
 
-      <h3>A Ynteligencia cruza os dados</h3>
+      <h3>
+        A Ynteligencia cruza os dados
+      </h3>
 
       <p>
         Seu perfil é comparado com o inventário disponível.
@@ -1022,9 +1477,13 @@ footer strong{
 
     <div class="how">
 
-      <div class="number">3</div>
+      <div class="number">
+        3
+      </div>
 
-      <h3>Receba seus melhores matches</h3>
+      <h3>
+        Receba seus melhores matches
+      </h3>
 
       <p>
         Em vez de milhares de anúncios, você recebe
@@ -1038,11 +1497,17 @@ footer strong{
 </section>
 
 
-<!-- EXPLORAR -->
+<!-- ===============================
+     EXPLORAR
+================================ -->
 
-<section class="section" id="explorar">
+<section
+  class="section"
+  id="explorar">
 
-  <h2>Prefere procurar sozinho?</h2>
+  <h2>
+    Prefere procurar sozinho?
+  </h2>
 
   <p class="section-sub">
     Explore imóveis por bairro ou empreendimento.
@@ -1069,6 +1534,10 @@ footer strong{
 </main>
 
 
+<!-- ===============================
+     FOOTER
+================================ -->
+
 <footer>
 
   <strong>Ynteligencia</strong>
@@ -1081,30 +1550,140 @@ footer strong{
 </footer>
 
 
-<!-- NAVEGAÇÃO MOBILE -->
+<!-- ===============================
+     NAVEGAÇÃO MOBILE
+================================ -->
 
 <nav class="bottom-nav">
 
-  <button onclick="window.scrollTo({top:0,behavior:'smooth'})">
+  <button
+    onclick="window.scrollTo({top:0,behavior:'smooth'})">
     🏠<br>Início
   </button>
 
-  <button onclick="scrollExplore()">
+  <button
+    onclick="scrollExplore()">
     🔎<br>Explorar
   </button>
 
-  <button onclick="showFavorites()">
+  <button
+    onclick="showFavorites()">
     ♡<br>Salvos
   </button>
 
-  <button onclick="startProfile()">
+  <button
+    onclick="startProfile()">
     ●<br>Perfil
   </button>
 
 </nav>
 
 
+<!-- ===============================
+     MODAL INSTALAÇÃO
+================================ -->
+
+<div
+  class="install-modal"
+  id="installModal">
+
+  <div class="install-modal-box">
+
+    <h2>
+      Instalar Ynteligencia
+    </h2>
+
+    <p id="installModalText">
+      Tenha a Ynteligencia sempre à mão para acompanhar
+      seus imóveis recomendados.
+    </p>
+
+
+    <!-- ANDROID -->
+
+    <div
+      class="install-steps"
+      id="androidInstructions"
+      style="display:none;">
+
+      <div class="install-step">
+
+        <div class="install-step-number">
+          1
+        </div>
+
+        <div class="install-step-text">
+          Toque em <strong>Instalar</strong> quando o navegador solicitar.
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- IPHONE -->
+
+    <div
+      class="install-steps"
+      id="iosInstructions"
+      style="display:none;">
+
+      <div class="install-step">
+
+        <div class="install-step-number">
+          1
+        </div>
+
+        <div class="install-step-text">
+          Toque no botão <strong>Compartilhar</strong>
+          do Safari.
+        </div>
+
+      </div>
+
+
+      <div class="install-step">
+
+        <div class="install-step-number">
+          2
+        </div>
+
+        <div class="install-step-text">
+          Role o menu e escolha
+          <strong>Adicionar à Tela de Início</strong>.
+        </div>
+
+      </div>
+
+
+      <div class="install-step">
+
+        <div class="install-step-number">
+          3
+        </div>
+
+        <div class="install-step-text">
+          Toque em <strong>Adicionar</strong>.
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <button
+      class="close-install"
+      onclick="closeInstallModal()">
+      Agora não
+    </button>
+
+  </div>
+
+</div>
+
+
 <script>
+
 
 /* ===============================
    DADOS DEMONSTRATIVOS
@@ -1266,16 +1845,21 @@ function update(){
     )
     .classList.add("active");
 
+
   document.getElementById("progressText")
-    .textContent = step + " de " + total;
+    .textContent =
+      step + " de " + total;
+
 
   document.getElementById("progressBar")
     .style.width =
       ((step / total) * 100) + "%";
 
+
   document.getElementById("back")
     .style.visibility =
       step === 1 ? "hidden" : "visible";
+
 
   document.getElementById("continue")
     .textContent =
@@ -1355,12 +1939,14 @@ function showResults(){
 
   cards.innerHTML = "";
 
+
   properties.forEach(property=>{
 
     const article =
       document.createElement("article");
 
     article.className = "card";
+
 
     article.innerHTML = `
 
@@ -1383,9 +1969,12 @@ function showResults(){
 
       </div>
 
+
       <div class="card-body">
 
-        <h3>${property.name}</h3>
+        <h3>
+          ${property.name}
+        </h3>
 
         <div class="location">
           ${property.neighborhood} · São Paulo
@@ -1397,17 +1986,26 @@ function showResults(){
 
         <div class="details">
 
-          <span>${property.bedrooms} dorm.</span>
+          <span>
+            ${property.bedrooms} dorm.
+          </span>
 
-          <span>${property.size} m²</span>
+          <span>
+            ${property.size} m²
+          </span>
 
-          <span>Apartamento</span>
+          <span>
+            Apartamento
+          </span>
 
         </div>
 
+
         <div class="reasons">
 
-          <strong>Por que recomendamos?</strong>
+          <strong>
+            Por que recomendamos?
+          </strong>
 
           ${property.reasons
             .map(reason=>`
@@ -1418,10 +2016,13 @@ function showResults(){
 
         </div>
 
+
         <button
           class="interest"
           onclick="sendInterest('${property.name}')">
+
           Quero conhecer
+
         </button>
 
       </div>
@@ -1449,6 +2050,21 @@ function showResults(){
     "ynteligencia_profile",
     JSON.stringify(profile)
   );
+
+
+  /* MOSTRA CONVITE DE INSTALAÇÃO */
+
+  setTimeout(()=>{
+
+    if(!isInstalled()){
+
+      document
+        .getElementById("installCard")
+        .classList.add("show");
+
+    }
+
+  },700);
 
 }
 
@@ -1484,16 +2100,19 @@ function saveProperty(name){
       ) || "[]"
     );
 
+
   if(!saved.includes(name)){
 
     saved.push(name);
 
   }
 
+
   localStorage.setItem(
     "ynteligencia_saved",
     JSON.stringify(saved)
   );
+
 
   alert("Imóvel salvo.");
 
@@ -1509,6 +2128,7 @@ function showFavorites(){
       ) || "[]"
     );
 
+
   if(!saved.length){
 
     alert(
@@ -1518,6 +2138,7 @@ function showFavorites(){
     return;
 
   }
+
 
   alert(
     "Seus imóveis salvos:\n\n" +
@@ -1543,10 +2164,12 @@ function sendInterest(property){
 
   };
 
+
   localStorage.setItem(
     "ynteligencia_interest",
     JSON.stringify(lead)
   );
+
 
   alert(
     "Seu interesse foi registrado em " +
@@ -1570,6 +2193,7 @@ function searchProperties(){
       .toLowerCase()
       .trim();
 
+
   if(!query){
 
     document
@@ -1581,6 +2205,7 @@ function searchProperties(){
     return;
 
   }
+
 
   const filtered =
     properties.filter(property=>
@@ -1611,6 +2236,7 @@ function searchProperties(){
 
     article.className="card";
 
+
     article.innerHTML=`
 
       <div
@@ -1626,9 +2252,12 @@ function searchProperties(){
 
       </div>
 
+
       <div class="card-body">
 
-        <h3>${property.name}</h3>
+        <h3>
+          ${property.name}
+        </h3>
 
         <div class="location">
           ${property.neighborhood} · São Paulo
@@ -1639,14 +2268,24 @@ function searchProperties(){
         </div>
 
         <div class="details">
-          <span>${property.bedrooms} dorm.</span>
-          <span>${property.size} m²</span>
+
+          <span>
+            ${property.bedrooms} dorm.
+          </span>
+
+          <span>
+            ${property.size} m²
+          </span>
+
         </div>
+
 
         <button
           class="interest"
           onclick="sendInterest('${property.name}')">
+
           Quero conhecer
+
         </button>
 
       </div>
@@ -1677,7 +2316,9 @@ function searchProperties(){
           color:#758195;
           margin-top:8px;
         ">
+
           Tente outro bairro ou empreendimento.
+
         </p>
 
       </div>
@@ -1691,6 +2332,7 @@ function searchProperties(){
     .getElementById("resultado")
     .classList.add("show");
 
+
   document
     .getElementById("resultado")
     .scrollIntoView({
@@ -1699,6 +2341,10 @@ function searchProperties(){
 
 }
 
+
+/* ===============================
+   SCROLL
+================================ */
 
 function scrollExplore(){
 
@@ -1712,38 +2358,259 @@ function scrollExplore(){
 
 
 /* ===============================
-   PWA
+   PWA — INSTALAÇÃO
 ================================ */
+
+let deferredPrompt = null;
+
+
+/*
+   Chrome / Android
+*/
+
+window.addEventListener(
+  "beforeinstallprompt",
+  event=>{
+
+    event.preventDefault();
+
+    deferredPrompt = event;
+
+    showInstallButtons();
+
+  }
+);
+
+
+/*
+   Detecta se está instalado
+*/
+
+function isInstalled(){
+
+  return (
+    window.matchMedia(
+      "(display-mode: standalone)"
+    ).matches
+    ||
+    window.navigator.standalone === true
+  );
+
+}
+
+
+/*
+   Mostra botão no header
+*/
+
+function showInstallButtons(){
+
+  if(isInstalled()){
+    return;
+  }
+
+
+  const header =
+    document.getElementById("installHeader");
+
+  if(header){
+    header.classList.add("show");
+  }
+
+}
+
+
+/*
+   Instalação
+*/
+
+async function installApp(){
+
+  /*
+     Android / Chrome
+  */
+
+  if(deferredPrompt){
+
+    deferredPrompt.prompt();
+
+    const choice =
+      await deferredPrompt.userChoice;
+
+    if(choice.outcome === "accepted"){
+
+      deferredPrompt = null;
+
+      hideInstallButtons();
+
+    }
+
+    return;
+
+  }
+
+
+  /*
+     iPhone / iPad
+  */
+
+  if(isIOS()){
+
+    document
+      .getElementById("iosInstructions")
+      .style.display="block";
+
+    document
+      .getElementById("androidInstructions")
+      .style.display="none";
+
+    document
+      .getElementById("installModal")
+      .classList.add("show");
+
+    return;
+
+  }
+
+
+  /*
+     Navegador sem suporte
+  */
+
+  document
+    .getElementById("androidInstructions")
+    .style.display="none";
+
+  document
+    .getElementById("iosInstructions")
+    .style.display="none";
+
+  document
+    .getElementById("installModalText")
+    .innerHTML =
+      "Para instalar, abra o menu do navegador e procure pela opção <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.";
+
+  document
+    .getElementById("installModal")
+    .classList.add("show");
+
+}
+
+
+/*
+   Detecta iOS
+*/
+
+function isIOS(){
+
+  return /iphone|ipad|ipod/i.test(
+    navigator.userAgent
+  );
+
+}
+
+
+/*
+   Fecha modal
+*/
+
+function closeInstallModal(){
+
+  document
+    .getElementById("installModal")
+    .classList.remove("show");
+
+}
+
+
+/*
+   Esconde botões
+*/
+
+function hideInstallButtons(){
+
+  const header =
+    document.getElementById("installHeader");
+
+  if(header){
+
+    header.classList.remove("show");
+
+  }
+
+
+  const card =
+    document.getElementById("installCard");
+
+  if(card){
+
+    card.classList.remove("show");
+
+  }
+
+}
+
+
+/*
+   Quando o app for instalado
+*/
+
+window.addEventListener(
+  "appinstalled",
+  ()=>{
+
+    deferredPrompt = null;
+
+    hideInstallButtons();
+
+  }
+);
+
+
+/*
+   PWA
+*/
 
 if("serviceWorker" in navigator){
 
   window.addEventListener(
     "load",
     ()=>{
+
       navigator.serviceWorker
         .register("/sw.js")
+
         .then(()=>{
+
           console.log(
             "Ynteligencia PWA ativada."
           );
+
         })
+
         .catch(error=>{
+
           console.log(
             "Erro no Service Worker:",
             error
           );
+
         });
+
     }
   );
 
 }
 
 
-/* INICIALIZA */
+/* ===============================
+   INICIALIZA
+================================ */
 
 update();
 
 </script>
+
 
 </body>
 </html>
