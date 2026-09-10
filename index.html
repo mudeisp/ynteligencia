@@ -1,3578 +1,1412 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Ynteligencia | Inteligência imobiliária</title>
-
-<meta name="description" content="Encontre o imóvel que faz sentido para você. A Ynteligencia cruza suas preferências com imóveis disponíveis.">
-<meta name="theme-color" content="#0b1220">
-
-<link rel="manifest" href="/manifest.json">
-
-<style>
-
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-}
-
-:root{
-  --dark:#0b1220;
-  --dark2:#111b2d;
-  --orange:#e7a04a;
-  --orange2:#f1b96b;
-  --white:#fff;
-  --bg:#f5f6f8;
-  --text:#182235;
-  --muted:#758195;
-  --border:#e5e8ed;
-  --green:#168765;
-  --danger:#c84b4b;
-}
-
-html{
-  scroll-behavior:smooth;
-}
-
-body{
-  font-family:Arial,Helvetica,sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  padding-bottom:80px;
-}
-
-button,
-input{
-  font:inherit;
-}
-
-button{
-  cursor:pointer;
-}
-
-
-/* ===============================
-   HEADER
-================================ */
-
-header{
-  height:68px;
-  background:var(--dark);
-  color:white;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 22px;
-  position:sticky;
-  top:0;
-  z-index:100;
-}
-
-.logo{
-  font-size:23px;
-  font-weight:800;
-  letter-spacing:-1px;
-}
-
-.logo span{
-  color:var(--orange);
-}
-
-.menu{
-  display:flex;
-  align-items:center;
-  gap:25px;
-}
-
-.menu a{
-  color:#b9c2d0;
-  text-decoration:none;
-  font-size:14px;
-}
-
-
-/* BOTÃO INSTALAR */
-
-.install-header{
-  display:none;
-  border:1px solid rgba(231,160,74,.5);
-  background:rgba(231,160,74,.10);
-  color:var(--orange2);
-  border-radius:10px;
-  padding:9px 13px;
-  font-size:12px;
-  font-weight:bold;
-}
-
-.install-header.show{
-  display:block;
-}
-
-
-/* ===============================
-   HERO
-================================ */
-
-.hero{
-  background:
-    radial-gradient(circle at 90% 10%,rgba(231,160,74,.20),transparent 30%),
-    var(--dark);
-  color:white;
-  padding:70px 22px 90px;
-}
-
-.hero-inner{
-  max-width:1050px;
-  margin:auto;
-}
-
-.tag{
-  display:inline-block;
-  color:var(--orange2);
-  border:1px solid rgba(231,160,74,.35);
-  background:rgba(231,160,74,.10);
-  border-radius:30px;
-  padding:7px 13px;
-  font-size:11px;
-  font-weight:bold;
-  letter-spacing:1.4px;
-  margin-bottom:22px;
-}
-
-.hero h1{
-  font-size:clamp(40px,6vw,68px);
-  line-height:1.02;
-  letter-spacing:-3px;
-  max-width:760px;
-}
-
-.hero h1 span{
-  color:var(--orange);
-}
-
-.hero p{
-  max-width:650px;
-  color:#aeb8c8;
-  font-size:18px;
-  line-height:1.6;
-  margin-top:22px;
-}
-
-.hero-buttons{
-  display:flex;
-  gap:12px;
-  margin-top:32px;
-  flex-wrap:wrap;
-}
-
-.btn{
-  border:none;
-  border-radius:14px;
-  padding:15px 22px;
-  font-weight:700;
-}
-
-.primary{
-  background:var(--orange);
-  color:white;
-}
-
-.secondary{
-  background:white;
-  color:var(--dark);
-}
-
-
-/* ===============================
-   MAIN
-================================ */
-
-main{
-  max-width:1100px;
-  margin:auto;
-  padding:0 18px 80px;
-}
-
-
-/* ===============================
-   PROFILE
-================================ */
-
-.profile-box{
-  margin-top:-45px;
-  position:relative;
-  z-index:10;
-  background:white;
-  border-radius:24px;
-  padding:28px;
-  box-shadow:0 20px 55px rgba(10,20,35,.12);
-}
-
-.progress-info{
-  display:flex;
-  justify-content:space-between;
-  color:var(--muted);
-  font-size:12px;
-  margin-bottom:10px;
-}
-
-.progress{
-  height:5px;
-  background:#edf0f3;
-  border-radius:10px;
-  overflow:hidden;
-  margin-bottom:28px;
-}
-
-.progress-bar{
-  width:14%;
-  height:100%;
-  background:var(--orange);
-  transition:.3s;
-}
-
-.step{
-  display:none;
-}
-
-.step.active{
-  display:block;
-}
-
-.step h2{
-  font-size:29px;
-  letter-spacing:-1px;
-}
-
-.step-description{
-  color:var(--muted);
-  margin-top:7px;
-  margin-bottom:24px;
-}
-
-.options{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:12px;
-}
-
-.option{
-  background:white;
-  border:1px solid var(--border);
-  border-radius:15px;
-  padding:17px;
-  text-align:left;
-  transition:.2s;
-}
-
-.option:hover{
-  border-color:var(--orange);
-}
-
-.option.selected{
-  border-color:var(--orange);
-  background:#fff8ef;
-}
-
-.option strong{
-  display:block;
-  margin-bottom:4px;
-}
-
-.option small{
-  color:var(--muted);
-}
-
-.step-buttons{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-top:25px;
-}
-
-.back{
-  border:none;
-  background:none;
-  color:var(--muted);
-}
-
-.continue{
-  border:none;
-  border-radius:13px;
-  background:var(--dark);
-  color:white;
-  padding:13px 22px;
-  font-weight:bold;
-}
-
-
-/* ===============================
-   RESULTADOS
-================================ */
-
-.results{
-  display:none;
-  margin-top:40px;
-}
-
-.results.show{
-  display:block;
-}
-
-.result-header{
-  background:var(--dark);
-  color:white;
-  padding:28px;
-  border-radius:22px;
-  margin-bottom:22px;
-}
-
-.result-header small{
-  color:var(--orange2);
-  font-size:11px;
-  letter-spacing:1px;
-}
-
-.result-header h2{
-  font-size:29px;
-  margin-top:8px;
-}
-
-.result-header p{
-  color:#aeb8c8;
-  margin-top:7px;
-}
-
-
-/* ===============================
-   INSTALL CARD
-================================ */
-
-.install-card{
-  display:none;
-  background:white;
-  border:1px solid var(--border);
-  border-radius:22px;
-  padding:22px;
-  margin:0 0 25px;
-  box-shadow:0 12px 35px rgba(10,20,35,.07);
-}
-
-.install-card.show{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:20px;
-}
-
-.install-content{
-  display:flex;
-  align-items:center;
-  gap:15px;
-}
-
-.install-icon{
-  width:48px;
-  height:48px;
-  flex:none;
-  border-radius:14px;
-  background:#fff1df;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:23px;
-}
-
-.install-text strong{
-  display:block;
-  font-size:16px;
-}
-
-.install-text p{
-  color:var(--muted);
-  font-size:13px;
-  line-height:1.4;
-  margin-top:4px;
-}
-
-.install-btn{
-  flex:none;
-  border:none;
-  border-radius:12px;
-  background:var(--dark);
-  color:white;
-  padding:12px 17px;
-  font-weight:bold;
-}
-
-
-/* ===============================
-   CARDS
-================================ */
-
-.cards{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:18px;
-}
-
-.card{
-  background:white;
-  border:1px solid var(--border);
-  border-radius:20px;
-  overflow:hidden;
-}
-
-.photo{
-  height:210px;
-  background-size:cover;
-  background-position:center;
-  position:relative;
-}
-
-.compatibility{
-  position:absolute;
-  top:12px;
-  left:12px;
-  background:white;
-  color:var(--green);
-  font-size:12px;
-  font-weight:bold;
-  padding:8px 10px;
-  border-radius:20px;
-}
-
-.heart{
-  position:absolute;
-  right:12px;
-  top:12px;
-  width:36px;
-  height:36px;
-  border:none;
-  border-radius:50%;
-  background:white;
-  font-size:18px;
-}
-
-.card-body{
-  padding:18px;
-}
-
-.card h3{
-  font-size:19px;
-}
-
-.location{
-  color:var(--muted);
-  font-size:13px;
-  margin-top:5px;
-}
-
-.price{
-  font-size:22px;
-  font-weight:800;
-  margin-top:15px;
-}
-
-.details{
-  display:flex;
-  gap:12px;
-  color:var(--muted);
-  font-size:13px;
-  margin-top:8px;
-}
-
-.reasons{
-  border-top:1px solid var(--border);
-  margin-top:16px;
-  padding-top:14px;
-}
-
-.reasons strong{
-  font-size:13px;
-}
-
-.reasons div{
-  font-size:12px;
-  color:var(--muted);
-  margin-top:6px;
-}
-
-.reasons div::before{
-  content:"✓";
-  color:var(--green);
-  font-weight:bold;
-  margin-right:6px;
-}
-
-.interest{
-  width:100%;
-  border:none;
-  background:var(--dark);
-  color:white;
-  border-radius:12px;
-  padding:12px;
-  margin-top:16px;
-  font-weight:bold;
-}
-
-
-/* ===============================
-   COMO FUNCIONA
-================================ */
-
-.section{
-  margin-top:75px;
-}
-
-.section h2{
-  font-size:30px;
-  letter-spacing:-1px;
-}
-
-.section-sub{
-  color:var(--muted);
-  margin-top:7px;
-}
-
-.steps{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:18px;
-  margin-top:24px;
-}
-
-.how{
-  background:white;
-  border:1px solid var(--border);
-  border-radius:20px;
-  padding:24px;
-}
-
-.number{
-  width:38px;
-  height:38px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#fff1df;
-  color:#bd741c;
-  font-weight:bold;
-  margin-bottom:18px;
-}
-
-.how h3{
-  font-size:17px;
-}
-
-.how p{
-  color:var(--muted);
-  line-height:1.5;
-  font-size:14px;
-  margin-top:8px;
-}
-
-
-/* ===============================
-   BUSCA
-================================ */
-
-.search{
-  margin-top:23px;
-  background:white;
-  border:1px solid var(--border);
-  padding:13px;
-  border-radius:17px;
-  display:flex;
-  gap:10px;
-}
-
-.search input{
-  flex:1;
-  border:none;
-  outline:none;
-  padding:8px;
-}
-
-
-/* ===============================
-   FOOTER
-================================ */
-
-footer{
-  background:var(--dark);
-  color:#8995a8;
-  text-align:center;
-  padding:35px 20px;
-  font-size:13px;
-}
-
-footer strong{
-  color:white;
-}
-
-
-/* ===============================
-   BOTTOM NAV
-================================ */
-
-.bottom-nav{
-  display:none;
-}
-
-
-/* ===============================
-   MODAL INSTALAÇÃO
-================================ */
-
-.install-modal{
-  position:fixed;
-  inset:0;
-  background:rgba(5,10,20,.68);
-  display:none;
-  align-items:flex-end;
-  justify-content:center;
-  z-index:1000;
-  padding:18px;
-}
-
-.install-modal.show{
-  display:flex;
-}
-
-.install-modal-box{
-  width:100%;
-  max-width:430px;
-  background:white;
-  border-radius:24px;
-  padding:27px;
-  box-shadow:0 25px 80px rgba(0,0,0,.25);
-}
-
-.install-modal-box h2{
-  font-size:24px;
-  letter-spacing:-.5px;
-}
-
-.install-modal-box p{
-  color:var(--muted);
-  line-height:1.5;
-  margin-top:10px;
-  font-size:14px;
-}
-
-.install-steps{
-  margin-top:20px;
-}
-
-.install-step{
-  display:flex;
-  gap:12px;
-  margin-bottom:15px;
-  align-items:flex-start;
-}
-
-.install-step-number{
-  width:30px;
-  height:30px;
-  flex:none;
-  border-radius:50%;
-  background:#fff1df;
-  color:#bd741c;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  font-size:13px;
-}
-
-.install-step-text{
-  font-size:14px;
-  line-height:1.45;
-}
-
-.close-install{
-  width:100%;
-  border:none;
-  background:#eef0f3;
-  color:var(--dark);
-  border-radius:12px;
-  padding:13px;
-  font-weight:bold;
-  margin-top:8px;
-}
-
-
-/* ===============================
-   MODAL LEAD
-================================ */
-
-.lead-modal{
-  position:fixed;
-  inset:0;
-  background:rgba(5,10,20,.72);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:1200;
-  padding:18px;
-}
-
-.lead-modal.show{
-  display:flex;
-}
-
-.lead-box{
-  width:100%;
-  max-width:470px;
-  background:white;
-  border-radius:24px;
-  padding:28px;
-  box-shadow:0 25px 90px rgba(0,0,0,.28);
-}
-
-.lead-top{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:15px;
-}
-
-.lead-box h2{
-  font-size:25px;
-  letter-spacing:-.6px;
-}
-
-.lead-box .lead-subtitle{
-  color:var(--muted);
-  font-size:14px;
-  line-height:1.5;
-  margin-top:8px;
-}
-
-.close-lead{
-  border:none;
-  background:#eef0f3;
-  width:34px;
-  height:34px;
-  border-radius:50%;
-  font-size:20px;
-  color:var(--dark);
-  flex:none;
-}
-
-.lead-property{
-  margin-top:18px;
-  padding:14px;
-  background:#f6f7f9;
-  border-radius:14px;
-  font-size:13px;
-}
-
-.lead-property strong{
-  display:block;
-  font-size:15px;
-  margin-bottom:4px;
-}
-
-.form-group{
-  margin-top:15px;
-}
-
-.form-group label{
-  display:block;
-  font-size:12px;
-  font-weight:bold;
-  margin-bottom:6px;
-}
-
-.form-group input{
-  width:100%;
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:13px;
-  outline:none;
-  background:white;
-}
-
-.form-group input:focus{
-  border-color:var(--orange);
-}
-
-.lead-submit{
-  width:100%;
-  border:none;
-  border-radius:13px;
-  background:var(--dark);
-  color:white;
-  padding:14px;
-  font-weight:bold;
-  margin-top:20px;
-}
-
-.lead-submit:disabled{
-  opacity:.6;
-  cursor:wait;
-}
-
-.lead-privacy{
-  color:var(--muted);
-  font-size:11px;
-  line-height:1.4;
-  margin-top:10px;
-  text-align:center;
-}
-
-.lead-message{
-  display:none;
-  margin-top:12px;
-  border-radius:10px;
-  padding:10px;
-  font-size:12px;
-  line-height:1.4;
-}
-
-.lead-message.show{
-  display:block;
-}
-
-.lead-message.error{
-  background:#fff0f0;
-  color:var(--danger);
-}
-
-.lead-message.success{
-  background:#edf9f4;
-  color:var(--green);
-}
-
-
-/* ===============================
-   MOBILE
-================================ */
-
-@media(max-width:800px){
-
-  body{
-    padding-bottom:70px;
-  }
-
-  header{
-    height:62px;
-    padding:0 17px;
-  }
-
-  .menu{
-    display:none;
-  }
-
-  .install-header{
-    display:block;
-  }
-
-  .hero{
-    padding:48px 19px 78px;
-  }
-
-  .hero h1{
-    font-size:42px;
-    letter-spacing:-2px;
-  }
-
-  .hero p{
-    font-size:16px;
-  }
-
-  main{
-    padding:0 14px 70px;
-  }
-
-  .profile-box{
-    margin-top:-35px;
-    padding:21px;
-    border-radius:21px;
-  }
-
-  .step h2{
-    font-size:25px;
-  }
-
-  .options{
-    grid-template-columns:1fr;
-  }
-
-  .cards{
-    grid-template-columns:1fr;
-  }
-
-  .steps{
-    grid-template-columns:1fr;
-  }
-
-  .search{
-    flex-direction:column;
-  }
-
-  .install-card.show{
-    display:block;
-  }
-
-  .install-content{
-    align-items:flex-start;
-  }
-
-  .install-btn{
-    width:100%;
-    margin-top:16px;
-  }
-
-  .bottom-nav{
-    position:fixed;
-    bottom:0;
-    left:0;
-    right:0;
-    height:70px;
-    background:rgba(255,255,255,.97);
-    border-top:1px solid var(--border);
-    display:flex;
-    justify-content:space-around;
-    align-items:center;
-    z-index:200;
-  }
-
-  .bottom-nav button{
-    border:none;
-    background:none;
-    color:#7b8493;
-    font-size:11px;
-  }
-
-  .bottom-nav button:first-child{
-    color:#bd741c;
-    font-weight:bold;
-  }
-
-  .lead-box{
-    padding:22px;
-    border-radius:21px;
-  }
-
-}
-
-
-/* DESKTOP */
-
-@media(min-width:801px){
-
-  .install-modal{
-    align-items:center;
-  }
-
-}
-
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101c2c">
+  <meta name="description" content="Ynteligencia — inteligência imobiliária para encontrar o imóvel que combina com você.">
+  <link rel="manifest" href="/manifest.json">
+  <title>Ynteligencia | Inteligência imobiliária</title>
+
+  <style>
+    :root{
+      --navy:#101c2c;
+      --navy2:#182941;
+      --gold:#d9ac58;
+      --gold2:#f0d49a;
+      --bg:#f5f6f8;
+      --card:#fff;
+      --text:#1b2430;
+      --muted:#697386;
+      --line:#e5e8ed;
+      --green:#18794e;
+      --red:#b42318;
+      --shadow:0 14px 36px rgba(16,28,44,.10);
+      --radius:20px;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      color:var(--text);
+      background:var(--bg);
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    img{display:block;width:100%}
+    .hidden{display:none!important}
+    .container{width:min(1180px,calc(100% - 32px));margin:auto}
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:40;
+      background:rgba(16,28,44,.96);
+      backdrop-filter:blur(12px);
+      color:#fff;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .header-inner{
+      min-height:72px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:20px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      font-weight:800;
+      letter-spacing:-.4px;
+    }
+    .brand-mark{
+      width:38px;
+      height:38px;
+      border-radius:12px;
+      display:grid;
+      place-items:center;
+      color:var(--navy);
+      background:linear-gradient(135deg,var(--gold2),var(--gold));
+    }
+    .header-actions{display:flex;gap:10px}
+    .btn{
+      min-height:46px;
+      padding:0 18px;
+      border:0;
+      border-radius:13px;
+      font-weight:750;
+      transition:.2s ease;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:var(--gold);color:var(--navy)}
+    .btn-dark{background:var(--navy);color:#fff}
+    .btn-light{background:#fff;color:var(--navy);border:1px solid var(--line)}
+    .btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
+    .btn-danger{background:#fff0ee;color:var(--red)}
+    .btn-block{width:100%}
+
+    .hero{
+      color:#fff;
+      padding:74px 0 58px;
+      background:
+        radial-gradient(circle at 85% 20%,rgba(217,172,88,.2),transparent 28%),
+        linear-gradient(135deg,var(--navy),var(--navy2));
+    }
+    .hero-grid{
+      display:grid;
+      grid-template-columns:1.15fr .85fr;
+      gap:48px;
+      align-items:center;
+    }
+    .eyebrow{
+      color:var(--gold2);
+      text-transform:uppercase;
+      letter-spacing:1.6px;
+      font-size:12px;
+      font-weight:800;
+    }
+    h1{
+      margin:12px 0 18px;
+      font-size:clamp(38px,6vw,68px);
+      line-height:.98;
+      letter-spacing:-2.5px;
+    }
+    .hero p{
+      max-width:650px;
+      color:#d9e0e8;
+      font-size:18px;
+      line-height:1.65;
+    }
+    .hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+    .hero-card{
+      padding:26px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:26px;
+      background:rgba(255,255,255,.08);
+      box-shadow:var(--shadow);
+    }
+    .hero-card h2{margin:0 0 6px}
+    .hero-card p{font-size:14px;margin:0 0 20px}
+    .benefit{display:flex;gap:12px;margin:16px 0}
+    .benefit-icon{
+      flex:0 0 34px;
+      height:34px;
+      display:grid;
+      place-items:center;
+      border-radius:10px;
+      background:rgba(217,172,88,.18);
+      color:var(--gold2);
+    }
+    .benefit strong,.benefit small{display:block}
+    .benefit small{color:#c8d0da;margin-top:3px}
+
+    main{padding-bottom:100px}
+    section{padding:58px 0}
+    .section-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:end;
+      gap:20px;
+      margin-bottom:24px;
+    }
+    .section-head h2{margin:0;font-size:30px;letter-spacing:-1px}
+    .section-head p{margin:6px 0 0;color:var(--muted)}
+
+    .wizard{
+      max-width:780px;
+      margin:auto;
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:26px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .wizard-top{padding:24px 26px 0}
+    .wizard-meta{
+      display:flex;
+      justify-content:space-between;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+    }
+    .progress{
+      height:8px;
+      margin-top:12px;
+      border-radius:99px;
+      overflow:hidden;
+      background:#edf0f3;
+    }
+    .progress-bar{
+      height:100%;
+      width:14.28%;
+      background:linear-gradient(90deg,var(--gold),var(--gold2));
+      transition:.3s ease;
+    }
+    .step{padding:28px 26px}
+    .step h2{margin:0 0 8px}
+    .step-description{color:var(--muted);margin:0 0 24px}
+    .options{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+    }
+    .option{
+      min-height:70px;
+      padding:15px;
+      text-align:left;
+      color:var(--text);
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:15px;
+      font-weight:700;
+    }
+    .option:hover{border-color:var(--gold)}
+    .option.selected{
+      border-color:var(--gold);
+      background:#fff9ec;
+      box-shadow:0 0 0 2px rgba(217,172,88,.16);
+    }
+    .wizard-actions{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      padding:0 26px 26px;
+    }
+    .review{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+      margin-top:20px;
+    }
+    .review-item{
+      padding:13px;
+      border-radius:13px;
+      background:#f7f8fa;
+    }
+    .review-item small{display:block;color:var(--muted);margin-bottom:4px}
+
+    .searchbar{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:10px;
+      margin-bottom:18px;
+    }
+    .field{
+      width:100%;
+      min-height:48px;
+      padding:0 14px;
+      border:1px solid var(--line);
+      border-radius:13px;
+      outline:none;
+      background:#fff;
+    }
+    .field:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(217,172,88,.15)}
+
+    .filters{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-bottom:24px;
+    }
+    .filters select{
+      min-height:42px;
+      padding:0 34px 0 12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fff;
+      color:var(--text);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:20px;
+    }
+    .property{
+      overflow:hidden;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:0 7px 24px rgba(16,28,44,.06);
+      transition:.2s ease;
+    }
+    .property:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+    .property-image{height:215px;object-fit:cover}
+    .property-media{position:relative}
+    .match{
+      position:absolute;
+      left:14px;
+      top:14px;
+      padding:7px 10px;
+      border-radius:999px;
+      background:rgba(16,28,44,.92);
+      color:#fff;
+      font-size:12px;
+      font-weight:800;
+    }
+    .save{
+      position:absolute;
+      right:14px;
+      top:14px;
+      width:39px;
+      height:39px;
+      border:0;
+      border-radius:50%;
+      background:#fff;
+      color:var(--navy);
+      font-size:20px;
+      box-shadow:0 5px 16px rgba(0,0,0,.15);
+    }
+    .save.active{color:#d83b42;background:#fff0f1}
+    .property-body{padding:18px}
+    .property-location{color:var(--muted);font-size:13px}
+    .property h3{margin:6px 0 8px;font-size:20px}
+    .price{font-size:22px;font-weight:850;color:var(--navy)}
+    .facts{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin:14px 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .reason{
+      min-height:60px;
+      margin:14px 0;
+      padding:11px;
+      border-radius:12px;
+      background:#f7f8fa;
+      color:#465164;
+      font-size:13px;
+      line-height:1.45;
+    }
+    .property-actions{display:grid;grid-template-columns:1fr auto;gap:9px}
+
+    .empty,.loading,.error{
+      grid-column:1/-1;
+      padding:45px 20px;
+      text-align:center;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+    }
+    .error{color:var(--red)}
+
+    .bottom-nav{
+      display:none;
+      position:fixed;
+      z-index:45;
+      left:12px;
+      right:12px;
+      bottom:12px;
+      grid-template-columns:repeat(4,1fr);
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(255,255,255,.96);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(12px);
+      overflow:hidden;
+    }
+    .bottom-nav button{
+      padding:11px 4px;
+      border:0;
+      background:transparent;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:750;
+    }
+    .bottom-nav span{display:block;font-size:19px;margin-bottom:2px}
+
+    .modal{
+      position:fixed;
+      inset:0;
+      z-index:100;
+      display:grid;
+      place-items:center;
+      padding:18px;
+      background:rgba(7,13,22,.72);
+    }
+    .modal-card{
+      width:min(520px,100%);
+      max-height:92vh;
+      overflow:auto;
+      padding:25px;
+      background:#fff;
+      border-radius:24px;
+      box-shadow:var(--shadow);
+    }
+    .modal-head{display:flex;justify-content:space-between;gap:12px}
+    .modal-head h2{margin:0}
+    .close{
+      width:38px;
+      height:38px;
+      border:0;
+      border-radius:50%;
+      background:#f0f2f4;
+    }
+    .form-group{margin-top:15px}
+    .form-group label{display:block;font-size:13px;font-weight:750;margin-bottom:6px}
+    .consent{
+      display:flex;
+      align-items:flex-start;
+      gap:9px;
+      margin:16px 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+    .feedback{font-size:13px;margin-top:10px}
+    .feedback.success{color:var(--green)}
+    .feedback.error-text{color:var(--red)}
+    .honeypot{position:absolute!important;left:-9999px!important}
+
+    .toast{
+      position:fixed;
+      z-index:200;
+      right:20px;
+      bottom:25px;
+      max-width:340px;
+      padding:13px 17px;
+      border-radius:13px;
+      background:var(--navy);
+      color:#fff;
+      box-shadow:var(--shadow);
+    }
+
+    @media(max-width:900px){
+      .hero-grid{grid-template-columns:1fr}
+      .hero-card{display:none}
+      .grid{grid-template-columns:repeat(2,1fr)}
+    }
+    @media(max-width:640px){
+      .container{width:min(100% - 22px,1180px)}
+      .header-actions .btn-ghost{display:none}
+      .hero{padding:52px 0 42px}
+      h1{letter-spacing:-1.5px}
+      .options,.review,.grid{grid-template-columns:1fr}
+      .section-head{align-items:start;flex-direction:column}
+      .searchbar{grid-template-columns:1fr}
+      .wizard-top,.step{padding-left:18px;padding-right:18px}
+      .wizard-actions{padding-left:18px;padding-right:18px}
+      .bottom-nav{display:grid}
+      main{padding-bottom:105px}
+    }
+  </style>
 </head>
 
-
 <body>
+  <header>
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-mark">Y</div>
+        <div>Ynteligencia</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" id="installButton">Instalar app</button>
+        <button class="btn btn-primary" data-go="quiz">Descobrir meu imóvel</button>
+      </div>
+    </div>
+  </header>
 
+  <main>
+    <section class="hero" id="inicio">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow">Inteligência imobiliária</div>
+          <h1>Encontre o imóvel que faz sentido para você.</h1>
+          <p>Conte suas prioridades e receba recomendações explicadas, ordenadas por compatibilidade com seu momento e seus objetivos.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" data-go="quiz">Descobrir meu imóvel</button>
+            <button class="btn btn-ghost" data-go="explorar">Explorar imóveis</button>
+          </div>
+        </div>
 
-<!-- ===============================
-     HEADER
-================================ -->
+        <aside class="hero-card">
+          <h2>Recomendação com contexto</h2<p>Você entende por que cada imóvel combina com o seu perfil.</p>
 
-<header>
+          <div class="benefit">
+            <div class="benefit-icon">✓</div>
+            <div>
+              <strong>Match calculado</strong>
+              <small>Orçamento, região, dormitórios e prioridades.</small>
+            </div>
+          </div>
 
-  <div class="logo">
-    Y<span>n</span>teligencia
-  </div>
+          <div class="benefit">
+            <div class="benefit-icon">◎</div>
+            <div>
+              <strong>Resultados explicados</strong>
+              <small>Critérios claros, sem percentuais arbitrários.</small>
+            </div>
+          </div>
 
-  <nav class="menu">
-    <a href="#resultado">Resultados</a>
-    <a href="#como-funciona">Como funciona</a>
-    <a href="#explorar">Explorar</a>
+          <div class="benefit">
+            <div class="benefit-icon">♥</div>
+            <div>
+              <strong>Jornada contínua</strong>
+              <small>Perfil e imóveis salvos no seu dispositivo.</small>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Seu perfil</div>
+            <h2>O que você procura?</h2>
+            <p>São sete etapas rápidas. Suas respostas ficam salvas neste dispositivo.</p>
+          </div>
+        </div>
+
+        <div class="wizard">
+          <div class="wizard-top">
+            <div class="wizard-meta">
+              <span id="stepLabel">Etapa 1 de 7</span>
+              <span id="stepPercent">14%</span>
+            </div>
+            <div class="progress">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+          </div>
+
+          <div class="step" id="stepContent"></div>
+
+          <div class="wizard-actions">
+            <button class="btn btn-light" id="previousStep">Voltar</button>
+            <button class="btn btn-dark" id="nextStep">Continuar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="explorar">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Recomendações</div>
+            <h2>Imóveis para o seu momento</h2>
+            <p id="resultsDescription">Explore os imóveis disponíveis ou complete seu perfil para receber matches personalizados.</p>
+          </div>
+          <button class="btn btn-light" data-go="quiz">Editar perfil</button>
+        </div>
+
+        <div class="searchbar">
+          <input class="field" id="searchInput" type="search" placeholder="Busque por bairro ou empreendimento" aria-label="Buscar imóveis">
+          <button class="btn btn-dark" id="searchButton">Buscar</button>
+        </div>
+
+        <div class="filters">
+          <select id="regionFilter" aria-label="Filtrar por região">
+            <option value="">Todas as regiões</option>
+            <option value="Perdizes">Perdizes</option>
+            <option value="Pinheiros">Pinheiros</option>
+            <option value="Vila Madalena">Vila Madalena</option>
+            <option value="Moema">Moema</option>
+            <option value="Chácara Klabin">Chácara Klabin</option>
+            <option value="João Dias">João Dias</option>
+          </select>
+
+          <select id="bedroomFilter" aria-label="Filtrar por dormitórios">
+            <option value="">Todos os dormitórios</option>
+            <option value="0">Studio</option>
+            <option value="1">1 dormitório</option>
+            <option value="2">2 dormitórios</option>
+            <option value="3">3 ou mais</option>
+          </select>
+
+          <select id="priceFilter" aria-label="Filtrar por preço">
+            <option value="">Qualquer preço</option>
+            <option value="400000">Até R$ 400 mil</option>
+            <option value="600000">Até R$ 600 mil</option>
+            <option value="900000">Até R$ 900 mil</option>
+          </select>
+
+          <button class="btn btn-light" id="clearFilters">Limpar filtros</button>
+        </div>
+
+        <div class="grid" id="propertyGrid">
+          <div class="loading">Carregando imóveis...</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="salvos">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Favoritos</div>
+            <h2>Imóveis salvos</h2>
+            <p>Reveja as opções que chamaram sua atenção.</p>
+          </div>
+        </div>
+        <div class="grid" id="savedGrid"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Navegação principal">
+    <button data-go="inicio"><span>⌂</span>Início</button>
+    <button data-go="explorar"><span>⌕</span>Explorar</button>
+    <button data-go="salvos"><span>♡</span>Salvos</button>
+    <button data-go="quiz"><span>◉</span>Perfil</button>
   </nav>
 
-  <button
-    id="installHeader"
-    class="install-header"
-    onclick="installApp()">
-    ＋ Instalar
-  </button>
-
-</header>
-
-
-<!-- ===============================
-     HERO
-================================ -->
-
-<section class="hero">
-
-  <div class="hero-inner">
-
-    <div class="tag">
-      INTELIGÊNCIA IMOBILIÁRIA
-    </div>
-
-    <h1>
-      Encontre o imóvel que
-      <span>faz sentido</span> para você.
-    </h1>
-
-    <p>
-      Conte o que você procura. A Ynteligencia cruza suas preferências
-      com os imóveis disponíveis e encontra as melhores combinações.
-    </p>
-
-    <div class="hero-buttons">
-
-      <button
-        class="btn primary"
-        onclick="startProfile()">
-        Descobrir meu imóvel
-      </button>
-
-      <button
-        class="btn secondary"
-        onclick="scrollExplore()">
-        Explorar imóveis
-      </button>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-<main>
-
-
-<!-- ===============================
-     PERFIL
-================================ -->
-
-<section class="profile-box" id="perfil">
-
-  <div class="progress-info">
-    <span id="progressText">1 de 7</span>
-    <span>Seu perfil imobiliário</span>
-  </div>
-
-  <div class="progress">
-    <div
-      class="progress-bar"
-      id="progressBar">
-    </div>
-  </div>
-
-
-  <!-- PASSO 1 -->
-
-  <div
-    class="step active"
-    data-step="1">
-
-    <h2>Você procura imóvel para quê?</h2>
-
-    <p class="step-description">
-      Vamos começar entendendo sua intenção.
-    </p>
-
-    <div class="options">
-
-      <button class="option"
-        onclick="choose(this,'purpose','Morar')">
-        <strong>🏠 Morar</strong>
-        <small>Quero encontrar meu próximo lar.</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'purpose','Investir')">
-        <strong>📈 Investir</strong>
-        <small>Busco uma oportunidade.</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'purpose','Alugar')">
-        <strong>🔑 Alugar</strong>
-        <small>Quero encontrar um imóvel para locação.</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'purpose','Pesquisar')">
-        <strong>💡 Pesquisar</strong>
-        <small>Ainda estou avaliando.</small>
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <!-- PASSO 2 -->
-
-  <div
-    class="step"
-    data-step="2">
-
-    <h2>Onde você gostaria de morar?</h2>
-
-    <p class="step-description">
-      Escolha a região que mais interessa.
-    </p>
-
-    <div class="options">
-
-      <button class="option"
-        onclick="choose(this,'region','Perdizes')">
-        <strong>Perdizes</strong>
-        <small>Zona Oeste</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'region','Pinheiros')">
-        <strong>Pinheiros</strong>
-        <small>Zona Oeste</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'region','Vila Madalena')">
-        <strong>Vila Madalena</strong>
-        <small>Zona Oeste</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'region','Moema')">
-        <strong>Moema</strong>
-        <small>Zona Sul</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'region','Chácara Klabin')">
-        <strong>Chácara Klabin</strong>
-        <small>Zona Sul</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'region','Outra')">
-        <strong>Outra região</strong>
-        <small>Quero ampliar minha busca.</small>
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <!-- PASSO 3 -->
-
-  <div
-    class="step"
-    data-step="3">
-
-    <h2>Qual é seu orçamento?</h2>
-
-    <p class="step-description">
-      Pode ser uma estimativa.
-    </p>
-
-    <div class="options">
-
-      <button class="option"
-        onclick="choose(this,'budget','Até R$ 400 mil')">
-        <strong>Até R$ 400 mil</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'budget','R$ 400–600 mil')">
-        <strong>R$ 400–600 mil</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'budget','R$ 600–900 mil')">
-        <strong>R$ 600–900 mil</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'budget','Acima de R$ 900 mil')">
-        <strong>Acima de R$ 900 mil</strong>
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <!-- PASSO 4 -->
-
-  <div
-    class="step"
-    data-step="4">
-
-    <h2>Quantos dormitórios?</h2>
-
-    <p class="step-description">
-      Qual configuração você procura?
-    </p>
-
-    <div class="options">
-
-      <button class="option"
-        onclick="choose(this,'bedrooms','Studio')">
-        <strong>Studio</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'bedrooms','1 dormitório')">
-        <strong>1 dormitório</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'bedrooms','2 dormitórios')">
-        <strong>2 dormitórios</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'bedrooms','3+ dormitórios')">
-        <strong>3 ou mais</strong>
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <!-- PASSO 5 -->
-
-  <div
-    class="step"
-    data-step="5">
-
-    <h2>O que é importante para você?</h2>
-
-    <p class="step-description">
-      Escolha sua prioridade.
-    </p>
-
-    <div class="options">
-
-      <button class="option"
-        onclick="choose(this,'feature','Varanda')">
-        <strong>🌿 Varanda</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'feature','Vaga')">
-        <strong>🚗 Vaga</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'feature','Piscina')">
-        <strong>🏊 Piscina</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'feature','Metrô')">
-        <strong>🚇 Próximo ao metrô</strong>
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <!-- PASSO 6 -->
-
-  <div
-    class="step"
-    data-step="6">
-
-    <h2>Quando pretende comprar?</h2>
-
-    <p class="step-description">
-      Não precisa ter certeza.
-    </p>
-
-    <div class="options">
-
-      <button class="option"
-        onclick="choose(this,'timing','Agora')">
-        <strong>Agora</strong>
-        <small>Estou procurando ativamente.</small>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'timing','1–3 meses')">
-        <strong>1–3 meses</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'timing','3–6 meses')">
-        <strong>3–6 meses</strong>
-      </button>
-
-      <button class="option"
-        onclick="choose(this,'timing','Pesquisando')">
-        <strong>Só pesquisando</strong>
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <!-- PASSO 7 -->
-
-  <div
-    class="step"
-    data-step="7">
-
-    <h2>
-      Pronto para encontrar seu imóvel?
-    </h2>
-
-    <p class="step-description">
-      A Ynteligencia vai cruzar suas respostas e apresentar
-      as melhores combinações.
-    </p>
-
-    <div style="
-      background:#f6f7f9;
-      border-radius:16px;
-      padding:20px;
-      line-height:1.8;
-      font-size:14px;
-    ">
-
-      <strong>Seu perfil</strong>
-
-      <div
-        id="summary"
-        style="color:#687386;margin-top:8px;">
+  <div class="modal hidden" id="leadModal" role="dialog" aria-modal="true" aria-labelledby="leadTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">Fale com um especialista</div>
+          <h2 id="leadTitle">Quero conhecer</h2>
+        </div>
+        <button class="close" id="closeModal" aria-label="Fechar">×</button>
       </div>
 
-    </div>
+      <p id="selectedPropertyText"></p>
 
-  </div>
+      <form id="leadForm">
+        <input type="hidden" id="propertyId" name="property_id">
 
-
-  <div class="step-buttons">
-
-    <button
-      class="back"
-      id="back"
-      onclick="backStep()">
-      ← Voltar
-    </button>
-
-    <button
-      class="continue"
-      id="continue"
-      onclick="nextStep()">
-      Continuar →
-    </button>
-
-  </div>
-
-</section>
-
-
-<!-- ===============================
-     RESULTADOS
-================================ -->
-
-<section
-  class="results"
-  id="resultado">
-
-  <div class="result-header">
-
-    <small>YNTELIGENCIA MATCH</small>
-
-    <h2>
-      Encontramos imóveis para você.
-    </h2>
-
-    <p>
-      Selecionamos as opções mais compatíveis com seu perfil.
-    </p>
-
-  </div>
-
-
-  <div
-    class="install-card"
-    id="installCard">
-
-    <div class="install-content">
-
-      <div class="install-icon">
-        📲
-      </div>
-
-      <div class="install-text">
-
-        <strong>
-          Continue sua busca no celular
-        </strong>
-
-        <p>
-          Instale a Ynteligencia e deixe suas recomendações
-          sempre à mão.
-        </p>
-
-      </div>
-
-    </div>
-
-    <button
-      class="install-btn"
-      onclick="installApp()">
-      Instalar Ynteligencia
-    </button>
-
-  </div>
-
-
-  <div
-    class="cards"
-    id="cards">
-  </div>
-
-</section>
-
-
-<!-- ===============================
-     COMO FUNCIONA
-================================ -->
-
-<section
-  class="section"
-  id="como-funciona">
-
-  <h2>
-    Não procure entre milhares.
-  </h2>
-
-  <p class="section-sub">
-    Deixe a Ynteligencia procurar por você.
-  </p>
-
-  <div class="steps">
-
-    <div class="how">
-      <div class="number">1</div>
-      <h3>Conte o que você procura</h3>
-      <p>
-        Região, orçamento, dormitórios e aquilo
-        que realmente importa para você.
-      </p>
-    </div>
-
-    <div class="how">
-      <div class="number">2</div>
-      <h3>A Ynteligencia cruza os dados</h3>
-      <p>
-        Seu perfil é comparado com o inventário disponível.
-      </p>
-    </div>
-
-    <div class="how">
-      <div class="number">3</div>
-      <h3>Receba seus melhores matches</h3>
-      <p>
-        Em vez de milhares de anúncios, você recebe
-        uma seleção relevante.
-      </p>
-    </div>
-
-  </div>
-
-</section>
-
-
-<!-- ===============================
-     EXPLORAR
-================================ -->
-
-<section
-  class="section"
-  id="explorar">
-
-  <h2>
-    Prefere procurar sozinho?
-  </h2>
-
-  <p class="section-sub">
-    Explore imóveis por bairro ou empreendimento.
-  </p>
-
-  <div class="search">
-
-    <input
-      id="search"
-      type="text"
-      placeholder="Ex.: Perdizes, Pinheiros, Well..."
-    >
-
-    <button
-      class="btn primary"
-      onclick="searchProperties()">
-      Buscar
-    </button>
-
-  </div>
-
-</section>
-
-</main>
-
-
-<!-- ===============================
-     FOOTER
-================================ -->
-
-<footer>
-
-  <strong>Ynteligencia</strong>
-  · Inteligência imobiliária
-
-  <br><br>
-
-  Encontre o imóvel que faz sentido para você.
-
-</footer>
-
-
-<!-- ===============================
-     NAVEGAÇÃO MOBILE
-================================ -->
-
-<nav class="bottom-nav">
-
-  <button onclick="window.scrollTo({top:0,behavior:'smooth'})">
-    🏠<br>Início
-  </button>
-
-  <button onclick="scrollExplore()">
-    🔎<br>Explorar
-  </button>
-
-  <button onclick="showFavorites()">
-    ♡<br>Salvos
-  </button>
-
-  <button onclick="startProfile()">
-    ●<br>Perfil
-  </button>
-
-</nav>
-
-
-<!-- ===============================
-     MODAL INSTALAÇÃO
-================================ -->
-
-<div
-  class="install-modal"
-  id="installModal">
-
-  <div class="install-modal-box">
-
-    <h2>
-      Instalar Ynteligencia
-    </h2>
-
-    <p id="installModalText">
-      Tenha a Ynteligencia sempre à mão para acompanhar
-      seus imóveis recomendados.
-    </p>
-
-    <div
-      class="install-steps"
-      id="androidInstructions"
-      style="display:none;">
-
-      <div class="install-step">
-
-        <div class="install-step-number">1</div>
-
-        <div class="install-step-text">
-          Toque em <strong>Instalar</strong> quando o navegador solicitar.
+        <div class="honeypot" aria-hidden="true">
+          <label for="company">Não preencha este campo</label>
+          <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
         </div>
 
-      </div>
-
-    </div>
-
-
-    <div
-      class="install-steps"
-      id="iosInstructions"
-      style="display:none;">
-
-      <div class="install-step">
-
-        <div class="install-step-number">1</div>
-
-        <div class="install-step-text">
-          Toque no botão <strong>Compartilhar</strong>
-          do Safari.
+        <div class="form-group">
+          <label for="leadName">Nome</label>
+          <input class="field" id="leadName" name="name" maxlength="100" required autocomplete="name">
         </div>
 
-      </div>
-
-      <div class="install-step">
-
-        <div class="install-step-number">2</div>
-
-        <div class="install-step-text">
-          Role o menu e escolha
-          <strong>Adicionar à Tela de Início</strong>.
+        <div class="form-group">
+          <label for="leadWhatsapp">WhatsApp</label>
+          <input class="field" id="leadWhatsapp" name="whatsapp" type="tel" maxlength="20" required autocomplete="tel" placeholder="(11) 99999-9999">
         </div>
 
-      </div>
-
-      <div class="install-step">
-
-        <div class="install-step-number">3</div>
-
-        <div class="install-step-text">
-          Toque em <strong>Adicionar</strong>.
+        <div class="form-group">
+          <label for="leadEmail">E-mail</label>
+          <input class="field" id="leadEmail" name="email" type="email" maxlength="160" required autocomplete="email">
         </div>
 
-      </div>
-
-    </div>
-
-    <button
-      class="close-install"
-      onclick="closeInstallModal()">
-      Agora não
-    </button>
-
-  </div>
-
-</div>
-
-
-<!-- ===============================
-     MODAL LEAD
-================================ -->
-
-<div
-  class="lead-modal"
-  id="leadModal">
-
-  <div class="lead-box">
-
-    <div class="lead-top">
-
-      <div>
-
-        <h2>
-          Vamos avançar?
-        </h2>
-
-        <p class="lead-subtitle">
-          Deixe seus dados e um especialista poderá
-          apresentar esse imóvel para você.
-        </p>
-
-      </div>
-
-      <button
-        class="close-lead"
-        onclick="closeLeadModal()">
-        ×
-      </button>
-
-    </div>
-
-
-    <div
-      class="lead-property"
-      id="leadProperty">
-    </div>
-
-
-    <form
-      id="leadForm"
-      onsubmit="submitLead(event)">
-
-      <div class="form-group">
-
-        <label for="leadName">
-          Nome
+        <label class="consent">
+          <input id="leadConsent" name="consent" type="checkbox" required>
+          <span>Autorizo o uso dos meus dados para receber contato sobre este imóvel, conforme a política de privacidade. Posso solicitar correção ou exclusão dos dados.</span>
         </label>
 
-        <input
-          id="leadName"
-          type="text"
-          placeholder="Seu nome"
-          autocomplete="name"
-          required>
-
-      </div>
-
-
-      <div class="form-group">
-
-        <label for="leadPhone">
-          WhatsApp
-        </label>
-
-        <input
-          id="leadPhone"
-          type="tel"
-          placeholder="(11) 99999-9999"
-          autocomplete="tel"
-          required>
-
-      </div>
-
-
-      <div class="form-group">
-
-        <label for="leadEmail">
-          E-mail
-        </label>
-
-        <input
-          id="leadEmail"
-          type="email"
-          placeholder="seuemail@email.com"
-          autocomplete="email"
-          required>
-
-      </div>
-
-
-      <div
-        id="leadMessage"
-        class="lead-message">
-      </div>
-
-
-      <button
-        id="leadSubmit"
-        class="lead-submit"
-        type="submit">
-
-        Quero conhecer este imóvel
-
-      </button>
-
-      <div class="lead-privacy">
-        Seus dados serão utilizados para dar continuidade
-        ao atendimento sobre este imóvel.
-      </div>
-
-    </form>
-
+        <button class="btn btn-primary btn-block" id="submitLead" type="submit">Solicitar contato</button>
+        <div class="feedback" id="leadFeedback" aria-live="polite"></div>
+      </form>
+    </div>
   </div>
 
-</div>
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
+  <script>
+    const CONFIG = {
+      supabaseUrl: "https://wzaegidwtdjuhqchpdpd.supabase.co",
+      supabaseAnonKey: "INFORME_A_CHAVE_PUBLICA_ANON",
+      tables: {
+        leads: "leads",
+        events: "events"
+      }
+    };
 
-<!-- ===============================
-     SUPABASE
-================================ -->
+    const properties = [
+      {
+        id: "well-perdizes",
+        source: "demo",
+        name: "Well Perdizes",
+        region: "Perdizes",
+        price: 340000,
+        bedrooms: 1,
+        area: 31,
+        parking: 0,
+        features: ["Piscina", "Metrô"],
+        purposes: ["Morar", "Investir", "Alugar"],
+        image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "vila-madalena-residence",
+        source: "demo",
+        name: "Vila Madalena Residence",
+        region: "Vila Madalena",
+        price: 590000,
+        bedrooms: 2,
+        area: 58,
+        parking: 1,
+        features: ["Varanda", "Vaga", "Metrô"],
+        purposes: ["Morar", "Investir"],
+        image: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "studio-pinheiros",
+        source: "demo",
+        name: "Studio Pinheiros",
+        region: "Pinheiros",
+        price: 399000,
+        bedrooms: 0,
+        area: 27,
+        parking: 0,
+        features: ["Piscina", "Metrô"],
+        purposes: ["Morar", "Investir", "Alugar"],
+        image: "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "moema-living",
+        source: "demo",
+        name: "Moema Living",
+        region: "Moema",
+        price: 720000,
+        bedrooms: 2,
+        area: 66,
+        parking: 1,
+        features: ["Varanda", "Vaga", "Piscina", "Metrô"],
+        purposes: ["Morar", "Investir"],
+        image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "klabin-residence",
+        source: "demo",
+        name: "Klabin Residence",
+        region: "Chácara Klabin",
+        price: 389000,
+        bedrooms: 1,
+        area: 35,
+        parking: 1,
+        features: ["Varanda", "Vaga", "Metrô"],
+        purposes: ["Morar", "Investir", "Alugar"],
+        image: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        id: "joao-dias-living",
+        source: "demo",
+        name: "João Dias Living",
+        region: "João Dias",
+        price: 320000,
+        bedrooms: 2,
+        area: 49,
+        parking: 1,
+        features: ["Varanda", "Vaga", "Piscina"],
+        purposes: ["Morar", "Investir"],
+        image: "https://images.unsplash.com/photo-1600573472592-401b489a3cdc?auto=format&fit=crop&w=1200&q=80"
+      }
+    ];
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    const questions = [
+      {
+        key: "purpose",
+        title: "Qual é o seu objetivo?",
+        description: "Isso ajuda a ajustar o tipo de oportunidade recomendado.",
+        options: ["Morar", "Investir", "Alugar", "Pesquisar"]
+      },
+      {
+        key: "region",
+        title: "Qual região você prefere?",
+        description: "Escolha a localização principal da sua busca.",
+        options: ["Perdizes", "Pinheiros", "Vila Madalena", "Moema", "Chácara Klabin", "Outra"]
+      },
+      {
+        key: "budget",
+        title: "Qual é o seu orçamento?",
+        description: "Usaremos a faixa como referência para ordenar os resultados.",
+        options: ["Até R$ 400 mil", "R$ 400 a 600 mil", "R$ 600 a 900 mil", "Acima de R$ 900 mil"]
+      },
+      {
+        key: "bedrooms",
+        title: "Quantos dormitórios?",
+        description: "Escolha a configuração mais adequada.",
+        options: ["Studio", "1 dormitório", "2 dormitórios", "3 ou mais"]
+      },
+      {
+        key: "priority",
+        title: "Qual é a sua prioridade?",
+        description: "O item que mais influencia sua decisão.",
+        options: ["Varanda", "Vaga", "Piscina", "Metrô"]
+      },
+      {
+        key: "timing",
+        title: "Quando pretende avançar?",
+        description: "Essa informação ajuda a personalizar o atendimento.",
+        options: ["Agora", "1 a 3 meses", "3 a 6 meses", "Estou pesquisando"]
+      },
+      {
+        key: "confirmation",
+        title: "Revise seu perfil",
+        description: "Confirme as respostas para calcular seus melhores matches.",
+        options: []
+      }
+    ];
 
+    const STORAGE = {
+      session: "ynteligencia_session_id",
+      profile: "ynteligencia_profile",
+      saved: "ynteligencia_saved",
+      startedAt: "ynteligencia_profile_started_at"
+    };
 
-<script>
+    let currentStep = 0;
+    let profile = readJSON(STORAGE.profile, {});
+    let saved = readJSON(STORAGE.saved, []);
+    let installPrompt = null;
+    let leadOpenedAt = 0;
 
-/* =========================================================
-   SUPABASE
-========================================================= */
+    const stepContent = document.getElementById("stepContent");
+    const previousStep = document.getElementById("previousStep");
+    const nextStep = document.getElementById("nextStep");
+    const propertyGrid = document.getElementById("propertyGrid");
+    const savedGrid = document.getElementById("savedGrid");
+    const modal = document.getElementById("leadModal");
+    const leadForm = document.getElementById("leadForm");
 
-const SUPABASE_URL =
-  "https://wzaegidwtdjuhqchpdpd.supabase.co";
-
-const SUPABASE_PUBLISHABLE_KEY =
-  "sb_publishable_YmN9DjeDgog_mlVw9EsDUQ_Z-4MJKsp";
-
-const supabaseClient =
-  window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_PUBLISHABLE_KEY
-  );
-
-
-/* =========================================================
-   SESSION ID
-========================================================= */
-
-function createUUID(){
-
-  if(window.crypto && crypto.randomUUID){
-
-    return crypto.randomUUID();
-
-  }
-
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-    /[xy]/g,
-    function(c){
-
-      const r =
-        Math.random() * 16 | 0;
-
-      const v =
-        c === "x"
-        ? r
-        : (r & 0x3 | 0x8);
-
-      return v.toString(16);
-
+    function readJSON(key, fallback) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key));
+        return value ?? fallback;
+      } catch {
+        return fallback;
+      }
     }
-  );
 
-}
+    function createSessionId() {
+      if (crypto?.randomUUID) return crypto.randomUUID();
+      return "session-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    }
 
+    function getSessionId() {
+      let id = localStorage.getItem(STORAGE.session);
+      if (!id) {
+        id = createSessionId();
+        localStorage.setItem(STORAGE.session, id);
+      }
+      return id;
+    }
 
-let sessionId =
-  localStorage.getItem(
-    "ynteligencia_session_id"
-  );
+    function escapeHTML(value = "") {
+      return String(value).replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[character]));
+    }
 
+    function normalizeText(value = "") {
+      return value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+    }
 
-if(!sessionId){
+    function money(value) {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0
+      }).format(value);
+    }
 
-  sessionId = createUUID();
+    function isSupabaseConfigured() {
+      return CONFIG.supabaseAnonKey &&
+        !CONFIG.supabaseAnonKey.includes("INFORME_");
+    }
 
-  localStorage.setItem(
-    "ynteligencia_session_id",
-    sessionId
-  );
+    async function insertSupabase(table, payload) {
+      if (!isSupabaseConfigured()) {
+        console.info("Supabase pendente de configuração:", table, payload);
+        return { localOnly: true };
+      }
 
-}
-
-
-/* =========================================================
-   TRACKING
-========================================================= */
-
-async function trackEvent(
-  eventType,
-  property = null,
-  metadata = {}
-){
-
-  try{
-
-    await supabaseClient
-      .from("events")
-      .insert({
-
-        session_id:sessionId,
-
-        property_id:null,
-
-        event_type:eventType,
-
-        metadata:{
-          ...metadata,
-
-          property:
-            property
-            ? {
-                name:property.name,
-                neighborhood:property.neighborhood,
-                price:property.price,
-                bedrooms:property.bedrooms,
-                size:property.size
-              }
-            : null
-
-        }
-
-      });
-
-  }catch(error){
-
-    console.warn(
-      "Ynteligencia tracking:",
-      error
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   CADASTRA VISITANTE
-========================================================= */
-
-async function registerBuyer(){
-
-  try{
-
-    await supabaseClient
-      .from("buyers")
-      .upsert(
+      const response = await fetch(
+        `${CONFIG.supabaseUrl}/rest/v1/${encodeURIComponent(table)}`,
         {
-          session_id:sessionId,
-          source:"ynteligencia"
-        },
-        {
-          onConflict:"session_id"
+          method: "POST",
+          headers: {
+            apikey: CONFIG.supabaseAnonKey,
+            Authorization: `Bearer ${CONFIG.supabaseAnonKey}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal"
+          },
+          body: JSON.stringify(payload)
         }
       );
 
-  }catch(error){
+      if (!response.ok) {
+        throw new Error(`Falha no Supabase: ${response.status}`);
+      }
 
-    console.warn(
-      "Ynteligencia buyer:",
-      error
-    );
+      return { success: true };
+    }
 
-  }
+    async function track(eventName, data = {}) {
+      const payload = {
+        event_name: eventName,
+        session_id: getSessionId(),
+        event_data: data,
+        page_path: location.pathname,
+        created_at: new Date().toISOString()
+      };
 
-}
+      try {
+        await insertSupabase(CONFIG.tables.events, payload);
+      } catch (error) {
+        console.warn("Evento não registrado:", error.message);
+      }
+    }
 
+    function saveProfile() {
+      localStorage.setItem(STORAGE.profile, JSON.stringify(profile));
+    }
 
-/* =========================================================
-   SALVA PERFIL NO SUPABASE
-========================================================= */
+    function renderStep() {
+      const question = questions[currentStep];
+      const progress = Math.round(((currentStep + 1) / questions.length) * 100);
 
-async function saveProfileToSupabase(){
+      document.getElementById("stepLabel").textContent =
+        `Etapa ${currentStep + 1} de ${questions.length}`;
+      document.getElementById("stepPercent").textContent = `${progress}%`;```html
+document.getElementById("progressBar").style.width = `${progress}%`;
 
-  try{
-
-    await supabaseClient
-      .from("buyer_preferences")
-      .insert({
-
-        buyer_id:null,
-
-        session_id:sessionId,
-
-        purpose:profile.purpose || null,
-
-        region:profile.region || null,
-
-        budget_min:
-          getBudgetMin(profile.budget),
-
-        budget_max:
-          getBudgetMax(profile.budget),
-
-        bedrooms:
-          profile.bedrooms || null,
-
-        wants_balcony:
-          profile.feature === "Varanda",
-
-        wants_parking:
-          profile.feature === "Vaga",
-
-        wants_pool:
-          profile.feature === "Piscina",
-
-        wants_metro:
-          profile.feature === "Metrô",
-
-        purchase_timing:
-          profile.timing || null
-
-      });
-
-  }catch(error){
-
-    console.warn(
-      "Ynteligencia preferences:",
-      error
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   CONVERTE ORÇAMENTO
-========================================================= */
-
-function getBudgetMin(budget){
-
-  if(budget === "R$ 400–600 mil"){
-    return 400000;
-  }
-
-  if(budget === "R$ 600–900 mil"){
-    return 600000;
-  }
-
-  if(budget === "Acima de R$ 900 mil"){
-    return 900000;
-  }
-
-  if(budget === "Até R$ 400 mil"){
-    return 0;
-  }
-
-  return null;
-
-}
-
-
-function getBudgetMax(budget){
-
-  if(budget === "Até R$ 400 mil"){
-    return 400000;
-  }
-
-  if(budget === "R$ 400–600 mil"){
-    return 600000;
-  }
-
-  if(budget === "R$ 600–900 mil"){
-    return 900000;
-  }
-
-  if(budget === "Acima de R$ 900 mil"){
-    return null;
-  }
-
-  return null;
-
-}
-
-
-/* =========================================================
-   DADOS DEMONSTRATIVOS
-========================================================= */
-
-const properties = [
-
-  {
-    name:"Well Perdizes",
-    neighborhood:"Perdizes",
-    price:340000,
-    bedrooms:2,
-    size:40,
-    image:"https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=80",
-    score:96,
-    reasons:[
-      "Região desejada",
-      "2 dormitórios",
-      "Varanda",
-      "Faixa de preço compatível"
-    ]
-  },
-
-  {
-    name:"Vila Madalena Residence",
-    neighborhood:"Vila Madalena",
-    price:590000,
-    bedrooms:2,
-    size:54,
-    image:"https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1000&q=80",
-    score:91,
-    reasons:[
-      "Região desejada",
-      "Boa metragem",
-      "2 dormitórios"
-    ]
-  },
-
-  {
-    name:"Studio Pinheiros",
-    neighborhood:"Pinheiros",
-    price:399000,
-    bedrooms:1,
-    size:29,
-    image:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
-    score:88,
-    reasons:[
-      "Próximo ao metrô",
-      "Excelente localização",
-      "Faixa de preço compatível"
-    ]
-  },
-
-  {
-    name:"Moema Living",
-    neighborhood:"Moema",
-    price:720000,
-    bedrooms:2,
-    size:61,
-    image:"https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1000&q=80",
-    score:84,
-    reasons:[
-      "Boa metragem",
-      "2 dormitórios",
-      "Região valorizada"
-    ]
-  },
-
-  {
-    name:"Klabin Residence",
-    neighborhood:"Chácara Klabin",
-    price:389000,
-    bedrooms:2,
-    size:40,
-    image:"https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1000&q=80",
-    score:82,
-    reasons:[
-      "2 dormitórios",
-      "Boa relação preço/m²",
-      "Região compatível"
-    ]
-  },
-
-  {
-    name:"João Dias Living",
-    neighborhood:"João Dias",
-    price:320000,
-    bedrooms:2,
-    size:42,
-    image:"https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1000&q=80",
-    score:79,
-    reasons:[
-      "Preço compatível",
-      "2 dormitórios",
-      "Boa metragem"
-    ]
-  }
-
-];
-
-
-/* =========================================================
-   PERFIL
-========================================================= */
-
-let step = 1;
-
-const total = 7;
-
-const profile = {
-
-  purpose:"",
-  region:"",
-  budget:"",
-  bedrooms:"",
-  feature:"",
-  timing:""
-
+if (currentStep === questions.length - 1) {
+const labels = {
+purpose: "Objetivo",
+region: "Região",
+budget: "Orçamento",
+bedrooms: "Dormitórios",
+priority: "Prioridade",
+timing: "Prazo"
 };
 
-
-/* =========================================================
-   INÍCIO DO PERFIL
-========================================================= */
-
-function startProfile(){
-
-  trackEvent(
-    "profile_started"
-  );
-
-  document
-    .getElementById("perfil")
-    .scrollIntoView({
-      behavior:"smooth"
-    });
-
+stepContent.innerHTML = `
+<h2>${question.title}</h2>
+<p class="step-description">${question.description}</p>
+<div class="review">
+${Object.entries(labels).map(([key, label]) => `
+<div class="review-item">
+<small>${label}</small>
+<strong>${escapeHTML(profile[key] || "Não informado")}</strong>
+</div>
+`).join("")}
+</div>
+`;
+} else {
+stepContent.innerHTML = `
+<h2>${question.title}</h2>
+<p class="step-description">${question.description}</p>
+<div class="options">
+${question.options.map(option => `
+<button
+type="button"
+class="option ${profile[question.key] === option ? "selected" : ""}"
+data-profile-key="${question.key}"
+data-profile-value="${escapeHTML(option)}"
+>
+${escapeHTML(option)}
+</button>
+`).join("")}
+</div>
+`;
 }
 
+previousStep.disabled = currentStep === 0;
+previousStep.style.visibility = currentStep === 0 ? "hidden" : "visible";
+nextStep.textContent =
+currentStep === questions.length - 1
+? "Ver meus resultados"
+: "Continuar";
 
-/* =========================================================
-   ESCOLHA
-========================================================= */
-
-function choose(
-  button,
-  key,
-  value
-){
-
-  const parent =
-    button.parentElement;
-
-  parent
-    .querySelectorAll(".option")
-    .forEach(el=>{
-
-      el.classList.remove(
-        "selected"
-      );
-
-    });
-
-  button.classList.add(
-    "selected"
-  );
-
-  profile[key] =
-    value;
-
+updateNextButton();
+track("onboarding_step_view", {
+step: currentStep + 1,
+key: question.key
+});
 }
 
+function updateNextButton() {
+const question = questions[currentStep];
+const canContinue =
+currentStep === questions.length - 1 ||
+Boolean(profile[question.key]);
 
-/* =========================================================
-   ATUALIZA ETAPA
-========================================================= */
-
-function update(){
-
-  document
-    .querySelectorAll(".step")
-    .forEach(el=>{
-
-      el.classList.remove(
-        "active"
-      );
-
-    });
-
-  document
-    .querySelector(
-      `.step[data-step="${step}"]`
-    )
-    .classList.add(
-      "active"
-    );
-
-
-  document
-    .getElementById("progressText")
-    .textContent =
-      step + " de " + total;
-
-
-  document
-    .getElementById("progressBar")
-    .style.width =
-      ((step / total) * 100) + "%";
-
-
-  document
-    .getElementById("back")
-    .style.visibility =
-      step === 1
-      ? "hidden"
-      : "visible";
-
-
-  document
-    .getElementById("continue")
-    .textContent =
-      step === total
-      ? "Encontrar meus imóveis →"
-      : "Continuar →";
-
-
-  if(step === 7){
-
-    document
-      .getElementById("summary")
-      .innerHTML = `
-
-        <strong>Objetivo:</strong>
-        ${profile.purpose || "—"}<br>
-
-        <strong>Região:</strong>
-        ${profile.region || "—"}<br>
-
-        <strong>Orçamento:</strong>
-        ${profile.budget || "—"}<br>
-
-        <strong>Dormitórios:</strong>
-        ${profile.bedrooms || "—"}<br>
-
-        <strong>Prioridade:</strong>
-        ${profile.feature || "—"}<br>
-
-        <strong>Prazo:</strong>
-        ${profile.timing || "—"}
-
-      `;
-
-  }
-
+nextStep.disabled = !canContinue;
+nextStep.style.opacity = canContinue ? "1" : ".5";
+nextStep.style.cursor = canContinue ? "pointer" : "not-allowed";
 }
 
+stepContent.addEventListener("click", event => {
+const option = event.target.closest("[data-profile-key]");
+if (!option) return;
 
-/* =========================================================
-   PRÓXIMA ETAPA
-========================================================= */
+const key = option.dataset.profileKey;
+const value = option.dataset.profileValue;
 
-function nextStep(){
+profile[key] = value;
+profile.updated_at = new Date().toISOString();
+saveProfile();
 
-  if(step < total){
+stepContent.querySelectorAll(".option").forEach(button => {
+button.classList.toggle("selected", button === option);
+});
 
-    step++;
+updateNextButton();
+});
 
-    update();
+previousStep.addEventListener("click", () => {
+if (currentStep > 0) {
+currentStep -= 1;
+renderStep();
+}
+});
 
-  }else{
+nextStep.addEventListener("click", async () => {
+const question = questions[currentStep];
 
-    showResults();
-
-  }
-
+if (
+currentStep < questions.length - 1 &&
+!profile[question.key]
+) {
+showToast("Selecione uma opção para continuar.");
+return;
 }
 
-
-/* =========================================================
-   VOLTAR
-========================================================= */
-
-function backStep(){
-
-  if(step > 1){
-
-    step--;
-
-    update();
-
-  }
-
+if (currentStep < questions.length - 1) {
+currentStep += 1;
+renderStep();
+return;
 }
 
+profile.completed = true;
+profile.completed_at = new Date().toISOString();
+saveProfile();
 
-/* =========================================================
-   RESULTADOS
-========================================================= */
+await track("profile_completed", {
+profile,
+duration_seconds: getProfileDuration()
+});
 
-function showResults(){
+renderProperties();
+document.getElementById("resultsDescription").textContent =
+"Resultados ordenados pela compatibilidade com o seu perfil.";
 
-  const cards =
-    document.getElementById(
-      "cards"
-    );
+goTo("explorar");
+showToast("Perfil concluído. Seus matches foram calculados.");
+});
 
-  cards.innerHTML = "";
-
-
-  properties.forEach(
-    property=>{
-
-      cards.appendChild(
-        createPropertyCard(
-          property
-        )
-      );
-
-    }
-  );
-
-
-  document
-    .getElementById("resultado")
-    .classList.add("show");
-
-
-  document
-    .getElementById("resultado")
-    .scrollIntoView({
-      behavior:"smooth"
-    });
-
-
-  localStorage.setItem(
-    "ynteligencia_profile",
-    JSON.stringify(profile)
-  );
-
-
-  saveProfileToSupabase();
-
-
-  trackEvent(
-    "profile_completed",
-    null,
-    {
-      profile:{
-        ...profile
-      }
-    }
-  );
-
-
-  setTimeout(()=>{
-
-    if(!isInstalled()){
-
-      document
-        .getElementById(
-          "installCard"
-        )
-        .classList.add("show");
-
-    }
-
-  },700);
-
+function getProfileDuration() {
+const startedAt = Number(localStorage.getItem(STORAGE.startedAt));
+if (!startedAt) return null;
+return Math.max(0, Math.round((Date.now() - startedAt) / 1000));
 }
 
+function budgetRange(budget) {
+const ranges = {
+"Até R$ 400 mil": [0, 400000],
+"R$ 400 a 600 mil": [400000, 600000],
+"R$ 600 a 900 mil": [600000, 900000],
+"Acima de R$ 900 mil": [900000, Infinity]
+};
 
-/* =========================================================
-   CRIA CARD
-========================================================= */
-
-function createPropertyCard(
-  property
-){
-
-  const article =
-    document.createElement(
-      "article"
-    );
-
-  article.className =
-    "card";
-
-
-  article.innerHTML = `
-
-    <div
-      class="photo"
-      style="
-        background-image:url('${property.image}')
-      "
-    >
-
-      <div class="compatibility">
-        ${property.score}% compatível
-      </div>
-
-      <button
-        class="heart"
-        aria-label="Salvar imóvel"
-        onclick="saveProperty('${escapeQuotes(property.name)}')">
-        ♡
-      </button>
-
-    </div>
-
-
-    <div class="card-body">
-
-      <h3>
-        ${property.name}
-      </h3>
-
-      <div class="location">
-        ${property.neighborhood} · São Paulo
-      </div>
-
-      <div class="price">
-        ${money(property.price)}
-      </div>
-
-      <div class="details">
-
-        <span>
-          ${property.bedrooms} dorm.
-        </span>
-
-        <span>
-          ${property.size} m²
-        </span>
-
-        <span>
-          Apartamento
-        </span>
-
-      </div>
-
-
-      <div class="reasons">
-
-        <strong>
-          Por que recomendamos?
-        </strong>
-
-        ${property.reasons
-          .map(
-            reason=>`
-              <div>${reason}</div>
-            `
-          )
-          .join("")
-        }
-
-      </div>
-
-
-      <button
-        class="interest"
-        onclick="sendInterest('${escapeQuotes(property.name)}')">
-
-        Quero conhecer
-
-      </button>
-
-    </div>
-
-  `;
-
-
-  trackEvent(
-    "property_view",
-    property
-  );
-
-
-  return article;
-
+return ranges[budget] || null;
 }
 
+function selectedBedrooms(value) {
+const map = {
+"Studio": 0,
+"1 dormitório": 1,
+"2 dormitórios": 2,
+"3 ou mais": 3
+};
 
-/* =========================================================
-   ESCAPA APOSTROFE
-========================================================= */
-
-function escapeQuotes(
-  value
-){
-
-  return String(value)
-    .replace(/\\/g,"\\\\")
-    .replace(/'/g,"\\'");
-
+return map[value];
 }
 
+function calculateBudgetPoints(price, budget) {
+const range = budgetRange(budget);
+if (!range) return 0;
 
-/* =========================================================
-   MOEDA
-========================================================= */
+const [minimum, maximum] = range;
 
-function money(value){
+if (price >= minimum && price <= maximum) return 35;
 
-  return new Intl.NumberFormat(
-    "pt-BR",
-    {
-      style:"currency",
-      currency:"BRL",
-      maximumFractionDigits:0
-    }
-  ).format(value);
-
+if (maximum !== Infinity && price > maximum) {
+const difference = (price - maximum) / maximum;
+if (difference <= 0.1) return 25;
+if (difference <= 0.2) return 12;
+return 0;
 }
 
-
-/* =========================================================
-   BUSCA IMÓVEL PELO NOME
-========================================================= */
-
-function getPropertyByName(
-  name
-){
-
-  return properties.find(
-    property =>
-      property.name === name
-  ) || null;
-
+if (minimum > 0 && price < minimum) {
+const difference = (minimum - price) / minimum;
+if (difference <= 0.2) return 28;
+return 20;
 }
 
-
-/* =========================================================
-   FAVORITOS
-========================================================= */
-
-function saveProperty(name){
-
-  let saved =
-    JSON.parse(
-      localStorage.getItem(
-        "ynteligencia_saved"
-      ) || "[]"
-    );
-
-
-  if(!saved.includes(name)){
-
-    saved.push(name);
-
-  }
-
-
-  localStorage.setItem(
-    "ynteligencia_saved",
-    JSON.stringify(saved)
-  );
-
-
-  const property =
-    getPropertyByName(name);
-
-
-  trackEvent(
-    "property_save",
-    property
-  );
-
-
-  alert(
-    "Imóvel salvo."
-  );
-
+return 0;
 }
 
-
-/* =========================================================
-   FAVORITOS
-========================================================= */
-
-function showFavorites(){
-
-  const saved =
-    JSON.parse(
-      localStorage.getItem(
-        "ynteligencia_saved"
-      ) || "[]"
-    );
-
-
-  if(!saved.length){
-
-    alert(
-      "Você ainda não salvou nenhum imóvel."
-    );
-
-    return;
-
-  }
-
-
-  alert(
-    "Seus imóveis salvos:\n\n" +
-    saved.join("\n")
-  );
-
+function calculateMatch(property) {
+if (!profile.completed) {
+return {
+score: null,
+reasons: ["Complete seu perfil para calcular a compatibilidade."]
+};
 }
 
-
-/* =========================================================
-   ABRE FORMULÁRIO
-========================================================= */
-
-let selectedProperty = null;
-
-
-function sendInterest(
-  propertyName
-){
-
-  const property =
-    getPropertyByName(
-      propertyName
-    );
-
-
-  if(!property){
-
-    alert(
-      "Não conseguimos localizar esse imóvel."
-    );
-
-    return;
-
-  }
-
-
-  selectedProperty =
-    property;
-
-
-  document
-    .getElementById(
-      "leadProperty"
-    )
-    .innerHTML = `
-
-      <strong>
-        ${property.name}
-      </strong>
-
-      ${property.neighborhood}
-      · ${money(property.price)}
-      · ${property.bedrooms} dorm.
-      · ${property.size} m²
-
-    `;
-
-
-  document
-    .getElementById(
-      "leadMessage"
-    )
-    .className =
-      "lead-message";
-
-
-  document
-    .getElementById(
-      "leadMessage"
-    )
-    .textContent =
-      "";
-
-
-  document
-    .getElementById(
-      "leadModal"
-    )
-    .classList.add(
-      "show"
-    );
-
-
-  trackEvent(
-    "contact_click",
-    property
-  );
-
-
-  setTimeout(()=>{
-
-    document
-      .getElementById(
-        "leadName"
-      )
-      .focus();
-
-  },100);
-
-}
-
-
-/* =========================================================
-   FECHA FORMULÁRIO
-========================================================= */
-
-function closeLeadModal(){
-
-  document
-    .getElementById(
-      "leadModal"
-    )
-    .classList.remove(
-      "show"
-    );
-
-}
-
-
-/* =========================================================
-   SUBMETER LEAD
-========================================================= */
-
-async function submitLead(
-  event
-){
-
-  event.preventDefault();
-
-
-  if(!selectedProperty){
-
-    return;
-
-  }
-
-
-  const name =
-    document
-      .getElementById(
-        "leadName"
-      )
-      .value
-      .trim();
-
-
-  const phone =
-    document
-      .getElementById(
-        "leadPhone"
-      )
-      .value
-      .trim();
-
-
-  const email =
-    document
-      .getElementById(
-        "leadEmail"
-      )
-      .value
-      .trim();
-
-
-  const button =
-    document
-      .getElementById(
-        "leadSubmit"
-      );
-
-
-  const message =
-    document
-      .getElementById(
-        "leadMessage"
-      );
-
-
-  if(
-    !name ||
-    !phone ||
-    !email
-  ){
-
-    showLeadMessage(
-      "Preencha nome, WhatsApp e e-mail.",
-      "error"
-    );
-
-    return;
-
-  }
-
-
-  button.disabled = true;
-
-  button.textContent =
-    "Enviando...";
-
-
-  message.className =
-    "lead-message";
-
-
-  try{
-
-    /*
-       1. SALVA LEAD
-    */
-
-    const leadResult =
-      await supabaseClient
-        .from("leads")
-        .insert({
-
-          buyer_id:null,
-
-          session_id:
-            sessionId,
-
-          name:name,
-
-          email:email,
-
-          phone:phone,
-
-          status:"novo",
-
-          lead_score:
-            calculateLeadScore(),
-
-          destination:"yincorp",
-
-          notes:
-            "Interesse em " +
-            selectedProperty.name,
-
-          metadata:{
-
-            property:{
-              name:
-                selectedProperty.name,
-
-              neighborhood:
-                selectedProperty.neighborhood,
-
-              price:
-                selectedProperty.price,
-
-              bedrooms:
-                selectedProperty.bedrooms,
-
-              size:
-                selectedProperty.size
-
-            },
-
-            profile:{
-              ...profile
-            },
-
-            source:
-              "ynteligencia"
-
-          }
-
-        });
-
-
-    if(leadResult.error){
-
-      throw leadResult.error;
-
-    }
-
-
-    /*
-       2. EVENTO DE LEAD
-    */
-
-    await trackEvent(
-      "lead_created",
-      selectedProperty,
-      {
-        name:name,
-        email:email,
-        phone:phone,
-        profile:{
-          ...profile
-        }
-      }
-    );
-
-
-    /*
-       3. GUARDA LOCALMENTE
-    */
-
-    localStorage.setItem(
-      "ynteligencia_interest",
-      JSON.stringify({
-
-        property:
-          selectedProperty.name,
-
-        profile:{
-          ...profile
-        },
-
-        name:name,
-
-        phone:phone,
-
-        email:email,
-
-        timestamp:
-          new Date().toISOString()
-
-      })
-    );
-
-
-    /*
-       4. SUCESSO
-    */
-
-    showLeadMessage(
-      "Perfeito. Seu interesse foi registrado. Em breve entraremos em contato.",
-      "success"
-    );
-
-
-    button.textContent =
-      "Interesse registrado ✓";
-
-
-    document
-      .getElementById(
-        "leadForm"
-      )
-      .reset();
-
-
-    setTimeout(()=>{
-
-      closeLeadModal();
-
-      button.disabled = false;
-
-      button.textContent =
-        "Quero conhecer este imóvel";
-
-    },1800);
-
-
-  }catch(error){
-
-    console.error(
-      "Erro ao registrar lead:",
-      error
-    );
-
-
-    showLeadMessage(
-      "Não conseguimos registrar agora. Tente novamente em alguns segundos.",
-      "error"
-    );
-
-
-    button.disabled = false;
-
-    button.textContent =
-      "Quero conhecer este imóvel";
-
-  }
-
-}
-
-
-/* =========================================================
-   MENSAGEM DO LEAD
-========================================================= */
-
-function showLeadMessage(
-  text,
-  type
-){
-
-  const message =
-    document
-      .getElementById(
-        "leadMessage"
-      );
-
-
-  message.textContent =
-    text;
-
-
-  message.className =
-    "lead-message show " +
-    type;
-
-}
-
-
-/* =========================================================
-   LEAD SCORE
-========================================================= */
-
-function calculateLeadScore(){
-
-  let score = 50;
-
-
-  if(
-    profile.timing === "Agora"
-  ){
-
-    score += 30;
-
-  }else if(
-    profile.timing === "1–3 meses"
-  ){
-
-    score += 20;
-
-  }else if(
-    profile.timing === "3–6 meses"
-  ){
-
-    score += 10;
-
-  }
-
-
-  if(
-    profile.purpose === "Morar"
-  ){
-
-    score += 10;
-
-  }
-
-
-  if(
-    profile.purpose === "Investir"
-  ){
-
-    score += 8;
-
-  }
-
-
-  return Math.min(
-    score,
-    100
-  );
-
-}
-
-
-/* =========================================================
-   BUSCA
-========================================================= */
-
-function searchProperties(){
-
-  const query =
-    document
-      .getElementById(
-        "search"
-      )
-      .value
-      .toLowerCase()
-      .trim();
-
-
-  trackEvent(
-    "search",
-    null,
-    {
-      query:query
-    }
-  );
-
-
-  if(!query){
-
-    document
-      .getElementById(
-        "resultado"
-      )
-      .scrollIntoView({
-        behavior:"smooth"
-      });
-
-    return;
-
-  }
-
-
-  const filtered =
-    properties.filter(
-      property =>
-
-        property.name
-          .toLowerCase()
-          .includes(query)
-
-        ||
-
-        property.neighborhood
-          .toLowerCase()
-          .includes(query)
-
-    );
-
-
-  const cards =
-    document.getElementById(
-      "cards"
-    );
-
-  cards.innerHTML = "";
-
-
-  filtered.forEach(
-    property=>{
-
-      cards.appendChild(
-        createPropertyCard(
-          property
-        )
-      );
-
-    }
-  );
-
-
-  if(!filtered.length){
-
-    cards.innerHTML = `
-
-      <div style="
-        background:white;
-        padding:30px;
-        border-radius:18px;
-        grid-column:1/-1;
-      ">
-
-        <strong>
-          Não encontramos esse imóvel.
-        </strong>
-
-        <p style="
-          color:#758195;
-          margin-top:8px;
-        ">
-
-          Tente outro bairro ou empreendimento.
-
-        </p>
-
-      </div>
-
-    `;
-
-  }
-
-
-  document
-    .getElementById(
-      "resultado"
-    )
-    .classList.add(
-      "show"
-    );
-
-
-  document
-    .getElementById(
-      "resultado"
-    )
-    .scrollIntoView({
-      behavior:"smooth"
-    });
-
-}
-
-
-/* =========================================================
-   SCROLL
-========================================================= */
-
-function scrollExplore(){
-
-  document
-    .getElementById(
-      "explorar"
-    )
-    .scrollIntoView({
-      behavior:"smooth"
-    });
-
-}
-
-
-/* =========================================================
-   PWA
-========================================================= */
-
-let deferredPrompt = null;
-
-
-window.addEventListener(
-  "beforeinstallprompt",
-  event=>{
-
-    event.preventDefault();
-
-    deferredPrompt =
-      event;
-
-    showInstallButtons();
-
-  }
+let score = 0;
+const reasons = [];
+
+const budgetPoints = calculateBudgetPoints(
+property.price,
+profile.budget
 );
 
+score += budgetPoints;
 
-function isInstalled(){
-
-  return (
-
-    window.matchMedia(
-      "(display-mode: standalone)"
-    ).matches
-
-    ||
-
-    window.navigator
-      .standalone === true
-
-  );
-
+if (budgetPoints === 35) {
+reasons.push("está dentro do seu orçamento");
+} else if (budgetPoints >= 20) {
+reasons.push("está próximo da faixa de orçamento");
 }
 
-
-function showInstallButtons(){
-
-  if(isInstalled()){
-
-    return;
-
-  }
-
-
-  const header =
-    document.getElementById(
-      "installHeader"
-    );
-
-
-  if(header){
-
-    header.classList.add(
-      "show"
-    );
-
-  }
-
+if (profile.region === property.region) {
+score += 25;
+reasons.push(`fica em ${property.region}`);
+} else if (profile.region === "Outra") {
+score += 10;
 }
 
+const desiredBedrooms = selectedBedrooms(profile.bedrooms);
+const propertyBedrooms =
+property.bedrooms >= 3 ? 3 : property.bedrooms;
 
-async function installApp(){
-
-  if(deferredPrompt){
-
-    deferredPrompt.prompt();
-
-    const choice =
-      await deferredPrompt
-        .userChoice;
-
-
-    if(
-      choice.outcome ===
-      "accepted"
-    ){
-
-      deferredPrompt =
-        null;
-
-      hideInstallButtons();
-
-    }
-
-    return;
-
-  }
-
-
-  if(isIOS()){
-
-    document
-      .getElementById(
-        "iosInstructions"
-      )
-      .style.display =
-        "block";
-
-
-    document
-      .getElementById(
-        "androidInstructions"
-      )
-      .style.display =
-        "none";
-
-
-    document
-      .getElementById(
-        "installModal"
-      )
-      .classList.add(
-        "show"
-      );
-
-    return;
-
-  }
-
-
-  document
-    .getElementById(
-      "androidInstructions"
-    )
-    .style.display =
-      "none";
-
-
-  document
-    .getElementById(
-      "iosInstructions"
-    )
-    .style.display =
-      "none";
-
-
-  document
-    .getElementById(
-      "installModalText"
-    )
-    .innerHTML =
-      "Para instalar, abra o menu do navegador e procure pela opção <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.";
-
-
-  document
-    .getElementById(
-      "installModal"
-    )
-    .classList.add(
-      "show"
-    );
-
+if (desiredBedrooms === propertyBedrooms) {
+score += 15;
+reasons.push(
+property.bedrooms === 0
+? "tem configuração studio"
+: `tem ${property.bedrooms} dormitório${property.bedrooms > 1 ? "s" : ""}`
+);
+} else if (Math.abs(desiredBedrooms - propertyBedrooms) === 1) {
+score += 6;
 }
 
-
-function isIOS(){
-
-  return /iphone|ipad|ipod/i.test(
-    navigator.userAgent
-  );
-
+if (property.features.includes(profile.priority)) {
+score += 15;
+reasons.push(`oferece ${profile.priority.toLowerCase()}`);
 }
 
-
-function closeInstallModal(){
-
-  document
-    .getElementById(
-      "installModal"
-    )
-    .classList.remove(
-      "show"
-    );
-
+if (
+profile.purpose === "Pesquisar" ||
+property.purposes.includes(profile.purpose)
+) {
+score += 6;
+reasons.push("é adequado ao seu objetivo");
 }
 
-
-function hideInstallButtons(){
-
-  const header =
-    document.getElementById(
-      "installHeader"
-    );
-
-
-  if(header){
-
-    header.classList.remove(
-      "show"
-    );
-
-  }
-
-
-  const card =
-    document.getElementById(
-      "installCard"
-    );
-
-
-  if(card){
-
-    card.classList.remove(
-      "show"
-    );
-
-  }
-
+if (profile.timing) {
+score += 4;
 }
 
+return {
+score: Math.min(100, Math.round(score)),
+reasons: reasons.length
+? reasons
+: ["possui aderência parcial às preferências informadas"]
+};
+}
 
-window.addEventListener(
-  "appinstalled",
-  ()=>{
+function propertyCard(property) {
+const match = calculateMatch(property);
+const isSaved = saved.includes(property.id);
 
-    deferredPrompt =
-      null;
+const matchLabel =
+match.score === null
+? "Calcule seu match"
+: `${match.score}% compatível`;
 
-    hideInstallButtons();
+const reason =
+match.score === null
+? match.reasons[0]
+: `${match.score}% porque ${match.reasons
+.slice(0, 3)
+.join(", ")}.`;
 
-  }
+return `
+<article class="property">
+<div class="property-media">
+<img
+class="property-image"
+src="${escapeHTML(property.image)}"
+alt="${escapeHTML(property.name)} em ${escapeHTML(property.region)}"
+loading="lazy"
+>
+<div class="match">${escapeHTML(matchLabel)}</div>
+<button
+class="save ${isSaved ? "active" : ""}"
+type="button"
+data-save="${escapeHTML(property.id)}"
+aria-label="${isSaved ? "Remover dos salvos" : "Salvar imóvel"}"
+aria-pressed="${isSaved}"
+>
+${isSaved ? "♥" : "♡"}
+</button>
+</div>
+
+<div class="property-body">
+<div class="property-location">${escapeHTML(property.region)} · São Paulo</div>
+<h3>${escapeHTML(property.name)}</h3>
+<div class="price">${money(property.price)}</div>
+
+<div class="facts">
+<span>${property.area} m²</span>
+<span>
+${property.bedrooms === 0
+? "Studio"
+: `${property.bedrooms} dorm.`}
+</span>
+<span>${property.parking} vaga${property.parking === 1 ? "" : "s"}</span>
+</div>
+
+<div class="reason">${escapeHTML(reason)}</div>
+
+<div class="property-actions">
+<button
+class="btn btn-dark"
+type="button"
+data-contact="${escapeHTML(property.id)}"
+>
+Quero conhecer
+</button>
+
+<button
+class="btn btn-light"
+type="button"
+data-view="${escapeHTML(property.id)}"
+aria-label="Ver informações de ${escapeHTML(property.name)}"
+>
+Ver
+</button>
+</div>
+</div>
+</article>
+`;
+}
+
+function getFilteredProperties() {
+const search = normalizeText(
+document.getElementById("searchInput").value
+);
+const region = document.getElementById("regionFilter").value;
+const bedrooms = document.getElementById("bedroomFilter").value;
+const maximumPrice = Number(
+document.getElementById("priceFilter").value
 );
 
+return properties
+.filter(property => {
+const matchesSearch =
+!search ||
+normalizeText(property.name).includes(search) ||
+normalizeText(property.region).includes(search);
 
-/* =========================================================
-   PWA SERVICE WORKER
-========================================================= */
+const matchesRegion =
+!region || property.region === region;
 
-if(
-  "serviceWorker"
-  in navigator
-){
+const normalizedBedrooms =
+property.bedrooms >= 3 ? 3 : property.bedrooms;
 
-  window.addEventListener(
-    "load",
-    ()=>{
+const matchesBedrooms =
+bedrooms === "" ||
+normalizedBedrooms === Number(bedrooms);
 
-      navigator.serviceWorker
-        .register("/sw.js")
+const matchesPrice =
+!maximumPrice || property.price <= maximumPrice;
 
-        .then(()=>{
-
-          console.log(
-            "Ynteligencia PWA ativada."
-          );
-
-        })
-
-        .catch(error=>{
-
-          console.log(
-            "Erro no Service Worker:",
-            error
-          );
-
-        });
-
-    }
-  );
-
+return (
+matchesSearch &&
+matchesRegion &&
+matchesBedrooms &&
+matchesPrice
+);
+})
+.sort((first, second) => {
+const firstScore = calculateMatch(first).score ?? 0;
+const secondScore = calculateMatch(second).score ?? 0;
+return secondScore - firstScore;
+});
 }
 
+function renderProperties() {
+try {
+const filtered = getFilteredProperties();
 
-/* =========================================================
-   INICIALIZAÇÃO
-========================================================= */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  async ()=>{
-
-    await registerBuyer();
-
-    await trackEvent(
-      "app_open"
-    );
-
-    update();
-
-  }
-);
-
-
-/* =========================================================
-   FECHAR MODAL CLICANDO FORA
-========================================================= */
+if (!filtered.length) {
+propertyGrid.innerHTML = `
+<div class="empty">
+<h3>Nenhum imóvel encontrado</h3>
+<p>Tente ampliar a região, o preço ou a quantidade de dormitórios.</p>
+<button class="btn btn-light" type="button" id="emptyClearFilters">
+Limpar filtros
+</button>
+</div>
+`;
 
 document
-  .getElementById(
-    "leadModal"
-  )
-  .addEventListener(
-    "click",
-    function(event){
+.getElementById("emptyClearFilters")
+?.addEventListener("click", clearFilters);
 
-      if(
-        event.target ===
-        this
-      ){
+track("no_results", {
+search: document.getElementById("searchInput").value,
+region: document.getElementById("regionFilter").value,
+bedrooms: document.getElementById("bedroomFilter").value,
+price: document.getElementById("priceFilter").value
+});
 
-        closeLeadModal();
+return;
+}
 
-      }
+propertyGrid.innerHTML = filtered.map(propertyCard).join("");
 
-    }
-  );
+track("results_view", {
+count: filtered.length,
+profile_completed: Boolean(profile.completed)
+});
+} catch (error) {
+propertyGrid.innerHTML = `
+<div class="error">
+Não foi possível carregar os imóveis. Tente novamente.
+</div>
+`;
+console.error(error);
+}
 
+renderSaved();
+}
 
-</script>
+function renderSaved() {
+const savedProperties = properties.filter(property =>
+saved.includes(property.id)
+);
 
+savedGrid.innerHTML = savedProperties.length
+? savedProperties.map(propertyCard).join("")
+: `
+<div class="empty">
+<h3>Nenhum imóvel salvo</h3>
+<p>Use o coração nos cards para guardar seus favoritos.</p>
+<button class="btn btn-dark" type="button" data-go="explorar">
+Explorar imóveis
+</button>
+</div>
+`;
+}
 
-</body>
-</html>
+function toggleSaved(propertyId) {
+const property = properties.find(item => item.id === propertyId);
+if (!property) return;
+
+if (saved.includes(propertyId)) {
+saved = saved.filter(id => id !== propertyId);
+showToast("Imóvel removido dos salvos.");
+} else {
+saved.push(propertyId);
+showToast("Imóvel salvo.");
+track("property_save", {
+property_id: propertyId,
+property_name: property.name,
+match_score: calculateMatch(property).score
+});
+}
+
+localStorage.setItem(STORAGE.saved, JSON.stringify(saved));
+renderProperties();
+renderSaved();
+}
+
+function viewProperty(propertyId) {
+const property = properties.find(item => item.id === propertyId);
+if (!property) return;
+
+const match = calculateMatch(property);
+
+track("property_view", {
+property_id: property.id,
+property_name: property.name,
+match_score: match.score
+});
+
+const details = [
+`${property.area} m²`,
+property.bedrooms === 0
+? "Studio"
+: `${property.bedrooms} dormitório${property.bedrooms > 1 ? "s" : ""}`,
+`${property.parking} vaga${property.parking === 1 ? "" : "s"}`,
+...property.features
+].join(" · ");
+
+showToast(`${property.name}: ${details}`);
+}
+
+function openLeadModal(propertyId) {
+const property = properties.find(item => item.id === propertyId);
+if (!property) return;
+
+const match = calculateMatch(property);
+
+document.getElementById("propertyId").value = property.id;
+document.getElementById("selectedPropertyText").textContent =
+`${property.name}, em ${property.region}, por ${money(property.price)}.`;
+
+document.getElementById("leadFeedback").textContent = "";
+modal.classList.remove("hidden");
+document.body.style.overflow = "hidden";
+leadOpenedAt = Date.now();
+
+incrementMetric("contact_clicks");
+
+track("contact
