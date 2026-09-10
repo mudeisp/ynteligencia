@@ -3,42 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0b1220">
-<meta name="description" content="Ynteligencia — inteligência imobiliária para encontrar o imóvel certo para você.">
 
 <title>Ynteligencia | Inteligência imobiliária</title>
 
-<style>
-:root{
-  --bg:#f5f7fa;
-  --card:#ffffff;
-  --dark:#0b1220;
-  --text:#172033;
-  --muted:#718096;
-  --line:#e5e9ef;
-  --accent:#e99b36;
-  --accent-dark:#c97d20;
-  --green:#15966c;
-  --shadow:0 18px 45px rgba(15,23,42,.10);
-  --radius:22px;
-}
+<meta name="description" content="Encontre o imóvel que faz sentido para você. A Ynteligencia cruza suas preferências com imóveis disponíveis.">
+<meta name="theme-color" content="#0b1220">
 
+<link rel="manifest" href="/manifest.json">
+
+<style>
 *{
   box-sizing:border-box;
   margin:0;
   padding:0;
 }
 
+:root{
+  --dark:#0b1220;
+  --dark2:#111b2d;
+  --orange:#e7a04a;
+  --orange2:#f1b96b;
+  --white:#fff;
+  --bg:#f5f6f8;
+  --text:#182235;
+  --muted:#758195;
+  --border:#e5e8ed;
+  --green:#168765;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
 body{
   font-family:Arial,Helvetica,sans-serif;
   background:var(--bg);
   color:var(--text);
-  min-height:100vh;
+  padding-bottom:80px;
 }
 
 button,
-input,
-select{
+input{
   font:inherit;
 }
 
@@ -46,23 +51,19 @@ button{
   cursor:pointer;
 }
 
-.app{
-  min-height:100vh;
-}
-
 /* HEADER */
 
 header{
-  height:70px;
+  height:68px;
   background:var(--dark);
   color:white;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:0 28px;
+  padding:0 22px;
   position:sticky;
   top:0;
-  z-index:20;
+  z-index:100;
 }
 
 .logo{
@@ -72,38 +73,29 @@ header{
 }
 
 .logo span{
-  color:var(--accent);
+  color:var(--orange);
 }
 
-.header-right{
+.menu{
   display:flex;
   align-items:center;
-  gap:18px;
+  gap:25px;
 }
 
-.header-link{
-  color:#cbd5e1;
+.menu a{
+  color:#b9c2d0;
   text-decoration:none;
   font-size:14px;
-}
-
-.profile-btn{
-  width:38px;
-  height:38px;
-  border-radius:50%;
-  border:1px solid #344054;
-  background:#172033;
-  color:white;
 }
 
 /* HERO */
 
 .hero{
   background:
-    radial-gradient(circle at 85% 20%,rgba(233,155,54,.18),transparent 30%),
+    radial-gradient(circle at 90% 10%,rgba(231,160,74,.20),transparent 30%),
     var(--dark);
   color:white;
-  padding:70px 24px 85px;
+  padding:70px 22px 90px;
 }
 
 .hero-inner{
@@ -111,39 +103,39 @@ header{
   margin:auto;
 }
 
-.badge{
-  display:inline-flex;
-  padding:7px 12px;
+.tag{
+  display:inline-block;
+  color:var(--orange2);
+  border:1px solid rgba(231,160,74,.35);
+  background:rgba(231,160,74,.10);
   border-radius:30px;
-  background:rgba(233,155,54,.13);
-  border:1px solid rgba(233,155,54,.3);
-  color:#f2b461;
+  padding:7px 13px;
   font-size:11px;
-  font-weight:700;
-  letter-spacing:1.5px;
+  font-weight:bold;
+  letter-spacing:1.4px;
   margin-bottom:22px;
 }
 
 .hero h1{
-  font-size:clamp(38px,6vw,68px);
+  font-size:clamp(40px,6vw,68px);
   line-height:1.02;
-  max-width:760px;
   letter-spacing:-3px;
+  max-width:760px;
 }
 
 .hero h1 span{
-  color:var(--accent);
+  color:var(--orange);
 }
 
 .hero p{
-  margin-top:22px;
-  color:#aeb9ca;
+  max-width:650px;
+  color:#aeb8c8;
   font-size:18px;
   line-height:1.6;
-  max-width:620px;
+  margin-top:22px;
 }
 
-.hero-actions{
+.hero-buttons{
   display:flex;
   gap:12px;
   margin-top:32px;
@@ -155,20 +147,14 @@ header{
   border-radius:14px;
   padding:15px 22px;
   font-weight:700;
-  transition:.2s;
 }
 
-.btn-primary{
-  background:var(--accent);
+.primary{
+  background:var(--orange);
   color:white;
 }
 
-.btn-primary:hover{
-  background:var(--accent-dark);
-  transform:translateY(-1px);
-}
-
-.btn-secondary{
+.secondary{
   background:white;
   color:var(--dark);
 }
@@ -178,75 +164,61 @@ header{
 main{
   max-width:1100px;
   margin:auto;
-  padding:55px 22px 110px;
+  padding:0 18px 80px;
 }
 
-.section-title{
-  font-size:30px;
-  letter-spacing:-1px;
-}
+/* PROFILE */
 
-.section-subtitle{
-  margin-top:8px;
-  color:var(--muted);
-}
-
-/* ONBOARDING */
-
-.onboarding{
+.profile-box{
   margin-top:-45px;
   position:relative;
-  z-index:5;
-}
-
-.question-card{
+  z-index:10;
   background:white;
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  padding:32px;
-  max-width:850px;
+  border-radius:24px;
+  padding:28px;
+  box-shadow:0 20px 55px rgba(10,20,35,.12);
 }
 
-.progress-top{
+.progress-info{
   display:flex;
   justify-content:space-between;
-  font-size:12px;
   color:var(--muted);
-  margin-bottom:13px;
+  font-size:12px;
+  margin-bottom:10px;
 }
 
 .progress{
   height:5px;
-  background:#edf0f4;
+  background:#edf0f3;
   border-radius:10px;
   overflow:hidden;
-  margin-bottom:30px;
+  margin-bottom:28px;
 }
 
 .progress-bar{
-  height:100%;
   width:14%;
-  background:var(--accent);
+  height:100%;
+  background:var(--orange);
   transition:.3s;
 }
 
-.question{
+.step{
   display:none;
 }
 
-.question.active{
+.step.active{
   display:block;
 }
 
-.question h2{
+.step h2{
   font-size:29px;
   letter-spacing:-1px;
-  margin-bottom:8px;
 }
 
-.question p{
+.step-description{
   color:var(--muted);
-  margin-bottom:25px;
+  margin-top:7px;
+  margin-bottom:24px;
 }
 
 .options{
@@ -256,21 +228,20 @@ main{
 }
 
 .option{
-  background:#fff;
-  border:1px solid var(--line);
+  background:white;
+  border:1px solid var(--border);
   border-radius:15px;
   padding:17px;
   text-align:left;
-  color:var(--text);
   transition:.2s;
 }
 
 .option:hover{
-  border-color:var(--accent);
+  border-color:var(--orange);
 }
 
 .option.selected{
-  border-color:var(--accent);
+  border-color:var(--orange);
   background:#fff8ef;
 }
 
@@ -283,113 +254,112 @@ main{
   color:var(--muted);
 }
 
-.question-actions{
+.step-buttons{
   display:flex;
   justify-content:space-between;
+  align-items:center;
   margin-top:25px;
 }
 
-.back-btn{
+.back{
   border:none;
-  background:transparent;
+  background:none;
   color:var(--muted);
-  padding:12px;
 }
 
-.continue-btn{
+.continue{
   border:none;
+  border-radius:13px;
   background:var(--dark);
   color:white;
-  border-radius:13px;
-  padding:13px 23px;
-  font-weight:700;
+  padding:13px 22px;
+  font-weight:bold;
 }
 
-/* RESULTADO */
+/* RESULTADOS */
 
 .results{
   display:none;
-  margin-top:35px;
+  margin-top:40px;
 }
 
-.results.active{
+.results.show{
   display:block;
 }
 
 .result-header{
   background:var(--dark);
   color:white;
-  border-radius:22px;
   padding:28px;
-  margin-bottom:25px;
+  border-radius:22px;
+  margin-bottom:22px;
 }
 
 .result-header small{
-  color:#9ca9bb;
+  color:var(--orange2);
+  font-size:11px;
+  letter-spacing:1px;
 }
 
 .result-header h2{
-  margin-top:7px;
-  font-size:30px;
+  font-size:29px;
+  margin-top:8px;
 }
 
 .result-header p{
-  margin-top:8px;
-  color:#b7c1cf;
+  color:#aeb8c8;
+  margin-top:7px;
 }
 
-/* CARDS */
-
-.properties{
+.cards{
   display:grid;
   grid-template-columns:repeat(3,1fr);
-  gap:20px;
+  gap:18px;
 }
 
-.property{
+.card{
   background:white;
-  border:1px solid var(--line);
+  border:1px solid var(--border);
   border-radius:20px;
   overflow:hidden;
-  box-shadow:0 7px 25px rgba(15,23,42,.05);
 }
 
-.property-image{
+.photo{
   height:210px;
   background-size:cover;
   background-position:center;
   position:relative;
 }
 
-.score{
+.compatibility{
   position:absolute;
-  top:13px;
-  left:13px;
+  top:12px;
+  left:12px;
   background:white;
   color:var(--green);
   font-size:12px;
-  font-weight:800;
+  font-weight:bold;
   padding:8px 10px;
   border-radius:20px;
 }
 
-.favorite{
+.heart{
   position:absolute;
-  right:13px;
-  top:13px;
-  border:none;
-  background:white;
+  right:12px;
+  top:12px;
   width:36px;
   height:36px;
+  border:none;
   border-radius:50%;
+  background:white;
   font-size:18px;
 }
 
-.property-body{
-  padding:19px;
+.card-body{
+  padding:18px;
 }
 
-.property-body h3{
+.card h3{
   font-size:19px;
 }
 
@@ -408,106 +378,107 @@ main{
 .details{
   display:flex;
   gap:12px;
-  margin-top:10px;
-  font-size:13px;
   color:var(--muted);
-}
-
-.why{
-  margin-top:17px;
-  padding-top:15px;
-  border-top:1px solid var(--line);
-}
-
-.why strong{
   font-size:13px;
-}
-
-.why ul{
-  list-style:none;
   margin-top:8px;
 }
 
-.why li{
-  font-size:12px;
-  color:#667085;
-  margin-top:5px;
+.reasons{
+  border-top:1px solid var(--border);
+  margin-top:16px;
+  padding-top:14px;
 }
 
-.why li::before{
+.reasons strong{
+  font-size:13px;
+}
+
+.reasons div{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+.reasons div::before{
   content:"✓";
   color:var(--green);
   font-weight:bold;
   margin-right:6px;
 }
 
-.property-btn{
-  margin-top:16px;
+.interest{
   width:100%;
   border:none;
-  border-radius:12px;
   background:var(--dark);
   color:white;
+  border-radius:12px;
   padding:12px;
-  font-weight:700;
+  margin-top:16px;
+  font-weight:bold;
 }
 
 /* COMO FUNCIONA */
 
-.how{
+.section{
   margin-top:75px;
+}
+
+.section h2{
+  font-size:30px;
+  letter-spacing:-1px;
+}
+
+.section-sub{
+  color:var(--muted);
+  margin-top:7px;
 }
 
 .steps{
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:18px;
-  margin-top:25px;
+  margin-top:24px;
 }
 
-.step{
+.how{
   background:white;
-  border:1px solid var(--line);
-  padding:25px;
+  border:1px solid var(--border);
   border-radius:20px;
+  padding:24px;
 }
 
-.step-number{
+.number{
   width:38px;
   height:38px;
-  background:#fff1df;
-  color:var(--accent-dark);
   border-radius:50%;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-weight:800;
+  background:#fff1df;
+  color:#bd741c;
+  font-weight:bold;
   margin-bottom:18px;
 }
 
-.step h3{
+.how h3{
   font-size:17px;
-  margin-bottom:7px;
 }
 
-.step p{
+.how p{
   color:var(--muted);
-  font-size:14px;
   line-height:1.5;
+  font-size:14px;
+  margin-top:8px;
 }
 
-/* EXPLORAR */
-
-.explore{
-  margin-top:75px;
-}
+/* BUSCA */
 
 .search{
-  margin-top:22px;
+  margin-top:23px;
   background:white;
-  border:1px solid var(--line);
-  border-radius:18px;
-  padding:15px;
+  border:1px solid var(--border);
+  padding:13px;
+  border-radius:17px;
   display:flex;
   gap:10px;
 }
@@ -523,9 +494,9 @@ main{
 
 footer{
   background:var(--dark);
-  color:#8f9bad;
-  padding:35px 22px;
+  color:#8995a8;
   text-align:center;
+  padding:35px 20px;
   font-size:13px;
 }
 
@@ -533,21 +504,31 @@ footer strong{
   color:white;
 }
 
+/* BOTTOM NAV */
+
+.bottom-nav{
+  display:none;
+}
+
 /* MOBILE */
 
 @media(max-width:800px){
+
+  body{
+    padding-bottom:70px;
+  }
 
   header{
     height:62px;
     padding:0 17px;
   }
 
-  .header-link{
+  .menu{
     display:none;
   }
 
   .hero{
-    padding:48px 20px 75px;
+    padding:48px 19px 78px;
   }
 
   .hero h1{
@@ -560,19 +541,16 @@ footer strong{
   }
 
   main{
-    padding:45px 15px 90px;
+    padding:0 14px 70px;
   }
 
-  .onboarding{
+  .profile-box{
     margin-top:-35px;
+    padding:21px;
+    border-radius:21px;
   }
 
-  .question-card{
-    padding:22px;
-    border-radius:20px;
-  }
-
-  .question h2{
+  .step h2{
     font-size:25px;
   }
 
@@ -580,7 +558,7 @@ footer strong{
     grid-template-columns:1fr;
   }
 
-  .properties{
+  .cards{
     grid-template-columns:1fr;
   }
 
@@ -588,56 +566,41 @@ footer strong{
     grid-template-columns:1fr;
   }
 
-  .property-image{
-    height:225px;
-  }
-
   .search{
     flex-direction:column;
   }
-
-}
-
-/* APP BOTTOM NAV */
-
-.bottom-nav{
-  display:none;
-}
-
-@media(max-width:800px){
 
   .bottom-nav{
     position:fixed;
     bottom:0;
     left:0;
     right:0;
-    height:68px;
-    background:rgba(255,255,255,.96);
-    border-top:1px solid var(--line);
+    height:70px;
+    background:rgba(255,255,255,.97);
+    border-top:1px solid var(--border);
     display:flex;
     justify-content:space-around;
     align-items:center;
-    z-index:50;
+    z-index:200;
   }
 
   .bottom-nav button{
     border:none;
     background:none;
-    color:#8a94a6;
+    color:#7b8493;
     font-size:11px;
   }
 
-  .bottom-nav button.active{
-    color:var(--accent-dark);
-    font-weight:800;
+  .bottom-nav button:first-child{
+    color:#bd741c;
+    font-weight:bold;
   }
+
 }
 </style>
 </head>
 
 <body>
-
-<div class="app">
 
 <header>
 
@@ -645,11 +608,11 @@ footer strong{
     Y<span>n</span>teligencia
   </div>
 
-  <div class="header-right">
-    <a href="#explorar" class="header-link">Explorar</a>
-    <a href="#como-funciona" class="header-link">Como funciona</a>
-    <button class="profile-btn" onclick="startProfile()">●</button>
-  </div>
+  <nav class="menu">
+    <a href="#resultado">Resultados</a>
+    <a href="#como-funciona">Como funciona</a>
+    <a href="#explorar">Explorar</a>
+  </nav>
 
 </header>
 
@@ -658,7 +621,7 @@ footer strong{
 
   <div class="hero-inner">
 
-    <div class="badge">
+    <div class="tag">
       INTELIGÊNCIA IMOBILIÁRIA
     </div>
 
@@ -669,16 +632,16 @@ footer strong{
 
     <p>
       Conte o que você procura. A Ynteligencia cruza suas preferências
-      com os imóveis disponíveis e encontra as combinações mais relevantes.
+      com os imóveis disponíveis e encontra as melhores combinações.
     </p>
 
-    <div class="hero-actions">
+    <div class="hero-buttons">
 
-      <button class="btn btn-primary" onclick="startProfile()">
+      <button class="btn primary" onclick="startProfile()">
         Descobrir meu imóvel
       </button>
 
-      <button class="btn btn-secondary" onclick="document.getElementById('explorar').scrollIntoView({behavior:'smooth'})">
+      <button class="btn secondary" onclick="scrollExplore()">
         Explorar imóveis
       </button>
 
@@ -691,11 +654,9 @@ footer strong{
 
 <main>
 
-<section class="onboarding" id="perfil">
+<section class="profile-box" id="perfil">
 
-<div class="question-card">
-
-  <div class="progress-top">
+  <div class="progress-info">
     <span id="progressText">1 de 7</span>
     <span>Seu perfil imobiliário</span>
   </div>
@@ -705,36 +666,40 @@ footer strong{
   </div>
 
 
-  <!-- 1 -->
+  <!-- PASSO 1 -->
 
-  <div class="question active" data-step="1">
+  <div class="step active" data-step="1">
 
-    <h2>O que você procura?</h2>
+    <h2>Você procura imóvel para quê?</h2>
 
-    <p>
-      Isso ajuda a Ynteligencia a entender sua intenção.
+    <p class="step-description">
+      Vamos começar entendendo sua intenção.
     </p>
 
     <div class="options">
 
-      <button class="option" onclick="selectOption(this,'purpose','Morar')">
+      <button class="option"
+        onclick="choose(this,'purpose','Morar')">
         <strong>🏠 Morar</strong>
         <small>Quero encontrar meu próximo lar.</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'purpose','Investir')">
+      <button class="option"
+        onclick="choose(this,'purpose','Investir')">
         <strong>📈 Investir</strong>
-        <small>Busco uma oportunidade imobiliária.</small>
+        <small>Busco uma oportunidade.</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'purpose','Alugar')">
+      <button class="option"
+        onclick="choose(this,'purpose','Alugar')">
         <strong>🔑 Alugar</strong>
         <small>Quero encontrar um imóvel para locação.</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'purpose','Ainda não sei')">
-        <strong>💡 Quero descobrir</strong>
-        <small>Ainda estou avaliando possibilidades.</small>
+      <button class="option"
+        onclick="choose(this,'purpose','Pesquisar')">
+        <strong>💡 Pesquisar</strong>
+        <small>Ainda estou avaliando.</small>
       </button>
 
     </div>
@@ -742,44 +707,52 @@ footer strong{
   </div>
 
 
-  <!-- 2 -->
+  <!-- PASSO 2 -->
 
-  <div class="question" data-step="2">
+  <div class="step" data-step="2">
 
-    <h2>Qual região interessa?</h2>
+    <h2>Onde você gostaria de morar?</h2>
 
-    <p>Você pode escolher mais de uma região depois.</p>
+    <p class="step-description">
+      Escolha a região que mais interessa.
+    </p>
 
     <div class="options">
 
-      <button class="option" onclick="selectOption(this,'region','Perdizes')">
+      <button class="option"
+        onclick="choose(this,'region','Perdizes')">
         <strong>Perdizes</strong>
         <small>Zona Oeste</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'region','Pinheiros')">
+      <button class="option"
+        onclick="choose(this,'region','Pinheiros')">
         <strong>Pinheiros</strong>
         <small>Zona Oeste</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'region','Vila Madalena')">
+      <button class="option"
+        onclick="choose(this,'region','Vila Madalena')">
         <strong>Vila Madalena</strong>
         <small>Zona Oeste</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'region','Moema')">
+      <button class="option"
+        onclick="choose(this,'region','Moema')">
         <strong>Moema</strong>
         <small>Zona Sul</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'region','Chácara Klabin')">
+      <button class="option"
+        onclick="choose(this,'region','Chácara Klabin')">
         <strong>Chácara Klabin</strong>
         <small>Zona Sul</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'region','Outra')">
+      <button class="option"
+        onclick="choose(this,'region','Outra')">
         <strong>Outra região</strong>
-        <small>Quero ampliar a busca.</small>
+        <small>Quero ampliar minha busca.</small>
       </button>
 
     </div>
@@ -787,29 +760,35 @@ footer strong{
   </div>
 
 
-  <!-- 3 -->
+  <!-- PASSO 3 -->
 
-  <div class="question" data-step="3">
+  <div class="step" data-step="3">
 
     <h2>Qual é seu orçamento?</h2>
 
-    <p>Considere o valor aproximado que pretende investir.</p>
+    <p class="step-description">
+      Pode ser uma estimativa.
+    </p>
 
     <div class="options">
 
-      <button class="option" onclick="selectOption(this,'budget','Até R$ 400 mil')">
+      <button class="option"
+        onclick="choose(this,'budget','Até R$ 400 mil')">
         <strong>Até R$ 400 mil</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'budget','R$ 400–600 mil')">
+      <button class="option"
+        onclick="choose(this,'budget','R$ 400–600 mil')">
         <strong>R$ 400–600 mil</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'budget','R$ 600–900 mil')">
+      <button class="option"
+        onclick="choose(this,'budget','R$ 600–900 mil')">
         <strong>R$ 600–900 mil</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'budget','Acima de R$ 900 mil')">
+      <button class="option"
+        onclick="choose(this,'budget','Acima de R$ 900 mil')">
         <strong>Acima de R$ 900 mil</strong>
       </button>
 
@@ -818,29 +797,35 @@ footer strong{
   </div>
 
 
-  <!-- 4 -->
+  <!-- PASSO 4 -->
 
-  <div class="question" data-step="4">
+  <div class="step" data-step="4">
 
     <h2>Quantos dormitórios?</h2>
 
-    <p>Qual configuração combina com você?</p>
+    <p class="step-description">
+      Qual configuração você procura?
+    </p>
 
     <div class="options">
 
-      <button class="option" onclick="selectOption(this,'bedrooms','Studio')">
+      <button class="option"
+        onclick="choose(this,'bedrooms','Studio')">
         <strong>Studio</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'bedrooms','1 dormitório')">
+      <button class="option"
+        onclick="choose(this,'bedrooms','1 dormitório')">
         <strong>1 dormitório</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'bedrooms','2 dormitórios')">
+      <button class="option"
+        onclick="choose(this,'bedrooms','2 dormitórios')">
         <strong>2 dormitórios</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'bedrooms','3+ dormitórios')">
+      <button class="option"
+        onclick="choose(this,'bedrooms','3+ dormitórios')">
         <strong>3 ou mais</strong>
       </button>
 
@@ -849,29 +834,35 @@ footer strong{
   </div>
 
 
-  <!-- 5 -->
+  <!-- PASSO 5 -->
 
-  <div class="question" data-step="5">
+  <div class="step" data-step="5">
 
     <h2>O que é importante para você?</h2>
 
-    <p>Escolha uma preferência principal.</p>
+    <p class="step-description">
+      Escolha sua prioridade.
+    </p>
 
     <div class="options">
 
-      <button class="option" onclick="selectOption(this,'feature','Varanda')">
+      <button class="option"
+        onclick="choose(this,'feature','Varanda')">
         <strong>🌿 Varanda</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'feature','Vaga')">
+      <button class="option"
+        onclick="choose(this,'feature','Vaga')">
         <strong>🚗 Vaga</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'feature','Piscina')">
+      <button class="option"
+        onclick="choose(this,'feature','Piscina')">
         <strong>🏊 Piscina</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'feature','Metrô')">
+      <button class="option"
+        onclick="choose(this,'feature','Metrô')">
         <strong>🚇 Próximo ao metrô</strong>
       </button>
 
@@ -880,30 +871,36 @@ footer strong{
   </div>
 
 
-  <!-- 6 -->
+  <!-- PASSO 6 -->
 
-  <div class="question" data-step="6">
+  <div class="step" data-step="6">
 
     <h2>Quando pretende comprar?</h2>
 
-    <p>Não precisa ter certeza.</p>
+    <p class="step-description">
+      Não precisa ter certeza.
+    </p>
 
     <div class="options">
 
-      <button class="option" onclick="selectOption(this,'timing','Agora')">
+      <button class="option"
+        onclick="choose(this,'timing','Agora')">
         <strong>Agora</strong>
         <small>Estou procurando ativamente.</small>
       </button>
 
-      <button class="option" onclick="selectOption(this,'timing','1–3 meses')">
+      <button class="option"
+        onclick="choose(this,'timing','1–3 meses')">
         <strong>1–3 meses</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'timing','3–6 meses')">
+      <button class="option"
+        onclick="choose(this,'timing','3–6 meses')">
         <strong>3–6 meses</strong>
       </button>
 
-      <button class="option" onclick="selectOption(this,'timing','Só pesquisando')">
+      <button class="option"
+        onclick="choose(this,'timing','Pesquisando')">
         <strong>Só pesquisando</strong>
       </button>
 
@@ -912,99 +909,128 @@ footer strong{
   </div>
 
 
-  <!-- 7 -->
+  <!-- PASSO 7 -->
 
-  <div class="question" data-step="7">
+  <div class="step" data-step="7">
 
-    <h2>Pronto para descobrir?</h2>
+    <h2>Pronto para encontrar seu imóvel?</h2>
 
-    <p>
-      A Ynteligencia vai usar suas respostas para encontrar
-      os imóveis mais compatíveis.
+    <p class="step-description">
+      A Ynteligencia vai cruzar suas respostas e apresentar
+      as melhores combinações.
     </p>
 
-    <div style="background:#f7f8fa;padding:20px;border-radius:16px;line-height:1.7;font-size:14px;">
+    <div style="
+      background:#f6f7f9;
+      border-radius:16px;
+      padding:20px;
+      line-height:1.8;
+      font-size:14px;
+    ">
+
       <strong>Seu perfil</strong>
-      <div id="profileSummary" style="margin-top:8px;color:#667085;"></div>
+
+      <div id="summary"
+        style="color:#687386;margin-top:8px;">
+      </div>
+
     </div>
 
   </div>
 
 
-  <div class="question-actions">
+  <div class="step-buttons">
 
-    <button class="back-btn" id="backBtn" onclick="previousStep()">
+    <button
+      class="back"
+      id="back"
+      onclick="backStep()">
       ← Voltar
     </button>
 
-    <button class="continue-btn" id="continueBtn" onclick="nextStep()">
+    <button
+      class="continue"
+      id="continue"
+      onclick="nextStep()">
       Continuar →
     </button>
 
   </div>
-
-</div>
 
 </section>
 
 
 <!-- RESULTADOS -->
 
-<section class="results" id="resultados">
+<section class="results" id="resultado">
 
   <div class="result-header">
 
     <small>YNTELIGENCIA MATCH</small>
 
-    <h2>Encontramos boas combinações.</h2>
+    <h2>Encontramos imóveis para você.</h2>
 
     <p>
-      Estes imóveis foram selecionados com base no seu perfil.
+      Selecionamos as opções mais compatíveis com seu perfil.
     </p>
 
   </div>
 
-  <div class="properties" id="propertyList"></div>
+  <div class="cards" id="cards"></div>
 
 </section>
 
 
 <!-- COMO FUNCIONA -->
 
-<section class="how" id="como-funciona">
+<section class="section" id="como-funciona">
 
-  <h2 class="section-title">
-    Não procure entre milhares.
-  </h2>
+  <h2>Não procure entre milhares.</h2>
 
-  <p class="section-subtitle">
+  <p class="section-sub">
     Deixe a Ynteligencia procurar por você.
   </p>
 
   <div class="steps">
 
-    <div class="step">
-      <div class="step-number">1</div>
+    <div class="how">
+
+      <div class="number">1</div>
+
       <h3>Conte o que você procura</h3>
+
       <p>
-        Região, orçamento, tamanho, dormitórios e aquilo que realmente importa.
+        Região, orçamento, dormitórios e aquilo
+        que realmente importa para você.
       </p>
+
     </div>
 
-    <div class="step">
-      <div class="step-number">2</div>
+
+    <div class="how">
+
+      <div class="number">2</div>
+
       <h3>A Ynteligencia cruza os dados</h3>
+
       <p>
         Seu perfil é comparado com o inventário disponível.
       </p>
+
     </div>
 
-    <div class="step">
-      <div class="step-number">3</div>
+
+    <div class="how">
+
+      <div class="number">3</div>
+
       <h3>Receba seus melhores matches</h3>
+
       <p>
-        Em vez de milhares de anúncios, você recebe uma seleção relevante.
+        Em vez de milhares de anúncios, você recebe
+        uma seleção relevante.
       </p>
+
     </div>
 
   </div>
@@ -1014,25 +1040,25 @@ footer strong{
 
 <!-- EXPLORAR -->
 
-<section class="explore" id="explorar">
+<section class="section" id="explorar">
 
-  <h2 class="section-title">
-    Ou explore imóveis
-  </h2>
+  <h2>Prefere procurar sozinho?</h2>
 
-  <p class="section-subtitle">
-    Se preferir, você também pode pesquisar diretamente.
+  <p class="section-sub">
+    Explore imóveis por bairro ou empreendimento.
   </p>
 
   <div class="search">
 
     <input
-      id="searchInput"
+      id="search"
       type="text"
-      placeholder="Digite bairro, empreendimento ou região..."
+      placeholder="Ex.: Perdizes, Pinheiros, Well..."
     >
 
-    <button class="btn btn-primary" onclick="searchProperties()">
+    <button
+      class="btn primary"
+      onclick="searchProperties()">
       Buscar
     </button>
 
@@ -1044,21 +1070,26 @@ footer strong{
 
 
 <footer>
-  <strong>Ynteligencia</strong> · Inteligência imobiliária
+
+  <strong>Ynteligencia</strong>
+  · Inteligência imobiliária
+
   <br><br>
-  Tecnologia para encontrar imóveis que fazem sentido.
+
+  Encontre o imóvel que faz sentido para você.
+
 </footer>
 
 
-<!-- BOTTOM NAV -->
+<!-- NAVEGAÇÃO MOBILE -->
 
 <nav class="bottom-nav">
 
-  <button class="active" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+  <button onclick="window.scrollTo({top:0,behavior:'smooth'})">
     🏠<br>Início
   </button>
 
-  <button onclick="document.getElementById('explorar').scrollIntoView({behavior:'smooth'})">
+  <button onclick="scrollExplore()">
     🔎<br>Explorar
   </button>
 
@@ -1072,106 +1103,647 @@ footer strong{
 
 </nav>
 
-</div>
-
 
 <script>
 
-/* =========================
-   DADOS DEMO
-========================= */
+/* ===============================
+   DADOS DEMONSTRATIVOS
+================================ */
 
-const imoveis = [
+const properties = [
 
-{
-  nome:"Well Perdizes",
-  bairro:"Perdizes",
-  cidade:"São Paulo",
-  preco:340000,
-  quartos:2,
-  metragem:40,
-  tipo:"Apartamento",
-  imagem:"https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=80",
-  score:96,
-  motivos:[
-    "Dentro da faixa de orçamento",
-    "Região compatível",
-    "2 dormitórios",
-    "Varanda"
-  ]
-},
+  {
+    name:"Well Perdizes",
+    neighborhood:"Perdizes",
+    price:340000,
+    bedrooms:2,
+    size:40,
+    image:"https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=80",
+    score:96,
+    reasons:[
+      "Região desejada",
+      "2 dormitórios",
+      "Varanda",
+      "Faixa de preço compatível"
+    ]
+  },
 
-{
-  nome:"Vila Madalena Residence",
-  bairro:"Vila Madalena",
-  cidade:"São Paulo",
-  preco:590000,
-  quartos:2,
-  metragem:54,
-  tipo:"Apartamento",
-  imagem:"https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1000&q=80",
-  score:91,
-  motivos:[
-    "Região desejada",
-    "Boa metragem",
-    "2 dormitórios"
-  ]
-},
+  {
+    name:"Vila Madalena Residence",
+    neighborhood:"Vila Madalena",
+    price:590000,
+    bedrooms:2,
+    size:54,
+    image:"https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1000&q=80",
+    score:91,
+    reasons:[
+      "Região desejada",
+      "Boa metragem",
+      "2 dormitórios"
+    ]
+  },
 
-{
-  nome:"Studio Pinheiros",
-  bairro:"Pinheiros",
-  cidade:"São Paulo",
-  preco:399000,
-  quartos:1,
-  metragem:29,
-  tipo:"Studio",
-  imagem:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
-  score:88,
-  motivos:[
-    "Próximo ao metrô",
-    "Boa localização",
-    "Faixa de preço compatível"
-  ]
-},
+  {
+    name:"Studio Pinheiros",
+    neighborhood:"Pinheiros",
+    price:399000,
+    bedrooms:1,
+    size:29,
+    image:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80",
+    score:88,
+    reasons:[
+      "Próximo ao metrô",
+      "Excelente localização",
+      "Faixa de preço compatível"
+    ]
+  },
 
-{
-  nome:"Moema Living",
-  bairro:"Moema",
-  cidade:"São Paulo",
-  preco:720000,
-  quartos:2,
-  metragem:61,
-  tipo:"Apartamento",
-  imagem:"https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1000&q=80",
-  score:84,
-  motivos:[
-    "Região compatível",
-    "2 dormitórios",
-    "Boa metragem"
-  ]
-},
+  {
+    name:"Moema Living",
+    neighborhood:"Moema",
+    price:720000,
+    bedrooms:2,
+    size:61,
+    image:"https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1000&q=80",
+    score:84,
+    reasons:[
+      "Boa metragem",
+      "2 dormitórios",
+      "Região valorizada"
+    ]
+  },
 
-{
-  nome:"Klabin Residence",
-  bairro:"Chácara Klabin",
-  cidade:"São Paulo",
-  preco:389000,
-  quartos:2,
-  metragem:40,
-  tipo:"Apartamento",
-  imagem:"https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1000&q=80",
-  score:82,
-  motivos:[
-    "2 dormitórios",
-    "Boa relação preço/m²",
-    "Região desejada"
-  ]
-},
+  {
+    name:"Klabin Residence",
+    neighborhood:"Chácara Klabin",
+    price:389000,
+    bedrooms:2,
+    size:40,
+    image:"https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1000&q=80",
+    score:82,
+    reasons:[
+      "2 dormitórios",
+      "Boa relação preço/m²",
+      "Região compatível"
+    ]
+  },
 
-{
-  nome:"João Dias Living",
-  bairro:"João Dias",
-  cidade:"São Paulo",
-  preco:320000,
-  quar
+  {
+    name:"João Dias Living",
+    neighborhood:"João Dias",
+    price:320000,
+    bedrooms:2,
+    size:42,
+    image:"https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1000&q=80",
+    score:79,
+    reasons:[
+      "Preço compatível",
+      "2 dormitórios",
+      "Boa metragem"
+    ]
+  }
+
+];
+
+
+/* ===============================
+   PERFIL
+================================ */
+
+let step = 1;
+
+const total = 7;
+
+const profile = {
+  purpose:"",
+  region:"",
+  budget:"",
+  bedrooms:"",
+  feature:"",
+  timing:""
+};
+
+
+function startProfile(){
+
+  document
+    .getElementById("perfil")
+    .scrollIntoView({
+      behavior:"smooth"
+    });
+
+}
+
+
+function choose(button,key,value){
+
+  const parent = button.parentElement;
+
+  parent
+    .querySelectorAll(".option")
+    .forEach(el=>{
+      el.classList.remove("selected");
+    });
+
+  button.classList.add("selected");
+
+  profile[key] = value;
+
+}
+
+
+function update(){
+
+  document
+    .querySelectorAll(".step")
+    .forEach(el=>{
+      el.classList.remove("active");
+    });
+
+  document
+    .querySelector(
+      `.step[data-step="${step}"]`
+    )
+    .classList.add("active");
+
+  document.getElementById("progressText")
+    .textContent = step + " de " + total;
+
+  document.getElementById("progressBar")
+    .style.width =
+      ((step / total) * 100) + "%";
+
+  document.getElementById("back")
+    .style.visibility =
+      step === 1 ? "hidden" : "visible";
+
+  document.getElementById("continue")
+    .textContent =
+      step === total
+      ? "Encontrar meus imóveis →"
+      : "Continuar →";
+
+
+  if(step === 7){
+
+    document.getElementById("summary")
+      .innerHTML = `
+
+        <strong>Objetivo:</strong>
+        ${profile.purpose || "—"}<br>
+
+        <strong>Região:</strong>
+        ${profile.region || "—"}<br>
+
+        <strong>Orçamento:</strong>
+        ${profile.budget || "—"}<br>
+
+        <strong>Dormitórios:</strong>
+        ${profile.bedrooms || "—"}<br>
+
+        <strong>Prioridade:</strong>
+        ${profile.feature || "—"}<br>
+
+        <strong>Prazo:</strong>
+        ${profile.timing || "—"}
+
+      `;
+
+  }
+
+}
+
+
+function nextStep(){
+
+  if(step < total){
+
+    step++;
+
+    update();
+
+  }else{
+
+    showResults();
+
+  }
+
+}
+
+
+function backStep(){
+
+  if(step > 1){
+
+    step--;
+
+    update();
+
+  }
+
+}
+
+
+/* ===============================
+   RESULTADOS
+================================ */
+
+function showResults(){
+
+  const cards =
+    document.getElementById("cards");
+
+  cards.innerHTML = "";
+
+  properties.forEach(property=>{
+
+    const article =
+      document.createElement("article");
+
+    article.className = "card";
+
+    article.innerHTML = `
+
+      <div
+        class="photo"
+        style="
+          background-image:url('${property.image}')
+        "
+      >
+
+        <div class="compatibility">
+          ${property.score}% compatível
+        </div>
+
+        <button
+          class="heart"
+          onclick="saveProperty('${property.name}')">
+          ♡
+        </button>
+
+      </div>
+
+      <div class="card-body">
+
+        <h3>${property.name}</h3>
+
+        <div class="location">
+          ${property.neighborhood} · São Paulo
+        </div>
+
+        <div class="price">
+          ${money(property.price)}
+        </div>
+
+        <div class="details">
+
+          <span>${property.bedrooms} dorm.</span>
+
+          <span>${property.size} m²</span>
+
+          <span>Apartamento</span>
+
+        </div>
+
+        <div class="reasons">
+
+          <strong>Por que recomendamos?</strong>
+
+          ${property.reasons
+            .map(reason=>`
+              <div>${reason}</div>
+            `)
+            .join("")
+          }
+
+        </div>
+
+        <button
+          class="interest"
+          onclick="sendInterest('${property.name}')">
+          Quero conhecer
+        </button>
+
+      </div>
+
+    `;
+
+    cards.appendChild(article);
+
+  });
+
+
+  document
+    .getElementById("resultado")
+    .classList.add("show");
+
+
+  document
+    .getElementById("resultado")
+    .scrollIntoView({
+      behavior:"smooth"
+    });
+
+
+  localStorage.setItem(
+    "ynteligencia_profile",
+    JSON.stringify(profile)
+  );
+
+}
+
+
+/* ===============================
+   MOEDA
+================================ */
+
+function money(value){
+
+  return new Intl.NumberFormat(
+    "pt-BR",
+    {
+      style:"currency",
+      currency:"BRL",
+      maximumFractionDigits:0
+    }
+  ).format(value);
+
+}
+
+
+/* ===============================
+   FAVORITOS
+================================ */
+
+function saveProperty(name){
+
+  let saved =
+    JSON.parse(
+      localStorage.getItem(
+        "ynteligencia_saved"
+      ) || "[]"
+    );
+
+  if(!saved.includes(name)){
+
+    saved.push(name);
+
+  }
+
+  localStorage.setItem(
+    "ynteligencia_saved",
+    JSON.stringify(saved)
+  );
+
+  alert("Imóvel salvo.");
+
+}
+
+
+function showFavorites(){
+
+  const saved =
+    JSON.parse(
+      localStorage.getItem(
+        "ynteligencia_saved"
+      ) || "[]"
+    );
+
+  if(!saved.length){
+
+    alert(
+      "Você ainda não salvou nenhum imóvel."
+    );
+
+    return;
+
+  }
+
+  alert(
+    "Seus imóveis salvos:\n\n" +
+    saved.join("\n")
+  );
+
+}
+
+
+/* ===============================
+   INTERESSE
+================================ */
+
+function sendInterest(property){
+
+  const lead = {
+
+    property:property,
+
+    profile:profile,
+
+    timestamp:new Date().toISOString()
+
+  };
+
+  localStorage.setItem(
+    "ynteligencia_interest",
+    JSON.stringify(lead)
+  );
+
+  alert(
+    "Seu interesse foi registrado em " +
+    property +
+    "."
+  );
+
+}
+
+
+/* ===============================
+   BUSCA
+================================ */
+
+function searchProperties(){
+
+  const query =
+    document
+      .getElementById("search")
+      .value
+      .toLowerCase()
+      .trim();
+
+  if(!query){
+
+    document
+      .getElementById("resultado")
+      .scrollIntoView({
+        behavior:"smooth"
+      });
+
+    return;
+
+  }
+
+  const filtered =
+    properties.filter(property=>
+
+      property.name
+        .toLowerCase()
+        .includes(query)
+
+      ||
+
+      property.neighborhood
+        .toLowerCase()
+        .includes(query)
+
+    );
+
+
+  const cards =
+    document.getElementById("cards");
+
+  cards.innerHTML = "";
+
+
+  filtered.forEach(property=>{
+
+    const article =
+      document.createElement("article");
+
+    article.className="card";
+
+    article.innerHTML=`
+
+      <div
+        class="photo"
+        style="
+          background-image:url('${property.image}')
+        "
+      >
+
+        <div class="compatibility">
+          ${property.score}% compatível
+        </div>
+
+      </div>
+
+      <div class="card-body">
+
+        <h3>${property.name}</h3>
+
+        <div class="location">
+          ${property.neighborhood} · São Paulo
+        </div>
+
+        <div class="price">
+          ${money(property.price)}
+        </div>
+
+        <div class="details">
+          <span>${property.bedrooms} dorm.</span>
+          <span>${property.size} m²</span>
+        </div>
+
+        <button
+          class="interest"
+          onclick="sendInterest('${property.name}')">
+          Quero conhecer
+        </button>
+
+      </div>
+
+    `;
+
+    cards.appendChild(article);
+
+  });
+
+
+  if(!filtered.length){
+
+    cards.innerHTML = `
+
+      <div style="
+        background:white;
+        padding:30px;
+        border-radius:18px;
+        grid-column:1/-1;
+      ">
+
+        <strong>
+          Não encontramos esse imóvel.
+        </strong>
+
+        <p style="
+          color:#758195;
+          margin-top:8px;
+        ">
+          Tente outro bairro ou empreendimento.
+        </p>
+
+      </div>
+
+    `;
+
+  }
+
+
+  document
+    .getElementById("resultado")
+    .classList.add("show");
+
+  document
+    .getElementById("resultado")
+    .scrollIntoView({
+      behavior:"smooth"
+    });
+
+}
+
+
+function scrollExplore(){
+
+  document
+    .getElementById("explorar")
+    .scrollIntoView({
+      behavior:"smooth"
+    });
+
+}
+
+
+/* ===============================
+   PWA
+================================ */
+
+if("serviceWorker" in navigator){
+
+  window.addEventListener(
+    "load",
+    ()=>{
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then(()=>{
+          console.log(
+            "Ynteligencia PWA ativada."
+          );
+        })
+        .catch(error=>{
+          console.log(
+            "Erro no Service Worker:",
+            error
+          );
+        });
+    }
+  );
+
+}
+
+
+/* INICIALIZA */
+
+update();
+
+</script>
+
+</body>
+</html>
