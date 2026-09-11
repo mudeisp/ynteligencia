@@ -500,7 +500,36 @@ function updateNext(){$("next").disabled=!currentValid()}
 document.querySelectorAll(".source-btn").forEach(btn=>btn.addEventListener("click",()=>{sourceMode=btn.dataset.source;document.querySelectorAll(".source-btn").forEach(x=>x.classList.toggle("selected",x===btn));if(sourceMode==="novos"){showToast("Novos: integração com a Órulo será conectada assim que as credenciais forem liberadas.")}else showToast("Usados: base própria da Ynteligencia.")}));
 document.querySelectorAll(".option").forEach(btn=>btn.addEventListener("click",()=>{const key=btn.dataset.key,value=btn.dataset.value;if(btn.classList.contains("multi")){const arr=profile[key];const i=arr.indexOf(value);if(i>=0)arr.splice(i,1);else arr.push(value);btn.classList.toggle("selected",arr.includes(value))}else{profile[key]=key==="budget"?Number(value):value;document.querySelectorAll(`.option[data-key="${key}"]:not(.multi)`).forEach(x=>x.classList.remove("selected"));btn.classList.add("selected")}updateNext()}));
 
-$("next").addEventListener("click",()=>{if(!currentValid())return;if(step<6)setStep(step+1);else showMatches()});
+function trackProfileCompleted(){
+  try{
+    if(sessionStorage.getItem("ynteligencia_profile_completed")==="1")return;
+
+    gtag('event', 'profile_completed', {
+      purpose: profile.purpose || "",
+      region: profile.region || "",
+      budget: Number(profile.budget) || 0,
+      bedrooms: profile.bedrooms ?? "",
+      timing: profile.timing || "",
+      property_types: (profile.types || []).join("|"),
+      priorities: (profile.feature || []).join("|")
+    });
+
+    sessionStorage.setItem("ynteligencia_profile_completed","1");
+  }catch(error){
+    console.warn("Não foi possível registrar profile_completed:", error);
+  }
+}
+
+$("next").addEventListener("click",()=>{
+  if(!currentValid())return;
+
+  if(step<6){
+    setStep(step+1);
+  }else{
+    trackProfileCompleted();
+    showMatches();
+  }
+});
 $("back").addEventListener("click",()=>{if(step>0)setStep(step-1)});
 $("startHero").addEventListener("click",()=>{
   gtag('event', 'profile_started', {
