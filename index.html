@@ -13,6 +13,26 @@
   gtag('js', new Date());
   gtag('config', 'G-Y2W11SX5VV');
 </script>
+
+<!-- Meta Pixel -->
+<script>
+  !function(f,b,e,v,n,t,s){
+    if(f.fbq)return;
+    n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];
+    t=b.createElement(e);t.async=!0;t.src=v;
+    s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)
+  }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+
+  fbq('init', '1552958819302786');
+  fbq('track', 'PageView');
+</script>
+<noscript>
+  <img height="1" width="1" style="display:none"
+       src="https://www.facebook.com/tr?id=1552958819302786&ev=PageView&noscript=1"
+       alt="">
+</noscript>
 <link rel="manifest" href="/manifest.json">  
 <meta name="theme-color" content="#111111">  
 <meta charset="utf-8">
@@ -668,13 +688,131 @@ function interest(id,name){
     console.warn("Não foi possível registrar property_interest:", error);
   }
 
-  showToast(`Interesse registrado em ${name}. Em breve podemos conectar este contato ao atendimento da Yincorp.`);
+  openLeadCapture(p || {id,name});
+}
 
-  try{
-    const events=JSON.parse(localStorage.getItem("ynteligencia_events")||"[]");
-    events.push({type:"interest",property_id:id,name,profile,created_at:new Date().toISOString()});
-    localStorage.setItem("ynteligencia_events",JSON.stringify(events.slice(-100)));
-  }catch{}
+function openLeadCapture(p){
+  const old=document.getElementById("leadModal");
+  if(old)old.remove();
+
+  const modal=document.createElement("div");
+  modal.id="leadModal";
+  modal.style.cssText="position:fixed;inset:0;z-index:250;background:rgba(7,15,27,.82);display:flex;align-items:center;justify-content:center;padding:20px";
+
+  modal.innerHTML=`
+    <div style="width:min(520px,100%);background:#fff;border-radius:20px;padding:26px;position:relative;box-shadow:0 24px 70px rgba(0,0,0,.28)">
+      <button type="button" aria-label="Fechar" onclick="document.getElementById('leadModal')?.remove()" style="position:absolute;top:14px;right:14px;width:38px;height:38px;border:0;border-radius:50%;background:#f0f3f6;color:#101a2b;font-size:22px;font-weight:900">×</button>
+
+      <div style="font-size:11px;font-weight:900;letter-spacing:1.3px;color:#ff914d;margin-bottom:8px">TENHO INTERESSE</div>
+      <h2 style="margin:0 42px 8px 0;font-size:28px;line-height:1.1;color:#182232">Receba atendimento sobre este imóvel</h2>
+      <p style="margin:0 0 18px;color:#697487;line-height:1.5">${esc(p.name||"Imóvel selecionado")}</p>
+
+      <form id="leadCaptureForm">
+        <input id="leadName" class="field" required autocomplete="name" placeholder="Seu nome" style="margin-bottom:10px">
+        <input id="leadPhone" class="field" required autocomplete="tel" inputmode="tel" placeholder="WhatsApp / telefone" style="margin-bottom:10px">
+        <input id="leadEmail" class="field" type="email" autocomplete="email" placeholder="E-mail (opcional)" style="margin-bottom:14px">
+
+        <button class="primary" type="submit" style="width:100%;border:0">Quero falar sobre este imóvel</button>
+        <p style="margin:10px 0 0;color:#8a94a3;font-size:11px;line-height:1.4;text-align:center">Ao enviar, seus dados ficam registrados para atendimento da Yincorp.</p>
+      </form>
+    </div>`;
+
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove()});
+  document.body.appendChild(modal);
+
+  document.getElementById("leadCaptureForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+
+    const form=e.currentTarget;
+    const submitButton=form.querySelector('button[type="submit"]');
+
+    const lead={
+      name:clean(document.getElementById("leadName").value),
+      phone:clean(document.getElementById("leadPhone").value),
+      email:clean(document.getElementById("leadEmail").value),
+      property_id:String(p.id||""),
+      property_name:p.name||"",
+      neighborhood:p.neighborhood||"",
+      property_value:Number(p.value)||0,
+      match_score:Number(p.match?.score)||0,
+      profile:{...profile},
+      created_at:new Date().toISOString()
+    };
+
+    submitButton.disabled=true;
+    submitButton.textContent="Enviando...";
+
+    try{
+      const praediumResponse=await fetch("https://api.praedium.com.br/v1/12052/eff285d6-a704-11f1-b277-0affe18deec3/conversion?access_token=2e1b0a3576408d4e14780289654053fbb99ad2c023c19785d4a81658d355d77c",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          nome:lead.name,
+          telefone:lead.phone,
+          email:lead.email,
+          origem:"ynteligencia",
+          empreendimento:lead.property_name,
+          mensagem:`Interesse Ynteligencia | Imóvel: ${lead.property_name} | ID: ${lead.property_id} | Bairro: ${lead.neighborhood} | Valor: ${lead.property_value} | MATCH: ${lead.match_score}% | Região buscada: ${profile.region||""} | Orçamento: ${Number(profile.budget)||0} | Momento: ${profile.timing||""}`
+        })
+      });
+
+      if(!praediumResponse.ok){
+        throw new Error("Praedium não confirmou o recebimento do lead.");
+      }
+
+      try{
+        gtag('event','lead_created',{
+          property_id:lead.property_id,
+          property_name:lead.property_name,
+          neighborhood:lead.neighborhood,
+          property_value:lead.property_value,
+          match_score:lead.match_score,
+          region:profile.region||"",
+          budget:Number(profile.budget)||0,
+          inventory_source:p.source||sourceMode||"usados",
+          crm:"praedium",
+          debug_mode:true
+        });
+      }catch(error){
+        console.warn("Não foi possível registrar lead_created no GA4:",error);
+      }
+
+      try{
+        if(typeof fbq==="function"){
+          fbq('track','Lead',{
+            content_name:lead.property_name||"Ynteligencia",
+            content_category:"Imóvel",
+            value:lead.property_value||0,
+            currency:"BRL"
+          });
+        }
+      }catch(error){
+        console.warn("Não foi possível registrar Lead no Meta Pixel:",error);
+      }
+
+      try{
+        const leads=JSON.parse(localStorage.getItem("ynteligencia_leads")||"[]");
+        leads.push({...lead,crm:"praedium",crm_sent:true});
+        localStorage.setItem("ynteligencia_leads",JSON.stringify(leads.slice(-100)));
+      }catch{}
+
+      document.getElementById("leadModal")?.remove();
+      showToast("Interesse enviado com sucesso para o atendimento da Yincorp.");
+
+    }catch(error){
+      console.error("Erro ao enviar lead para o Praedium:",error);
+
+      try{
+        const leads=JSON.parse(localStorage.getItem("ynteligencia_leads")||"[]");
+        leads.push({...lead,crm:"praedium",crm_sent:false});
+        localStorage.setItem("ynteligencia_leads",JSON.stringify(leads.slice(-100)));
+      }catch{}
+
+      showToast("Não foi possível enviar agora. Tente novamente em instantes.");
+      submitButton.disabled=false;
+      submitButton.textContent="Quero falar sobre este imóvel";
+    }
+  });
 }
 function showToast(message){const t=$("toast");t.textContent=message;t.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove("show"),3500)}
 
