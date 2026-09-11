@@ -77,7 +77,7 @@ export default async function handler(req, res) {
             },
 
             body: JSON.stringify({
-              from: "Ynteligencia <onboarding@resend.dev>",
+              from: "Ynteligencia <leads@yincorp.com.br>",
 
               to: [
                 "contato.yincorp@gmail.com"
