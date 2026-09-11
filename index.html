@@ -447,6 +447,61 @@ const steps=[...document.querySelectorAll(".step")];
 
 function clean(v){return String(v??"").replace(/\s+/g," ").trim()}
 function norm(v){return clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
+
+/* =========================================================
+   SUPABASE — inteligência comportamental da Ynteligencia
+   Usa somente a Publishable Key (segura para navegador com RLS).
+   A Secret/Service Role NUNCA deve ser colocada neste arquivo.
+========================================================= */
+const SUPABASE_URL = "https://wzaegidwtdjuhqchpdpd.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_YmN9DjeDgog_mlVw9EsDUQ_Z-4MJKsp";
+
+function getYnteligenciaSessionId(){
+  const key = "ynteligencia_session_id";
+  let id = localStorage.getItem(key);
+  if(!id){
+    id = (crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(key,id);
+  }
+  return id;
+}
+
+const YNTELIGENCIA_SESSION_ID = getYnteligenciaSessionId();
+
+async function supabaseTrack(eventType, metadata={}){
+  try{
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/events`,{
+      method:"POST",
+      headers:{
+        "apikey":SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type":"application/json",
+        "Prefer":"return=minimal"
+      },
+      body:JSON.stringify({
+        session_id:YNTELIGENCIA_SESSION_ID,
+        event_type:eventType,
+        metadata:{
+          ...metadata,
+          page:location.pathname,
+          source_mode:sourceMode || "usados"
+        }
+      })
+    });
+
+    if(!response.ok){
+      const detail = await response.text();
+      console.warn(`Supabase ${eventType} não gravou:`,response.status,detail);
+      return false;
+    }
+    return true;
+  }catch(error){
+    console.warn(`Falha Supabase ${eventType}:`,error);
+    return false;
+  }
+}
+
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function numberBR(v){
   let s=String(v??"").replace(/R\$/gi,"").replace(/\s/g,"").replace(/[^\d,.-]/g,"");
@@ -535,6 +590,10 @@ function trackProfileCompleted(){
   }catch(error){
     console.warn("Não foi possível registrar profile_completed:", error);
   }
+
+  supabaseTrack("profile_completed",{
+    profile:{...profile}
+  });
 }
 
 $("next").addEventListener("click",()=>{
@@ -551,6 +610,10 @@ $("back").addEventListener("click",()=>{if(step>0)setStep(step-1)});
 $("startHero").addEventListener("click",()=>{
   gtag('event', 'profile_started', {
     source: 'hero'
+  });
+
+  supabaseTrack("profile_started",{
+    source:"hero"
   });
 
   $("match").scrollIntoView({
@@ -605,6 +668,19 @@ function showMatches(){
     console.warn("Não foi possível registrar match_generated:", error);
   }
 
+  supabaseTrack("match_generated",{
+    profile:{...profile},
+    results_count:scored.length,
+    top_match_score:scored.length ? scored[0].match.score : 0,
+    matches:scored.slice(0,12).map(item=>({
+      property_id:String(item.id||""),
+      property_name:item.name||"",
+      neighborhood:item.neighborhood||"",
+      value:Number(item.value)||0,
+      score:Number(item.match?.score)||0
+    }))
+  });
+
   $("results").classList.add("visible");$("resultSummary").textContent=scored.length?`Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`:"Não encontramos uma combinação forte. Vamos ampliar sua busca.";$("matchGrid").innerHTML=scored.length?scored.map(p=>card(p,true)).join(""):`<div class="empty"><h3>Vamos ampliar o MATCH</h3><p>Tente uma região ou faixa de preço um pouco mais ampla.</p></div>`;$("results").scrollIntoView({behavior:"smooth"})
 }
 function coverHTML(p){
@@ -652,6 +728,20 @@ function card(p,isMatch=false){
 }
 function showPhotoModal(id){
   const p=properties.find(x=>String(x.id)===String(id));if(!p)return;
+
+  supabaseTrack("property_view",{
+    property:{
+      id:String(p.id||""),
+      name:p.name||"",
+      neighborhood:p.neighborhood||"",
+      value:Number(p.value)||0,
+      area:Number(p.area)||0,
+      bedrooms:Number(p.bedrooms)||0,
+      match_score:Number(p.match?.score)||0
+    },
+    profile:{...profile}
+  });
+
   const photos=photoList(p);if(!photos.length){showToast("As imagens deste imóvel ainda estão sendo atualizadas.");return}
   const old=document.getElementById("photoModal");if(old)old.remove();
   const modal=document.createElement("div");modal.id="photoModal";modal.style.cssText="position:fixed;inset:0;z-index:200;background:rgba(7,15,27,.92);display:flex;align-items:center;justify-content:center;padding:20px";
@@ -687,6 +777,17 @@ function interest(id,name){
   }catch(error){
     console.warn("Não foi possível registrar property_interest:", error);
   }
+
+  supabaseTrack("property_interest",{
+    property:{
+      id:String(id||""),
+      name:name||"",
+      neighborhood:p?.neighborhood||"",
+      value:Number(p?.value)||0,
+      match_score:Number(p?.match?.score)||0
+    },
+    profile:{...profile}
+  });
 
   openLeadCapture(p || {id,name});
 }
@@ -776,6 +877,21 @@ function openLeadCapture(p){
       }catch(error){
         console.warn("Não foi possível registrar lead_created no GA4:",error);
       }
+
+      supabaseTrack("lead_created",{
+        lead:{
+          name:lead.name,
+          phone:lead.phone,
+          email:lead.email,
+          property_id:lead.property_id,
+          property_name:lead.property_name,
+          neighborhood:lead.neighborhood,
+          property_value:lead.property_value,
+          match_score:lead.match_score,
+          crm:"praedium"
+        },
+        profile:{...profile}
+      });
 
       try{
         if(typeof fbq==="function"){
