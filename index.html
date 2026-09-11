@@ -743,7 +743,7 @@ function openLeadCapture(p){
     submitButton.textContent="Enviando...";
 
     try{
-      const praediumResponse=await fetch("https://api.praedium.com.br/v1/12052/eff285d6-a704-11f1-b277-0affe18deec3/conversion?access_token=2e1b0a3576408d4e14780289654053fbb99ad2c023c19785d4a81658d355d77c",{
+      const praediumResponse=await fetch("/api/lead",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
@@ -757,7 +757,7 @@ function openLeadCapture(p){
       });
 
       if(!praediumResponse.ok){
-        throw new Error("Praedium não confirmou o recebimento do lead.");
+        throw new Error("A API não confirmou o recebimento do lead.");
       }
 
       try{
