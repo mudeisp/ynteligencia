@@ -7,6 +7,7 @@ export default async function handler(req, res) {
   }
 
   const praediumUrl = process.env.PRAEDIUM_WEBHOOK_URL;
+  const resendApiKey = process.env.RESEND_API_KEY;
 
   if (!praediumUrl) {
     return res.status(500).json({
@@ -29,6 +30,10 @@ export default async function handler(req, res) {
         "",
       mensagem: body.mensagem || ""
     };
+
+    /* ==========================================
+       1. ENVIA PARA O PRAEDIUM
+    ========================================== */
 
     const response = await fetch(praediumUrl, {
       method: "POST",
@@ -54,16 +59,196 @@ export default async function handler(req, res) {
       });
     }
 
+    /* ==========================================
+       2. ENVIA ALERTA POR E-MAIL
+    ========================================== */
+
+    let emailSent = false;
+
+    if (resendApiKey) {
+      try {
+        const emailResponse = await fetch(
+          "https://api.resend.com/emails",
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+              from: "Ynteligencia <onboarding@resend.dev>",
+
+              to: [
+                "contato.yincorp@gmail.com"
+              ],
+
+              subject:
+                `🔥 Novo lead Ynteligencia — ${payload.empreendimento || "Imóvel"}`,
+
+              html: `
+                <div style="
+                  font-family:Arial,sans-serif;
+                  max-width:620px;
+                  margin:auto;
+                  color:#182232;
+                  line-height:1.6;
+                ">
+
+                  <div style="
+                    background:#101a2b;
+                    color:#ffffff;
+                    padding:24px;
+                    border-radius:14px 14px 0 0;
+                  ">
+
+                    <div style="
+                      color:#ff914d;
+                      font-size:12px;
+                      font-weight:bold;
+                      letter-spacing:1px;
+                    ">
+                      YNTELIGENCIA
+                    </div>
+
+                    <h1 style="
+                      margin:8px 0 0;
+                      font-size:25px;
+                    ">
+                      🔥 Novo lead
+                    </h1>
+
+                  </div>
+
+                  <div style="
+                    border:1px solid #e2e6eb;
+                    border-top:0;
+                    padding:24px;
+                    border-radius:0 0 14px 14px;
+                  ">
+
+                    <h2 style="
+                      margin-top:0;
+                      font-size:20px;
+                    ">
+                      ${escapeHtml(payload.nome || "Cliente")}
+                    </h2>
+
+                    <p>
+                      <strong>Telefone:</strong>
+                      ${escapeHtml(payload.telefone || "Não informado")}
+                      <br>
+
+                      <strong>E-mail:</strong>
+                      ${escapeHtml(payload.email || "Não informado")}
+                    </p>
+
+                    <hr style="
+                      border:0;
+                      border-top:1px solid #e2e6eb;
+                      margin:22px 0;
+                    ">
+
+                    <p>
+                      <strong>Imóvel:</strong><br>
+                      ${escapeHtml(payload.empreendimento || "Não informado")}
+                    </p>
+
+                    <p>
+                      <strong>Jornada do comprador:</strong><br>
+                      ${escapeHtml(payload.mensagem || "Não informada")}
+                    </p>
+
+                    <hr style="
+                      border:0;
+                      border-top:1px solid #e2e6eb;
+                      margin:22px 0;
+                    ">
+
+                    <p style="
+                      margin-bottom:0;
+                      color:#697487;
+                      font-size:12px;
+                    ">
+                      Lead capturado pela Ynteligencia e enviado ao Praedium.
+                    </p>
+
+                  </div>
+
+                </div>
+              `
+            })
+          }
+        );
+
+        const emailResponseText =
+          await emailResponse.text();
+
+        if (!emailResponse.ok) {
+          console.error(
+            "Resend error:",
+            emailResponse.status,
+            emailResponseText
+          );
+        } else {
+          emailSent = true;
+
+          console.log(
+            "Alerta Ynteligencia enviado por e-mail."
+          );
+        }
+
+      } catch (emailError) {
+        /*
+          IMPORTANTE:
+          falha no e-mail NÃO invalida o lead.
+
+          O Praedium já recebeu.
+        */
+        console.error(
+          "Erro ao enviar alerta pelo Resend:",
+          emailError
+        );
+      }
+    } else {
+      console.warn(
+        "RESEND_API_KEY não configurada. Lead enviado ao Praedium sem alerta por e-mail."
+      );
+    }
+
+    /* ==========================================
+       3. CONFIRMA PARA O FRONT-END
+    ========================================== */
+
     return res.status(200).json({
-      success: true
+      success: true,
+      praedium: true,
+      email_sent: emailSent
     });
 
   } catch (error) {
-    console.error("Lead API error:", error);
+    console.error(
+      "Lead API error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
       error: "Erro interno ao enviar lead"
     });
   }
+}
+
+
+/* ==========================================
+   PROTEÇÃO DO HTML DO E-MAIL
+========================================== */
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
