@@ -3,10 +3,10 @@
   "name": "Ynteligencia - Inteligência Imobiliária",
   "icons": [
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512.png.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "start_url": "/",
