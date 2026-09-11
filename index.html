@@ -649,7 +649,33 @@ function renderCatalog(){
 $("showCatalog").addEventListener("click",()=>{if(sourceMode==="novos"){showToast("O catálogo de Novos será disponibilizado pela integração com a Órulo.");return}$("catalog").classList.add("visible");renderCatalog();$("catalog").scrollIntoView({behavior:"smooth"})});
 ["catalogSearch","catalogNeighborhood","catalogType","minPrice","maxPrice","catalogBedrooms","minArea","catalogParking","maxCondo","maxIptu"].forEach(id=>$(id).addEventListener($(id).tagName==="SELECT"?"change":"input",renderCatalog));
 $("resetCatalogFilters").addEventListener("click",()=>{["catalogSearch","minPrice","maxPrice","minArea","maxCondo","maxIptu"].forEach(id=>$(id).value="");["catalogNeighborhood","catalogType","catalogBedrooms","catalogParking"].forEach(id=>$(id).value="");renderCatalog()});
-function interest(id,name){showToast(`Interesse registrado em ${name}. Em breve podemos conectar este contato ao atendimento da Yincorp.`);try{const events=JSON.parse(localStorage.getItem("ynteligencia_events")||"[]");events.push({type:"interest",property_id:id,name,profile,created_at:new Date().toISOString()});localStorage.setItem("ynteligencia_events",JSON.stringify(events.slice(-100)))}catch{}}
+function interest(id,name){
+  const p=properties.find(x=>String(x.id)===String(id));
+
+  try{
+    gtag('event', 'property_interest', {
+      property_id: String(id || ""),
+      property_name: name || "",
+      neighborhood: p?.neighborhood || "",
+      property_value: Number(p?.value) || 0,
+      match_score: Number(p?.match?.score) || 0,
+      region: profile.region || "",
+      budget: Number(profile.budget) || 0,
+      inventory_source: p?.source || sourceMode || "usados",
+      debug_mode: true
+    });
+  }catch(error){
+    console.warn("Não foi possível registrar property_interest:", error);
+  }
+
+  showToast(`Interesse registrado em ${name}. Em breve podemos conectar este contato ao atendimento da Yincorp.`);
+
+  try{
+    const events=JSON.parse(localStorage.getItem("ynteligencia_events")||"[]");
+    events.push({type:"interest",property_id:id,name,profile,created_at:new Date().toISOString()});
+    localStorage.setItem("ynteligencia_events",JSON.stringify(events.slice(-100)));
+  }catch{}
+}
 function showToast(message){const t=$("toast");t.textContent=message;t.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove("show"),3500)}
 
 async function loadInventory(){
