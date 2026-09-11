@@ -571,6 +571,20 @@ function scoreProperty(p){
 function showMatches(){
   if(sourceMode==="novos"){$("results").classList.add("visible");$("resultSummary").textContent="O estoque de Novos será conectado à Órulo assim que as credenciais forem liberadas.";$("matchGrid").innerHTML=`<div class="empty"><h3>Novos imóveis em preparação</h3><p>A Ynteligencia já está preparada para receber o catálogo da Órulo. Assim que a API for conectada, o mesmo MATCH será aplicado aos lançamentos.</p></div>`;$("results").scrollIntoView({behavior:"smooth"});return}
   const scored=properties.map(p=>({...p,match:scoreProperty(p)})).filter(x=>x.match.score>=45).sort((a,b)=>b.match.score-a.match.score||a.value-b.value).slice(0,12);
+
+  try{
+    gtag('event', 'match_generated', {
+      results_count: scored.length,
+      top_match_score: scored.length ? scored[0].match.score : 0,
+      region: profile.region || "",
+      budget: Number(profile.budget) || 0,
+      inventory_source: sourceMode || "usados",
+      debug_mode: true
+    });
+  }catch(error){
+    console.warn("Não foi possível registrar match_generated:", error);
+  }
+
   $("results").classList.add("visible");$("resultSummary").textContent=scored.length?`Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`:"Não encontramos uma combinação forte. Vamos ampliar sua busca.";$("matchGrid").innerHTML=scored.length?scored.map(p=>card(p,true)).join(""):`<div class="empty"><h3>Vamos ampliar o MATCH</h3><p>Tente uma região ou faixa de preço um pouco mais ampla.</p></div>`;$("results").scrollIntoView({behavior:"smooth"})
 }
 function coverHTML(p){
