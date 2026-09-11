@@ -502,8 +502,6 @@ document.querySelectorAll(".option").forEach(btn=>btn.addEventListener("click",(
 
 function trackProfileCompleted(){
   try{
-    if(sessionStorage.getItem("ynteligencia_profile_completed")==="1")return;
-
     gtag('event', 'profile_completed', {
       purpose: profile.purpose || "",
       region: profile.region || "",
@@ -511,10 +509,9 @@ function trackProfileCompleted(){
       bedrooms: profile.bedrooms ?? "",
       timing: profile.timing || "",
       property_types: (profile.types || []).join("|"),
-      priorities: (profile.feature || []).join("|")
+      priorities: (profile.feature || []).join("|"),
+      debug_mode: true
     });
-
-    sessionStorage.setItem("ynteligencia_profile_completed","1");
   }catch(error){
     console.warn("Não foi possível registrar profile_completed:", error);
   }
