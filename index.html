@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="pt-BR">
+<head>
 <!-- Google Analytics 4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y2W11SX5VV"></script>
 <script>
@@ -12,7 +13,6 @@
   gtag('js', new Date());
   gtag('config', 'G-Y2W11SX5VV');
 </script>
-<head>
 <link rel="manifest" href="/manifest.json">  
 <meta name="theme-color" content="#111111">  
 <meta charset="utf-8">
@@ -502,7 +502,16 @@ document.querySelectorAll(".option").forEach(btn=>btn.addEventListener("click",(
 
 $("next").addEventListener("click",()=>{if(!currentValid())return;if(step<6)setStep(step+1);else showMatches()});
 $("back").addEventListener("click",()=>{if(step>0)setStep(step-1)});
-$("startHero").addEventListener("click",()=>$("match").scrollIntoView({behavior:"smooth",block:"center"}));
+$("startHero").addEventListener("click",()=>{
+  gtag('event', 'profile_started', {
+    source: 'hero'
+  });
+
+  $("match").scrollIntoView({
+    behavior:"smooth",
+    block:"center"
+  });
+});
 $("navMatch").addEventListener("click",()=>$("match").scrollIntoView({behavior:"smooth",block:"center"}));
 $("exploreHero").addEventListener("click",()=>$("explore").scrollIntoView({behavior:"smooth"}));
 $("navExplore").addEventListener("click",()=>$("explore").scrollIntoView({behavior:"smooth"}));
