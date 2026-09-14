@@ -1599,6 +1599,64 @@ const YNTELIGENCIA_SESSION_ID =
   getYnteligenciaSessionId();
 
 
+/* =========================================================
+   ATRIBUIÇÃO GOOGLE / UTMs
+========================================================= */
+
+function captureYnteligenciaAttribution(){
+
+  const params=
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const keys=[
+    "gclid",
+    "gbraid",
+    "wbraid",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term"
+  ];
+
+  const attribution={};
+
+  keys.forEach(key=>{
+
+    const incoming=
+      clean(
+        params.get(key)
+      );
+
+    if(incoming){
+
+      localStorage.setItem(
+        `ynteligencia_${key}`,
+        incoming
+      );
+
+      attribution[key]=incoming;
+
+    }else{
+
+      attribution[key]=
+        localStorage.getItem(
+          `ynteligencia_${key}`
+        ) || "";
+    }
+
+  });
+
+  return attribution;
+}
+
+
+const YNTELIGENCIA_ATTRIBUTION =
+  captureYnteligenciaAttribution();
+
+
 async function supabaseTrack(
   eventType,
   metadata={}
@@ -1637,7 +1695,11 @@ async function supabaseTrack(
               location.pathname,
 
             source_mode:
-              sourceMode || "usados"
+              sourceMode || "usados",
+
+            attribution:{
+              ...YNTELIGENCIA_ATTRIBUTION
+            }
           }
 
         })
@@ -1731,6 +1793,13 @@ async function supabaseCreateLead(lead){
 
             crm:
               "praedium",
+
+            attribution:{
+              ...YNTELIGENCIA_ATTRIBUTION,
+
+              landing_page:
+                window.location.href
+            },
 
             property:{
 
@@ -4837,6 +4906,33 @@ function openLeadCapture(p){
 
                   origem:
                     "ynteligencia",
+
+                  pagina:
+                    window.location.href,
+
+                  gclid:
+                    YNTELIGENCIA_ATTRIBUTION.gclid,
+
+                  gbraid:
+                    YNTELIGENCIA_ATTRIBUTION.gbraid,
+
+                  wbraid:
+                    YNTELIGENCIA_ATTRIBUTION.wbraid,
+
+                  utm_source:
+                    YNTELIGENCIA_ATTRIBUTION.utm_source,
+
+                  utm_medium:
+                    YNTELIGENCIA_ATTRIBUTION.utm_medium,
+
+                  utm_campaign:
+                    YNTELIGENCIA_ATTRIBUTION.utm_campaign,
+
+                  utm_content:
+                    YNTELIGENCIA_ATTRIBUTION.utm_content,
+
+                  utm_term:
+                    YNTELIGENCIA_ATTRIBUTION.utm_term,
 
                   empreendimento:
                     lead.property_name,
