@@ -867,6 +867,21 @@ header{position:fixed;inset:0 0 auto;background:rgba(13,14,14,.78);border-bottom
 }
 
 
+/* ===== PRODUCT RETOUCHES · EXPERIÊNCIA FINAL ===== */
+:root{--dark:#0B0B0B;--dark2:#171717;--orange:#C6A76B;--orange2:#E4D0A3;--bg:#F7F4ED;--text:#0B0B0B;--muted:#77736B;--line:rgba(11,11,11,.10);--green:#C6A76B;--greenbg:#F7F0E1;--hero-photo:none}
+body{background:#F7F4ED;color:#0B0B0B}
+.hero{background-image:linear-gradient(180deg,rgba(11,11,11,.18),rgba(11,11,11,.94)),var(--hero-photo);background-color:#171717;background-size:cover;background-position:center}
+.logo-mark{box-shadow:0 8px 22px rgba(198,167,107,.18)}
+.primary{background:#E4D0A3;color:#0B0B0B;box-shadow:none}.secondary{border-color:rgba(228,208,163,.55)}
+.progress span{background:#C6A76B}.option:hover,.option.selected{border-color:#C6A76B;background:#FCFAF6;box-shadow:0 8px 24px rgba(198,167,107,.10)}
+.step-count{display:flex;justify-content:space-between;align-items:center;margin:0 0 34px;color:#77736B;font-size:12px}.step-count strong{color:#0B0B0B}.step-count button{border:0;background:transparent;color:#77736B;padding:5px}
+.cover{background:#171717}.match{background:rgba(11,11,11,.84)!important;border:1px solid rgba(241,226,190,.72)!important;color:#F1E2BE!important}.reasons{background:#F7F0E1;color:#4D4029;border-color:rgba(198,167,107,.24)}
+.interest{background:#E4D0A3;color:#0B0B0B;box-shadow:none}.view{background:#171717;color:#fff}
+.match-processing{position:fixed;inset:0;z-index:230;display:none;place-items:center;padding:28px;background:#0B0B0B;color:#fff;text-align:center}.match-processing.visible{display:grid}.match-processing-mark{width:74px;height:74px;display:grid;place-items:center;margin:0 auto 28px;border:1px solid rgba(228,208,163,.45);border-radius:50%;color:#E4D0A3;font-size:30px;animation:matchPulse 1.2s ease-in-out infinite}.match-processing h2{margin:0 0 12px;font-size:30px;letter-spacing:-.04em}.match-processing p{margin:0;color:#AAA49A}.match-processing-line{width:210px;height:2px;margin:28px auto 0;background:#292929;overflow:hidden}.match-processing-line span{display:block;width:42%;height:100%;background:#C6A76B;animation:matchLoad 1s ease-in-out infinite}@keyframes matchPulse{50%{transform:scale(1.06);box-shadow:0 0 42px rgba(198,167,107,.13)}}@keyframes matchLoad{from{transform:translateX(-110%)}to{transform:translateX(350%)}}
+.photo-detail-shell{position:fixed;inset:0;z-index:240;background:#FCFAF6;color:#0B0B0B;overflow-y:auto}.photo-detail-hero{height:min(62vh,680px);background:#171717;position:relative}.photo-detail-hero .photo-track{height:100%}.photo-detail-close{position:fixed;top:18px;left:18px;z-index:4;width:44px;height:44px;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:rgba(11,11,11,.55);color:#fff;font-size:24px}.photo-detail-content{position:relative;width:min(720px,calc(100% - 32px));margin:-28px auto 0;padding:30px 30px 120px;border-radius:28px 28px 0 0;background:#FCFAF6}.photo-detail-score{display:inline-flex;padding:9px 12px;margin-bottom:13px;border-radius:11px;background:#171717;color:#E4D0A3;font-weight:900}.photo-detail-content h2{margin:0 0 5px;font-size:32px;letter-spacing:-.04em}.photo-detail-location{color:#77736B}.photo-detail-price{margin:18px 0 5px;font-size:30px;font-weight:900}.photo-detail-meta{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.photo-detail-meta span{padding:8px 10px;border-radius:10px;background:#F0ECE3;font-size:12px;font-weight:700}.photo-detail-reasons{margin:22px 0;padding:18px 0;border-top:1px solid #DED8CD;border-bottom:1px solid #DED8CD}.photo-detail-reasons strong{display:block;margin-bottom:10px}.photo-detail-reasons div{margin:7px 0}.photo-detail-cta{position:fixed;left:50%;bottom:14px;z-index:5;width:min(690px,calc(100% - 24px));transform:translateX(-50%);display:grid;grid-template-columns:1fr 1.2fr;gap:8px;padding:7px;border-radius:18px;background:rgba(252,250,246,.92);backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(11,11,11,.15)}.photo-detail-cta button{min-height:52px;border-radius:14px;font-weight:850}.photo-detail-cta .detail-back{border:1px solid #171717;background:#fff}.photo-detail-cta .detail-interest{border:0;background:#171717;color:#fff}
+@media(min-width:701px){.results.visible{background:#171717;color:#fff;padding:52px 0}.results .result-top,.results .grid{max-width:590px;margin-left:auto;margin-right:auto}.results .result-top p{color:#AAA49A}.results .reset-link{color:#E4D0A3}.results .grid{display:block}.results .card{min-height:820px;margin-bottom:28px;border:0;background:#0B0B0B;color:#fff}.results .cover{height:500px}.results .card-address,.results .m2,.results .cost-line{color:#AAA49A}.results .feature{background:#232323;color:#fff}.results .reasons{background:transparent;border-left:2px solid #C6A76B;border-radius:0;color:#EEE3CF}}
+@media(max-width:700px){header{background:linear-gradient(180deg,rgba(11,11,11,.76),transparent);border:0}.hero{min-height:100svh;padding:90px 0 92px;align-items:flex-end}.hero .container{text-align:center}.hero .eyebrow{border:0;background:transparent;color:#E4D0A3;letter-spacing:.19em}.hero h1{margin:clamp(220px,34svh,330px) auto 14px;font-size:35px;color:#fff}.hero h1 span{display:block;color:#F1E2BE}.hero p{margin:auto;color:#F1EEE8}.wizard-wrap,.wizard,.wizard-actions{background:#FCFAF6}.wizard-wrap{margin:0;min-height:100svh}.wizard{min-height:100svh;border:0;border-radius:0;box-shadow:none}.progress{margin-top:58px;height:3px;background:#ECE7DD}.wizard-inner{padding:24px 22px 92px}.step-count{margin-bottom:40px}.step h2{font-size:34px;line-height:1.03}.option{background:#FCFAF6;border-color:#DED8CD}.next{background:#171717}.wizard-actions{position:fixed;z-index:12;left:22px;right:22px;bottom:16px;padding-top:10px}.results .result-top{display:none}.results.visible{padding:0;background:#0B0B0B}.results.visible>.container{width:100%;max-width:none}.results .grid{display:block;height:100svh;max-width:none;overflow-y:auto;scroll-snap-type:y mandatory}.results .card{height:100svh;min-height:100svh;overflow:hidden;display:grid;grid-template-rows:54svh 46svh;border:0;border-radius:0;background:#0B0B0B;color:#fff;scroll-snap-align:start;scroll-snap-stop:always}.results .cover{height:54svh;min-height:0}.results .card-body{height:46svh;min-height:0;overflow-y:auto;padding:17px 20px 100px;background:#0B0B0B}.results .card-address,.results .m2,.results .cost-line{color:#C7C1B8}.results .feature{background:#232323;color:#fff}.results .reasons{margin-bottom:11px;padding:4px 0 4px 12px;border:0;border-left:2px solid #C6A76B;border-radius:0;background:transparent;color:#F1E7D4}.results .card-tag{display:inline-flex;width:max-content;padding:5px 8px;border-radius:6px;background:#E4D0A3;color:#21180C}.results .card-actions{position:sticky;bottom:-84px}.explore,.catalog{background:#FCFAF6}.explore-box,.catalog-filters{background:#F1EDE5}.field{background:#fff}.photo-detail-hero{height:52svh}.photo-detail-content{width:100%;margin-top:-20px;padding:25px 20px 110px;border-radius:24px 24px 0 0}.photo-detail-content h2{font-size:27px}.photo-detail-cta{left:12px;right:12px;bottom:10px;width:auto;transform:none}}
+
 /* ===== YNTELIGENCIA APP SHELL · PREMIUM CHAMPAGNE ===== */
 .brand-lockup{display:flex;align-items:center;gap:10px;color:#fff;min-width:0}
 .brand-icon{width:38px;height:38px;border-radius:11px;object-fit:cover;box-shadow:0 8px 24px rgba(214,181,111,.18)}
@@ -930,13 +945,12 @@ header{position:fixed;inset:0 0 auto;background:rgba(13,14,14,.78);border-bottom
     </h1>
 
     <p>
-      Novos e usados em uma única experiência. Conte o que importa
-      e receba um feed ordenado pela compatibilidade com seu perfil.
+      Novos e usados. Em uma única busca inteligente.
     </p>
 
     <div class="hero-actions">
       <button class="primary" id="startHero">
-        Descobrir meu imóvel
+        Encontrar meu MATCH
       </button>
 
       <button class="secondary" id="exploreHero">
@@ -961,6 +975,11 @@ header{position:fixed;inset:0 0 auto;background:rgba(13,14,14,.78);border-bottom
 
         <!-- A origem do inventário permanece interna.
              O usuário faz um único MATCH; sourceMode continua no JS para a futura Órulo. -->
+
+        <div class="step-count" aria-live="polite">
+          <strong id="stepCount">01 de 07</strong>
+          <button type="button" id="skipStep">Pular</button>
+        </div>
 
         <div class="step" data-step="0">
           <div class="step-label">01 · OBJETIVO</div>
@@ -1262,6 +1281,18 @@ header{position:fixed;inset:0 0 auto;background:rgba(13,14,14,.78);border-bottom
           </div>
         </div>
 
+        <div class="step" data-step="6" hidden>
+          <div class="step-label">07 · MOMENTO</div>
+          <h2>Quando você pretende comprar?</h2>
+          <p>Isso ajuda a Ynteligencia a entender o seu momento.</p>
+          <div class="options">
+            <button class="option" data-key="timing" data-value="agora">Agora</button>
+            <button class="option" data-key="timing" data-value="1-3">Nos próximos 1–3 meses</button>
+            <button class="option" data-key="timing" data-value="3-6">Nos próximos 3–6 meses</button>
+            <button class="option" data-key="timing" data-value="pesquisando">Só pesquisando</button>
+          </div>
+        </div>
+
         <div class="wizard-actions">
 
           <button
@@ -1493,22 +1524,31 @@ header{position:fixed;inset:0 0 auto;background:rgba(13,14,14,.78);border-bottom
   id="toast">
 </div>
 
+<div class="match-processing" id="matchProcessing" role="status" aria-live="polite">
+  <div>
+    <div class="match-processing-mark">Y</div>
+    <h2>Construindo seu MATCH</h2>
+    <p id="matchProcessingText">Analisando seu perfil...</p>
+    <div class="match-processing-line"><span></span></div>
+  </div>
+</div>
+
 <footer>
   Ynteligencia · Inteligência imobiliária
 </footer>
 
 <nav class="app-dock" aria-label="Navegação principal">
-  <button type="button" onclick="document.getElementById('inicio').scrollIntoView({behavior:'smooth'})">
-    <b>⌂</b><span>INÍCIO</span>
-  </button>
   <button type="button" onclick="document.getElementById('match').scrollIntoView({behavior:'smooth'})">
-    <b>✦</b><span>MATCH</span>
+    <b>✦</b><span>DESCOBRIR</span>
   </button>
   <button type="button" onclick="document.getElementById('explore').scrollIntoView({behavior:'smooth'})">
     <b>⌕</b><span>EXPLORAR</span>
   </button>
+  <button type="button" onclick="showToast('Salvos será ativado em uma próxima etapa do produto.')">
+    <b>♡</b><span>SALVOS</span>
+  </button>
   <button type="button" id="openAppMenuDock">
-    <b>☰</b><span>MENU</span>
+    <b>○</b><span>PERFIL</span>
   </button>
 </nav>
 
@@ -2525,7 +2565,7 @@ function setStep(n){
     Math.max(
       0,
       Math.min(
-        5,
+        6,
         n
       )
     );
@@ -2538,7 +2578,12 @@ function setStep(n){
 
 
   $("progress").style.width=
-    `${((step+1)/6)*100}%`;
+    `${((step+1)/7)*100}%`;
+
+  const stepCount=$("stepCount");
+  if(stepCount){
+    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 07`;
+  }
 
 
   $("back").style.visibility=
@@ -2548,7 +2593,7 @@ function setStep(n){
 
 
   $("next").textContent=
-    step===5
+    step===6
       ? "Encontrar meus MATCHs"
       : "Continuar";
 
@@ -2582,6 +2627,10 @@ function currentValid(){
     );
   }
 
+  if(step===6){
+    return profile.timing!=="";
+  }
+
 
   if(step===3){
 
@@ -2598,7 +2647,8 @@ function currentValid(){
       "region",
       "budget",
       "bedrooms",
-      "feature"
+      "feature",
+      "timing"
     ][step];
 
 
@@ -2809,6 +2859,26 @@ function trackProfileCompleted(){
 }
 
 
+function showMatchProcessing(){
+  const layer=$("matchProcessing");
+  const label=$("matchProcessingText");
+  if(!layer){showMatches();return;}
+  const messages=[
+    "Analisando seu perfil...",
+    "Comparando imóveis...",
+    "Calculando compatibilidade...",
+    "Seus MATCHES estão prontos."
+  ];
+  layer.classList.add("visible");
+  messages.forEach((message,index)=>setTimeout(()=>{if(label)label.textContent=message;},index*420));
+  setTimeout(()=>{showMatches();layer.classList.remove("visible");},1550);
+}
+
+$("skipStep")?.addEventListener("click",()=>{
+  showToast("Cada resposta melhora a precisão do seu MATCH.");
+});
+
+
 $("next")
   .addEventListener(
     "click",
@@ -2819,7 +2889,7 @@ $("next")
       )return;
 
 
-      if(step<5){
+      if(step<6){
 
         setStep(
           step+1
@@ -2829,7 +2899,7 @@ $("next")
 
         trackProfileCompleted();
 
-        showMatches();
+        showMatchProcessing();
       }
     }
   );
@@ -3936,7 +4006,7 @@ function card(
     isMatch &&
     p.match
 
-      ? p.match.reasons
+      ? p.match.reasons.slice(0,3)
       : [];
 
 
@@ -3981,7 +4051,7 @@ function card(
           class="view"
           type="button"
           onclick="showPhotoModal('${esc(p.id)}')">
-          Ver fotos
+          Ver detalhes
         </button>
         `
 
@@ -3990,7 +4060,7 @@ function card(
           class="view"
           type="button"
           onclick="showToast('As imagens deste imóvel ainda estão sendo atualizadas.')">
-          Ver imóvel
+          Ver detalhes
         </button>
         `;
 
@@ -4084,7 +4154,7 @@ function card(
             class="interest"
             type="button"
             onclick="interest('${esc(p.id)}','${esc(p.name)}')">
-            Tenho interesse
+            Quero conhecer
           </button>
 
         </div>
@@ -4184,26 +4254,21 @@ function showPhotoModal(id){
 
 
   modal.style.cssText=
-    "position:fixed;inset:0;z-index:200;background:rgba(7,15,27,.92);display:flex;align-items:center;justify-content:center;padding:20px";
+    "position:fixed;inset:0;z-index:240";
+
+  modal.className=
+    "photo-detail-shell";
+
+  const detailReasons=
+    (p.match?.reasons || []).slice(0,3);
 
 
   modal.innerHTML=
     `
-    <button
-      type="button"
-      aria-label="Fechar"
-      onclick="this.closest('#photoModal').remove()"
-      style="position:absolute;top:18px;right:18px;width:42px;height:42px;border:0;border-radius:50%;background:#fff;color:#101a2b;font-size:25px;font-weight:900;z-index:3">
-      ×
-    </button>
+    <button class="photo-detail-close" type="button" aria-label="Voltar" onclick="this.closest('#photoModal').remove()">‹</button>
 
-    <div style="width:min(920px,100%)">
-
-      <div style="height:min(72vh,650px);background:#101a2b;border-radius:16px;overflow:hidden">
-
-        <div
-          class="photo-track"
-          style="height:100%">
+    <div class="photo-detail-hero">
+      <div class="photo-track">
 
           ${
             photos
@@ -4214,29 +4279,34 @@ function showPhotoModal(id){
                     class="photo-slide"
                     src="${esc(url)}"
                     alt="${esc(p.name)}"
-                    style="object-fit:contain;background:#101a2b">
+                    style="object-fit:cover;background:#171717">
                   `
               )
               .join("")
           }
 
-        </div>
-
       </div>
+    </div>
 
-      <div style="color:#fff;text-align:center;margin-top:12px;font-weight:800;font-size:13px">
-
-        ${esc(p.name)}
-        ·
-        ${photos.length}
-        ${
-          photos.length===1
-            ? "foto"
-            : "fotos"
-        }
-
+    <section class="photo-detail-content">
+      ${p.match ? `<div class="photo-detail-score">${p.match.score}% MATCH</div>` : ""}
+      <h2>${esc(p.name)}</h2>
+      <div class="photo-detail-location">${esc(p.neighborhood || "São Paulo")}</div>
+      <div class="photo-detail-price">${money(p.value)}</div>
+      <div class="photo-detail-meta">
+        ${p.area ? `<span>${area(p.area)} m²</span>` : ""}
+        ${p.bedrooms ? `<span>${p.bedrooms} dorms.</span>` : ""}
+        ${p.suites ? `<span>${p.suites} suíte${p.suites===1?"":"s"}</span>` : ""}
+        ${p.parking ? `<span>${p.parking} vaga${p.parking===1?"":"s"}</span>` : ""}
       </div>
+      ${detailReasons.length ? `<div class="photo-detail-reasons"><strong>Por que combina com você</strong>${detailReasons.map(reason=>`<div>✓ ${esc(reason)}</div>`).join("")}</div>` : ""}
+      ${p.description ? `<h3>Sobre o imóvel</h3><p>${esc(p.description)}</p>` : ""}
+      ${p.address ? `<h3>Localização</h3><p>${esc(p.address)}</p>` : ""}
+    </section>
 
+    <div class="photo-detail-cta">
+      <button class="detail-back" type="button" onclick="this.closest('#photoModal').remove()">Voltar</button>
+      <button class="detail-interest" type="button" onclick="interest('${esc(p.id)}','${esc(p.name)}')">Quero conhecer</button>
     </div>
     `;
 
@@ -5382,6 +5452,20 @@ async function loadInventory(){
 }
 
 
+function applyHeroInventoryPhoto(){
+  const featured=
+    properties.find(property=>photoList(property).length);
+  const photo=
+    featured ? photoList(featured)[0] : "";
+  if(photo){
+    document.documentElement.style.setProperty(
+      "--hero-photo",
+      `url("${photo.replace(/"/g,"%22")}")`
+    );
+  }
+}
+
+
 /* =========================================================
    START
 ========================================================= */
@@ -5395,6 +5479,8 @@ Promise.all([
 ])
 .then(
   ()=>{
+
+    applyHeroInventoryPhoto();
 
     console.log(
       `Ynteligencia pronta: ${properties.length} imóveis · ${Object.keys(photoManifest).length} registros de fotos`
