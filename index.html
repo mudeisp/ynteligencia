@@ -4975,6 +4975,30 @@ function openLeadCapture(p){
           }
 
 
+            /* =================================================
+               GOOGLE ADS - CONVERSÃO LEAD YNTELIGENCIA
+            ================================================= */
+
+            try{
+
+              gtag(
+                'event',
+                'conversion',
+                {
+                  'send_to':
+                    'AW-18371236623/1P2xCPmnzfccEI-mi7hE'
+                }
+              );
+
+            }catch(error){
+
+              console.warn(
+                "Não foi possível registrar a conversão no Google Ads:",
+                error
+              );
+            }
+
+
           /* =================================================
              GA4
           ================================================= */
