@@ -909,10 +909,45 @@ body{background:#F7F4ED;color:#0B0B0B}
   .nav-links{display:none!important}.app-dock{grid-template-columns:repeat(4,1fr)!important;background:rgba(13,14,14,.92)!important}.app-dock button:first-child{background:rgba(255,255,255,.09);color:#fff}
   .app-side-menu{width:min(370px,94vw)}
 }
+
+/* ===== MOBILE APP BEHAVIOR ===== */
+.filters-trigger,.filters-backdrop,.filters-close{display:none}
+.wizard[data-current-step="0"] .next,
+.wizard[data-current-step="2"] .next,
+.wizard[data-current-step="3"] .next,
+.wizard[data-current-step="4"] .next{display:none}
+.step.active{animation:stepFromRight .25s cubic-bezier(.22,.8,.24,1) both}
+.wizard[data-direction="back"] .step.active{animation-name:stepFromLeft}
+@keyframes stepFromRight{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes stepFromLeft{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+
+@media(max-width:700px){
+  html,body{overscroll-behavior-y:none}
+  body.home-mode{height:100svh;overflow:hidden}
+  body.match-mode{overflow:hidden;height:100svh}
+  body.match-mode header,body.match-mode .app-dock{display:none!important}
+  body.match-mode .wizard-wrap{position:fixed;inset:0;z-index:180;min-height:100svh;overflow:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  body.match-mode .wizard,body.match-mode .wizard-inner{height:100%;min-height:0}
+  body.match-mode .wizard{display:grid;grid-template-rows:auto 1fr}
+  body.match-mode .wizard-inner{display:flex;flex-direction:column;overflow:hidden;padding-top:20px;padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+  body.match-mode .step{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:20px}
+  body.match-mode .wizard-actions{bottom:env(safe-area-inset-bottom);padding-bottom:10px}
+  body.match-mode .back{min-width:48px;min-height:48px}
+  .option,.source-btn,.back,.next,.app-dock button,.hamburger-btn{min-height:48px}
+  .hero{padding-top:calc(82px + env(safe-area-inset-top));padding-bottom:calc(86px + env(safe-area-inset-bottom))}
+  .app-dock{bottom:max(10px,env(safe-area-inset-bottom))}
+  footer{display:none}
+  .filters-trigger{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;margin:12px 0 18px;border:1px solid #DED8CD;border-radius:15px;background:#FCFAF6;color:#171717;font-weight:800}
+  .filters-backdrop{position:fixed;inset:0;z-index:214;display:block;background:rgba(11,11,11,.46);opacity:0;pointer-events:none;transition:.2s}
+  .filters-backdrop.open{opacity:1;pointer-events:auto}
+  .catalog-filters{position:fixed;z-index:215;left:0;right:0;bottom:0;max-height:82svh;margin:0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));border:0;border-radius:26px 26px 0 0;background:#FCFAF6;box-shadow:0 -18px 60px rgba(11,11,11,.18);overflow-y:auto;transform:translateY(105%);transition:transform .26s cubic-bezier(.22,.8,.24,1)}
+  .catalog-filters.open{transform:translateY(0)}
+  .filters-sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.filters-sheet-head .filter-title{margin:0;font-size:18px;text-transform:none;letter-spacing:-.02em}.filters-close{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:#F0ECE3;font-size:25px}
+}
 </style>
 </head>
 
-<body>
+<body class="home-mode">
 
 <header>
   <div class="container nav app-topbar">
@@ -977,8 +1012,7 @@ body{background:#F7F4ED;color:#0B0B0B}
              O usuário faz um único MATCH; sourceMode continua no JS para a futura Órulo. -->
 
         <div class="step-count" aria-live="polite">
-          <strong id="stepCount">01 de 07</strong>
-          <button type="button" id="skipStep">Pular</button>
+          <strong id="stepCount">01 de 06</strong>
         </div>
 
         <div class="step" data-step="0">
@@ -1281,18 +1315,6 @@ body{background:#F7F4ED;color:#0B0B0B}
           </div>
         </div>
 
-        <div class="step" data-step="6" hidden>
-          <div class="step-label">07 · MOMENTO</div>
-          <h2>Quando você pretende comprar?</h2>
-          <p>Isso ajuda a Ynteligencia a entender o seu momento.</p>
-          <div class="options">
-            <button class="option" data-key="timing" data-value="agora">Agora</button>
-            <button class="option" data-key="timing" data-value="1-3">Nos próximos 1–3 meses</button>
-            <button class="option" data-key="timing" data-value="3-6">Nos próximos 3–6 meses</button>
-            <button class="option" data-key="timing" data-value="pesquisando">Só pesquisando</button>
-          </div>
-        </div>
-
         <div class="wizard-actions">
 
           <button
@@ -1390,10 +1412,14 @@ body{background:#F7F4ED;color:#0B0B0B}
 
     </div>
 
-    <div class="catalog-filters">
+    <button class="filters-trigger" id="openFilters" type="button">⌁ Abrir filtros avançados</button>
+    <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true"></div>
 
-      <div class="filter-title">
-        Filtros de compra
+    <div class="catalog-filters" id="catalogFilters" aria-label="Filtros avançados">
+
+      <div class="filters-sheet-head">
+        <div class="filter-title">Filtros de compra</div>
+        <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros">×</button>
       </div>
 
       <div class="filter-grid">
@@ -1538,7 +1564,7 @@ body{background:#F7F4ED;color:#0B0B0B}
 </footer>
 
 <nav class="app-dock" aria-label="Navegação principal">
-  <button type="button" onclick="document.getElementById('match').scrollIntoView({behavior:'smooth'})">
+  <button type="button" onclick="enterMatchMode()">
     <b>✦</b><span>DESCOBRIR</span>
   </button>
   <button type="button" onclick="document.getElementById('explore').scrollIntoView({behavior:'smooth'})">
@@ -2559,30 +2585,38 @@ function deduplicate(items){
    WIZARD
 ========================================================= */
 
-function setStep(n){
+function setStep(n,fromHistory=false){
+
+  const previousStep=step;
 
   step=
     Math.max(
       0,
       Math.min(
-        6,
+        5,
         n
       )
     );
 
 
-  steps.forEach(
-    (s,i)=>
-      s.hidden=i!==step
-  );
+  const wizard=document.querySelector(".wizard");
+  if(wizard){
+    wizard.dataset.direction=step>=previousStep ? "forward" : "back";
+    wizard.dataset.currentStep=String(step);
+  }
+
+  steps.forEach((s,i)=>{
+    s.hidden=i!==step;
+    s.classList.toggle("active",i===step);
+  });
 
 
   $("progress").style.width=
-    `${((step+1)/7)*100}%`;
+    `${((step+1)/6)*100}%`;
 
   const stepCount=$("stepCount");
   if(stepCount){
-    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 07`;
+    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 06`;
   }
 
 
@@ -2593,20 +2627,21 @@ function setStep(n){
 
 
   $("next").textContent=
-    step===6
+    step===5
       ? "Encontrar meus MATCHs"
       : "Continuar";
 
 
   updateNext();
 
+  if(document.body.classList.contains("match-mode") && !fromHistory && step!==previousStep){
+    history.pushState({ynteligenciaMatch:true,step},"");
+  }
 
-  document
-    .getElementById("match")
-    .scrollIntoView({
-      behavior:"smooth",
-      block:"center"
-    });
+
+  if(document.body.classList.contains("match-mode")){
+    document.getElementById("match").scrollTop=0;
+  }
 }
 
 
@@ -2627,11 +2662,6 @@ function currentValid(){
     );
   }
 
-  if(step===6){
-    return profile.timing!=="";
-  }
-
-
   if(step===3){
 
     return(
@@ -2647,8 +2677,7 @@ function currentValid(){
       "region",
       "budget",
       "bedrooms",
-      "feature",
-      "timing"
+      "feature"
     ][step];
 
 
@@ -2878,6 +2907,27 @@ $("skipStep")?.addEventListener("click",()=>{
   showToast("Cada resposta melhora a precisão do seu MATCH.");
 });
 
+function enterMatchMode(){
+  document.body.classList.remove("home-mode");
+  document.body.classList.add("match-mode");
+  history.pushState({ynteligenciaMatch:true,step},"");
+  setStep(step,true);
+}
+
+function leaveMatchMode(){
+  document.body.classList.remove("match-mode");
+}
+
+window.addEventListener("popstate",event=>{
+  if(event.state?.ynteligenciaMatch){
+    document.body.classList.add("match-mode");
+    setStep(Number(event.state.step)||0,true);
+  }else{
+    leaveMatchMode();
+    document.body.classList.add("home-mode");
+  }
+});
+
 
 $("next")
   .addEventListener(
@@ -2889,7 +2939,7 @@ $("next")
       )return;
 
 
-      if(step<6){
+      if(step<5){
 
         setStep(
           step+1
@@ -2910,11 +2960,10 @@ $("back")
     "click",
     ()=>{
 
-      if(step>0){
-
-        setStep(
-          step-1
-        );
+      if(history.state?.ynteligenciaMatch){
+        history.back();
+      }else if(step>0){
+        setStep(step-1);
       }
     }
   );
@@ -2941,12 +2990,7 @@ $("startHero")
         }
       );
 
-
-      $("match")
-        .scrollIntoView({
-          behavior:"smooth",
-          block:"center"
-        });
+      enterMatchMode();
     }
   );
 
@@ -2954,35 +2998,54 @@ $("startHero")
 $("navMatch")
   .addEventListener(
     "click",
-    ()=>
-      $("match")
-        .scrollIntoView({
-          behavior:"smooth",
-          block:"center"
-        })
+    ()=>enterMatchMode()
   );
 
 
 $("exploreHero")
   .addEventListener(
     "click",
-    ()=>
+    ()=>{
+      document.body.classList.remove("home-mode");
+      leaveMatchMode();
       $("explore")
         .scrollIntoView({
           behavior:"smooth"
-        })
+        });
+    }
   );
 
 
 $("navExplore")
   .addEventListener(
     "click",
-    ()=>
+    ()=>{
+      document.body.classList.remove("home-mode");
+      leaveMatchMode();
       $("explore")
         .scrollIntoView({
           behavior:"smooth"
-        })
+        });
+    }
   );
+
+
+function setFiltersOpen(open){
+  const sheet=$("catalogFilters");
+  const backdrop=$("filtersBackdrop");
+  if(!sheet || !backdrop)return;
+  sheet.classList.toggle("open",open);
+  backdrop.classList.toggle("open",open);
+  backdrop.setAttribute("aria-hidden",String(!open));
+  if(window.matchMedia("(max-width:700px)").matches){
+    document.body.style.overflow=open ? "hidden" : "";
+  }
+}
+
+$("openFilters")?.addEventListener("click",()=>setFiltersOpen(true));
+$("closeFilters")?.addEventListener("click",()=>setFiltersOpen(false));
+$("filtersBackdrop")?.addEventListener("click",()=>setFiltersOpen(false));
+$("showCatalog")?.addEventListener("click",()=>setFiltersOpen(false));
 
 
 $("newSearch")
@@ -3020,7 +3083,8 @@ $("newSearch")
         );
 
 
-      setStep(0);
+      setStep(0,true);
+      enterMatchMode();
     }
   );
 
@@ -3425,6 +3489,9 @@ function scoreProperty(p){
 
 
 function showMatches(){
+
+  leaveMatchMode();
+  history.replaceState({ynteligenciaView:"feed"},"");
 
   if(
     sourceMode==="novos"
@@ -5543,7 +5610,13 @@ Promise.all([
     el.addEventListener('click',()=>{
       const id=el.getAttribute('data-scroll-target');
       closeMenu();
-      setTimeout(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth'}),80);
+      setTimeout(()=>{
+        if(id==='match') enterMatchMode();
+        else{
+          document.body.classList.toggle('home-mode',id==='inicio');
+          document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
+        }
+      },80);
     });
   });
 
