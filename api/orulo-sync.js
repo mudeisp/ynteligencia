@@ -260,6 +260,45 @@ if (finality !== "residencial") {
     }
 
     // =========================================================
+    // =========================================================
+// 3.5 DESATIVA CATÁLOGO ÓRULO ANTERIOR
+// =========================================================
+// Tudo que era "novos" fica temporariamente inativo.
+// O upsert abaixo reativa somente as ofertas residenciais
+// que continuam válidas no catálogo atual da Órulo.
+
+const deactivateResponse = await fetch(
+  `${SUPABASE_URL}/rest/v1/properties?source=eq.novos`,
+  {
+    method: "PATCH",
+    headers: {
+      apikey: supabaseSecretKey,
+      Authorization: `Bearer ${supabaseSecretKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      active: false,
+      updated_at: new Date().toISOString()
+    })
+  }
+);
+
+if (!deactivateResponse.ok) {
+  const deactivateError = await deactivateResponse.text();
+
+  console.error(
+    "SUPABASE_DEACTIVATE_ERROR",
+    deactivateResponse.status,
+    deactivateError
+  );
+
+  return res.status(502).json({
+    ok: false,
+    error: "Falha ao desativar catálogo Órulo anterior",
+    status: deactivateResponse.status
+  });
+}
     // 4. UPSERT NO SUPABASE
     // external_id já possui UNIQUE INDEX
     // =========================================================
