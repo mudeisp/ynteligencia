@@ -2556,6 +2556,19 @@ function mapProperty(
   };
 }
 
+function normalizeOruloType(value){
+
+  const t=norm(value || "");
+
+  if(t.includes("cobertura")) return "cobertura";
+  if(t.includes("sobrado")) return "sobrado";
+  if(t.includes("casa")) return "casa";
+  if(t.includes("studio") || t.includes("loft") || t.includes("kitnet")) return "studio";
+
+  return "apartamento";
+}
+
+
 function mapOruloProperty(row){
 
   const raw =
@@ -2649,9 +2662,10 @@ function mapOruloProperty(row){
       clean(row.image_url || ""),
 
     type:
-      clean(
+      normalizeOruloType(
         typology.type ||
-        "Apartamento"
+        row.title ||
+        "apartamento"
       ),
 
     source:
@@ -3560,7 +3574,7 @@ function showMatches(){
   leaveMatchMode();
   history.replaceState({ynteligenciaView:"feed"},"");
 
-  const scored=
+  const rankedProperties=
     properties
 
       .map(
@@ -3582,9 +3596,63 @@ function showMatches(){
           a.match.score ||
           a.value-
           b.value
-      )
+      );
 
-      .slice(0,12);
+
+  /*
+    MATCH unificado: preserva a pontuação original, mas evita que
+    o estoque muito maior de usados esconda os lançamentos.
+    Até 6 Novos + 6 Usados; se um grupo não tiver 6 elegíveis,
+    as vagas restantes são preenchidas pelos melhores imóveis gerais.
+  */
+  const novos=
+    rankedProperties
+      .filter(p=>p.source==="novos")
+      .slice(0,6);
+
+  const usados=
+    rankedProperties
+      .filter(p=>p.source!=="novos")
+      .slice(0,6);
+
+  const selectedIds=
+    new Set(
+      [...novos,...usados]
+        .map(p=>`${p.source}:${p.id}`)
+    );
+
+  const scored=
+    [...novos,...usados];
+
+  for(const p of rankedProperties){
+
+    if(scored.length>=12) break;
+
+    const key=`${p.source}:${p.id}`;
+
+    if(!selectedIds.has(key)){
+      scored.push(p);
+      selectedIds.add(key);
+    }
+  }
+
+  scored.sort(
+    (a,b)=>
+      b.match.score-
+      a.match.score ||
+      a.value-
+      b.value
+  );
+
+
+  console.log(
+    "Ynteligencia MATCH:",
+    {
+      novos:scored.filter(p=>p.source==="novos").length,
+      usados:scored.filter(p=>p.source!=="novos").length,
+      total:scored.length
+    }
+  );
 
 
   try{
@@ -4162,7 +4230,7 @@ function card(
       <div class="card-body">
 
         <div class="card-tag">
-          USADO
+          ${p.source==="novos" ? "NOVO" : "USADO"}
         </div>
 
         <h3>
