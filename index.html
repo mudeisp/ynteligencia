@@ -1635,11 +1635,8 @@ body{background:#F7F4ED;color:#0B0B0B}
 const CSV_FILE="Remax.teste.2.csv";
 const SUPABASE_PROPERTIES_URL =
   "https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties?source=eq.novos&active=eq.true&select=*";
-
-const SUPABASE_PUBLISHABLE_KEY =
-  "sb_publishable_YmN9DjeDgog_mlVw9EsDUQ_Z-4MJKsp";
 let properties=[];
-let sourceMode="usados";
+let sourceMode="todos";
 
 let profile={
   purpose:"",
@@ -2559,7 +2556,117 @@ function mapProperty(
   };
 }
 
+function mapOruloProperty(row){
 
+  const raw =
+    row && typeof row.raw_data === "object"
+      ? row.raw_data
+      : {};
+
+  const typology =
+    raw.typology || {};
+
+  const building =
+    raw.building || {};
+
+  const addressData =
+    building.address || {};
+
+  const streetParts = [
+    addressData.street_type,
+    addressData.street,
+    addressData.number
+  ].filter(Boolean);
+
+  return {
+
+    id:
+      String(row.external_id || row.id || ""),
+
+    name:
+      clean(
+        row.development_name ||
+        row.title ||
+        "Imóvel disponível"
+      ),
+
+    neighborhood:
+      clean(
+        row.neighborhood ||
+        addressData.area ||
+        ""
+      ),
+
+    address:
+      clean(
+        streetParts.join(" ")
+      ),
+
+    unit:
+      clean(
+        typology.reference ||
+        typology.section_reference ||
+        ""
+      ),
+
+    area:
+      Number(row.area) || 0,
+
+    bedrooms:
+      Number(row.bedrooms) || 0,
+
+    suites:
+      Number(typology.suites) || 0,
+
+    parking:
+      Number(row.parking_spaces) || 0,
+
+    year:
+      0,
+
+    description:
+      clean(
+        building.description ||
+        row.title ||
+        ""
+      ),
+
+    condominium:
+      0,
+
+    iptu:
+      0,
+
+    value:
+      Number(row.price) || 0,
+
+    m2:
+      Number(row.area) > 0 && Number(row.price) > 0
+        ? Number(row.price) / Number(row.area)
+        : 0,
+
+    photos:
+      clean(row.image_url || ""),
+
+    type:
+      clean(
+        typology.type ||
+        "Apartamento"
+      ),
+
+    source:
+      "novos",
+
+    propertyUrl:
+      clean(row.property_url || ""),
+
+    stock:
+      Number(typology.stock) || 0,
+
+    rawData:
+      raw
+  };
+}
 function deduplicate(items){
 
   const map=new Map();
@@ -2700,52 +2807,8 @@ function updateNext(){
 }
 
 
-document
-  .querySelectorAll(
-    ".source-btn"
-  )
-  .forEach(
-    btn=>
-      btn.addEventListener(
-        "click",
-        ()=>{
-
-          sourceMode=
-            btn.dataset.source;
-
-
-          document
-            .querySelectorAll(
-              ".source-btn"
-            )
-            .forEach(
-              x=>
-                x.classList.toggle(
-                  "selected",
-                  x===btn
-                )
-            );
-
-
-          if(
-            sourceMode==="novos"
-          ){
-
-            showToast(
-              "Novos: integração com a Órulo será conectada assim que as credenciais forem liberadas."
-            );
-
-          }else{
-
-            showToast(
-              "Usados: base própria da Ynteligencia."
-            );
-          }
-        }
-      )
-  );
-
-
+// A origem do inventário é interna.
+// O MATCH trabalha com Novos + Usados em uma única busca.
 document
   .querySelectorAll(
     ".option"
@@ -3496,51 +3559,6 @@ function showMatches(){
 
   leaveMatchMode();
   history.replaceState({ynteligenciaView:"feed"},"");
-
-  if(
-    sourceMode==="novos"
-  ){
-
-    $("results")
-      .classList
-      .add(
-        "visible"
-      );
-
-
-    $("resultSummary")
-      .textContent=
-        "O estoque de Novos será conectado à Órulo assim que as credenciais forem liberadas.";
-
-
-    $("matchGrid")
-      .innerHTML=
-        `
-        <div class="empty">
-
-          <h3>
-            Novos imóveis em preparação
-          </h3>
-
-          <p>
-            A Ynteligencia já está preparada para receber
-            o catálogo da Órulo. Assim que a API for conectada,
-            o mesmo MATCH será aplicado aos lançamentos.
-          </p>
-
-        </div>
-        `;
-
-
-    $("results")
-      .scrollIntoView({
-        behavior:"smooth"
-      });
-
-
-    return;
-  }
-
 
   const scored=
     properties
@@ -4641,18 +4659,6 @@ $("showCatalog")
     "click",
     ()=>{
 
-      if(
-        sourceMode==="novos"
-      ){
-
-        showToast(
-          "O catálogo de Novos será disponibilizado pela integração com a Órulo."
-        );
-
-        return;
-      }
-
-
       $("catalog")
         .classList
         .add(
@@ -5494,21 +5500,81 @@ async function loadInventory(){
       );
     }
 
+const text=
+  await response.text();
 
-    const text=
-      await response.text();
+const usedProperties=
+  deduplicate(
+    parseCSV(text)
+      .map(
+        mapProperty
+      )
+  );
 
+let newProperties=[];
 
-    properties=
-      deduplicate(
-        parseCSV(text)
-          .map(
-            mapProperty
+try{
+
+  const novosResponse=
+    await fetch(
+      SUPABASE_PROPERTIES_URL,
+      {
+        cache:"no-store",
+        headers:{
+          "apikey":
+            SUPABASE_PUBLISHABLE_KEY,
+          "Authorization":
+            `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+        }
+      }
+    );
+
+  if(!novosResponse.ok){
+    throw new Error(
+      `Supabase properties: ${novosResponse.status}`
+    );
+  }
+
+  const novosRows=
+    await novosResponse.json();
+
+  newProperties=
+    Array.isArray(novosRows)
+      ? novosRows
+          .map(mapOruloProperty)
+          .filter(
+            p=>
+              p.id &&
+              p.value>0
           )
-      );
+      : [];
 
+}catch(error){
 
-    fillCatalogNeighborhoods();
+  console.warn(
+    "Não foi possível carregar imóveis novos:",
+    error
+  );
+
+  newProperties=[];
+}
+
+properties=
+  deduplicate([
+    ...usedProperties,
+    ...newProperties
+  ]);
+
+console.log(
+  "Ynteligencia inventory:",
+  {
+    usados:usedProperties.length,
+    novos:newProperties.length,
+    total:properties.length
+  }
+);
+
+fillCatalogNeighborhoods();
 
 
   }catch(error){
