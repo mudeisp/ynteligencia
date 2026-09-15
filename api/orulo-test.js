@@ -3,6 +3,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  res.setHeader("Cache-Control", "no-store");
+
   try {
     const clientId = process.env.ORULO_CLIENT_ID;
     const clientSecret = process.env.ORULO_CLIENT_SECRET;
@@ -14,7 +16,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 1. Autentica na Órulo
+    // 1. Autenticação
     const tokenResponse = await fetch(
       "https://www.orulo.com.br/oauth/token",
       {
@@ -35,14 +37,20 @@ export default async function handler(req, res) {
     if (!tokenResponse.ok || !tokenData.access_token) {
       return res.status(tokenResponse.status || 500).json({
         ok: false,
-        error: "Falha na autenticação com a Órulo",
-        details: tokenData
+        error: "Falha na autenticação com a Órulo"
       });
     }
 
-    // 2. Consulta cidades de SP disponíveis para nossa integração
-    const citiesResponse = await fetch(
-      "https://www.orulo.com.br/api/v2/addresses/cities?state=SP",
+    // 2. Busca uma pequena amostra de empreendimentos em São Paulo
+    const params = new URLSearchParams({
+      state: "SP",
+      city: "São Paulo",
+      results_per_page: "5",
+      page: "1"
+    });
+
+    const buildingsResponse = await fetch(
+      `https://www.orulo.com.br/api/v2/buildings?${params.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${tokenData.access_token}`,
@@ -51,25 +59,26 @@ export default async function handler(req, res) {
       }
     );
 
-    const citiesData = await citiesResponse.json();
+    const buildingsData = await buildingsResponse.json();
 
-    if (!citiesResponse.ok) {
-      return res.status(citiesResponse.status).json({
+    if (!buildingsResponse.ok) {
+      return res.status(buildingsResponse.status).json({
         ok: false,
-        error: "Falha ao consultar cidades na Órulo",
-        details: citiesData
+        error: "Falha ao consultar empreendimentos na Órulo",
+        details: buildingsData
       });
     }
 
-    // 3. Retorna somente os dados do catálogo, nunca o token
+    // 3. Retorna a resposta real para entendermos a estrutura
     return res.status(200).json({
       ok: true,
-      message: "Catálogo Órulo acessado com sucesso",
+      message: "Empreendimentos da Órulo carregados com sucesso",
+      city: "São Paulo",
       state: "SP",
-      cities: citiesData.cities || [],
-      total_cities: Array.isArray(citiesData.cities)
-        ? citiesData.cities.length
-        : 0
+      total: buildingsData.total ?? null,
+      page: buildingsData.page ?? null,
+      total_pages: buildingsData.total_pages ?? null,
+      buildings: buildingsData.buildings || []
     });
 
   } catch (error) {
