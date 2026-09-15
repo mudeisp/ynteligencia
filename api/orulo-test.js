@@ -45,7 +45,7 @@ export default async function handler(req, res) {
     const buildingId = "80696";
 
     const buildingResponse = await fetch(
-      `https://www.orulo.com.br/api/v2/buildings/${buildingId}`,
+      ``https://www.orulo.com.br/api/v2/buildings/${buildingId}/typologies`,
       {
         headers: {
           Authorization: `Bearer ${tokenData.access_token}`,
