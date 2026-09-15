@@ -14,35 +14,62 @@ export default async function handler(req, res) {
       });
     }
 
-    const body = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: "client_credentials"
-    });
+    // 1. Autentica na Órulo
+    const tokenResponse = await fetch(
+      "https://www.orulo.com.br/oauth/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: "client_credentials"
+        }).toString()
+      }
+    );
 
-    const response = await fetch("https://www.orulo.com.br/oauth/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: body.toString()
-    });
+    const tokenData = await tokenResponse.json();
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({
+    if (!tokenResponse.ok || !tokenData.access_token) {
+      return res.status(tokenResponse.status || 500).json({
         ok: false,
         error: "Falha na autenticação com a Órulo",
-        details: data
+        details: tokenData
       });
     }
 
+    // 2. Consulta cidades de SP disponíveis para nossa integração
+    const citiesResponse = await fetch(
+      "https://www.orulo.com.br/api/v2/addresses/cities?state=SP",
+      {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          Accept: "application/json"
+        }
+      }
+    );
+
+    const citiesData = await citiesResponse.json();
+
+    if (!citiesResponse.ok) {
+      return res.status(citiesResponse.status).json({
+        ok: false,
+        error: "Falha ao consultar cidades na Órulo",
+        details: citiesData
+      });
+    }
+
+    // 3. Retorna somente os dados do catálogo, nunca o token
     return res.status(200).json({
       ok: true,
-      message: "Ynteligencia conectado à Órulo com sucesso",
-      token_type: data.token_type || null,
-      expires_in: data.expires_in || null
+      message: "Catálogo Órulo acessado com sucesso",
+      state: "SP",
+      cities: citiesData.cities || [],
+      total_cities: Array.isArray(citiesData.cities)
+        ? citiesData.cities.length
+        : 0
     });
 
   } catch (error) {
