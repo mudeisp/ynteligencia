@@ -41,16 +41,11 @@ export default async function handler(req, res) {
       });
     }
 
-    // 2. Busca uma pequena amostra de empreendimentos em São Paulo
-    const params = new URLSearchParams({
-      state: "SP",
-      city: "São Paulo",
-      results_per_page: "5",
-      page: "1"
-    });
+    // 2. Empreendimento real escolhido para inspeção
+    const buildingId = "80696";
 
-    const buildingsResponse = await fetch(
-      `https://www.orulo.com.br/api/v2/buildings?${params.toString()}`,
+    const buildingResponse = await fetch(
+      `https://www.orulo.com.br/api/v2/buildings/${buildingId}`,
       {
         headers: {
           Authorization: `Bearer ${tokenData.access_token}`,
@@ -59,26 +54,24 @@ export default async function handler(req, res) {
       }
     );
 
-    const buildingsData = await buildingsResponse.json();
+    const buildingData = await buildingResponse.json();
 
-    if (!buildingsResponse.ok) {
-      return res.status(buildingsResponse.status).json({
+    if (!buildingResponse.ok) {
+      return res.status(buildingResponse.status).json({
         ok: false,
-        error: "Falha ao consultar empreendimentos na Órulo",
-        details: buildingsData
+        error: "Falha ao consultar empreendimento na Órulo",
+        building_id: buildingId,
+        details: buildingData
       });
     }
 
-    // 3. Retorna a resposta real para entendermos a estrutura
+    // 3. Retorna os dados reais para estudarmos a estrutura
+    // O token e as credenciais nunca são enviados ao navegador
     return res.status(200).json({
       ok: true,
-      message: "Empreendimentos da Órulo carregados com sucesso",
-      city: "São Paulo",
-      state: "SP",
-      total: buildingsData.total ?? null,
-      page: buildingsData.page ?? null,
-      total_pages: buildingsData.total_pages ?? null,
-      buildings: buildingsData.buildings || []
+      message: "Detalhes do empreendimento carregados com sucesso",
+      building_id: buildingId,
+      building: buildingData
     });
 
   } catch (error) {
