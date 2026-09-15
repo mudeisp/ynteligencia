@@ -93,7 +93,14 @@ export default async function handler(req, res) {
     const rows = [];
 
     for (const building of buildings) {
-      try {
+      try {// Ynteligencia trabalha somente com imóveis residenciais
+const finality = String(building.finality || "")
+  .trim()
+  .toLowerCase();
+
+if (finality !== "residencial") {
+  continue;
+}
         const typologiesResponse = await fetch(
           `https://www.orulo.com.br/api/v2/buildings/${building.id}/typologies`,
           {
