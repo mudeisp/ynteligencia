@@ -1778,13 +1778,13 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
         </select>
       </label>
       <label>Valor mínimo
-        <input id="refinePriceMin" type="number" inputmode="numeric" min="0" step="10000" placeholder="Ex.: 500000">
+        <input id="refinePriceMin" type="text" inputmode="numeric" placeholder="R$ 500.000">
       </label>
       <label>Valor máximo
-        <input id="refinePriceMax" type="number" inputmode="numeric" min="0" step="10000" placeholder="Ex.: 900000">
+        <input id="refinePriceMax" type="text" inputmode="numeric" placeholder="R$ 900.000">
       </label>
     </div>
-    <button class="apply-refine-match" id="applyRefineMatch" type="button">Atualizar meus 12 imóveis</button>
+    <button class="apply-refine-match" id="applyRefineMatch" type="button">Atualizar meus imóveis</button>
     <button class="clear-refine-match" id="clearRefineMatch" type="button">Limpar faixa de valor</button>
   </div>
 </div>
@@ -1803,7 +1803,7 @@ let sourceMode="todos";
    Também aceita region/bedrooms para compatibilidade. */
 const adParams=new URLSearchParams(window.location.search);
 const adIntent={
-  neighborhood:cleanAdParam(adParams.get("bairro") || adParams.get("region") || ""),
+  neighborhood:formatNeighborhoodName(cleanAdParam(adParams.get("bairro") || adParams.get("region") || "")),
   bedrooms:Number(adParams.get("dormitorios") || adParams.get("bedrooms") || 0) || 0,
   minPrice:Number(adParams.get("valor_min") || adParams.get("min_price") || 0) || 0,
   maxPrice:Number(adParams.get("valor_max") || adParams.get("max_price") || 0) || 0
@@ -1812,6 +1812,28 @@ adIntent.active=Boolean(adIntent.neighborhood || adIntent.bedrooms);
 
 function cleanAdParam(value){
   return String(value||"").replace(/[-_]+/g," ").trim();
+}
+
+function formatNeighborhoodName(value){
+  const lowercaseWords=new Set(["da","das","de","do","dos","e"]);
+  return cleanAdParam(value)
+    .toLocaleLowerCase("pt-BR")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word,index)=>index>0 && lowercaseWords.has(word)
+      ? word
+      : word.charAt(0).toLocaleUpperCase("pt-BR")+word.slice(1))
+    .join(" ");
+}
+
+function formatBRLCurrencyInput(value){
+  const digits=String(value||"").replace(/\D/g,"");
+  if(!digits) return "";
+  return `R$ ${Number(digits).toLocaleString("pt-BR")}`;
+}
+
+function parseBRLCurrencyInput(value){
+  return Number(String(value||"").replace(/\D/g,"")) || 0;
 }
 
 function propertyMatchesAdNeighborhood(p){
@@ -5986,8 +6008,8 @@ function updateAdMatchUI(){
       .map(value=>`<option value="${esc(value)}"></option>`)
       .join("");
   }
-  if($("refinePriceMin")) $("refinePriceMin").value=adIntent.minPrice||"";
-  if($("refinePriceMax")) $("refinePriceMax").value=adIntent.maxPrice||"";
+  if($("refinePriceMin")) $("refinePriceMin").value=formatBRLCurrencyInput(adIntent.minPrice);
+  if($("refinePriceMax")) $("refinePriceMax").value=formatBRLCurrencyInput(adIntent.maxPrice);
 }
 
 function setRefineMatchOpen(open){
@@ -6000,11 +6022,16 @@ function setRefineMatchOpen(open){
 $("refineMatchFab")?.addEventListener("click",()=>setRefineMatchOpen(true));
 $("refineMatchClose")?.addEventListener("click",()=>setRefineMatchOpen(false));
 $("refineMatchShell")?.addEventListener("click",e=>{if(e.target===$("refineMatchShell"))setRefineMatchOpen(false);});
+["refinePriceMin","refinePriceMax"].forEach(id=>{
+  $(id)?.addEventListener("input",event=>{
+    event.target.value=formatBRLCurrencyInput(event.target.value);
+  });
+});
 $("applyRefineMatch")?.addEventListener("click",()=>{
-  const neighborhood=cleanAdParam($("refineNeighborhood")?.value||"");
+  const neighborhood=formatNeighborhoodName($("refineNeighborhood")?.value||"");
   const bedrooms=Number($("refineBedrooms")?.value||0) || 0;
-  const min=Number($("refinePriceMin")?.value||0);
-  const max=Number($("refinePriceMax")?.value||0);
+  const min=parseBRLCurrencyInput($("refinePriceMin")?.value||"");
+  const max=parseBRLCurrencyInput($("refinePriceMax")?.value||"");
   if(min && max && min>max){showToast("O valor mínimo precisa ser menor que o máximo.");return;}
   adIntent.neighborhood=neighborhood;
   adIntent.bedrooms=bedrooms;
