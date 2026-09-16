@@ -87,20 +87,89 @@ export default async function handler(req, res) {
       : [];
 
     // =========================================================
-    // 3. BUSCA TIPOLOGIAS E NORMALIZA
+    // 3. BUSCA TIPOLOGIAS + FOTOS + NORMALIZAÇÃO
     // =========================================================
 
     const rows = [];
 
     for (const building of buildings) {
-      try {// Ynteligencia trabalha somente com imóveis residenciais
-const finality = String(building.finality || "")
-  .trim()
-  .toLowerCase();
+      try {
+        // Ynteligencia trabalha somente com imóveis residenciais
+        const finality = String(building.finality || "")
+          .trim()
+          .toLowerCase();
 
-if (finality !== "residencial") {
-  continue;
-}
+        if (finality !== "residencial") {
+          continue;
+        }
+
+        // =====================================================
+        // 3.1 GALERIA DE FOTOS DO EMPREENDIMENTO
+        // =====================================================
+
+        let galleryImages = [];
+
+        try {
+          const imagesParams = new URLSearchParams();
+
+          imagesParams.append(
+            "dimensions[]",
+            "1024x1024"
+          );
+
+          const imagesResponse = await fetch(
+            `https://www.orulo.com.br/api/v2/buildings/${building.id}/images?${imagesParams.toString()}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json"
+              }
+            }
+          );
+
+          if (imagesResponse.ok) {
+            const imagesData =
+              await imagesResponse.json();
+
+            const oruloImages =
+              Array.isArray(imagesData.images)
+                ? imagesData.images
+                : [];
+
+            galleryImages = oruloImages
+              .map((image) =>
+                image?.["1024x1024"] ||
+                image?.["2280x1800"] ||
+                image?.["520x280"] ||
+                image?.["200x140"] ||
+                image?.url ||
+                null
+              )
+              .filter(Boolean)
+              .filter(
+                (url, index, array) =>
+                  array.indexOf(url) === index
+              )
+              .slice(0, 8);
+          } else {
+            console.warn(
+              "ORULO_IMAGES_HTTP_ERROR",
+              building.id,
+              imagesResponse.status
+            );
+          }
+        } catch (imageError) {
+          console.warn(
+            "ORULO_IMAGES_ERROR",
+            building.id,
+            imageError
+          );
+        }
+
+        // =====================================================
+        // 3.2 TIPOLOGIAS
+        // =====================================================
+
         const typologiesResponse = await fetch(
           `https://www.orulo.com.br/api/v2/buildings/${building.id}/typologies`,
           {
@@ -111,22 +180,29 @@ if (finality !== "residencial") {
           }
         );
 
-        if (!typologiesResponse.ok) continue;
+        if (!typologiesResponse.ok) {
+          continue;
+        }
 
-        const typologiesData = await typologiesResponse.json();
+        const typologiesData =
+          await typologiesResponse.json();
 
-        const typologies = Array.isArray(typologiesData.typologies)
-          ? typologiesData.typologies
-          : [];
+        const typologies =
+          Array.isArray(typologiesData.typologies)
+            ? typologiesData.typologies
+            : [];
 
         for (const typology of typologies) {
           const stock =
-            typology.stock !== undefined && typology.stock !== null
+            typology.stock !== undefined &&
+            typology.stock !== null
               ? Number(typology.stock)
               : null;
 
           // Não cadastramos produto sem estoque.
-          if (stock !== null && stock <= 0) continue;
+          if (stock !== null && stock <= 0) {
+            continue;
+          }
 
           const externalId =
             `orulo:${building.id}:${typology.id}`;
@@ -137,7 +213,11 @@ if (finality !== "residencial") {
             building.min_price ??
             null;
 
+          // A primeira foto da galeria passa a ser a capa.
+          // Se a galeria não estiver disponível,
+          // mantemos o comportamento anterior.
           const imageUrl =
+            galleryImages[0] ||
             building.default_image?.["1024x1024"] ||
             building.default_image?.["520x280"] ||
             building.default_image?.["2280x1800"] ||
@@ -146,9 +226,11 @@ if (finality !== "residencial") {
 
           const titleParts = [
             building.name,
+
             typology.private_area
               ? `${typology.private_area} m²`
               : null,
+
             typology.bedrooms !== undefined
               ? `${typology.bedrooms} dorm`
               : null
@@ -156,14 +238,25 @@ if (finality !== "residencial") {
 
           rows.push({
             external_id: externalId,
+
             source: "novos",
 
-            title: titleParts.join(" | "),
-            development_name: building.name || null,
+            title:
+              titleParts.join(" | "),
 
-            neighborhood: building.address?.area || null,
-            city: building.address?.city || "São Paulo",
-            state: building.address?.state || "SP",
+            development_name:
+              building.name || null,
+
+            neighborhood:
+              building.address?.area || null,
+
+            city:
+              building.address?.city ||
+              "São Paulo",
+
+            state:
+              building.address?.state ||
+              "SP",
 
             price:
               price !== null
@@ -190,57 +283,107 @@ if (finality !== "residencial") {
                 ? Number(typology.private_area)
                 : null,
 
-            image_url: imageUrl,
+            image_url:
+              imageUrl,
 
             property_url:
               building.orulo_url || null,
 
             active: true,
 
+            // =================================================
+            // RAW DATA
+            // =================================================
+
             raw_data: {
               source: "orulo",
-              building_id: String(building.id),
-              typology_id: String(typology.id),
+
+              building_id:
+                String(building.id),
+
+              typology_id:
+                String(typology.id),
+
+              // GALERIA DO EMPREENDIMENTO
+              images:
+                galleryImages,
 
               typology: {
-                type: typology.type ?? null,
-                suites: typology.suites ?? null,
+                type:
+                  typology.type ?? null,
+
+                suites:
+                  typology.suites ?? null,
+
                 stock,
+
                 original_price:
-                  typology.original_price ?? null,
+                  typology.original_price ??
+                  null,
+
                 discount_price:
-                  typology.discount_price ?? null,
+                  typology.discount_price ??
+                  null,
+
                 reference:
-                  typology.reference ?? null,
+                  typology.reference ??
+                  null,
+
                 floor_reference:
-                  typology.floor_reference ?? null,
+                  typology.floor_reference ??
+                  null,
+
                 section_reference:
-                  typology.section_reference ?? null,
+                  typology.section_reference ??
+                  null,
+
                 updated_at:
-                  typology.updated_at ?? null
+                  typology.updated_at ??
+                  null
               },
 
               building: {
-                finality: building.finality ?? null,
-                status: building.status ?? null,
-                stage: building.stage ?? null,
-                developer:
-                  building.developer?.name ?? null,
+                finality:
+                  building.finality ??
+                  null,
 
-                address: building.address ?? null,
+                status:
+                  building.status ??
+                  null,
+
+                stage:
+                  building.stage ??
+                  null,
+
+                developer:
+                  building.developer?.name ??
+                  null,
+
+                address:
+                  building.address ??
+                  null,
+
+                // Também mantemos a galeria
+                // dentro do objeto building.
+                images:
+                  galleryImages,
 
                 features:
-                  building.features ?? [],
+                  building.features ??
+                  [],
 
                 opportunity:
-                  building.opportunity ?? null,
+                  building.opportunity ??
+                  null,
 
                 updated_at:
-                  building.updated_at ?? null
+                  building.updated_at ??
+                  null
               }
             },
 
-            updated_at: new Date().toISOString()
+            updated_at:
+              new Date().toISOString()
           });
         }
       } catch (error) {
@@ -255,50 +398,65 @@ if (finality !== "residencial") {
     if (!rows.length) {
       return res.status(502).json({
         ok: false,
-        error: "Nenhuma tipologia válida foi encontrada"
+        error:
+          "Nenhuma tipologia válida foi encontrada"
       });
     }
 
     // =========================================================
+    // 3.5 DESATIVA CATÁLOGO ÓRULO ANTERIOR
     // =========================================================
-// 3.5 DESATIVA CATÁLOGO ÓRULO ANTERIOR
-// =========================================================
-// Tudo que era "novos" fica temporariamente inativo.
-// O upsert abaixo reativa somente as ofertas residenciais
-// que continuam válidas no catálogo atual da Órulo.
+    // Tudo que era "novos" fica temporariamente inativo.
+    // O upsert abaixo reativa somente as ofertas residenciais
+    // que continuam válidas no catálogo atual da Órulo.
 
-const deactivateResponse = await fetch(
-  `${SUPABASE_URL}/rest/v1/properties?source=eq.novos`,
-  {
-    method: "PATCH",
-    headers: {
-      apikey: supabaseSecretKey,
-      Authorization: `Bearer ${supabaseSecretKey}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal"
-    },
-    body: JSON.stringify({
-      active: false,
-      updated_at: new Date().toISOString()
-    })
-  }
-);
+    const deactivateResponse = await fetch(
+      `${SUPABASE_URL}/rest/v1/properties?source=eq.novos`,
+      {
+        method: "PATCH",
 
-if (!deactivateResponse.ok) {
-  const deactivateError = await deactivateResponse.text();
+        headers: {
+          apikey:
+            supabaseSecretKey,
 
-  console.error(
-    "SUPABASE_DEACTIVATE_ERROR",
-    deactivateResponse.status,
-    deactivateError
-  );
+          Authorization:
+            `Bearer ${supabaseSecretKey}`,
 
-  return res.status(502).json({
-    ok: false,
-    error: "Falha ao desativar catálogo Órulo anterior",
-    status: deactivateResponse.status
-  });
-}
+          "Content-Type":
+            "application/json",
+
+          Prefer:
+            "return=minimal"
+        },
+
+        body: JSON.stringify({
+          active: false,
+          updated_at:
+            new Date().toISOString()
+        })
+      }
+    );
+
+    if (!deactivateResponse.ok) {
+      const deactivateError =
+        await deactivateResponse.text();
+
+      console.error(
+        "SUPABASE_DEACTIVATE_ERROR",
+        deactivateResponse.status,
+        deactivateError
+      );
+
+      return res.status(502).json({
+        ok: false,
+        error:
+          "Falha ao desativar catálogo Órulo anterior",
+        status:
+          deactivateResponse.status
+      });
+    }
+
+    // =========================================================
     // 4. UPSERT NO SUPABASE
     // external_id já possui UNIQUE INDEX
     // =========================================================
@@ -309,19 +467,26 @@ if (!deactivateResponse.ok) {
         method: "POST",
 
         headers: {
-          apikey: supabaseSecretKey,
-          Authorization: `Bearer ${supabaseSecretKey}`,
-          "Content-Type": "application/json",
+          apikey:
+            supabaseSecretKey,
+
+          Authorization:
+            `Bearer ${supabaseSecretKey}`,
+
+          "Content-Type":
+            "application/json",
 
           Prefer:
             "resolution=merge-duplicates,return=representation"
         },
 
-        body: JSON.stringify(rows)
+        body:
+          JSON.stringify(rows)
       }
     );
 
-    const supabaseText = await supabaseResponse.text();
+    const supabaseText =
+      await supabaseResponse.text();
 
     if (!supabaseResponse.ok) {
       console.error(
@@ -332,16 +497,20 @@ if (!deactivateResponse.ok) {
 
       return res.status(502).json({
         ok: false,
-        error: "Falha ao gravar catálogo no Supabase",
-        status: supabaseResponse.status,
-        details: supabaseText
+        error:
+          "Falha ao gravar catálogo no Supabase",
+        status:
+          supabaseResponse.status,
+        details:
+          supabaseText
       });
     }
 
     let savedRows = [];
 
     try {
-      savedRows = JSON.parse(supabaseText);
+      savedRows =
+        JSON.parse(supabaseText);
     } catch {
       savedRows = [];
     }
@@ -367,18 +536,23 @@ if (!deactivateResponse.ok) {
           ? savedRows.length
           : rows.length,
 
-      source: "novos",
+      source:
+        "novos",
 
       synced_at:
         new Date().toISOString()
     });
 
   } catch (error) {
-    console.error("ORULO_SYNC_FATAL", error);
+    console.error(
+      "ORULO_SYNC_FATAL",
+      error
+    );
 
     return res.status(500).json({
       ok: false,
-      error: "Erro interno durante sincronização Órulo"
+      error:
+        "Erro interno durante sincronização Órulo"
     });
   }
 }
