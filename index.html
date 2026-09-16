@@ -882,6 +882,29 @@ body{background:#F7F4ED;color:#0B0B0B}
 @media(min-width:701px){.results.visible{background:#171717;color:#fff;padding:52px 0}.results .result-top,.results .grid{max-width:590px;margin-left:auto;margin-right:auto}.results .result-top p{color:#AAA49A}.results .reset-link{color:#E4D0A3}.results .grid{display:block}.results .card{min-height:820px;margin-bottom:28px;border:0;background:#0B0B0B;color:#fff}.results .cover{height:500px}.results .card-address,.results .m2,.results .cost-line{color:#AAA49A}.results .feature{background:#232323;color:#fff}.results .reasons{background:transparent;border-left:2px solid #C6A76B;border-radius:0;color:#EEE3CF}}
 @media(max-width:700px){header{background:linear-gradient(180deg,rgba(11,11,11,.76),transparent);border:0}.hero{min-height:100svh;padding:90px 0 92px;align-items:flex-end}.hero .container{text-align:center}.hero .eyebrow{border:0;background:transparent;color:#E4D0A3;letter-spacing:.19em}.hero h1{margin:clamp(220px,34svh,330px) auto 14px;font-size:35px;color:#fff}.hero h1 span{display:block;color:#F1E2BE}.hero p{margin:auto;color:#F1EEE8}.wizard-wrap,.wizard,.wizard-actions{background:#FCFAF6}.wizard-wrap{margin:0;min-height:100svh}.wizard{min-height:100svh;border:0;border-radius:0;box-shadow:none}.progress{margin-top:58px;height:3px;background:#ECE7DD}.wizard-inner{padding:24px 22px 92px}.step-count{margin-bottom:40px}.step h2{font-size:34px;line-height:1.03}.option{background:#FCFAF6;border-color:#DED8CD}.next{background:#171717}.wizard-actions{position:fixed;z-index:12;left:22px;right:22px;bottom:16px;padding-top:10px}.results .result-top{display:none}.results.visible{padding:0;background:#0B0B0B}.results.visible>.container{width:100%;max-width:none}.results .grid{display:block;height:100svh;max-width:none;overflow-y:auto;scroll-snap-type:y mandatory}.results .card{height:100svh;min-height:100svh;overflow:hidden;display:grid;grid-template-rows:54svh 46svh;border:0;border-radius:0;background:#0B0B0B;color:#fff;scroll-snap-align:start;scroll-snap-stop:always}.results .cover{height:54svh;min-height:0}.results .card-body{height:46svh;min-height:0;overflow-y:auto;padding:17px 20px 100px;background:#0B0B0B}.results .card-address,.results .m2,.results .cost-line{color:#C7C1B8}.results .feature{background:#232323;color:#fff}.results .reasons{margin-bottom:11px;padding:4px 0 4px 12px;border:0;border-left:2px solid #C6A76B;border-radius:0;background:transparent;color:#F1E7D4}.results .card-tag{display:inline-flex;width:max-content;padding:5px 8px;border-radius:6px;background:#E4D0A3;color:#21180C}.results .card-actions{position:sticky;bottom:-84px}.explore,.catalog{background:#FCFAF6}.explore-box,.catalog-filters{background:#F1EDE5}.field{background:#fff}.photo-detail-hero{height:52svh}.photo-detail-content{width:100%;margin-top:-20px;padding:25px 20px 110px;border-radius:24px 24px 0 0}.photo-detail-content h2{font-size:27px}.photo-detail-cta{left:12px;right:12px;bottom:10px;width:auto;transform:none}}
 
+/* =========================================================
+   FICHA PREMIUM DO IMÓVEL
+========================================================= */
+.photo-detail-shell{position:fixed;inset:0;z-index:240;background:#FCFAF6;color:#171513;overflow-y:auto;overscroll-behavior:contain}
+.detail-gallery{position:relative;height:min(64vh,680px);background:#171717;overflow:hidden}
+.detail-gallery-track{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.detail-gallery-track::-webkit-scrollbar{display:none}.detail-gallery-slide{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:start;scroll-snap-stop:always;display:block}
+.detail-gallery-close{position:absolute;z-index:5;top:max(18px,env(safe-area-inset-top));left:18px;width:46px;height:46px;border:1px solid rgba(255,255,255,.28);border-radius:50%;background:rgba(11,11,11,.62);backdrop-filter:blur(12px);color:#fff;font-size:27px;line-height:1;cursor:pointer}
+.detail-gallery-counter{position:absolute;z-index:5;top:max(20px,env(safe-area-inset-top));right:18px;padding:8px 12px;border-radius:999px;background:rgba(11,11,11,.65);backdrop-filter:blur(12px);color:#fff;font-size:12px;font-weight:850}
+.detail-gallery-arrow{position:absolute;z-index:5;top:50%;transform:translateY(-50%);width:46px;height:46px;border:1px solid rgba(255,255,255,.22);border-radius:50%;background:rgba(11,11,11,.55);backdrop-filter:blur(10px);color:#fff;font-size:25px;cursor:pointer}.detail-gallery-arrow.prev{left:16px}.detail-gallery-arrow.next{right:16px}
+.detail-gallery-dots{position:absolute;z-index:5;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(11,11,11,.35);backdrop-filter:blur(8px)}
+.detail-gallery-dot{width:6px;height:6px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.48);transition:.2s ease}.detail-gallery-dot.active{width:18px;border-radius:999px;background:#F1E2BE}
+.detail-property{position:relative;width:min(760px,calc(100% - 32px));margin:-30px auto 0;padding:30px 30px 130px;border-radius:30px 30px 0 0;background:#FCFAF6}
+.detail-top-labels{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:15px}.detail-match{padding:8px 11px;border-radius:9px;background:#171717;color:#F1E2BE;font-size:12px;font-weight:900}.detail-source,.detail-status{padding:8px 10px;border-radius:9px;background:#F0ECE3;color:#5E5548;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.detail-property h1{margin:0;font-size:34px;line-height:1.05;letter-spacing:-.045em}.detail-location{margin-top:8px;color:#77736B;font-size:14px}.detail-price{margin-top:24px;font-size:32px;line-height:1;font-weight:950;letter-spacing:-.04em}.detail-price-m2{margin-top:6px;color:#77736B;font-size:12px}
+.detail-main-specs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:22px}.detail-spec{min-height:76px;padding:13px 10px;border:1px solid #E4DED3;border-radius:14px;background:#fff}.detail-spec strong{display:block;font-size:17px}.detail-spec span{display:block;margin-top:5px;color:#77736B;font-size:10px;font-weight:700}
+.detail-section{margin-top:28px;padding-top:27px;border-top:1px solid #DED8CD}.detail-section-title{margin:0 0 16px;color:#9A7440;font-size:10px;font-weight:950;letter-spacing:.13em;text-transform:uppercase}.detail-section h3{margin:0 0 14px;font-size:22px;letter-spacing:-.03em}.detail-section p{margin:0;color:#5E5A53;font-size:14px;line-height:1.65}
+.detail-match-reasons{display:grid;gap:9px}.detail-match-reason{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border-radius:13px;background:#F4EFE5;color:#493D2B;font-size:13px;line-height:1.4}.detail-match-reason b{color:#A0783D}
+.detail-tech-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}.detail-tech-row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #ECE6DC;font-size:13px}.detail-tech-row span{color:#77736B}.detail-tech-row strong{text-align:right;font-weight:800}
+.detail-amenities{display:flex;flex-wrap:wrap;gap:8px}.detail-amenity{padding:10px 12px;border:1px solid #E4DED3;border-radius:999px;background:#fff;font-size:12px;font-weight:750}
+.detail-sticky-cta{position:fixed;z-index:250;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(720px,calc(100% - 24px));padding:7px;border:1px solid rgba(222,216,205,.8);border-radius:18px;background:rgba(252,250,246,.94);backdrop-filter:blur(18px);box-shadow:0 12px 45px rgba(11,11,11,.16)}.detail-interest-btn{width:100%;min-height:56px;border:0;border-radius:14px;background:#171717;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+@media(max-width:700px){.detail-gallery{height:50svh;min-height:390px}.detail-gallery-arrow{width:40px;height:40px}.detail-gallery-arrow.prev{left:10px}.detail-gallery-arrow.next{right:10px}.detail-property{width:100%;margin-top:-22px;padding:25px 20px 120px;border-radius:24px 24px 0 0}.detail-property h1{font-size:28px}.detail-price{font-size:29px}.detail-main-specs{grid-template-columns:repeat(2,1fr)}.detail-tech-grid{grid-template-columns:1fr}.detail-gallery-dots{bottom:13px}}
+
 /* ===== YNTELIGENCIA APP SHELL · PREMIUM CHAMPAGNE ===== */
 .brand-lockup{display:flex;align-items:center;gap:10px;color:#fff;min-width:0}
 .brand-icon{width:38px;height:38px;border-radius:11px;object-fit:cover;box-shadow:0 8px 24px rgba(214,181,111,.18)}
@@ -4455,164 +4478,226 @@ function card(
    PROPERTY VIEW
 ========================================================= */
 
+function detailValue(v){
+  if(v===undefined || v===null || v==="")return "";
+  if(typeof v==="object")return clean(v.name || v.title || v.label || v.description || "");
+  return clean(v);
+}
+
+function detailDate(v){
+  if(!v)return "";
+  const raw=String(v).trim();
+  const d=new Date(raw.length===10 ? raw+"T12:00:00" : raw);
+  if(Number.isNaN(d.getTime()))return clean(raw);
+  return new Intl.DateTimeFormat("pt-BR",{month:"short",year:"numeric"}).format(d).replace(" de ","/");
+}
+
+function detailFeatureNames(list){
+  if(!Array.isArray(list))return [];
+  const out=[];
+  list.forEach(item=>{
+    let label="";
+    if(typeof item==="string")label=clean(item);
+    else if(item && typeof item==="object")label=clean(item.name || item.title || item.label || item.description || item.feature || "");
+    if(label && !out.includes(label))out.push(label);
+  });
+  return out.slice(0,18);
+}
+
+function detailRow(label,value){
+  const v=detailValue(value);
+  return v ? `<div class="detail-tech-row"><span>${esc(label)}</span><strong>${esc(v)}</strong></div>` : "";
+}
+
+function moveDetailPhoto(delta){
+  const track=document.querySelector("#photoModal .detail-gallery-track");
+  if(!track)return;
+  const width=track.clientWidth || 1;
+  const current=Math.round(track.scrollLeft/width);
+  const total=track.querySelectorAll(".detail-gallery-slide").length;
+  const next=Math.max(0,Math.min(total-1,current+delta));
+  track.scrollTo({left:next*width,behavior:"smooth"});
+}
+
+function goDetailPhoto(index){
+  const track=document.querySelector("#photoModal .detail-gallery-track");
+  if(!track)return;
+  track.scrollTo({left:index*track.clientWidth,behavior:"smooth"});
+}
+
+function updateDetailGallery(){
+  const modal=document.getElementById("photoModal");
+  const track=modal?.querySelector(".detail-gallery-track");
+  if(!track)return;
+  const slides=track.querySelectorAll(".detail-gallery-slide");
+  const index=Math.max(0,Math.min(slides.length-1,Math.round(track.scrollLeft/(track.clientWidth||1))));
+  const counter=modal.querySelector(".detail-gallery-counter");
+  if(counter)counter.textContent=`${index+1} / ${slides.length}`;
+  modal.querySelectorAll(".detail-gallery-dot").forEach((dot,i)=>dot.classList.toggle("active",i===index));
+}
+
 function showPhotoModal(id){
-
-  const p=
-    properties.find(
-      x=>
-        String(x.id)===
-        String(id)
-    );
-
-
+  const p=properties.find(x=>String(x.id)===String(id));
   if(!p)return;
 
+  supabaseTrack("property_view",{
+    property:{
+      id:String(p.id||""),
+      name:p.name||"",
+      neighborhood:p.neighborhood||"",
+      value:Number(p.value)||0,
+      area:Number(p.area)||0,
+      bedrooms:Number(p.bedrooms)||0,
+      match_score:Number(p.match?.score)||0
+    },
+    profile:{...profile}
+  });
 
-  supabaseTrack(
-    "property_view",
-    {
-
-      property:{
-
-        id:
-          String(p.id||""),
-
-        name:
-          p.name||"",
-
-        neighborhood:
-          p.neighborhood||"",
-
-        value:
-          Number(p.value)||0,
-
-        area:
-          Number(p.area)||0,
-
-        bedrooms:
-          Number(p.bedrooms)||0,
-
-        match_score:
-          Number(
-            p.match?.score
-          )||0
-      },
-
-      profile:{
-        ...profile
-      }
-    }
-  );
-
-
-  const photos=
-    photoList(p);
-
-
+  const photos=photoList(p);
   if(!photos.length){
-
-    showToast(
-      "As imagens deste imóvel ainda estão sendo atualizadas."
-    );
-
+    showToast("As imagens deste imóvel ainda estão sendo atualizadas.");
     return;
   }
 
-
-  const old=
-    document.getElementById(
-      "photoModal"
-    );
-
-
+  const old=document.getElementById("photoModal");
   if(old)old.remove();
 
+  const raw=p.rawData && typeof p.rawData==="object" ? p.rawData : {};
+  const building=raw.building && typeof raw.building==="object" ? raw.building : {};
+  const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
+  const addressData=building.address && typeof building.address==="object" ? building.address : {};
+  const isNew=String(p.source||"").toLowerCase()==="novos";
+  const detailReasons=(p.match?.reasons || []).slice(0,4);
 
-  const modal=
-    document.createElement(
-      "div"
-    );
+  const status=detailValue(building.stage || building.status);
+  const developer=detailValue(building.developer || building.developer_data || building.publisher);
+  const delivery=detailDate(building.opening_date);
+  const launch=detailDate(building.launch_date);
+  const m2Value=Number(p.m2)||((Number(p.area)>0 && Number(p.value)>0)?Number(p.value)/Number(p.area):0);
 
+  const techRows=[
+    p.area ? detailRow("Área privativa",`${area(p.area)} m²`) : "",
+    p.bedrooms ? detailRow("Dormitórios",p.bedrooms) : "",
+    p.suites ? detailRow("Suítes",p.suites) : "",
+    p.parking ? detailRow("Vagas",p.parking) : "",
+    Number(p.stock)>0 ? detailRow("Unidades disponíveis",p.stock) : "",
+    p.unit ? detailRow("Referência",p.unit) : ""
+  ].filter(Boolean).join("");
 
-  modal.id=
-    "photoModal";
+  const buildingRows=[
+    developer ? detailRow("Incorporadora",developer) : "",
+    status ? detailRow("Status",status) : "",
+    delivery ? detailRow("Entrega prevista",delivery) : "",
+    launch ? detailRow("Lançamento",launch) : "",
+    building.number_of_towers ? detailRow("Torres",building.number_of_towers) : "",
+    building.number_of_floors ? detailRow("Andares",building.number_of_floors) : "",
+    building.total_units ? detailRow("Total de unidades",building.total_units) : "",
+    building.apts_per_floor ? detailRow("Unidades por andar",building.apts_per_floor) : ""
+  ].filter(Boolean).join("");
 
-
-  modal.style.cssText=
-    "position:fixed;inset:0;z-index:240";
-
-  modal.className=
-    "photo-detail-shell";
-
-  const detailReasons=
-    (p.match?.reasons || []).slice(0,3);
-
-
-  modal.innerHTML=
-    `
-    <button class="photo-detail-close" type="button" aria-label="Voltar" onclick="this.closest('#photoModal').remove()">‹</button>
-
-    <div class="photo-detail-hero">
-      <div class="photo-track">
-
-          ${
-            photos
-              .map(
-                url=>
-                  `
-                  <img
-                    class="photo-slide"
-                    src="${esc(url)}"
-                    alt="${esc(p.name)}"
-                    style="object-fit:cover;background:#171717">
-                  `
-              )
-              .join("")
-          }
-
-      </div>
-    </div>
-
-    <section class="photo-detail-content">
-      ${p.match ? `<div class="photo-detail-score">${p.match.score}% MATCH</div>` : ""}
-      <h2>${esc(p.name)}</h2>
-      <div class="photo-detail-location">${esc(p.neighborhood || "São Paulo")}</div>
-      <div class="photo-detail-price">${money(p.value)}</div>
-      <div class="photo-detail-meta">
-        ${p.area ? `<span>${area(p.area)} m²</span>` : ""}
-        ${p.bedrooms ? `<span>${p.bedrooms} dorms.</span>` : ""}
-        ${p.suites ? `<span>${p.suites} suíte${p.suites===1?"":"s"}</span>` : ""}
-        ${p.parking ? `<span>${p.parking} vaga${p.parking===1?"":"s"}</span>` : ""}
-      </div>
-      ${detailReasons.length ? `<div class="photo-detail-reasons"><strong>Por que combina com você</strong>${detailReasons.map(reason=>`<div>✓ ${esc(reason)}</div>`).join("")}</div>` : ""}
-      ${p.description ? `<h3>Sobre o imóvel</h3><p>${esc(p.description)}</p>` : ""}
-      ${p.address ? `<h3>Localização</h3><p>${esc(p.address)}</p>` : ""}
-    </section>
-
-    <div class="photo-detail-cta">
-      <button class="detail-back" type="button" onclick="this.closest('#photoModal').remove()">Voltar</button>
-      <button class="detail-interest" type="button" onclick="interest('${esc(p.id)}','${esc(p.name)}')">Quero conhecer</button>
-    </div>
-    `;
-
-
-  modal.addEventListener(
-    "click",
-    e=>{
-
-      if(e.target===modal){
-
-        modal.remove();
-      }
-    }
+  const amenities=detailFeatureNames(
+    (Array.isArray(building.building_features)?building.building_features:[])
+      .concat(Array.isArray(typology.features)?typology.features:[])
   );
 
+  const description=clean(building.description || p.description || "");
+  const fullAddress=clean([
+    p.address,
+    p.neighborhood,
+    addressData.city || "São Paulo"
+  ].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(" • "));
 
-  document
-    .body
-    .appendChild(
-      modal
-    );
+  const modal=document.createElement("div");
+  modal.id="photoModal";
+  modal.className="photo-detail-shell";
+
+  modal.innerHTML=`
+    <div class="detail-gallery">
+      <div class="detail-gallery-track">
+        ${photos.map((url,i)=>`<img class="detail-gallery-slide" src="${esc(url)}" alt="${esc(p.name)} — foto ${i+1}" loading="${i===0?"eager":"lazy"}">`).join("")}
+      </div>
+      <button class="detail-gallery-close" type="button" aria-label="Voltar" onclick="this.closest('#photoModal').remove()">‹</button>
+      <div class="detail-gallery-counter">1 / ${photos.length}</div>
+      ${photos.length>1 ? `
+        <button class="detail-gallery-arrow prev" type="button" aria-label="Foto anterior" onclick="moveDetailPhoto(-1)">‹</button>
+        <button class="detail-gallery-arrow next" type="button" aria-label="Próxima foto" onclick="moveDetailPhoto(1)">›</button>
+        <div class="detail-gallery-dots">
+          ${photos.map((_,i)=>`<button class="detail-gallery-dot ${i===0?"active":""}" type="button" aria-label="Ir para foto ${i+1}" onclick="goDetailPhoto(${i})"></button>`).join("")}
+        </div>` : ""}
+    </div>
+
+    <main class="detail-property">
+      <div class="detail-top-labels">
+        ${p.match ? `<span class="detail-match">${Number(p.match.score)||0}% MATCH</span>` : ""}
+        <span class="detail-source">${isNew?"Novo":"Usado"}</span>
+        ${status ? `<span class="detail-status">${esc(status)}</span>` : ""}
+      </div>
+
+      <h1>${esc(p.name)}</h1>
+      <div class="detail-location">${esc(p.neighborhood || "São Paulo")}${isNew && addressData.city ? ` • ${esc(addressData.city)}` : ""}</div>
+      <div class="detail-price">${money(p.value)}</div>
+      ${m2Value>0 ? `<div class="detail-price-m2">${money(m2Value)} / m²</div>` : ""}
+
+      <div class="detail-main-specs">
+        ${p.area ? `<div class="detail-spec"><strong>${area(p.area)} m²</strong><span>ÁREA</span></div>` : ""}
+        ${p.bedrooms ? `<div class="detail-spec"><strong>${p.bedrooms}</strong><span>DORMITÓRIOS</span></div>` : ""}
+        ${p.suites ? `<div class="detail-spec"><strong>${p.suites}</strong><span>SUÍTE${p.suites===1?"":"S"}</span></div>` : ""}
+        ${p.parking ? `<div class="detail-spec"><strong>${p.parking}</strong><span>VAGA${p.parking===1?"":"S"}</span></div>` : ""}
+      </div>
+
+      ${detailReasons.length ? `
+        <section class="detail-section">
+          <div class="detail-section-title">Seu MATCH</div>
+          <h3>Por que combina com você</h3>
+          <div class="detail-match-reasons">
+            ${detailReasons.map(reason=>`<div class="detail-match-reason"><b>✓</b><span>${esc(reason)}</span></div>`).join("")}
+          </div>
+        </section>` : ""}
+
+      ${techRows ? `
+        <section class="detail-section">
+          <div class="detail-section-title">Ficha do imóvel</div>
+          <div class="detail-tech-grid">${techRows}</div>
+        </section>` : ""}
+
+      ${isNew && buildingRows ? `
+        <section class="detail-section">
+          <div class="detail-section-title">Empreendimento</div>
+          <h3>Ficha técnica</h3>
+          <div class="detail-tech-grid">${buildingRows}</div>
+        </section>` : ""}
+
+      ${isNew && amenities.length ? `
+        <section class="detail-section">
+          <div class="detail-section-title">Estrutura</div>
+          <h3>Lazer e comodidades</h3>
+          <div class="detail-amenities">${amenities.map(x=>`<span class="detail-amenity">${esc(x)}</span>`).join("")}</div>
+        </section>` : ""}
+
+      ${description ? `
+        <section class="detail-section">
+          <div class="detail-section-title">Sobre</div>
+          <h3>${isNew?"Sobre o empreendimento":"Sobre o imóvel"}</h3>
+          <p>${esc(description)}</p>
+        </section>` : ""}
+
+      ${fullAddress ? `
+        <section class="detail-section">
+          <div class="detail-section-title">Localização</div>
+          <h3>${esc(p.neighborhood || "São Paulo")}</h3>
+          <p>${esc(fullAddress)}</p>
+        </section>` : ""}
+    </main>
+
+    <div class="detail-sticky-cta">
+      <button class="detail-interest-btn" type="button">Quero conhecer</button>
+    </div>`;
+
+  const track=modal.querySelector(".detail-gallery-track");
+  track?.addEventListener("scroll",()=>window.requestAnimationFrame(updateDetailGallery),{passive:true});
+  modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>interest(String(p.id||""),String(p.name||"")));
+  document.body.appendChild(modal);
+  updateDetailGallery();
 }
 
 
