@@ -1139,6 +1139,73 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
 }
 </style>
 
+
+<style>
+/* ===== MOBILE V4 · FULL WIDTH + LARGE TYPE + DARK COMFORT ===== */
+@media (max-width:700px){
+  html,body{width:100%!important;max-width:100%!important;margin:0!important;background:#090A09!important;color:#FFFDF8!important;font-size:20px!important;-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important}
+  body{overflow-x:hidden!important}
+
+  /* Toda a experiência mobile escura: sem painéis brancos */
+  main,.hero,.wizard-wrap,.wizard,.wizard-inner,.wizard-actions,.results,.explore,.catalog,.explore-box,.catalog-filters,.field{background:#090A09!important;color:#FFFDF8!important}
+  .wizard,.explore-box,.catalog-filters,.field{border-color:#37332C!important}
+  .field input,.field select,.field textarea{background:#151513!important;color:#FFFDF8!important;border-color:#403B33!important;font-size:18px!important}
+  .field label,.explore p,.catalog p{color:#D3CABC!important}
+
+  /* Home / wizard com leitura confortável */
+  .hero h1{font-size:42px!important;line-height:1.04!important}
+  .hero p{font-size:19px!important;line-height:1.55!important}
+  .step-count{font-size:17px!important}
+  .step h2{font-size:40px!important;line-height:1.06!important}
+  .step p{font-size:19px!important;line-height:1.55!important}
+  .option{min-height:84px!important;padding:18px!important;font-size:19px!important}
+  .option small{font-size:16px!important}
+  .source-btn,.back,.next{font-size:18px!important}
+
+  /* FEED: largura real de post do Instagram */
+  .results.visible{width:100%!important;max-width:none!important;padding:0!important;margin:0!important;overflow:visible!important}
+  .results.visible>.container,.results .grid{width:100%!important;max-width:none!important;padding:0!important;margin:0!important}
+  .results .card{left:auto!important;transform:none!important;width:100vw!important;max-width:none!important;margin:0 0 14px calc(50% - 50vw)!important;border-radius:0!important;border-left:0!important;border-right:0!important;box-shadow:none!important}
+  .results .cover{display:block!important;width:100vw!important;max-width:none!important;height:auto!important;aspect-ratio:1/1.12!important;margin:0!important;border-radius:0!important}
+  .results .photo-track{width:100vw!important;max-width:none!important;height:100%!important}
+  .results .photo-slide{min-width:100vw!important;width:100vw!important;height:100%!important;object-fit:cover!important}
+  .results .card-body{width:100vw!important;max-width:none!important;box-sizing:border-box!important;padding:22px 18px 30px!important;background:#0D0E0D!important}
+  .results .card h3{font-size:30px!important;line-height:1.12!important;margin-top:10px!important}
+  .results .card-address{font-size:18px!important;line-height:1.45!important}
+  .results .price{font-size:34px!important;line-height:1.08!important}
+  .results .m2,.results .cost-line{font-size:17px!important}
+  .results .feature{font-size:16px!important;padding:10px 12px!important}
+  .results .reasons{font-size:17px!important;line-height:1.55!important}
+  .results .card-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;width:100%!important}
+  .results .card-actions .view,.results .card-actions .interest{min-height:60px!important;background:#E4D0A3!important;color:#171513!important;border:0!important;border-radius:14px!important;font-size:18px!important;font-weight:900!important;box-shadow:none!important}
+
+  /* FICHA: zoom forte nas informações e fundo confortável */
+  .photo-detail-shell{background:#090A09!important;color:#FFFDF8!important;font-size:20px!important}
+  .detail-property{width:100%!important;max-width:none!important;background:#0D0E0D!important;color:#FFFDF8!important;padding:32px 20px 140px!important}
+  .detail-property h1{font-size:38px!important;line-height:1.08!important;letter-spacing:-.025em!important}
+  .detail-location{font-size:19px!important;line-height:1.5!important;color:#D7CEC1!important}
+  .detail-price{font-size:40px!important;line-height:1.05!important;margin-top:18px!important}
+  .detail-price-m2{font-size:17px!important;color:#CFC6B9!important}
+  .detail-top-labels{gap:8px!important}
+  .detail-top-labels span{font-size:13px!important;line-height:1.2!important;padding:9px 11px!important}
+  .detail-main-specs{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+  .detail-spec{min-height:94px!important;padding:16px 12px!important;background:#181816!important;border-color:#403B33!important}
+  .detail-spec strong{font-size:25px!important}
+  .detail-spec span{font-size:13px!important}
+  .detail-section{margin-top:32px!important;padding-top:32px!important;border-top-color:#403B33!important}
+  .detail-section-title{font-size:14px!important;color:#E2C78F!important}
+  .detail-section h3{font-size:29px!important;line-height:1.18!important;margin-top:8px!important}
+  .detail-section p{font-size:19px!important;line-height:1.7!important;color:#DDD5C9!important}
+  .detail-match-reason{font-size:18px!important;line-height:1.5!important;padding:16px!important}
+  .detail-tech-row{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)!important;gap:14px!important;align-items:center!important;min-height:66px!important;padding:16px 0!important;border-bottom-color:#403B33!important}
+  .detail-tech-row span{font-size:17px!important;line-height:1.35!important;color:#C7BEB1!important}
+  .detail-tech-row strong{font-size:19px!important;line-height:1.35!important;color:#FFFDF8!important;text-align:right!important}
+  .detail-amenity{font-size:17px!important;line-height:1.3!important;padding:12px 14px!important;background:#181816!important;border-color:#403B33!important}
+  .detail-sticky-cta{grid-template-columns:.8fr 1.2fr!important;gap:10px!important;padding:9px!important;background:rgba(11,12,11,.98)!important;border-color:#403B33!important}
+  .detail-share-btn,.detail-interest-btn{min-height:62px!important;font-size:17px!important}
+}
+</style>
+
 </head>
 
 <body class="home-mode">
