@@ -2623,6 +2623,68 @@ function normalizeOruloType(value){
 }
 
 
+function extractOruloPhotos(row, raw){
+
+  const found=[];
+  const seen=new Set();
+
+  function add(value){
+    if(typeof value!=="string")return;
+    const url=clean(value);
+    if(!validURL(url) || seen.has(url))return;
+    seen.add(url);
+    found.push(url);
+  }
+
+  // A imagem principal salva no Supabase continua sendo a capa.
+  add(row && row.image_url);
+
+  // A Órulo pode devolver galerias em diferentes níveis do payload.
+  // Percorremos apenas campos semanticamente ligados a fotos/imagens,
+  // evitando capturar links comuns do empreendimento.
+  function walk(value,key="",depth=0){
+    if(depth>8 || value==null)return;
+
+    const imageKey=/photo|foto|image|imagem|gallery|galeria|picture|banner|facade|fachada|plant|floor.?plan|perspective/i.test(String(key));
+
+    if(typeof value==="string"){
+      if(imageKey)add(value);
+      return;
+    }
+
+    if(Array.isArray(value)){
+      value.forEach(item=>{
+        if(typeof item==="string"){
+          if(imageKey)add(item);
+        }else{
+          walk(item,key,depth+1);
+        }
+      });
+      return;
+    }
+
+    if(typeof value==="object"){
+      Object.entries(value).forEach(([k,v])=>{
+        const nextKey=imageKey ? `${key}.${k}` : k;
+        if(typeof v==="string"){
+          if(imageKey || /photo|foto|image|imagem|url/i.test(k)){
+            // Em objetos de galeria, "url" normalmente é a própria foto.
+            if(imageKey || !/^url$/i.test(k)) add(v);
+            else add(v);
+          }
+        }else{
+          walk(v,nextKey,depth+1);
+        }
+      });
+    }
+  }
+
+  walk(raw,"raw_data",0);
+
+  return found.slice(0,8);
+}
+
+
 function mapOruloProperty(row){
 
   const raw =
@@ -2713,7 +2775,7 @@ function mapOruloProperty(row){
         : 0,
 
     photos:
-      clean(row.image_url || ""),
+      extractOruloPhotos(row, raw),
 
     type:
       normalizeOruloType(
@@ -4589,6 +4651,43 @@ function fillCatalogNeighborhoods(){
 
 
 let catalogRegion="";
+
+function fillCatalogNeighborhoodsForRegion(regionKey=""){
+  const select=$("catalogNeighborhood");
+  if(!select)return;
+
+  const current=select.value;
+  const list=[...new Set(
+    properties
+      .filter(p=>!regionKey || propertyMatchesRegion(p,regionKey))
+      .map(p=>p.neighborhood)
+      .filter(Boolean)
+  )].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+
+  select.innerHTML=
+    '<option value="">Todos os bairros</option>' +
+    list.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+
+  if(list.includes(current))select.value=current;
+}
+
+function setCatalogRegion(regionKey){
+  catalogRegion=regionKey || "";
+
+  document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
+    btn.classList.toggle("selected",(btn.dataset.region || "")===catalogRegion);
+  });
+
+  fillCatalogNeighborhoodsForRegion(catalogRegion);
+  $("catalogNeighborhood").value="";
+
+  // Se o catálogo já estiver aberto, a troca de região atualiza na hora.
+  if($("catalog").classList.contains("visible"))renderCatalog();
+}
+
+document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>setCatalogRegion(btn.dataset.region || ""));
+});
 
 function renderCatalog(){
 
