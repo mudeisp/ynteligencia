@@ -913,8 +913,9 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
 .refine-match-card{width:min(520px,100%);padding:24px 20px calc(24px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;background:#FCFAF6;color:#171513;box-shadow:0 -20px 60px rgba(0,0,0,.24)}
 .refine-match-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.refine-match-head h2{margin:0;font-size:26px;letter-spacing:-.04em}.refine-match-head p{margin:5px 0 0;color:#77736B;font-size:13px}.refine-match-close{width:42px;height:42px;border:0;border-radius:50%;background:#F0ECE3;font-size:25px}
 .refine-match-known{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 20px}.refine-match-known span{padding:8px 10px;border-radius:999px;background:#F0ECE3;font-size:12px;font-weight:800}
-.refine-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.refine-price-grid label{display:grid;gap:7px;color:#77736B;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.refine-price-grid input{width:100%;min-height:52px;border:1px solid #DED8CD;border-radius:14px;background:#fff;padding:0 13px;color:#171513;font-size:16px;outline:0}.refine-price-grid input:focus{border-color:#C6A76B;box-shadow:0 0 0 3px rgba(198,167,107,.12)}
+.refine-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.refine-price-grid label{display:grid;gap:7px;color:#77736B;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.refine-price-grid input,.refine-price-grid select{width:100%;min-height:52px;border:1px solid #DED8CD;border-radius:14px;background:#fff;padding:0 13px;color:#171513;font-size:16px;outline:0}.refine-price-grid input:focus,.refine-price-grid select:focus{border-color:#C6A76B;box-shadow:0 0 0 3px rgba(198,167,107,.12)}
 .apply-refine-match{width:100%;min-height:56px;margin-top:16px;border:0;border-radius:16px;background:#171717;color:#fff;font-weight:900;font-size:16px}.clear-refine-match{width:100%;min-height:44px;margin-top:7px;border:0;background:transparent;color:#77736B;font-weight:800}
+.nearby-alternative{display:inline-flex;align-items:center;min-height:28px;margin:0 0 10px;padding:5px 9px;border:1px solid rgba(228,208,163,.5);border-radius:999px;color:#E4D0A3;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
 
 
 .catalog-region-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.catalog-region-btn{min-height:42px;padding:0 15px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-weight:850;font-size:12px}.catalog-region-btn.selected{background:var(--dark);border-color:var(--dark);color:#fff}
@@ -1071,7 +1072,7 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
   .refine-match-card{background:#11110F;color:#FFFDF8}
   .refine-match-head p,.refine-price-grid label,.clear-refine-match{color:#BEB5A8}
   .refine-match-close,.refine-match-known span{background:#24211C;color:#F1E2BE}
-  .refine-price-grid input{background:#181816;border-color:#403B33;color:#FFFDF8;font-size:17px}
+  .refine-price-grid input,.refine-price-grid select{background:#181816;border-color:#403B33;color:#FFFDF8;font-size:17px}
   .apply-refine-match{background:#E4D0A3;color:#171513;font-size:17px}
 
   .install-modal-card{background:#11110F;color:#FFFDF8}
@@ -1686,7 +1687,7 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
   <button type="button" onclick="enterMatchMode()">
     <b>✦</b><span>DESCOBRIR</span>
   </button>
-  <button type="button" onclick="document.getElementById('explore').scrollIntoView({behavior:'smooth'})">
+  <button type="button" onclick="openGeneralCatalog()">
     <b>⌕</b><span>EXPLORAR</span>
   </button>
   <button type="button" onclick="showToast('Salvos será ativado em uma próxima etapa do produto.')">
@@ -1757,12 +1758,25 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
     <div class="refine-match-head">
       <div>
         <h2 id="refineMatchTitle">Refinar meu MATCH</h2>
-        <p>Defina a faixa de valor. Bairro e dormitórios já vieram da sua busca.</p>
+        <p>Ajuste bairro, dormitórios e faixa de valor.</p>
       </div>
       <button class="refine-match-close" id="refineMatchClose" type="button" aria-label="Fechar">×</button>
     </div>
     <div class="refine-match-known" id="refineMatchKnown"></div>
     <div class="refine-price-grid">
+      <label>Bairro
+        <input id="refineNeighborhood" type="text" list="refineNeighborhoodOptions" autocomplete="off" placeholder="Ex.: Perdizes">
+        <datalist id="refineNeighborhoodOptions"></datalist>
+      </label>
+      <label>Dormitórios mínimos
+        <select id="refineBedrooms">
+          <option value="">Sem mínimo</option>
+          <option value="1">1+</option>
+          <option value="2">2+</option>
+          <option value="3">3+</option>
+          <option value="4">4+</option>
+        </select>
+      </label>
       <label>Valor mínimo
         <input id="refinePriceMin" type="number" inputmode="numeric" min="0" step="10000" placeholder="Ex.: 500000">
       </label>
@@ -1807,10 +1821,8 @@ function propertyMatchesAdNeighborhood(p){
   return haystack.includes(wanted);
 }
 
-function propertyMatchesAdIntent(p){
-  if(!adIntent.active) return true;
-  if(!propertyMatchesAdNeighborhood(p)) return false;
-  if(adIntent.bedrooms && Number(p.bedrooms)!==Number(adIntent.bedrooms)) return false;
+function propertyMatchesAdRequirements(p){
+  if(adIntent.bedrooms && Number(p.bedrooms)<Number(adIntent.bedrooms)) return false;
   if(adIntent.minPrice && (!p.value || Number(p.value)<adIntent.minPrice)) return false;
   if(adIntent.maxPrice && (!p.value || Number(p.value)>adIntent.maxPrice)) return false;
   return true;
@@ -3326,28 +3338,14 @@ $("navMatch")
 $("exploreHero")
   .addEventListener(
     "click",
-    ()=>{
-      document.body.classList.remove("home-mode");
-      leaveMatchMode();
-      $("explore")
-        .scrollIntoView({
-          behavior:"smooth"
-        });
-    }
+    ()=>openGeneralCatalog()
   );
 
 
 $("navExplore")
   .addEventListener(
     "click",
-    ()=>{
-      document.body.classList.remove("home-mode");
-      leaveMatchMode();
-      $("explore")
-        .scrollIntoView({
-          behavior:"smooth"
-        });
-    }
+    ()=>openGeneralCatalog()
   );
 
 
@@ -3507,6 +3505,17 @@ const REGION_MAP={
     "itaquera","aricanduva","sapopemba","são mateus","sao mateus"
   ]
 };
+
+function adIntentRegionKey(){
+  const wanted=norm(adIntent.neighborhood);
+  if(!wanted) return "";
+  return Object.keys(REGION_MAP).find(key=>
+    REGION_MAP[key].some(item=>{
+      const neighborhood=norm(item);
+      return neighborhood===wanted || neighborhood.includes(wanted) || wanted.includes(neighborhood);
+    })
+  ) || "";
+}
 
 function propertyMatchesRegion(p,regionKey){
   const key=norm(regionKey);
@@ -3814,34 +3823,35 @@ function showMatches(){
   leaveMatchMode();
   history.replaceState({ynteligenciaView:"feed"},"");
 
-  const rankedProperties=
-    properties
+  const rankList=list=>
+    list
+      .map(p=>({...p,match:scoreProperty(p)}))
+      .filter(x=>x.match.score>=45)
+      .sort((a,b)=>b.match.score-a.match.score || a.value-b.value);
 
-      /* No tráfego pago, bairro + dormitórios + preço refinado são
-         restrições reais antes do ranking. O MATCH não pode compensar
-         um imóvel fora desses critérios com pontos de outras categorias. */
-      .filter(propertyMatchesAdIntent)
+  let rankedProperties;
 
-      .map(
-        p=>({
-          ...p,
-          match:
-            scoreProperty(p)
-        })
-      )
+  if(adIntent.active){
+    /* Jornada de mídia: dormitórios e preço continuam obrigatórios.
+       O bairro exato vem primeiro; somente as vagas restantes recebem
+       alternativas da mesma região, claramente identificadas no card. */
+    const eligible=properties.filter(propertyMatchesAdRequirements);
+    const exact=rankList(eligible.filter(propertyMatchesAdNeighborhood));
+    const exactIds=new Set(exact.map(p=>`${p.source}:${p.id}`));
+    const regionKey=adIntentRegionKey();
+    const nearby=regionKey
+      ? rankList(
+          eligible.filter(p=>
+            !exactIds.has(`${p.source}:${p.id}`) &&
+            propertyMatchesRegion(p,regionKey)
+          )
+        ).map(p=>({...p,adAlternative:true}))
+      : [];
 
-      .filter(
-        x=>
-          x.match.score>=45
-      )
-
-      .sort(
-        (a,b)=>
-          b.match.score-
-          a.match.score ||
-          a.value-
-          b.value
-      );
+    rankedProperties=[...exact,...nearby].slice(0,12);
+  }else{
+    rankedProperties=rankList(properties);
+  }
 
 
   /*
@@ -3850,44 +3860,28 @@ function showMatches(){
     Até 6 Novos + 6 Usados; se um grupo não tiver 6 elegíveis,
     as vagas restantes são preenchidas pelos melhores imóveis gerais.
   */
-  const novos=
-    rankedProperties
-      .filter(p=>p.source==="novos")
-      .slice(0,6);
+  let scored;
 
-  const usados=
-    rankedProperties
-      .filter(p=>p.source!=="novos")
-      .slice(0,6);
+  if(adIntent.active){
+    /* Não reordena alternativas acima dos imóveis do bairro solicitado. */
+    scored=rankedProperties.slice(0,12);
+  }else{
+    const novos=rankedProperties.filter(p=>p.source==="novos").slice(0,6);
+    const usados=rankedProperties.filter(p=>p.source!=="novos").slice(0,6);
+    const selectedIds=new Set([...novos,...usados].map(p=>`${p.source}:${p.id}`));
+    scored=[...novos,...usados];
 
-  const selectedIds=
-    new Set(
-      [...novos,...usados]
-        .map(p=>`${p.source}:${p.id}`)
-    );
-
-  const scored=
-    [...novos,...usados];
-
-  for(const p of rankedProperties){
-
-    if(scored.length>=12) break;
-
-    const key=`${p.source}:${p.id}`;
-
-    if(!selectedIds.has(key)){
-      scored.push(p);
-      selectedIds.add(key);
+    for(const p of rankedProperties){
+      if(scored.length>=12) break;
+      const key=`${p.source}:${p.id}`;
+      if(!selectedIds.has(key)){
+        scored.push(p);
+        selectedIds.add(key);
+      }
     }
-  }
 
-  scored.sort(
-    (a,b)=>
-      b.match.score-
-      a.match.score ||
-      a.value-
-      b.value
-  );
+    scored.sort((a,b)=>b.match.score-a.match.score || a.value-b.value);
+  }
 
 
   console.log(
@@ -3999,7 +3993,7 @@ function showMatches(){
     .textContent=
       adIntent.active
         ? (scored.length
-            ? `${scored.length} imóveis · ${adIntent.neighborhood || "sua região"}${adIntent.bedrooms ? ` · ${adIntent.bedrooms} dormitórios` : ""}${(adIntent.minPrice||adIntent.maxPrice) ? ` · ${adIntent.minPrice ? "de "+money(adIntent.minPrice) : ""}${adIntent.maxPrice ? " até "+money(adIntent.maxPrice) : ""}` : ""}`
+            ? `${scored.length} imóveis · ${adIntent.neighborhood || "sua região"}${adIntent.bedrooms ? ` · ${adIntent.bedrooms}+ dormitórios` : ""}${(adIntent.minPrice||adIntent.maxPrice) ? ` · ${adIntent.minPrice ? "de "+money(adIntent.minPrice) : ""}${adIntent.maxPrice ? " até "+money(adIntent.maxPrice) : ""}` : ""}${scored.some(p=>p.adAlternative) ? " · incluindo alternativas próximas" : ""}`
             : "Não encontramos imóveis nessa combinação. Refine ou amplie a faixa de valor.")
         : (scored.length
             ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
@@ -4410,7 +4404,10 @@ function card(
     isMatch &&
     p.match
 
-      ? p.match.reasons.slice(0,3)
+      ? [
+          ...(p.adAlternative ? [`Alternativa próxima em ${p.neighborhood || "bairro da mesma região"}`] : []),
+          ...p.match.reasons
+        ].slice(0,3)
       : [];
 
 
@@ -4475,6 +4472,8 @@ function card(
       ${coverHTML(p)}
 
       <div class="card-body">
+
+        ${p.adAlternative ? `<div class="nearby-alternative">Alternativa próxima · ${esc(p.neighborhood || "mesma região")}</div>` : ""}
 
         <div class="card-tag">
           ${p.source==="novos" ? "NOVO" : "USADO"}
@@ -5114,6 +5113,8 @@ $("showCatalog")
     "click",
     ()=>{
 
+      clearAdEntryIntent();
+
       $("catalog")
         .classList
         .add(
@@ -5178,8 +5179,44 @@ function resetCatalogState(render=true){
   document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
     btn.classList.toggle("selected", !btn.dataset.region);
   });
-  refreshCatalogNeighborhoodOptions();
+  fillCatalogNeighborhoodsForRegion("");
   if(render && $("catalog")?.classList.contains("visible")) renderCatalog();
+}
+
+const AD_INTENT_QUERY_KEYS=[
+  "bairro","region","dormitorios","bedrooms","project","projeto",
+  "valor_min","min_price","valor_max","max_price"
+];
+
+function clearAdEntryIntent(){
+  adIntent.neighborhood="";
+  adIntent.bedrooms=0;
+  adIntent.minPrice=0;
+  adIntent.maxPrice=0;
+  adIntent.active=false;
+
+  document.body.classList.remove("ad-match-mode");
+  $("results")?.classList.remove("visible");
+  setRefineMatchOpen(false);
+
+  const url=new URL(window.location.href);
+  AD_INTENT_QUERY_KEYS.forEach(key=>url.searchParams.delete(key));
+  history.replaceState(
+    {...(history.state||{}),ynteligenciaView:"catalog"},
+    "",
+    `${url.pathname}${url.search}${url.hash}`
+  );
+}
+
+function openGeneralCatalog(){
+  clearAdEntryIntent();
+  resetCatalogState(false);
+  document.body.classList.remove("home-mode");
+  leaveMatchMode();
+  setFiltersOpen(false);
+  $("catalog").classList.add("visible");
+  renderCatalog();
+  $("catalog").scrollIntoView({behavior:"smooth"});
 }
 
 $("resetCatalogFilters")?.addEventListener("click",()=>resetCatalogState(true));
@@ -5928,14 +5965,26 @@ function showToast(message){
    ENTRADA DIRETA DE ANÚNCIOS · REFINAR MATCH
 ========================================================= */
 function updateAdMatchUI(){
-  if(!adIntent.active) return;
+  if(!adIntent.active){
+    document.body.classList.remove("ad-match-mode");
+    return;
+  }
   document.body.classList.add("ad-match-mode");
   const known=$("refineMatchKnown");
   if(known){
     const parts=[];
     if(adIntent.neighborhood) parts.push(`<span>📍 ${esc(adIntent.neighborhood)}</span>`);
-    if(adIntent.bedrooms) parts.push(`<span>⌂ ${adIntent.bedrooms} dormitórios</span>`);
+    if(adIntent.bedrooms) parts.push(`<span>⌂ ${adIntent.bedrooms}+ dormitórios</span>`);
     known.innerHTML=parts.join("");
+  }
+  if($("refineNeighborhood")) $("refineNeighborhood").value=adIntent.neighborhood||"";
+  if($("refineBedrooms")) $("refineBedrooms").value=adIntent.bedrooms ? String(adIntent.bedrooms) : "";
+  const neighborhoodOptions=$("refineNeighborhoodOptions");
+  if(neighborhoodOptions){
+    neighborhoodOptions.innerHTML=[...new Set(properties.map(p=>p.neighborhood).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"pt-BR"))
+      .map(value=>`<option value="${esc(value)}"></option>`)
+      .join("");
   }
   if($("refinePriceMin")) $("refinePriceMin").value=adIntent.minPrice||"";
   if($("refinePriceMax")) $("refinePriceMax").value=adIntent.maxPrice||"";
@@ -5952,11 +6001,17 @@ $("refineMatchFab")?.addEventListener("click",()=>setRefineMatchOpen(true));
 $("refineMatchClose")?.addEventListener("click",()=>setRefineMatchOpen(false));
 $("refineMatchShell")?.addEventListener("click",e=>{if(e.target===$("refineMatchShell"))setRefineMatchOpen(false);});
 $("applyRefineMatch")?.addEventListener("click",()=>{
+  const neighborhood=cleanAdParam($("refineNeighborhood")?.value||"");
+  const bedrooms=Number($("refineBedrooms")?.value||0) || 0;
   const min=Number($("refinePriceMin")?.value||0);
   const max=Number($("refinePriceMax")?.value||0);
   if(min && max && min>max){showToast("O valor mínimo precisa ser menor que o máximo.");return;}
+  adIntent.neighborhood=neighborhood;
+  adIntent.bedrooms=bedrooms;
   adIntent.minPrice=min;
   adIntent.maxPrice=max;
+  adIntent.active=Boolean(neighborhood || bedrooms || min || max);
+  updateAdMatchUI();
   setRefineMatchOpen(false);
   showMatches();
   try{gtag('event','match_refined',{region:adIntent.neighborhood,bedrooms:adIntent.bedrooms,min_price:min,max_price:max});}catch(e){}
@@ -6196,6 +6251,7 @@ Promise.all([
       closeMenu();
       setTimeout(()=>{
         if(id==='match') enterMatchMode();
+        else if(id==='explore') openGeneralCatalog();
         else{
           if(id==='inicio'){
             resetCatalogState(false);
