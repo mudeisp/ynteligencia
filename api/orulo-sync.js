@@ -52,6 +52,11 @@ export default async function handler(req, res) {
 
     const accessToken = tokenData.access_token;
 
+    const oruloHeaders = {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json"
+    };
+
     // =========================================================
     // 2. BUSCA EMPREENDIMENTOS
     // =========================================================
@@ -66,10 +71,7 @@ export default async function handler(req, res) {
     const buildingsResponse = await fetch(
       `https://www.orulo.com.br/api/v2/buildings?${params.toString()}`,
       {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        }
+        headers: oruloHeaders
       }
     );
 
@@ -87,15 +89,103 @@ export default async function handler(req, res) {
       : [];
 
     // =========================================================
-    // 3. BUSCA TIPOLOGIAS + FOTOS + NORMALIZAÇÃO
+    // 3. DETALHES + FOTOS + TIPOLOGIAS + NORMALIZAÇÃO
     // =========================================================
 
     const rows = [];
 
-    for (const building of buildings) {
+    let residentialBuildings = 0;
+    let buildingDetailsLoaded = 0;
+    let buildingDetailsFailed = 0;
+    let galleriesLoaded = 0;
+
+    for (const buildingSummary of buildings) {
       try {
-        // Ynteligencia trabalha somente com imóveis residenciais
-        const finality = String(building.finality || "")
+        // =====================================================
+        // 3.1 FILTRO RESIDENCIAL
+        // =====================================================
+
+        const summaryFinality = String(
+          buildingSummary.finality || ""
+        )
+          .trim()
+          .toLowerCase();
+
+        if (summaryFinality !== "residencial") {
+          continue;
+        }
+
+        residentialBuildings++;
+
+        // =====================================================
+        // 3.2 DETALHE COMPLETO DO EMPREENDIMENTO
+        // =====================================================
+        //
+        // A listagem /buildings é resumida.
+        // Aqui buscamos /buildings/{id} para obter a ficha
+        // completa do empreendimento.
+        //
+        // Se o endpoint de detalhe falhar por algum motivo,
+        // mantemos o buildingSummary como fallback para não
+        // quebrar o catálogo.
+        // =====================================================
+
+        let building = buildingSummary;
+
+        try {
+          const detailResponse = await fetch(
+            `https://www.orulo.com.br/api/v2/buildings/${buildingSummary.id}`,
+            {
+              headers: oruloHeaders
+            }
+          );
+
+          if (detailResponse.ok) {
+            const detailData = await detailResponse.json();
+
+            const detailedBuilding =
+              detailData?.building &&
+              typeof detailData.building === "object"
+                ? detailData.building
+                : detailData;
+
+            if (
+              detailedBuilding &&
+              typeof detailedBuilding === "object"
+            ) {
+              building = {
+                ...buildingSummary,
+                ...detailedBuilding
+              };
+
+              buildingDetailsLoaded++;
+            }
+          } else {
+            buildingDetailsFailed++;
+
+            console.warn(
+              "ORULO_BUILDING_DETAIL_HTTP_ERROR",
+              buildingSummary.id,
+              detailResponse.status
+            );
+          }
+        } catch (detailError) {
+          buildingDetailsFailed++;
+
+          console.warn(
+            "ORULO_BUILDING_DETAIL_ERROR",
+            buildingSummary.id,
+            detailError
+          );
+        }
+
+        // Segurança adicional:
+        // depois do detalhe, confirmamos novamente a finalidade.
+        const finality = String(
+          building.finality ||
+          buildingSummary.finality ||
+          ""
+        )
           .trim()
           .toLowerCase();
 
@@ -104,7 +194,7 @@ export default async function handler(req, res) {
         }
 
         // =====================================================
-        // 3.1 GALERIA DE FOTOS DO EMPREENDIMENTO
+        // 3.3 GALERIA DE FOTOS
         // =====================================================
 
         let galleryImages = [];
@@ -118,12 +208,9 @@ export default async function handler(req, res) {
           );
 
           const imagesResponse = await fetch(
-            `https://www.orulo.com.br/api/v2/buildings/${building.id}/images?${imagesParams.toString()}`,
+            `https://www.orulo.com.br/api/v2/buildings/${buildingSummary.id}/images?${imagesParams.toString()}`,
             {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json"
-              }
+              headers: oruloHeaders
             }
           );
 
@@ -151,36 +238,43 @@ export default async function handler(req, res) {
                   array.indexOf(url) === index
               )
               .slice(0, 8);
+
+            if (galleryImages.length) {
+              galleriesLoaded++;
+            }
           } else {
             console.warn(
               "ORULO_IMAGES_HTTP_ERROR",
-              building.id,
+              buildingSummary.id,
               imagesResponse.status
             );
           }
         } catch (imageError) {
           console.warn(
             "ORULO_IMAGES_ERROR",
-            building.id,
+            buildingSummary.id,
             imageError
           );
         }
 
         // =====================================================
-        // 3.2 TIPOLOGIAS
+        // 3.4 TIPOLOGIAS
         // =====================================================
 
         const typologiesResponse = await fetch(
-          `https://www.orulo.com.br/api/v2/buildings/${building.id}/typologies`,
+          `https://www.orulo.com.br/api/v2/buildings/${buildingSummary.id}/typologies`,
           {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json"
-            }
+            headers: oruloHeaders
           }
         );
 
         if (!typologiesResponse.ok) {
+          console.warn(
+            "ORULO_TYPOLOGIES_HTTP_ERROR",
+            buildingSummary.id,
+            typologiesResponse.status
+          );
+
           continue;
         }
 
@@ -191,6 +285,26 @@ export default async function handler(req, res) {
           Array.isArray(typologiesData.typologies)
             ? typologiesData.typologies
             : [];
+
+        // =====================================================
+        // 3.5 CARACTERÍSTICAS DO EMPREENDIMENTO
+        // =====================================================
+
+        const buildingFeatures =
+          Array.isArray(building.building_features)
+            ? building.building_features
+            : Array.isArray(building.features)
+              ? building.features
+              : [];
+
+        const unitFeatures =
+          Array.isArray(building.unit_features)
+            ? building.unit_features
+            : [];
+
+        // =====================================================
+        // 3.6 NORMALIZA CADA TIPOLOGIA
+        // =====================================================
 
         for (const typology of typologies) {
           const stock =
@@ -205,27 +319,38 @@ export default async function handler(req, res) {
           }
 
           const externalId =
-            `orulo:${building.id}:${typology.id}`;
+            `orulo:${buildingSummary.id}:${typology.id}`;
 
           const price =
             typology.discount_price ??
             typology.original_price ??
             building.min_price ??
+            buildingSummary.min_price ??
             null;
 
-          // A primeira foto da galeria passa a ser a capa.
-          // Se a galeria não estiver disponível,
-          // mantemos o comportamento anterior.
+          // ===================================================
+          // CAPA
+          // ===================================================
+
           const imageUrl =
             galleryImages[0] ||
             building.default_image?.["1024x1024"] ||
             building.default_image?.["520x280"] ||
             building.default_image?.["2280x1800"] ||
             building.default_image?.["200x140"] ||
+            buildingSummary.default_image?.["1024x1024"] ||
+            buildingSummary.default_image?.["520x280"] ||
+            buildingSummary.default_image?.["2280x1800"] ||
+            buildingSummary.default_image?.["200x140"] ||
             null;
 
+          // ===================================================
+          // TÍTULO
+          // ===================================================
+
           const titleParts = [
-            building.name,
+            building.name ||
+              buildingSummary.name,
 
             typology.private_area
               ? `${typology.private_area} m²`
@@ -236,6 +361,31 @@ export default async function handler(req, res) {
               : null
           ].filter(Boolean);
 
+          // ===================================================
+          // FEATURES DA UNIDADE ASSOCIADAS À TIPOLOGIA
+          // ===================================================
+
+          const typologyUnitFeatures =
+            unitFeatures.filter((feature) => {
+              const associatedTypologies =
+                feature?.associations?.typologies;
+
+              if (
+                !Array.isArray(associatedTypologies) ||
+                !associatedTypologies.length
+              ) {
+                return true;
+              }
+
+              return associatedTypologies
+                .map(String)
+                .includes(String(typology.id));
+            });
+
+          // ===================================================
+          // SALVA PROPERTY
+          // ===================================================
+
           rows.push({
             external_id: externalId,
 
@@ -245,17 +395,23 @@ export default async function handler(req, res) {
               titleParts.join(" | "),
 
             development_name:
-              building.name || null,
+              building.name ||
+              buildingSummary.name ||
+              null,
 
             neighborhood:
-              building.address?.area || null,
+              building.address?.area ||
+              buildingSummary.address?.area ||
+              null,
 
             city:
               building.address?.city ||
+              buildingSummary.address?.city ||
               "São Paulo",
 
             state:
               building.address?.state ||
+              buildingSummary.address?.state ||
               "SP",
 
             price:
@@ -287,33 +443,59 @@ export default async function handler(req, res) {
               imageUrl,
 
             property_url:
-              building.orulo_url || null,
+              building.orulo_url ||
+              building.sharing_url ||
+              building.webpage ||
+              buildingSummary.orulo_url ||
+              null,
 
             active: true,
 
             // =================================================
-            // RAW DATA
+            // RAW DATA COMPLETO
             // =================================================
 
             raw_data: {
               source: "orulo",
 
               building_id:
-                String(building.id),
+                String(buildingSummary.id),
 
               typology_id:
                 String(typology.id),
 
-              // GALERIA DO EMPREENDIMENTO
+              // ===============================================
+              // GALERIA
+              // ===============================================
+
               images:
                 galleryImages,
 
+              // ===============================================
+              // TIPOLOGIA / UNIDADE
+              // ===============================================
+
               typology: {
+                id:
+                  typology.id ?? null,
+
                 type:
                   typology.type ?? null,
 
+                private_area:
+                  typology.private_area ?? null,
+
+                bedrooms:
+                  typology.bedrooms ?? null,
+
+                bathrooms:
+                  typology.bathrooms ?? null,
+
                 suites:
                   typology.suites ?? null,
+
+                parking:
+                  typology.parking ?? null,
 
                 stock,
 
@@ -337,14 +519,32 @@ export default async function handler(req, res) {
                   typology.section_reference ??
                   null,
 
+                features:
+                  typologyUnitFeatures,
+
                 updated_at:
                   typology.updated_at ??
                   null
               },
 
+              // ===============================================
+              // EMPREENDIMENTO / FICHA TÉCNICA
+              // ===============================================
+
               building: {
+                id:
+                  building.id ??
+                  buildingSummary.id ??
+                  null,
+
+                name:
+                  building.name ??
+                  buildingSummary.name ??
+                  null,
+
                 finality:
                   building.finality ??
+                  buildingSummary.finality ??
                   null,
 
                 status:
@@ -355,26 +555,173 @@ export default async function handler(req, res) {
                   building.stage ??
                   null,
 
+                type:
+                  building.type ??
+                  null,
+
+                // ---------------------------------------------
+                // INCORPORADORA
+                // ---------------------------------------------
+
                 developer:
                   building.developer?.name ??
+                  building.publisher?.name ??
                   null,
+
+                developer_data:
+                  building.developer ??
+                  null,
+
+                publisher:
+                  building.publisher?.name ??
+                  null,
+
+                // ---------------------------------------------
+                // DESCRIÇÃO
+                // ---------------------------------------------
+
+                description:
+                  building.description ??
+                  null,
+
+                // ---------------------------------------------
+                // DATAS
+                // opening_date = entrega
+                // ---------------------------------------------
+
+                opening_date:
+                  building.opening_date ??
+                  null,
+
+                launch_date:
+                  building.launch_date ??
+                  null,
+
+                // ---------------------------------------------
+                // FICHA TÉCNICA
+                // ---------------------------------------------
+
+                total_units:
+                  building.total_units ??
+                  null,
+
+                number_of_towers:
+                  building.number_of_towers ??
+                  null,
+
+                number_of_floors:
+                  building.number_of_floors ??
+                  null,
+
+                apts_per_floor:
+                  building.apts_per_floor ??
+                  null,
+
+                total_area:
+                  building.total_area ??
+                  null,
+
+                floor_area:
+                  building.floor_area ??
+                  null,
+
+                min_price:
+                  building.min_price ??
+                  null,
+
+                stock:
+                  building.stock ??
+                  null,
+
+                // ---------------------------------------------
+                // ENDEREÇO
+                // ---------------------------------------------
 
                 address:
                   building.address ??
+                  buildingSummary.address ??
                   null,
 
-                // Também mantemos a galeria
-                // dentro do objeto building.
+                // ---------------------------------------------
+                // FOTOS
+                // ---------------------------------------------
+
                 images:
                   galleryImages,
 
+                // ---------------------------------------------
+                // CARACTERÍSTICAS CONDOMINIAIS
+                // ---------------------------------------------
+
+                building_features:
+                  buildingFeatures,
+
+                // Compatibilidade com versão anterior
                 features:
-                  building.features ??
+                  buildingFeatures,
+
+                // ---------------------------------------------
+                // CARACTERÍSTICAS DAS UNIDADES
+                // ---------------------------------------------
+
+                unit_features:
+                  unitFeatures,
+
+                // ---------------------------------------------
+                // MÍDIA / LINKS
+                // ---------------------------------------------
+
+                webpage:
+                  building.webpage ??
+                  null,
+
+                sharing_url:
+                  building.sharing_url ??
+                  null,
+
+                orulo_url:
+                  building.orulo_url ??
+                  buildingSummary.orulo_url ??
+                  null,
+
+                virtual_tour:
+                  building.virtual_tour ??
+                  null,
+
+                videos:
+                  building.videos ??
+                  [],
+
+                // Se o detalhe já retornar plantas,
+                // preservamos os metadados aqui.
+                floor_plans:
+                  building.floor_plans ??
+                  [],
+
+                // Arquivos que eventualmente vierem no detalhe.
+                files:
+                  building.files ??
+                  [],
+
+                // ---------------------------------------------
+                // COMERCIAL
+                // ---------------------------------------------
+
+                payment_conditions:
+                  building.payment_conditions ??
                   [],
 
                 opportunity:
                   building.opportunity ??
                   null,
+
+                last_updated_pricetable_at:
+                  building.last_updated_pricetable_at ??
+                  null,
+
+                // ---------------------------------------------
+                // CONTROLE
+                // ---------------------------------------------
 
                 updated_at:
                   building.updated_at ??
@@ -388,12 +735,16 @@ export default async function handler(req, res) {
         }
       } catch (error) {
         console.error(
-          "ORULO_TYPOLOGY_ERROR",
-          building.id,
+          "ORULO_BUILDING_PROCESS_ERROR",
+          buildingSummary.id,
           error
         );
       }
     }
+
+    // =========================================================
+    // 4. VALIDAÇÃO
+    // =========================================================
 
     if (!rows.length) {
       return res.status(502).json({
@@ -404,11 +755,15 @@ export default async function handler(req, res) {
     }
 
     // =========================================================
-    // 3.5 DESATIVA CATÁLOGO ÓRULO ANTERIOR
+    // 5. DESATIVA CATÁLOGO ÓRULO ANTERIOR
     // =========================================================
-    // Tudo que era "novos" fica temporariamente inativo.
-    // O upsert abaixo reativa somente as ofertas residenciais
-    // que continuam válidas no catálogo atual da Órulo.
+    //
+    // Mantemos exatamente a estratégia já aprovada:
+    //
+    // 1. desativa todos os source=novos
+    // 2. upsert abaixo reativa os produtos válidos atuais
+    //
+    // =========================================================
 
     const deactivateResponse = await fetch(
       `${SUPABASE_URL}/rest/v1/properties?source=eq.novos`,
@@ -457,8 +812,7 @@ export default async function handler(req, res) {
     }
 
     // =========================================================
-    // 4. UPSERT NO SUPABASE
-    // external_id já possui UNIQUE INDEX
+    // 6. UPSERT NO SUPABASE
     // =========================================================
 
     const supabaseResponse = await fetch(
@@ -516,17 +870,29 @@ export default async function handler(req, res) {
     }
 
     // =========================================================
-    // 5. RESULTADO
+    // 7. RESULTADO
     // =========================================================
 
     return res.status(200).json({
       ok: true,
 
       message:
-        "Catálogo Órulo sincronizado com o Supabase",
+        "Catálogo Órulo enriquecido e sincronizado com o Supabase",
 
       buildings_received:
         buildings.length,
+
+      residential_buildings:
+        residentialBuildings,
+
+      building_details_loaded:
+        buildingDetailsLoaded,
+
+      building_details_failed:
+        buildingDetailsFailed,
+
+      galleries_loaded:
+        galleriesLoaded,
 
       properties_processed:
         rows.length,
