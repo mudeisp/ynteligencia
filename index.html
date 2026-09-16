@@ -944,6 +944,23 @@ body{background:#F7F4ED;color:#0B0B0B}
   .catalog-filters.open{transform:translateY(0)}
   .filters-sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.filters-sheet-head .filter-title{margin:0;font-size:18px;text-transform:none;letter-spacing:-.02em}.filters-close{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:#F0ECE3;font-size:25px}
 }
+
+
+/* ===== ENTRADA DIRETA DE ANÚNCIOS · 12 IMÓVEIS + REFINAR MATCH ===== */
+.ad-match-context{display:none}
+.refine-match-fab{display:none;position:fixed;z-index:170;left:50%;bottom:max(88px,calc(18px + env(safe-area-inset-bottom)));transform:translateX(-50%);min-height:54px;padding:0 22px;border:1px solid rgba(241,226,190,.65);border-radius:999px;background:#E4D0A3;color:#171513;font-weight:900;box-shadow:0 14px 38px rgba(0,0,0,.28);white-space:nowrap}
+body.ad-match-mode .refine-match-fab{display:block}
+body.ad-match-mode .app-dock{display:none!important}
+body.ad-match-mode .results .card-body{padding-bottom:150px!important}
+.refine-match-shell{position:fixed;inset:0;z-index:260;display:grid;place-items:end center;background:rgba(11,11,11,.55);backdrop-filter:blur(5px);opacity:0;pointer-events:none;transition:.2s}
+.refine-match-shell.open{opacity:1;pointer-events:auto}
+.refine-match-card{width:min(520px,100%);padding:24px 20px calc(24px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;background:#FCFAF6;color:#171513;box-shadow:0 -20px 60px rgba(0,0,0,.24)}
+.refine-match-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.refine-match-head h2{margin:0;font-size:26px;letter-spacing:-.04em}.refine-match-head p{margin:5px 0 0;color:#77736B;font-size:13px}.refine-match-close{width:42px;height:42px;border:0;border-radius:50%;background:#F0ECE3;font-size:25px}
+.refine-match-known{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 20px}.refine-match-known span{padding:8px 10px;border-radius:999px;background:#F0ECE3;font-size:12px;font-weight:800}
+.refine-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.refine-price-grid label{display:grid;gap:7px;color:#77736B;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.refine-price-grid input{width:100%;min-height:52px;border:1px solid #DED8CD;border-radius:14px;background:#fff;padding:0 13px;color:#171513;font-size:16px;outline:0}.refine-price-grid input:focus{border-color:#C6A76B;box-shadow:0 0 0 3px rgba(198,167,107,.12)}
+.apply-refine-match{width:100%;min-height:56px;margin-top:16px;border:0;border-radius:16px;background:#171717;color:#fff;font-weight:900;font-size:16px}.clear-refine-match{width:100%;min-height:44px;margin-top:7px;border:0;background:transparent;color:#77736B;font-weight:800}
+@media(max-width:700px){body.ad-match-mode{height:100svh;overflow:hidden}body.ad-match-mode header{display:none!important}body.ad-match-mode .results.visible{height:100svh}.refine-match-fab{bottom:max(18px,calc(14px + env(safe-area-inset-bottom)));min-height:56px}.refine-price-grid{grid-template-columns:1fr 1fr}}
+
 </style>
 </head>
 
@@ -1630,6 +1647,32 @@ body{background:#F7F4ED;color:#0B0B0B}
   </div>
 </div>
 
+
+<!-- Entrada direta de anúncios: refinamento opcional sem bloquear o feed -->
+<button class="refine-match-fab" id="refineMatchFab" type="button">✦ Refinar meu MATCH</button>
+<div class="refine-match-shell" id="refineMatchShell" aria-hidden="true">
+  <div class="refine-match-card" role="dialog" aria-modal="true" aria-labelledby="refineMatchTitle">
+    <div class="refine-match-head">
+      <div>
+        <h2 id="refineMatchTitle">Refinar meu MATCH</h2>
+        <p>Defina a faixa de valor. Bairro e dormitórios já vieram da sua busca.</p>
+      </div>
+      <button class="refine-match-close" id="refineMatchClose" type="button" aria-label="Fechar">×</button>
+    </div>
+    <div class="refine-match-known" id="refineMatchKnown"></div>
+    <div class="refine-price-grid">
+      <label>Valor mínimo
+        <input id="refinePriceMin" type="number" inputmode="numeric" min="0" step="10000" placeholder="Ex.: 500000">
+      </label>
+      <label>Valor máximo
+        <input id="refinePriceMax" type="number" inputmode="numeric" min="0" step="10000" placeholder="Ex.: 900000">
+      </label>
+    </div>
+    <button class="apply-refine-match" id="applyRefineMatch" type="button">Atualizar meus 12 imóveis</button>
+    <button class="clear-refine-match" id="clearRefineMatch" type="button">Limpar faixa de valor</button>
+  </div>
+</div>
+
 <script>
 
 const CSV_FILE="Remax.teste.2.csv";
@@ -1637,6 +1680,39 @@ const SUPABASE_PROPERTIES_URL =
   "https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties?source=eq.novos&active=eq.true&select=*";
 let properties=[];
 let sourceMode="todos";
+
+/* Contexto vindo do anúncio. Exemplos:
+   ?bairro=perdizes&dormitorios=2
+   ?bairro=vila-madalena&dormitorios=2
+   Também aceita region/bedrooms para compatibilidade. */
+const adParams=new URLSearchParams(window.location.search);
+const adIntent={
+  neighborhood:cleanAdParam(adParams.get("bairro") || adParams.get("region") || ""),
+  bedrooms:Number(adParams.get("dormitorios") || adParams.get("bedrooms") || 0) || 0,
+  minPrice:Number(adParams.get("valor_min") || adParams.get("min_price") || 0) || 0,
+  maxPrice:Number(adParams.get("valor_max") || adParams.get("max_price") || 0) || 0
+};
+adIntent.active=Boolean(adIntent.neighborhood || adIntent.bedrooms);
+
+function cleanAdParam(value){
+  return String(value||"").replace(/[-_]+/g," ").trim();
+}
+
+function propertyMatchesAdNeighborhood(p){
+  if(!adIntent.neighborhood) return true;
+  const wanted=norm(adIntent.neighborhood);
+  const haystack=norm(`${p.neighborhood||""} ${p.address||""}`);
+  return haystack.includes(wanted);
+}
+
+function propertyMatchesAdIntent(p){
+  if(!adIntent.active) return true;
+  if(!propertyMatchesAdNeighborhood(p)) return false;
+  if(adIntent.bedrooms && Number(p.bedrooms)!==Number(adIntent.bedrooms)) return false;
+  if(adIntent.minPrice && (!p.value || Number(p.value)<adIntent.minPrice)) return false;
+  if(adIntent.maxPrice && (!p.value || Number(p.value)>adIntent.maxPrice)) return false;
+  return true;
+}
 
 let profile={
   purpose:"",
@@ -3577,6 +3653,11 @@ function showMatches(){
   const rankedProperties=
     properties
 
+      /* No tráfego pago, bairro + dormitórios + preço refinado são
+         restrições reais antes do ranking. O MATCH não pode compensar
+         um imóvel fora desses critérios com pontos de outras categorias. */
+      .filter(propertyMatchesAdIntent)
+
       .map(
         p=>({
           ...p,
@@ -3752,11 +3833,13 @@ function showMatches(){
 
   $("resultSummary")
     .textContent=
-      scored.length
-
-        ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
-
-        : "Não encontramos uma combinação forte. Vamos ampliar sua busca.";
+      adIntent.active
+        ? (scored.length
+            ? `${scored.length} imóveis · ${adIntent.neighborhood || "sua região"}${adIntent.bedrooms ? ` · ${adIntent.bedrooms} dormitórios` : ""}${(adIntent.minPrice||adIntent.maxPrice) ? ` · ${adIntent.minPrice ? "de "+money(adIntent.minPrice) : ""}${adIntent.maxPrice ? " até "+money(adIntent.maxPrice) : ""}` : ""}`
+            : "Não encontramos imóveis nessa combinação. Refine ou amplie a faixa de valor.")
+        : (scored.length
+            ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
+            : "Não encontramos uma combinação forte. Vamos ampliar sua busca.");
 
 
   $("matchGrid")
@@ -5544,6 +5627,52 @@ function showToast(message){
 }
 
 
+
+/* =========================================================
+   ENTRADA DIRETA DE ANÚNCIOS · REFINAR MATCH
+========================================================= */
+function updateAdMatchUI(){
+  if(!adIntent.active) return;
+  document.body.classList.add("ad-match-mode");
+  const known=$("refineMatchKnown");
+  if(known){
+    const parts=[];
+    if(adIntent.neighborhood) parts.push(`<span>📍 ${esc(adIntent.neighborhood)}</span>`);
+    if(adIntent.bedrooms) parts.push(`<span>⌂ ${adIntent.bedrooms} dormitórios</span>`);
+    known.innerHTML=parts.join("");
+  }
+  if($("refinePriceMin")) $("refinePriceMin").value=adIntent.minPrice||"";
+  if($("refinePriceMax")) $("refinePriceMax").value=adIntent.maxPrice||"";
+}
+
+function setRefineMatchOpen(open){
+  const shell=$("refineMatchShell");
+  if(!shell) return;
+  shell.classList.toggle("open",open);
+  shell.setAttribute("aria-hidden",String(!open));
+}
+
+$("refineMatchFab")?.addEventListener("click",()=>setRefineMatchOpen(true));
+$("refineMatchClose")?.addEventListener("click",()=>setRefineMatchOpen(false));
+$("refineMatchShell")?.addEventListener("click",e=>{if(e.target===$("refineMatchShell"))setRefineMatchOpen(false);});
+$("applyRefineMatch")?.addEventListener("click",()=>{
+  const min=Number($("refinePriceMin")?.value||0);
+  const max=Number($("refinePriceMax")?.value||0);
+  if(min && max && min>max){showToast("O valor mínimo precisa ser menor que o máximo.");return;}
+  adIntent.minPrice=min;
+  adIntent.maxPrice=max;
+  setRefineMatchOpen(false);
+  showMatches();
+  try{gtag('event','match_refined',{region:adIntent.neighborhood,bedrooms:adIntent.bedrooms,min_price:min,max_price:max});}catch(e){}
+});
+$("clearRefineMatch")?.addEventListener("click",()=>{
+  adIntent.minPrice=0; adIntent.maxPrice=0;
+  if($("refinePriceMin")) $("refinePriceMin").value="";
+  if($("refinePriceMax")) $("refinePriceMax").value="";
+  setRefineMatchOpen(false);
+  showMatches();
+});
+
 /* =========================================================
    INVENTÁRIO
 ========================================================= */
@@ -5686,6 +5815,15 @@ Promise.all([
   ()=>{
 
     applyHeroInventoryPhoto();
+
+    /* Se o clique veio de um anúncio com intenção conhecida, entrega
+       os imóveis imediatamente. A home e o wizard continuam intactos
+       para acessos normais ao domínio. */
+    if(adIntent.active){
+      updateAdMatchUI();
+      document.body.classList.remove("home-mode");
+      showMatches();
+    }
 
     console.log(
       `Ynteligencia pronta: ${properties.length} imóveis · ${Object.keys(photoManifest).length} registros de fotos`
