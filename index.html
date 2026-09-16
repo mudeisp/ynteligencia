@@ -963,6 +963,9 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
 
 .catalog-region-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.catalog-region-btn{min-height:42px;padding:0 15px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-weight:850;font-size:12px}.catalog-region-btn.selected{background:var(--dark);border-color:var(--dark);color:#fff}@media(max-width:700px){.catalog-region-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.catalog-region-btn:last-child{grid-column:1/-1}}
 </style>
+<style>
+.filter-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;align-items:center}.filter-actions>button{width:100%;min-height:50px}
+</style>
 </head>
 
 <body class="home-mode">
@@ -1399,11 +1402,6 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
         class="field"
         placeholder="Empreendimento, bairro, endereço ou código">
 
-      <button
-        class="primary"
-        id="showCatalog">
-        Explorar
-      </button>
 
     </div>
 
@@ -1502,6 +1500,13 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
           id="resetCatalogFilters"
           type="button">
           Limpar filtros
+        </button>
+
+        <button
+          class="primary"
+          id="showCatalog"
+          type="button">
+          Explorar
         </button>
 
       </div>
@@ -2648,7 +2653,8 @@ function extractOruloPhotos(row, raw){
     const imageKey=/photo|foto|image|imagem|gallery|galeria|picture|banner|facade|fachada|plant|floor.?plan|perspective/i.test(String(key));
 
     if(typeof value==="string"){
-      if(imageKey)add(value);
+      const looksLikeImage=/^https?:\/\//i.test(value) && (imageKey || /\.(?:jpe?g|png|webp|avif)(?:\?|$)/i.test(value) || /image|photo|foto|cdn.*orulo|orulo.*cdn/i.test(value));
+      if(looksLikeImage)add(value);
       return;
     }
 
@@ -4936,40 +4942,32 @@ $("showCatalog")
 );
 
 
-$("resetCatalogFilters")
-  .addEventListener(
-    "click",
-    ()=>{
+function resetCatalogState(render=true){
+  [
+    "catalogSearch",
+    "minPrice",
+    "maxPrice",
+    "minArea",
+    "maxCondo",
+    "maxIptu"
+  ].forEach(id=>{ if($(id)) $(id).value=""; });
 
-      [
-        "catalogSearch",
-        "minPrice",
-        "maxPrice",
-        "minArea",
-        "maxCondo",
-        "maxIptu"
-      ]
-      .forEach(
-        id=>
-          $(id).value=""
-      );
+  [
+    "catalogNeighborhood",
+    "catalogType",
+    "catalogBedrooms",
+    "catalogParking"
+  ].forEach(id=>{ if($(id)) $(id).value=""; });
 
+  catalogRegion="";
+  document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
+    btn.classList.toggle("selected", !btn.dataset.region);
+  });
+  refreshCatalogNeighborhoodOptions();
+  if(render && $("catalog")?.classList.contains("visible")) renderCatalog();
+}
 
-      [
-        "catalogNeighborhood",
-        "catalogType",
-        "catalogBedrooms",
-        "catalogParking"
-      ]
-      .forEach(
-        id=>
-          $(id).value=""
-      );
-
-
-      renderCatalog();
-    }
-  );
+$("resetCatalogFilters")?.addEventListener("click",()=>resetCatalogState(true));
 
 
 /* =========================================================
@@ -5972,6 +5970,11 @@ Promise.all([
       setTimeout(()=>{
         if(id==='match') enterMatchMode();
         else{
+          if(id==='inicio'){
+            resetCatalogState(false);
+            document.getElementById('catalog')?.classList.remove('visible');
+            setFiltersOpen(false);
+          }
           document.body.classList.toggle('home-mode',id==='inicio');
           document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
         }
