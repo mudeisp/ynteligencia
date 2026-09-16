@@ -1031,6 +1031,53 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
 .detail-sticky-cta{display:grid;grid-template-columns:.72fr 1.28fr;gap:8px}
 .detail-share-btn{min-height:56px;border:1px solid #C6A76B;border-radius:14px;background:#FCFAF6;color:#5A4728;font-size:14px;font-weight:900;cursor:pointer}
 </style>
+<style>
+/* ===== MOBILE FINAL · CONTRASTE + FEED INSTAGRAM ===== */
+@media(max-width:700px){
+  html,body{background:#0B0B0B!important;color:#F7F4ED!important}
+
+  /* MATCH / tela inicial de perguntas: nunca branco estourado */
+  .wizard-wrap,.wizard,.wizard-inner,.wizard-actions{background:#11110F!important;color:#F7F4ED!important}
+  .wizard{border-color:rgba(241,226,190,.12)!important}
+  .progress{background:#292722!important}
+  .step-count,.step p{color:#BDB5A8!important}
+  .step-count strong,.step h2{color:#F7F4ED!important}
+  .option{background:#191816!important;border-color:#38342D!important;color:#F7F4ED!important}
+  .option small{color:#AFA79B!important}
+  .option:hover,.option.selected{background:#242019!important;border-color:#C6A76B!important;color:#FFF!important}
+  .inventory-switch{background:#1D1C19!important;border-color:#38342D!important}
+  .source-btn{background:#191816!important;border-color:#38342D!important;color:#BDB5A8!important}
+  .source-btn.selected{background:#E4D0A3!important;border-color:#E4D0A3!important;color:#171513!important}
+  .back{background:#191816!important;border-color:#38342D!important;color:#F7F4ED!important}
+  .next{background:#E4D0A3!important;border-color:#E4D0A3!important;color:#171513!important}
+
+  /* Feed como Instagram: post ocupa a largura do celular e rolagem natural */
+  .results.visible{width:100vw!important;max-width:none!important;margin:0!important;padding:0!important;background:#0B0B0B!important;overflow:visible!important}
+  .results.visible>.container{width:100vw!important;max-width:none!important;margin:0!important;padding:0!important}
+  .results .grid{display:block!important;width:100vw!important;max-width:none!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important;scroll-snap-type:none!important}
+  .results .card{display:block!important;width:100vw!important;max-width:none!important;height:auto!important;min-height:0!important;margin:0 0 10px!important;border:0!important;border-radius:0!important;overflow:hidden!important;scroll-snap-align:none!important;background:#0B0B0B!important;box-shadow:none!important}
+  .results .cover{width:100vw!important;height:auto!important;min-height:0!important;aspect-ratio:4/5!important;border-radius:0!important}
+  .results .photo-track{width:100%!important;height:100%!important}
+  .results .photo-slide{width:100%!important;height:100%!important;object-fit:cover!important}
+  .results .card-body{width:100vw!important;height:auto!important;min-height:0!important;overflow:visible!important;padding:16px 16px 24px!important;background:#0B0B0B!important;color:#F7F4ED!important}
+  .results .card-actions{position:static!important;bottom:auto!important}
+
+  /* Ficha técnica: dark premium, sem claridade excessiva */
+  .photo-detail-shell,.detail-property{background:#0B0B0B!important;color:#F7F4ED!important}
+  .detail-property h1,.detail-section h3,.detail-price,.detail-tech-row strong{color:#F7F4ED!important}
+  .detail-location,.detail-price-m2,.detail-section p,.detail-tech-row span{color:#BDB5A8!important}
+  .detail-section{border-top-color:#302D28!important}
+  .detail-spec,.detail-amenity{background:#171715!important;border-color:#38342D!important;color:#F7F4ED!important}
+  .detail-spec span{color:#AFA79B!important}
+  .detail-tech-row{border-bottom-color:#302D28!important}
+  .detail-match-reason{background:#1D1A15!important;color:#E9D9B8!important}
+  .detail-source,.detail-status,.detail-updated{background:#24211C!important;color:#E9D9B8!important}
+  .detail-builder-stamp{background:#211C13!important;color:#F1E2BE!important;border-color:#C6A76B!important}
+  .detail-sticky-cta{background:rgba(17,17,15,.96)!important;border-color:#38342D!important}
+  .detail-share-btn{background:#191816!important;border-color:#C6A76B!important;color:#F1E2BE!important}
+  .detail-interest-btn{background:#E4D0A3!important;color:#171513!important}
+}
+</style>
 </head>
 
 <body class="home-mode">
@@ -4763,7 +4810,11 @@ function showPhotoModal(id){
       p.area ? `${area(p.area)} m²` : "",
       p.bedrooms ? `${p.bedrooms} dorms.` : "",
       "Veja este imóvel na Ynteligencia:",
-      window.location.href
+      (()=>{
+        const shareUrl=new URL(window.location.origin + window.location.pathname);
+        shareUrl.searchParams.set("imovel",String(p.id||""));
+        return shareUrl.toString();
+      })()
     ].filter(Boolean).join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
   });
@@ -6054,10 +6105,22 @@ Promise.all([
 
     applyHeroInventoryPhoto();
 
+    /* Link compartilhado abre diretamente a ficha técnica do imóvel. */
+    const sharedPropertyId=new URLSearchParams(window.location.search).get("imovel");
+    if(sharedPropertyId){
+      const sharedProperty=properties.find(item=>String(item.id)===String(sharedPropertyId));
+      if(sharedProperty){
+        document.body.classList.remove("home-mode");
+        showPhotoModal(String(sharedProperty.id));
+      }else{
+        showToast("Este imóvel não está disponível no estoque atual.");
+      }
+    }
+
     /* Se o clique veio de um anúncio com intenção conhecida, entrega
        os imóveis imediatamente. A home e o wizard continuam intactos
        para acessos normais ao domínio. */
-    if(adIntent.active){
+    if(adIntent.active && !sharedPropertyId){
       updateAdMatchUI();
       document.body.classList.remove("home-mode");
       showMatches();
