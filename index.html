@@ -896,6 +896,7 @@ body{background:#F7F4ED;color:#0B0B0B}
 .detail-gallery-dot{width:6px;height:6px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.48);transition:.2s ease}.detail-gallery-dot.active{width:18px;border-radius:999px;background:#F1E2BE}
 .detail-property{position:relative;width:min(760px,calc(100% - 32px));margin:-30px auto 0;padding:30px 30px 130px;border-radius:30px 30px 0 0;background:#FCFAF6}
 .detail-top-labels{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:15px}.detail-match{padding:8px 11px;border-radius:9px;background:#171717;color:#F1E2BE;font-size:12px;font-weight:900}.detail-source,.detail-status{padding:8px 10px;border-radius:9px;background:#F0ECE3;color:#5E5548;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+.detail-builder-stamp{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid #C6A76B;border-radius:10px;background:#F7F0E1;color:#5A4728;font-size:10px;font-weight:950;letter-spacing:.08em;text-transform:uppercase}.detail-builder-stamp::before{content:"◆";font-size:9px;color:#A0783D}.detail-updated{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border-radius:9px;background:#F0ECE3;color:#5E5548;font-size:10px;font-weight:850}.detail-updated::before{content:"";width:6px;height:6px;border-radius:50%;background:#C6A76B}
 .detail-property h1{margin:0;font-size:34px;line-height:1.05;letter-spacing:-.045em}.detail-location{margin-top:8px;color:#77736B;font-size:14px}.detail-price{margin-top:24px;font-size:32px;line-height:1;font-weight:950;letter-spacing:-.04em}.detail-price-m2{margin-top:6px;color:#77736B;font-size:12px}
 .detail-main-specs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:22px}.detail-spec{min-height:76px;padding:13px 10px;border:1px solid #E4DED3;border-radius:14px;background:#fff}.detail-spec strong{display:block;font-size:17px}.detail-spec span{display:block;margin-top:5px;color:#77736B;font-size:10px;font-weight:700}
 .detail-section{margin-top:28px;padding-top:27px;border-top:1px solid #DED8CD}.detail-section-title{margin:0 0 16px;color:#9A7440;font-size:10px;font-weight:950;letter-spacing:.13em;text-transform:uppercase}.detail-section h3{margin:0 0 14px;font-size:22px;letter-spacing:-.03em}.detail-section p{margin:0;color:#5E5A53;font-size:14px;line-height:1.65}
@@ -988,6 +989,47 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
 </style>
 <style>
 .filter-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;align-items:center}.filter-actions>button{width:100%;min-height:50px}
+</style>
+<style>
+/* ===== MOBILE CONTRASTE + FEED FULL WIDTH + DETALHE DARK ===== */
+@media(max-width:700px){
+  body.home-mode{background:#0B0B0B!important;color:#F7F4ED!important}
+  body.home-mode .wizard-wrap,body.home-mode .wizard,body.home-mode .wizard-actions{background:#11110F!important;color:#F7F4ED!important}
+  body.home-mode .wizard{border-color:rgba(241,226,190,.12)!important}
+  body.home-mode .progress{background:#292722!important}
+  body.home-mode .step h2,body.home-mode .step-count strong{color:#F7F4ED!important}
+  body.home-mode .step p,body.home-mode .step-count{color:#BDB5A8!important}
+  body.home-mode .option{background:#191816!important;border-color:#38342D!important;color:#F7F4ED!important}
+  body.home-mode .option small{color:#AFA79B!important}
+  body.home-mode .option:hover,body.home-mode .option.selected{background:#242019!important;border-color:#C6A76B!important;color:#FFF!important}
+  body.home-mode .inventory-switch{background:#1D1C19!important}
+  body.home-mode .source-btn{color:#BDB5A8!important}
+  body.home-mode .source-btn.selected{background:#E4D0A3!important;color:#171513!important}
+
+  .results.visible>.container{width:100%!important;max-width:none!important;margin:0!important}
+  .results .grid{width:100%!important;max-width:none!important;margin:0!important}
+  .results .card{width:100%!important;max-width:none!important;margin:0!important;border-radius:0!important}
+  .results .cover{width:100vw!important}
+  .results .card-body{width:100%!important;padding-left:16px!important;padding-right:16px!important}
+
+  .photo-detail-shell{background:#0B0B0B!important;color:#F7F4ED!important}
+  .detail-property{background:#0B0B0B!important;color:#F7F4ED!important}
+  .detail-property h1,.detail-section h3{color:#F7F4ED!important}
+  .detail-location,.detail-price-m2,.detail-section p,.detail-tech-row span{color:#BDB5A8!important}
+  .detail-section{border-top-color:#302D28!important}
+  .detail-spec{background:#171715!important;border-color:#302D28!important;color:#F7F4ED!important}
+  .detail-spec span{color:#AFA79B!important}
+  .detail-tech-row{border-bottom-color:#302D28!important}
+  .detail-tech-row strong{color:#F7F4ED!important}
+  .detail-match-reason{background:#1D1A15!important;color:#E9D9B8!important}
+  .detail-amenity{background:#171715!important;border-color:#38342D!important;color:#F7F4ED!important}
+  .detail-source,.detail-status,.detail-updated{background:#24211C!important;color:#E9D9B8!important}
+  .detail-builder-stamp{background:#211C13!important;color:#F1E2BE!important}
+  .detail-sticky-cta{background:rgba(17,17,15,.94)!important;border-color:#38342D!important}
+  .detail-share-btn{background:#F1E2BE!important;color:#171513!important}
+}
+.detail-sticky-cta{display:grid;grid-template-columns:.72fr 1.28fr;gap:8px}
+.detail-share-btn{min-height:56px;border:1px solid #C6A76B;border-radius:14px;background:#FCFAF6;color:#5A4728;font-size:14px;font-weight:900;cursor:pointer}
 </style>
 </head>
 
@@ -4536,6 +4578,20 @@ function updateDetailGallery(){
   modal.querySelectorAll(".detail-gallery-dot").forEach((dot,i)=>dot.classList.toggle("active",i===index));
 }
 
+function detailUpdatedLabel(p,building,typology){
+  const candidates=[building?.last_updated_pricetable_at,building?.updated_at,typology?.updated_at,p?.rawData?.updated_at].filter(Boolean);
+  if(!candidates.length)return "Atualizado recentemente";
+  const parsed=candidates.map(v=>new Date(v)).filter(d=>!Number.isNaN(d.getTime())).sort((a,b)=>b-a);
+  if(!parsed.length)return "Atualizado recentemente";
+  const latest=parsed[0],now=new Date();
+  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const date=new Date(latest.getFullYear(),latest.getMonth(),latest.getDate());
+  const days=Math.max(0,Math.floor((today-date)/86400000));
+  if(days===0)return "Atualizado hoje";
+  if(days===1)return "Atualizado ontem";
+  return `Atualizado há ${days} dias`;
+}
+
 function showPhotoModal(id){
   const p=properties.find(x=>String(x.id)===String(id));
   if(!p)return;
@@ -4567,6 +4623,7 @@ function showPhotoModal(id){
   const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
   const addressData=building.address && typeof building.address==="object" ? building.address : {};
   const isNew=String(p.source||"").toLowerCase()==="novos";
+  const updatedLabel=isNew ? detailUpdatedLabel(p,building,typology) : "";
   const detailReasons=(p.match?.reasons || []).slice(0,4);
 
   const status=detailValue(building.stage || building.status);
@@ -4629,8 +4686,10 @@ function showPhotoModal(id){
     <main class="detail-property">
       <div class="detail-top-labels">
         ${p.match ? `<span class="detail-match">${Number(p.match.score)||0}% MATCH</span>` : ""}
+        ${isNew ? `<span class="detail-builder-stamp">Unidade da construtora</span>` : ""}
         <span class="detail-source">${isNew?"Novo":"Usado"}</span>
         ${status ? `<span class="detail-status">${esc(status)}</span>` : ""}
+        ${isNew ? `<span class="detail-updated">${esc(updatedLabel)}</span>` : ""}
       </div>
 
       <h1>${esc(p.name)}</h1>
@@ -4690,11 +4749,24 @@ function showPhotoModal(id){
     </main>
 
     <div class="detail-sticky-cta">
+      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">Compartilhar</button>
       <button class="detail-interest-btn" type="button">Quero conhecer</button>
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
   track?.addEventListener("scroll",()=>window.requestAnimationFrame(updateDetailGallery),{passive:true});
+  modal.querySelector(".detail-share-btn")?.addEventListener("click",()=>{
+    const shareText=[
+      p.name || "Imóvel na Ynteligencia",
+      p.neighborhood ? `${p.neighborhood} • São Paulo` : "São Paulo",
+      Number(p.value)>0 ? money(p.value) : "",
+      p.area ? `${area(p.area)} m²` : "",
+      p.bedrooms ? `${p.bedrooms} dorms.` : "",
+      "Veja este imóvel na Ynteligencia:",
+      window.location.href
+    ].filter(Boolean).join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
+  });
   modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>interest(String(p.id||""),String(p.name||"")));
   document.body.appendChild(modal);
   updateDetailGallery();
