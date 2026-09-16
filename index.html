@@ -912,10 +912,9 @@ body{background:#F7F4ED;color:#0B0B0B}
 
 /* ===== MOBILE APP BEHAVIOR ===== */
 .filters-trigger,.filters-backdrop,.filters-close{display:none}
-.wizard[data-current-step="0"] .next,
+.wizard[data-current-step="1"] .next,
 .wizard[data-current-step="2"] .next,
-.wizard[data-current-step="3"] .next,
-.wizard[data-current-step="4"] .next{display:none}
+.wizard[data-current-step="3"] .next{display:none}
 .step.active{animation:stepFromRight .25s cubic-bezier(.22,.8,.24,1) both}
 .wizard[data-direction="back"] .step.active{animation-name:stepFromLeft}
 @keyframes stepFromRight{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
@@ -961,6 +960,8 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
 .apply-refine-match{width:100%;min-height:56px;margin-top:16px;border:0;border-radius:16px;background:#171717;color:#fff;font-weight:900;font-size:16px}.clear-refine-match{width:100%;min-height:44px;margin-top:7px;border:0;background:transparent;color:#77736B;font-weight:800}
 @media(max-width:700px){body.ad-match-mode{height:100svh;overflow:hidden}body.ad-match-mode header{display:none!important}body.ad-match-mode .results.visible{height:100svh}.refine-match-fab{bottom:max(18px,calc(14px + env(safe-area-inset-bottom)));min-height:56px}.refine-price-grid{grid-template-columns:1fr 1fr}}
 
+
+.catalog-region-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.catalog-region-btn{min-height:42px;padding:0 15px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-weight:850;font-size:12px}.catalog-region-btn.selected{background:var(--dark);border-color:var(--dark);color:#fff}@media(max-width:700px){.catalog-region-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.catalog-region-btn:last-child{grid-column:1/-1}}
 </style>
 </head>
 
@@ -1029,44 +1030,13 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
              O usuário faz um único MATCH; sourceMode continua no JS para a futura Órulo. -->
 
         <div class="step-count" aria-live="polite">
-          <strong id="stepCount">01 de 06</strong>
+          <strong id="stepCount">01 de 05</strong>
         </div>
 
         <div class="step" data-step="0">
-          <div class="step-label">01 · OBJETIVO</div>
-
-          <h2>O que você está procurando?</h2>
-
-          <p>
-            A Ynteligencia usa seu objetivo para priorizar
-            os imóveis mais adequados.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option"
-              data-key="purpose"
-              data-value="morar">
-              Morar
-              <small>Meu próximo lar</small>
-            </button>
-
-            <button
-              class="option"
-              data-key="purpose"
-              data-value="investir">
-              Investir
-              <small>Renda ou valorização</small>
-            </button>
-
-          </div>
-        </div>
-
-        <div class="step" data-step="1" hidden>
 
           <div class="step-label">
-            02 · TIPO DE IMÓVEL
+            01 · TIPO DE IMÓVEL
           </div>
 
           <h2>Que tipo de imóvel faz sentido?</h2>
@@ -1115,10 +1085,10 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
           </div>
         </div>
 
-        <div class="step" data-step="2" hidden>
+        <div class="step" data-step="1" hidden>
 
           <div class="step-label">
-            03 · REGIÃO
+            02 · REGIÃO
           </div>
 
           <h2>Onde você quer estar?</h2>
@@ -1164,10 +1134,10 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
           </div>
         </div>
 
-        <div class="step" data-step="3" hidden>
+        <div class="step" data-step="2" hidden>
 
           <div class="step-label">
-            04 · ORÇAMENTO
+            03 · ORÇAMENTO
           </div>
 
           <h2>
@@ -1219,10 +1189,10 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
           </div>
         </div>
 
-        <div class="step" data-step="4" hidden>
+        <div class="step" data-step="3" hidden>
 
           <div class="step-label">
-            05 · TAMANHO
+            04 · TAMANHO
           </div>
 
           <h2>
@@ -1266,10 +1236,10 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
           </div>
         </div>
 
-        <div class="step" data-step="5" hidden>
+        <div class="step" data-step="4" hidden>
 
           <div class="step-label">
-            06 · O QUE É INDISPENSÁVEL?
+            05 · O QUE É INDISPENSÁVEL?
           </div>
 
           <h2>Escolha suas prioridades.</h2>
@@ -1404,6 +1374,14 @@ body.ad-match-mode .results .card-body{padding-bottom:150px!important}
         para encontrar uma oportunidade.
       </p>
 
+    </div>
+
+    <div class="catalog-region-buttons" id="catalogRegionButtons" aria-label="Filtrar por região">
+      <button type="button" class="catalog-region-btn" data-region="oeste">Zona Oeste</button>
+      <button type="button" class="catalog-region-btn" data-region="sul">Zona Sul</button>
+      <button type="button" class="catalog-region-btn" data-region="norte">Zona Norte</button>
+      <button type="button" class="catalog-region-btn" data-region="leste">Zona Leste</button>
+      <button type="button" class="catalog-region-btn selected" data-region="">Todos os bairros</button>
     </div>
 
     <div class="explore-box">
@@ -2794,7 +2772,7 @@ function setStep(n,fromHistory=false){
     Math.max(
       0,
       Math.min(
-        5,
+        4,
         n
       )
     );
@@ -2813,11 +2791,11 @@ function setStep(n,fromHistory=false){
 
 
   $("progress").style.width=
-    `${((step+1)/6)*100}%`;
+    `${((step+1)/5)*100}%`;
 
   const stepCount=$("stepCount");
   if(stepCount){
-    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 06`;
+    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 05`;
   }
 
 
@@ -2828,7 +2806,7 @@ function setStep(n,fromHistory=false){
 
 
   $("next").textContent=
-    step===5
+    step===4
       ? "Encontrar meus MATCHs"
       : "Continuar";
 
@@ -2848,7 +2826,7 @@ function setStep(n,fromHistory=false){
 
 function currentValid(){
 
-  if(step===1){
+  if(step===0){
 
     return(
       profile.types.length>0
@@ -2856,14 +2834,14 @@ function currentValid(){
   }
 
 
-  if(step===5){
+  if(step===4){
 
     return(
       profile.feature.length>0
     );
   }
 
-  if(step===3){
+  if(step===2){
 
     return(
       Number(profile.budget)>0
@@ -2873,7 +2851,6 @@ function currentValid(){
 
   const key=
     [
-      "purpose",
       "types",
       "region",
       "budget",
@@ -2971,7 +2948,7 @@ document
               );
 
             // Perguntas de escolha única avançam automaticamente.
-            if(["purpose","region","budget","bedrooms"].includes(key)){
+            if(["region","budget","bedrooms"].includes(key)){
               updateNext();
               window.setTimeout(()=>setStep(step+1),140);
               return;
@@ -3096,7 +3073,7 @@ $("next")
       )return;
 
 
-      if(step<5){
+      if(step<4){
 
         setStep(
           step+1
@@ -4611,6 +4588,8 @@ function fillCatalogNeighborhoods(){
 }
 
 
+let catalogRegion="";
+
 function renderCatalog(){
 
   const q=
@@ -4691,6 +4670,11 @@ function renderCatalog(){
 
           (!n ||
             p.neighborhood===n)
+
+          &&
+
+          (!catalogRegion ||
+            propertyMatchesRegion(p,catalogRegion))
 
           &&
 
