@@ -3955,6 +3955,37 @@ function showMatches(){
     "match_generated",
     {
 
+      entry_mode:
+        adIntent.active
+          ? "ad_direct"
+          : "wizard",
+
+      pathname:
+        window.location.pathname,
+
+      search:
+        window.location.search,
+
+      referrer:
+        document.referrer || "",
+
+      ad_intent:{
+        active:
+          adIntent.active,
+
+        neighborhood:
+          adIntent.neighborhood || "",
+
+        bedrooms:
+          adIntent.bedrooms || 0,
+
+        min_price:
+          adIntent.minPrice || 0,
+
+        max_price:
+          adIntent.maxPrice || 0
+      },
+
       profile:{
         ...profile
       },
