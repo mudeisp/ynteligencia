@@ -917,6 +917,19 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
 .apply-refine-match{width:100%;min-height:56px;margin-top:16px;border:0;border-radius:16px;background:#E4D0A3;color:#171513;font-weight:900;font-size:16px}.clear-refine-match{width:100%;min-height:44px;margin-top:7px;border:0;background:transparent;color:#BEB5A8;font-weight:800}
 .nearby-alternative{display:inline-flex;align-items:center;min-height:28px;margin:0 0 10px;padding:5px 9px;border:1px solid rgba(228,208,163,.5);border-radius:999px;color:#E4D0A3;font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
 
+/* ===== ORÇAMENTO NA ENTRADA DIRETA DE ANÚNCIOS ===== */
+.ad-budget-shell{position:fixed;inset:0;z-index:275;display:none;place-items:end center;padding:0;background:rgba(5,6,5,.82);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+.ad-budget-shell.open{display:grid}
+.ad-budget-card{width:min(520px,100%);padding:26px 20px calc(26px + env(safe-area-inset-bottom));border:1px solid #332F28;border-radius:30px 30px 0 0;background:#11110F;color:#FFFDF8;box-shadow:0 -24px 70px rgba(0,0,0,.48)}
+.ad-budget-eyebrow{margin:0 0 10px;color:#E4D0A3;font-size:10px;font-weight:950;letter-spacing:.14em;text-transform:uppercase}
+.ad-budget-card h2{margin:0;font-size:30px;line-height:1.08;letter-spacing:-.045em}
+.ad-budget-context{margin:10px 0 22px;color:#BEB5A8;font-size:14px;line-height:1.5}
+.ad-budget-options{display:grid;gap:10px}
+.ad-budget-option{width:100%;min-height:58px;padding:0 17px;border:1px solid #403B33;border-radius:16px;background:#181816;color:#FFFDF8;text-align:left;font-size:17px;font-weight:850;transition:.16s ease}
+.ad-budget-option:hover,.ad-budget-option:focus{border-color:#E4D0A3;background:#24211C;outline:0}
+.ad-budget-option strong{color:#E4D0A3}
+@media (min-width:769px){.ad-budget-shell{place-items:center}.ad-budget-card{border-radius:28px;padding:30px}}
+
 
 .catalog-region-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.catalog-region-btn{min-height:42px;padding:0 15px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-weight:850;font-size:12px}.catalog-region-btn.selected{background:var(--dark);border-color:var(--dark);color:#fff}
 </style>
@@ -1748,6 +1761,22 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
 
 
 <!-- Entrada direta de anúncios: refinamento opcional sem bloquear o feed -->
+
+<div class="ad-budget-shell" id="adBudgetShell" aria-hidden="true">
+  <div class="ad-budget-card" role="dialog" aria-modal="true" aria-labelledby="adBudgetTitle">
+    <p class="ad-budget-eyebrow">SEU MATCH IMOBILIÁRIO</p>
+    <h2 id="adBudgetTitle">Até qual valor você procura?</h2>
+    <p class="ad-budget-context" id="adBudgetContext">Escolha seu teto de valor para mostrarmos imóveis que realmente fazem sentido para você.</p>
+    <div class="ad-budget-options">
+      <button class="ad-budget-option" type="button" data-budget-max="400000">Até <strong>R$ 400 mil</strong></button>
+      <button class="ad-budget-option" type="button" data-budget-max="500000">Até <strong>R$ 500 mil</strong></button>
+      <button class="ad-budget-option" type="button" data-budget-max="700000">Até <strong>R$ 700 mil</strong></button>
+      <button class="ad-budget-option" type="button" data-budget-max="1000000">Até <strong>R$ 1 milhão</strong></button>
+      <button class="ad-budget-option" type="button" data-budget-min="1000001">Acima de <strong>R$ 1 milhão</strong></button>
+    </div>
+  </div>
+</div>
+
 <button class="refine-match-fab" id="refineMatchFab" type="button">✦ Refinar meu MATCH</button>
 <div class="refine-match-shell" id="refineMatchShell" aria-hidden="true">
   <div class="refine-match-card" role="dialog" aria-modal="true" aria-labelledby="refineMatchTitle">
@@ -6039,6 +6068,79 @@ function updateAdMatchUI(){
   if($("refinePriceMax")) $("refinePriceMax").value=formatBRLCurrencyInput(adIntent.maxPrice);
 }
 
+
+
+function adIntentHasPrice(){
+  return Boolean(adIntent.minPrice || adIntent.maxPrice);
+}
+
+function updateAdIntentPriceInUrl(){
+  const url=new URL(window.location.href);
+  url.searchParams.delete("valor_min");
+  url.searchParams.delete("min_price");
+  url.searchParams.delete("valor_max");
+  url.searchParams.delete("max_price");
+  if(adIntent.minPrice) url.searchParams.set("valor_min",String(adIntent.minPrice));
+  if(adIntent.maxPrice) url.searchParams.set("valor_max",String(adIntent.maxPrice));
+  history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
+}
+
+function openAdBudgetQuestion(){
+  const shell=$("adBudgetShell");
+  if(!shell) return;
+  const context=$("adBudgetContext");
+  const known=[];
+  if(adIntent.bedrooms) known.push(`${adIntent.bedrooms}+ dormitórios`);
+  if(adIntent.neighborhood) known.push(adIntent.neighborhood);
+  if(context){
+    context.textContent=known.length
+      ? `${known.join(" em ")}. Escolha seu teto de valor para mostrarmos imóveis que realmente fazem sentido para você.`
+      : "Escolha seu teto de valor para mostrarmos imóveis que realmente fazem sentido para você.";
+  }
+  shell.classList.add("open");
+  shell.setAttribute("aria-hidden","false");
+}
+
+function closeAdBudgetQuestion(){
+  const shell=$("adBudgetShell");
+  if(!shell) return;
+  shell.classList.remove("open");
+  shell.setAttribute("aria-hidden","true");
+}
+
+document.querySelectorAll(".ad-budget-option").forEach(button=>{
+  button.addEventListener("click",()=>{
+    const min=Number(button.dataset.budgetMin||0)||0;
+    const max=Number(button.dataset.budgetMax||0)||0;
+    adIntent.minPrice=min;
+    adIntent.maxPrice=max;
+    updateAdIntentPriceInUrl();
+    updateAdMatchUI();
+    closeAdBudgetQuestion();
+
+    try{
+      gtag("event","ad_budget_selected",{
+        region:adIntent.neighborhood||"",
+        bedrooms:adIntent.bedrooms||0,
+        min_price:min,
+        max_price:max
+      });
+    }catch(e){}
+
+    supabaseTrack("ad_budget_selected",{
+      entry_mode:"ad_direct",
+      neighborhood:adIntent.neighborhood||"",
+      bedrooms:adIntent.bedrooms||0,
+      min_price:min,
+      max_price:max,
+      pathname:window.location.pathname,
+      search:window.location.search
+    });
+
+    showMatches();
+  });
+});
+
 function setRefineMatchOpen(open){
   const shell=$("refineMatchShell");
   if(!shell) return;
@@ -6239,7 +6341,11 @@ Promise.all([
     if(adIntent.active && !sharedPropertyId){
       updateAdMatchUI();
       document.body.classList.remove("home-mode");
-      showMatches();
+      if(adIntentHasPrice()){
+        showMatches();
+      }else{
+        openAdBudgetQuestion();
+      }
     }
 
     console.log(
