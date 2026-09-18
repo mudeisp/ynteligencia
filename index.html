@@ -3879,23 +3879,15 @@ function showMatches(){
   let rankedProperties;
 
   if(adIntent.active){
-    /* Jornada de mídia: dormitórios e preço continuam obrigatórios.
-       O bairro exato vem primeiro; somente as vagas restantes recebem
-       alternativas da mesma região, claramente identificadas no card. */
+    /* Jornada de mídia: respeita integralmente a intenção declarada.
+       Bairro + dormitórios + faixa de preço são filtros duros.
+       Se não houver imóveis suficientes no bairro pedido, NÃO completa
+       o feed silenciosamente com outros bairros/cidades. Isso evita que
+       uma busca por Perdizes retorne Morumbi, Butantã ou homônimos de
+       outras cidades. O feed mostra apenas os imóveis realmente elegíveis. */
     const eligible=properties.filter(propertyMatchesAdRequirements);
     const exact=rankList(eligible.filter(propertyMatchesAdNeighborhood));
-    const exactIds=new Set(exact.map(p=>`${p.source}:${p.id}`));
-    const regionKey=adIntentRegionKey();
-    const nearby=regionKey
-      ? rankList(
-          eligible.filter(p=>
-            !exactIds.has(`${p.source}:${p.id}`) &&
-            propertyMatchesRegion(p,regionKey)
-          )
-        ).map(p=>({...p,adAlternative:true}))
-      : [];
-
-    rankedProperties=[...exact,...nearby].slice(0,12);
+    rankedProperties=exact.slice(0,12);
   }else{
     rankedProperties=rankList(properties);
   }
