@@ -1310,36 +1310,61 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
             <button
               class="option"
               data-key="budget"
-              data-value="400000">
+              data-value="400000"
+              data-budget-min="1"
+              data-budget-max="400000"
+              data-budget-label="Até R$ 400 mil">
               Até R$ 400 mil
             </button>
 
             <button
               class="option"
               data-key="budget"
-              data-value="600000">
-              Até R$ 600 mil
+              data-value="600000"
+              data-budget-min="400001"
+              data-budget-max="600000"
+              data-budget-label="R$ 401 mil a R$ 600 mil">
+              R$ 401 mil a R$ 600 mil
             </button>
 
             <button
               class="option"
               data-key="budget"
-              data-value="900000">
-              Até R$ 900 mil
+              data-value="800000"
+              data-budget-min="600001"
+              data-budget-max="800000"
+              data-budget-label="R$ 601 mil a R$ 800 mil">
+              R$ 601 mil a R$ 800 mil
             </button>
 
             <button
               class="option"
               data-key="budget"
-              data-value="1500000">
-              Até R$ 1,5 mi
+              data-value="1000000"
+              data-budget-min="800001"
+              data-budget-max="1000000"
+              data-budget-label="R$ 801 mil a R$ 1 milhão">
+              R$ 801 mil a R$ 1 milhão
             </button>
 
             <button
               class="option"
               data-key="budget"
-              data-value="3000000">
-              Até R$ 3 mi
+              data-value="1500000"
+              data-budget-min="1000001"
+              data-budget-max="1500000"
+              data-budget-label="R$ 1,01 milhão a R$ 1,5 milhão">
+              R$ 1,01 milhão a R$ 1,5 milhão
+            </button>
+
+            <button
+              class="option"
+              data-key="budget"
+              data-value="1500001"
+              data-budget-min="1500001"
+              data-budget-max="0"
+              data-budget-label="Acima de R$ 1,5 milhão">
+              Acima de R$ 1,5 milhão
             </button>
 
           </div>
@@ -1800,11 +1825,12 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
     <h2 id="adBudgetTitle">Até qual valor você procura?</h2>
     <p class="ad-budget-context" id="adBudgetContext">Escolha seu teto de valor para mostrarmos imóveis que realmente fazem sentido para você.</p>
     <div class="ad-budget-options">
-      <button class="ad-budget-option" type="button" data-budget-max="400000">Até <strong>R$ 400 mil</strong></button>
-      <button class="ad-budget-option" type="button" data-budget-max="500000">Até <strong>R$ 500 mil</strong></button>
-      <button class="ad-budget-option" type="button" data-budget-max="700000">Até <strong>R$ 700 mil</strong></button>
-      <button class="ad-budget-option" type="button" data-budget-max="1000000">Até <strong>R$ 1 milhão</strong></button>
-      <button class="ad-budget-option" type="button" data-budget-min="1000001">Acima de <strong>R$ 1 milhão</strong></button>
+      <button class="ad-budget-option" type="button" data-budget-min="1" data-budget-max="400000">Até <strong>R$ 400 mil</strong></button>
+      <button class="ad-budget-option" type="button" data-budget-min="400001" data-budget-max="600000"><strong>R$ 401 mil</strong> a R$ 600 mil</button>
+      <button class="ad-budget-option" type="button" data-budget-min="600001" data-budget-max="800000"><strong>R$ 601 mil</strong> a R$ 800 mil</button>
+      <button class="ad-budget-option" type="button" data-budget-min="800001" data-budget-max="1000000"><strong>R$ 801 mil</strong> a R$ 1 milhão</button>
+      <button class="ad-budget-option" type="button" data-budget-min="1000001" data-budget-max="1500000"><strong>R$ 1,01 milhão</strong> a R$ 1,5 milhão</button>
+      <button class="ad-budget-option" type="button" data-budget-min="1500001">Acima de <strong>R$ 1,5 milhão</strong></button>
     </div>
   </div>
 </div>
@@ -1911,6 +1937,9 @@ let profile={
   purpose:"",
   region:"",
   budget:0,
+  budgetMin:0,
+  budgetMax:0,
+  budgetLabel:"",
   bedrooms:null,
   feature:[],
   timing:"",
@@ -3136,7 +3165,7 @@ function currentValid(){
   if(step===2){
 
     return(
-      Number(profile.budget)>0
+      Number(profile.budgetMin)>0 || Number(profile.budgetMax)>0
     );
   }
 
@@ -3215,10 +3244,17 @@ document
 
           }else{
 
-            profile[key]=
-              key==="budget"
-                ? Number(value)
-                : value;
+            if(key==="budget") {
+              const budgetMin=Number(btn.dataset.budgetMin||0)||0;
+              const budgetMax=Number(btn.dataset.budgetMax||0)||0;
+              profile.budgetMin=budgetMin;
+              profile.budgetMax=budgetMax;
+              profile.budgetLabel=btn.dataset.budgetLabel||btn.textContent.trim();
+              // Mantém profile.budget para compatibilidade com integrações existentes.
+              profile.budget=budgetMax||budgetMin;
+            }else{
+              profile[key]=value;
+            }
 
 
             document
@@ -3526,9 +3562,9 @@ function updateSummary(){
 
 
   const budget=
-    p.budget
-      ? money(p.budget)
-      : "qualquer faixa";
+    p.budgetLabel
+      ? p.budgetLabel
+      : (p.budget ? money(p.budget) : "qualquer faixa");
 
 
   const beds=
@@ -3543,7 +3579,7 @@ function updateSummary(){
 
 
   el.textContent=
-    `Você busca ${types||"um imóvel"} para ${p.purpose||"comprar"}, em ${region||"São Paulo"}, até ${budget}, com ${beds} dormitório(s). ${p.feature.length?"Prioridades: "+p.feature.join(", ")+".":""}`;
+    `Você busca ${types||"um imóvel"} para ${p.purpose||"comprar"}, em ${region||"São Paulo"}, na faixa ${budget}, com ${beds} dormitório(s). ${p.feature.length?"Prioridades: "+p.feature.join(", ")+".":""}`;
 }
 
 
@@ -3654,32 +3690,37 @@ function scoreProperty(p){
   }
 
 
-  if(
-    profile.budget
-  ){
+  if(profile.budgetMin || profile.budgetMax || profile.budget){
 
-    if(
-      p.value &&
-      p.value<=profile.budget
-    ){
+    const minBudget=Number(profile.budgetMin||0)||0;
+    const maxBudget=Number(profile.budgetMax||0)||0;
+    const value=Number(p.value||0)||0;
+
+    const insideBudget=
+      value>0 &&
+      (!minBudget || value>=minBudget) &&
+      (!maxBudget || value<=maxBudget);
+
+    if(insideBudget){
 
       score+=25;
 
       reasons.push(
-        "Dentro do orçamento"
+        "Dentro da faixa de valor"
       );
 
-    }else if(
-      p.value &&
-      p.value<=
-        profile.budget*1.1
-    ){
+    }else if(value>0){
 
-      score+=17;
+      const lowerTolerance=minBudget ? minBudget*0.9 : 0;
+      const upperTolerance=maxBudget ? maxBudget*1.1 : 0;
+      const nearBudget=
+        (minBudget && value>=lowerTolerance && value<minBudget) ||
+        (maxBudget && value>maxBudget && value<=upperTolerance);
 
-      reasons.push(
-        "Próximo do orçamento"
-      );
+      if(nearBudget){
+        score+=17;
+        reasons.push("Próximo da faixa de valor");
+      }
     }
 
   }else{
@@ -4001,9 +4042,13 @@ function showMatches(){
           profile.region || "",
 
         budget:
-          Number(
-            profile.budget
-          ) || 0,
+          Number(profile.budget) || 0,
+
+        budget_min:
+          Number(profile.budgetMin) || 0,
+
+        budget_max:
+          Number(profile.budgetMax) || 0,
 
         inventory_source:
           sourceMode || "usados",
