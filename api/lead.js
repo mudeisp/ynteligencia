@@ -17,7 +17,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = req.body || {};
+    let body=req.body || {};
+    if(typeof body==="string"){
+      try{body=JSON.parse(body);}catch{
+        return res.status(400).json({success:false,error:"JSON inválido"});
+      }
+    }
+    if(!body || typeof body!=="object" || Array.isArray(body)){
+      return res.status(400).json({success:false,error:"Dados inválidos"});
+    }
+    const name=body.nome || body.name || "";
+    const phone=body.telefone || body.phone || "";
+    if(typeof name!=="string" || typeof phone!=="string" ||
+       !name.trim() || phone.replace(/\D/g,"").length<10 ||
+       phone.replace(/\D/g,"").length>15){
+      return res.status(400).json({success:false,error:"Informe nome e telefone válido"});
+    }
 
     /* ==========================================
        DADOS DO LEAD + ATRIBUIÇÃO
@@ -92,12 +107,15 @@ export default async function handler(req, res) {
       await response.text();
 
 
-    if (!response.ok) {
+    let crmResult=null;
+    try{crmResult=JSON.parse(responseText);}catch{}
+    const explicitlyRejected=crmResult && typeof crmResult==="object" &&
+      (crmResult.success===false || crmResult.ok===false);
+    if (!response.ok || explicitlyRejected) {
 
       console.error(
         "Praedium error:",
-        response.status,
-        responseText
+        response.status
       );
 
       return res.status(502).json({
@@ -110,31 +128,7 @@ export default async function handler(req, res) {
     }
 
 
-    console.log(
-      "Lead enviado ao Praedium:",
-      {
-        nome:
-          payload.nome,
-
-        empreendimento:
-          payload.empreendimento,
-
-        gclid:
-          payload.gclid || null,
-
-        gbraid:
-          payload.gbraid || null,
-
-        wbraid:
-          payload.wbraid || null,
-
-        utm_source:
-          payload.utm_source || null,
-
-        utm_campaign:
-          payload.utm_campaign || null
-      }
-    );
+    console.log("Webhook Praedium aceitou o envio", {status:response.status});
 
 
     /* ==========================================
@@ -408,8 +402,7 @@ export default async function handler(req, res) {
 
           console.error(
             "Resend error:",
-            emailResponse.status,
-            emailResponseText
+            emailResponse.status
           );
 
         } else {
@@ -454,7 +447,9 @@ export default async function handler(req, res) {
 
       success: true,
 
+      // Confirma aceite do webhook; não presume ID de contato no CRM.
       praedium: true,
+      delivery_status: "webhook_accepted",
 
       email_sent:
         emailSent,
