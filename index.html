@@ -1114,6 +1114,21 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
 
 </style>
 
+
+<style>
+/* ===== V2 · FILTRO DO MATCH SEMPRE ABERTO E FLUTUANTE ===== */
+.refine-match-fab{display:none!important}
+.refine-match-shell{position:fixed;z-index:175;left:50%;right:auto;top:auto;bottom:18px;width:min(760px,calc(100% - 28px));height:auto;display:block;place-items:unset;padding:0;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;opacity:0;pointer-events:none;transform:translateX(-50%) translateY(12px);transition:opacity .18s ease,transform .18s ease}
+.refine-match-shell.open{opacity:1;pointer-events:none;transform:translateX(-50%) translateY(0)}
+.refine-match-card{width:100%;padding:12px;border:1px solid rgba(228,208,163,.34);border-radius:20px;background:rgba(17,17,15,.96);color:#FFFDF8;box-shadow:0 18px 55px rgba(0,0,0,.36);backdrop-filter:blur(20px) saturate(135%);-webkit-backdrop-filter:blur(20px) saturate(135%);pointer-events:auto}
+.refine-match-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}.refine-match-head h2{margin:0;color:#FFFDF8;font-size:14px;line-height:1.15;letter-spacing:-.02em}.refine-match-head p{display:none}.refine-match-close{display:none!important}
+.refine-match-known{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 8px;max-height:30px;overflow:hidden}.refine-match-known span{padding:5px 8px;border:1px solid #403B33;border-radius:999px;background:#24211C;color:#F1E2BE;font-size:10px;line-height:1;font-weight:800}
+.refine-price-grid{display:grid;grid-template-columns:1.35fr .8fr 1fr 1fr;gap:7px}.refine-price-grid label{display:grid;gap:4px;min-width:0;color:#BEB5A8;font-size:9px;line-height:1.1;font-weight:850;letter-spacing:.04em;text-transform:uppercase}.refine-price-grid input,.refine-price-grid select{width:100%;min-width:0;min-height:42px;height:42px;border:1px solid #403B33;border-radius:11px;background:#181816;padding:0 10px;color:#FFFDF8;font-size:13px;outline:0}.refine-price-grid input:focus,.refine-price-grid select:focus{border-color:#E4D0A3;box-shadow:0 0 0 2px rgba(228,208,163,.12)}
+.apply-refine-match,.clear-refine-match{min-height:40px;margin-top:7px;border-radius:11px;font-size:12px;font-weight:900}.apply-refine-match{width:calc(68% - 4px);margin-right:5px}.clear-refine-match{display:inline-block;width:calc(32% - 5px);border:1px solid #403B33;background:#24211C;color:#D8D0C4}
+body.match-results-mode{padding-bottom:235px}
+@media (max-width:768px), (hover:none) and (pointer:coarse) and (max-width:1100px){.refine-match-shell{bottom:max(84px,calc(76px + env(safe-area-inset-bottom)));width:calc(100% - 16px)}.refine-match-card{padding:10px;border-radius:18px}.refine-match-known{margin-bottom:7px}.refine-price-grid{grid-template-columns:1.35fr .75fr;gap:6px}.refine-price-grid input,.refine-price-grid select{min-height:40px;height:40px;font-size:12px}.apply-refine-match,.clear-refine-match{min-height:40px;margin-top:6px}body.match-results-mode{padding-bottom:315px}}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -1837,11 +1852,11 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
 
 <button class="refine-match-fab" id="refineMatchFab" type="button">✦ Refinar meu MATCH</button>
 <div class="refine-match-shell" id="refineMatchShell" aria-hidden="true">
-  <div class="refine-match-card" role="dialog" aria-modal="true" aria-labelledby="refineMatchTitle">
+  <div class="refine-match-card" aria-labelledby="refineMatchTitle">
     <div class="refine-match-head">
       <div>
-        <h2 id="refineMatchTitle">Refinar meu MATCH</h2>
-        <p>Escolha um bairro dentro da região do seu MATCH e ajuste os demais critérios.</p>
+        <h2 id="refineMatchTitle">✦ Refinar MATCH</h2>
+        <p>Ajuste os critérios sem sair dos resultados.</p>
       </div>
       <button class="refine-match-close" id="refineMatchClose" type="button" aria-label="Fechar">×</button>
     </div>
@@ -1868,8 +1883,8 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
         <input id="refinePriceMax" type="text" inputmode="numeric" placeholder="R$ 900.000">
       </label>
     </div>
-    <button class="apply-refine-match" id="applyRefineMatch" type="button">Atualizar meus imóveis</button>
-    <button class="clear-refine-match" id="clearRefineMatch" type="button">Limpar refinamento</button>
+    <button class="apply-refine-match" id="applyRefineMatch" type="button">Aplicar</button>
+    <button class="clear-refine-match" id="clearRefineMatch" type="button">Limpar</button>
   </div>
 </div>
 
@@ -4152,6 +4167,10 @@ function showMatches(){
       "visible"
     );
 
+  /* Refinamento sempre visível durante o feed de MATCH. */
+  updateAdMatchUI();
+  setRefineMatchOpen(true);
+
 
   $("resultSummary")
     .textContent=
@@ -6315,7 +6334,7 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.maxPrice=max;
   adIntent.active=Boolean(neighborhood || bedrooms || min || max);
   updateAdMatchUI();
-  setRefineMatchOpen(false);
+  setRefineMatchOpen(true);
   showMatches();
   try{gtag('event','match_refined',{region:regionKey||adIntent.neighborhood,neighborhood:adIntent.neighborhood,bedrooms:adIntent.bedrooms,min_price:min,max_price:max});}catch(e){}
 });
@@ -6326,7 +6345,7 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   adIntent.maxPrice=0;
   adIntent.active=false;
   updateAdMatchUI();
-  setRefineMatchOpen(false);
+  setRefineMatchOpen(true);
   showMatches();
 });
 
