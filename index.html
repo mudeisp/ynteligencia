@@ -3657,22 +3657,21 @@ function scoreProperty(p){
 
     const minimumBedrooms=Number(profile.bedrooms);
 
-    if(p.bedrooms>=minimumBedrooms){
-
-      score+=15;
-
-      reasons.push(
-        minimumBedrooms===4
-          ? "4+ dormitórios"
-          : `${minimumBedrooms}+ dormitórios`
-      );
-
-    }else if(
-      p.bedrooms===minimumBedrooms-1
-    ){
-
-      score+=8;
+    // Dormitórios é requisito mínimo: não deixa entrar imóvel abaixo do escolhido.
+    if(p.bedrooms<minimumBedrooms){
+      return {
+        score:0,
+        reasons:[]
+      };
     }
+
+    score+=15;
+
+    reasons.push(
+      minimumBedrooms===4
+        ? "4+ dormitórios"
+        : `${minimumBedrooms}+ dormitórios`
+    );
 
   }else{
 
@@ -5110,15 +5109,7 @@ function renderCatalog(){
 
           (
             !beds ||
-
-            (
-              beds==="4"
-
-                ? p.bedrooms>=4
-
-                : p.bedrooms===
-                  Number(beds)
-            )
+            p.bedrooms>=Number(beds)
           )
 
           &&
