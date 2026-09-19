@@ -905,7 +905,7 @@ body{background:#F7F4ED;color:#0B0B0B}
 /* ===== ENTRADA DIRETA DE ANÚNCIOS · 12 IMÓVEIS + REFINAR MATCH ===== */
 .ad-match-context{display:none}
 .refine-match-fab{display:none;position:fixed;z-index:170;left:50%;bottom:max(88px,calc(18px + env(safe-area-inset-bottom)));transform:translateX(-50%);min-height:54px;padding:0 22px;border:1px solid rgba(241,226,190,.65);border-radius:999px;background:#E4D0A3;color:#171513;font-weight:900;box-shadow:0 14px 38px rgba(0,0,0,.28);white-space:nowrap}
-body.ad-match-mode .refine-match-fab{display:block}
+body.ad-match-mode .refine-match-fab,body.match-results-mode .refine-match-fab{display:block}
 body.ad-match-mode .app-dock{display:none}
 body.ad-match-mode .results .card-body{padding-bottom:150px}
 .refine-match-shell{position:fixed;inset:0;z-index:260;display:grid;place-items:end center;background:rgba(5,6,5,.76);backdrop-filter:blur(7px);opacity:0;pointer-events:none;transition:.2s}
@@ -1841,15 +1841,16 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
     <div class="refine-match-head">
       <div>
         <h2 id="refineMatchTitle">Refinar meu MATCH</h2>
-        <p>Ajuste bairro, dormitórios e faixa de valor.</p>
+        <p>Escolha um bairro dentro da região do seu MATCH e ajuste os demais critérios.</p>
       </div>
       <button class="refine-match-close" id="refineMatchClose" type="button" aria-label="Fechar">×</button>
     </div>
     <div class="refine-match-known" id="refineMatchKnown"></div>
     <div class="refine-price-grid">
-      <label>Bairro
-        <input id="refineNeighborhood" type="text" list="refineNeighborhoodOptions" autocomplete="off" placeholder="Ex.: Perdizes">
-        <datalist id="refineNeighborhoodOptions"></datalist>
+      <label id="refineNeighborhoodLabel">Bairro da região
+        <select id="refineNeighborhood">
+          <option value="">Todos os bairros da região</option>
+        </select>
       </label>
       <label>Dormitórios mínimos
         <select id="refineBedrooms">
@@ -1868,7 +1869,7 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
       </label>
     </div>
     <button class="apply-refine-match" id="applyRefineMatch" type="button">Atualizar meus imóveis</button>
-    <button class="clear-refine-match" id="clearRefineMatch" type="button">Limpar faixa de valor</button>
+    <button class="clear-refine-match" id="clearRefineMatch" type="button">Limpar refinamento</button>
   </div>
 </div>
 
@@ -3446,6 +3447,7 @@ function resetMatchProfile(){
 
   document.querySelectorAll(".option").forEach(x=>x.classList.remove("selected"));
   $("results")?.classList.remove("visible");
+  document.body.classList.remove("match-results-mode");
   currentMatchById.clear();
   setStep(0,true);
   updateSummary();
@@ -3757,22 +3759,20 @@ function scoreProperty(p){
     profile.types.length
   ){
 
-    if(
-      profile.types.includes(
-        p.type
-      )
-    ){
+    const allowedTypes=profile.types.map(norm);
+    const propertyType=norm(p.type);
 
-      score+=8;
-
-      reasons.push(
-        `Tipo: ${p.type}`
-      );
-
-    }else{
-
-      score-=4;
+    // Tipo escolhido no MATCH é requisito obrigatório.
+    // Ex.: apartamento não pode retornar casa ou sobrado.
+    if(!allowedTypes.includes(propertyType)){
+      return {score:0,reasons:[]};
     }
+
+    score+=8;
+
+    reasons.push(
+      `Tipo: ${p.type}`
+    );
 
   }else{
 
@@ -3955,6 +3955,7 @@ function scoreProperty(p){
 function showMatches(){
 
   leaveMatchMode();
+  document.body.classList.add("match-results-mode");
   history.replaceState({ynteligenciaView:"feed"},"");
 
   const rankList=list=>
@@ -5376,6 +5377,7 @@ function clearAdEntryIntent(){
 
 function openGeneralCatalog(openFilters=true){
   clearAdEntryIntent();
+  document.body.classList.remove("match-results-mode");
   resetCatalogState(false);
   currentMatchById.clear();
   document.body.classList.remove("home-mode");
@@ -6134,32 +6136,73 @@ function showToast(message){
 /* =========================================================
    ENTRADA DIRETA DE ANÚNCIOS · REFINAR MATCH
 ========================================================= */
-function updateAdMatchUI(){
-  if(!adIntent.active){
-    document.body.classList.remove("ad-match-mode");
-    return;
-  }
-  document.body.classList.add("ad-match-mode");
-  const known=$("refineMatchKnown");
-  if(known){
-    const parts=[];
-    if(adIntent.neighborhood) parts.push(`<span>📍 ${esc(adIntent.neighborhood)}</span>`);
-    if(adIntent.bedrooms) parts.push(`<span>⌂ ${adIntent.bedrooms}+ dormitórios</span>`);
-    known.innerHTML=parts.join("");
-  }
-  if($("refineNeighborhood")) $("refineNeighborhood").value=adIntent.neighborhood||"";
-  if($("refineBedrooms")) $("refineBedrooms").value=adIntent.bedrooms ? String(adIntent.bedrooms) : "";
-  const neighborhoodOptions=$("refineNeighborhoodOptions");
-  if(neighborhoodOptions){
-    neighborhoodOptions.innerHTML=[...new Set(properties.map(p=>p.neighborhood).filter(Boolean))]
-      .sort((a,b)=>a.localeCompare(b,"pt-BR"))
-      .map(value=>`<option value="${esc(value)}"></option>`)
-      .join("");
-  }
-  if($("refinePriceMin")) $("refinePriceMin").value=formatBRLCurrencyInput(adIntent.minPrice);
-  if($("refinePriceMax")) $("refinePriceMax").value=formatBRLCurrencyInput(adIntent.maxPrice);
+function currentRefineRegionKey(){
+  if(profile.region) return norm(profile.region);
+  return adIntentRegionKey();
 }
 
+function regionDisplayName(regionKey){
+  const names={
+    oeste:"Zona Oeste",
+    sul:"Zona Sul",
+    norte:"Zona Norte",
+    leste:"Zona Leste"
+  };
+  return names[norm(regionKey)] || "região escolhida";
+}
+
+function updateAdMatchUI(){
+  document.body.classList.toggle("ad-match-mode",Boolean(adIntent.active));
+
+  const regionKey=currentRefineRegionKey();
+  const regionName=regionDisplayName(regionKey);
+  const known=$("refineMatchKnown");
+
+  if(known){
+    const parts=[];
+    if(regionKey) parts.push(`<span>📍 ${esc(regionName)}</span>`);
+    if(profile.types?.length) parts.push(`<span>⌂ ${esc(profile.types.join(", "))}</span>`);
+    if(adIntent.neighborhood) parts.push(`<span>◎ ${esc(adIntent.neighborhood)}</span>`);
+    known.innerHTML=parts.join("");
+  }
+
+  const neighborhoodSelect=$("refineNeighborhood");
+  if(neighborhoodSelect){
+    const availableProperties=regionKey
+      ? properties.filter(p=>propertyMatchesRegion(p,regionKey))
+      : properties;
+
+    const neighborhoods=[...new Set(
+      availableProperties
+        .map(p=>clean(p.neighborhood))
+        .filter(Boolean)
+    )].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+
+    neighborhoodSelect.innerHTML=
+      `<option value="">Todos os bairros de ${esc(regionName)}</option>` +
+      neighborhoods
+        .map(value=>`<option value="${esc(value)}">${esc(value)}</option>`)
+        .join("");
+
+    const current=adIntent.neighborhood||"";
+    const currentOption=neighborhoods.find(value=>norm(value)===norm(current));
+    neighborhoodSelect.value=currentOption || "";
+  }
+
+  const neighborhoodLabel=$("refineNeighborhoodLabel");
+  if(neighborhoodLabel){
+    const textNode=[...neighborhoodLabel.childNodes].find(node=>node.nodeType===Node.TEXT_NODE);
+    if(textNode) textNode.nodeValue=`Bairro · ${regionName}\n        `;
+  }
+
+  const defaultBedrooms=adIntent.bedrooms || Number(profile.bedrooms||0) || 0;
+  if($("refineBedrooms")) $("refineBedrooms").value=defaultBedrooms ? String(defaultBedrooms) : "";
+
+  const min=adIntent.minPrice || Number(profile.budgetMin||0) || 0;
+  const max=adIntent.maxPrice || Number(profile.budgetMax||0) || 0;
+  if($("refinePriceMin")) $("refinePriceMin").value=formatBRLCurrencyInput(min);
+  if($("refinePriceMax")) $("refinePriceMax").value=formatBRLCurrencyInput(max);
+}
 
 
 function adIntentHasPrice(){
@@ -6240,7 +6283,7 @@ function setRefineMatchOpen(open){
   shell.setAttribute("aria-hidden",String(!open));
 }
 
-$("refineMatchFab")?.addEventListener("click",()=>setRefineMatchOpen(true));
+$("refineMatchFab")?.addEventListener("click",()=>{updateAdMatchUI();setRefineMatchOpen(true);});
 $("refineMatchClose")?.addEventListener("click",()=>setRefineMatchOpen(false));
 $("refineMatchShell")?.addEventListener("click",e=>{if(e.target===$("refineMatchShell"))setRefineMatchOpen(false);});
 ["refinePriceMin","refinePriceMax"].forEach(id=>{
@@ -6254,6 +6297,18 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   const min=parseBRLCurrencyInput($("refinePriceMin")?.value||"");
   const max=parseBRLCurrencyInput($("refinePriceMax")?.value||"");
   if(min && max && min>max){showToast("O valor mínimo precisa ser menor que o máximo.");return;}
+
+  const regionKey=currentRefineRegionKey();
+  if(neighborhood && regionKey){
+    const validInRegion=properties.some(p=>
+      norm(p.neighborhood)===norm(neighborhood) && propertyMatchesRegion(p,regionKey)
+    );
+    if(!validInRegion){
+      showToast(`Escolha um bairro disponível em ${regionDisplayName(regionKey)}.`);
+      return;
+    }
+  }
+
   adIntent.neighborhood=neighborhood;
   adIntent.bedrooms=bedrooms;
   adIntent.minPrice=min;
@@ -6262,12 +6317,15 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   updateAdMatchUI();
   setRefineMatchOpen(false);
   showMatches();
-  try{gtag('event','match_refined',{region:adIntent.neighborhood,bedrooms:adIntent.bedrooms,min_price:min,max_price:max});}catch(e){}
+  try{gtag('event','match_refined',{region:regionKey||adIntent.neighborhood,neighborhood:adIntent.neighborhood,bedrooms:adIntent.bedrooms,min_price:min,max_price:max});}catch(e){}
 });
 $("clearRefineMatch")?.addEventListener("click",()=>{
-  adIntent.minPrice=0; adIntent.maxPrice=0;
-  if($("refinePriceMin")) $("refinePriceMin").value="";
-  if($("refinePriceMax")) $("refinePriceMax").value="";
+  adIntent.neighborhood="";
+  adIntent.bedrooms=0;
+  adIntent.minPrice=0;
+  adIntent.maxPrice=0;
+  adIntent.active=false;
+  updateAdMatchUI();
   setRefineMatchOpen(false);
   showMatches();
 });
