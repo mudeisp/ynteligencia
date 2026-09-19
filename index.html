@@ -1919,22 +1919,36 @@ const SUPABASE_PUBLISHABLE_KEY =
   "sb_publishable_YmN9DjeDgog_mlVw9EsDUQ_Z-4MJKsp";
 
 
+// Storage indisponível não deve interromper a aplicação.
+function safeStorageGet(key){
+  try{return localStorage.getItem(key);}catch{return null;}
+}
+function safeStorageSet(key,value){
+  try{localStorage.setItem(key,value);return true;}catch{return false;}
+}
+const currentMatchById=new Map();
+function propertyForInteraction(id){
+  const property=properties.find(p=>String(p.id)===String(id));
+  const match=currentMatchById.get(String(id));
+  return property && match ? {...property,match} : property;
+}
+
 function getYnteligenciaSessionId(){
 
   const key="ynteligencia_session_id";
 
-  let id=localStorage.getItem(key);
+  let id=safeStorageGet(key);
 
   if(!id){
 
     id=
-      (crypto && crypto.randomUUID)
+      (typeof crypto!=="undefined" && crypto.randomUUID)
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random()
             .toString(16)
             .slice(2)}`;
 
-    localStorage.setItem(key,id);
+    safeStorageSet(key,id);
   }
 
   return id;
@@ -1978,7 +1992,7 @@ function captureYnteligenciaAttribution(){
 
     if(incoming){
 
-      localStorage.setItem(
+      safeStorageSet(
         `ynteligencia_${key}`,
         incoming
       );
@@ -1988,7 +2002,7 @@ function captureYnteligenciaAttribution(){
     }else{
 
       attribution[key]=
-        localStorage.getItem(
+        safeStorageGet(
           `ynteligencia_${key}`
         ) || "";
     }
@@ -3245,7 +3259,6 @@ function trackProfileCompleted(){
             profile.feature || []
           ).join("|"),
 
-        debug_mode:true
       }
     );
 
@@ -3924,6 +3937,9 @@ function showMatches(){
   }
 
 
+  currentMatchById.clear();
+  scored.forEach(p=>currentMatchById.set(String(p.id),p.match));
+
   console.log(
     "Ynteligencia MATCH:",
     {
@@ -3960,7 +3976,6 @@ function showMatches(){
         inventory_source:
           sourceMode || "usados",
 
-        debug_mode:true
       }
     );
 
@@ -4393,6 +4408,16 @@ function updatePhotoUI(
 }
 
 
+document.addEventListener("click",event=>{
+  const button=event.target.closest?.("button[data-property-action]");
+  if(!button)return;
+  const id=button.dataset.propertyId;
+  const property=propertyForInteraction(id);
+  if(!property)return;
+  if(button.dataset.propertyAction==="details")showPhotoModal(id);
+  else if(button.dataset.propertyAction==="interest")interest(id,property.name);
+});
+
 function card(
   p,
   isMatch=false
@@ -4522,7 +4547,7 @@ function card(
         <button
           class="view"
           type="button"
-          onclick="showPhotoModal('${esc(p.id)}')">
+          data-property-action="details" data-property-id="${esc(p.id)}">
           Ver detalhes
         </button>
         `
@@ -4627,7 +4652,7 @@ function card(
           <button
             class="interest"
             type="button"
-            onclick="interest('${esc(p.id)}','${esc(p.name)}')">
+            data-property-action="interest" data-property-id="${esc(p.id)}">
             Quero conhecer
           </button>
 
@@ -4717,7 +4742,7 @@ function detailUpdatedLabel(p,building,typology){
 }
 
 function showPhotoModal(id){
-  const p=properties.find(x=>String(x.id)===String(id));
+  const p=propertyForInteraction(id);
   if(!p)return;
 
   supabaseTrack("property_view",{
@@ -5282,6 +5307,7 @@ function clearAdEntryIntent(){
 function openGeneralCatalog(){
   clearAdEntryIntent();
   resetCatalogState(false);
+  currentMatchById.clear();
   document.body.classList.remove("home-mode");
   leaveMatchMode();
   setFiltersOpen(false);
@@ -5302,12 +5328,7 @@ function interest(
   name
 ){
 
-  const p=
-    properties.find(
-      x=>
-        String(x.id)===
-        String(id)
-    );
+  const p=propertyForInteraction(id);
 
 
   try{
@@ -5349,7 +5370,6 @@ function interest(
           sourceMode ||
           "usados",
 
-        debug_mode:true
       }
     );
 
@@ -5529,6 +5549,8 @@ function openLeadCapture(p){
       async e=>{
 
         e.preventDefault();
+        if(e.currentTarget.dataset.sending==="true")return;
+        e.currentTarget.dataset.sending="true";
 
 
         const form=
@@ -5699,8 +5721,9 @@ function openLeadCapture(p){
             );
 
 
+          const delivery=await praediumResponse.json().catch(()=>null);
           if(
-            !praediumResponse.ok
+            !praediumResponse.ok || delivery?.success!==true || delivery?.praedium!==true
           ){
 
             throw new Error(
@@ -5775,7 +5798,6 @@ function openLeadCapture(p){
                 crm:
                   "praedium",
 
-                debug_mode:true
               }
             );
 
@@ -5983,6 +6005,7 @@ function openLeadCapture(p){
           );
 
 
+          form.dataset.sending="false";
           submitButton.disabled=
             false;
 
@@ -6408,6 +6431,7 @@ Promise.all([
         else{
           if(id==='inicio'){
             resetCatalogState(false);
+            currentMatchById.clear();
             document.getElementById('catalog')?.classList.remove('visible');
             setFiltersOpen(false);
           }
