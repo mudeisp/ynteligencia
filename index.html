@@ -1876,11 +1876,16 @@ body.match-results-mode{padding-bottom:235px}
           <option value="4">4+</option>
         </select>
       </label>
-      <label>Valor mínimo
-        <input id="refinePriceMin" type="text" inputmode="numeric" placeholder="R$ 500.000">
-      </label>
-      <label>Valor máximo
-        <input id="refinePriceMax" type="text" inputmode="numeric" placeholder="R$ 900.000">
+      <label>Faixa de valor
+        <select id="refineBudgetRange">
+          <option value="">Qualquer valor</option>
+          <option value="1|400000">Até R$ 400 mil</option>
+          <option value="400001|600000">R$ 401 mil a R$ 600 mil</option>
+          <option value="600001|800000">R$ 601 mil a R$ 800 mil</option>
+          <option value="800001|1000000">R$ 801 mil a R$ 1 milhão</option>
+          <option value="1000001|1500000">R$ 1,01 milhão a R$ 1,5 milhão</option>
+          <option value="1500001|0">Acima de R$ 1,5 milhão</option>
+        </select>
       </label>
     </div>
     <button class="apply-refine-match" id="applyRefineMatch" type="button">Aplicar</button>
@@ -6219,8 +6224,12 @@ function updateAdMatchUI(){
 
   const min=adIntent.minPrice || Number(profile.budgetMin||0) || 0;
   const max=adIntent.maxPrice || Number(profile.budgetMax||0) || 0;
-  if($("refinePriceMin")) $("refinePriceMin").value=formatBRLCurrencyInput(min);
-  if($("refinePriceMax")) $("refinePriceMax").value=formatBRLCurrencyInput(max);
+  const rangeSelect=$("refineBudgetRange");
+  if(rangeSelect){
+    const exact=`${min}|${max}`;
+    const hasExact=[...rangeSelect.options].some(option=>option.value===exact);
+    rangeSelect.value=hasExact ? exact : "";
+  }
 }
 
 
@@ -6305,17 +6314,13 @@ function setRefineMatchOpen(open){
 $("refineMatchFab")?.addEventListener("click",()=>{updateAdMatchUI();setRefineMatchOpen(true);});
 $("refineMatchClose")?.addEventListener("click",()=>setRefineMatchOpen(false));
 $("refineMatchShell")?.addEventListener("click",e=>{if(e.target===$("refineMatchShell"))setRefineMatchOpen(false);});
-["refinePriceMin","refinePriceMax"].forEach(id=>{
-  $(id)?.addEventListener("input",event=>{
-    event.target.value=formatBRLCurrencyInput(event.target.value);
-  });
-});
 $("applyRefineMatch")?.addEventListener("click",()=>{
   const neighborhood=formatNeighborhoodName($("refineNeighborhood")?.value||"");
   const bedrooms=Number($("refineBedrooms")?.value||0) || 0;
-  const min=parseBRLCurrencyInput($("refinePriceMin")?.value||"");
-  const max=parseBRLCurrencyInput($("refinePriceMax")?.value||"");
-  if(min && max && min>max){showToast("O valor mínimo precisa ser menor que o máximo.");return;}
+  const budgetRange=$("refineBudgetRange")?.value||"";
+  const [rangeMin,rangeMax]=budgetRange ? budgetRange.split("|") : ["0","0"];
+  const min=Number(rangeMin||0)||0;
+  const max=Number(rangeMax||0)||0;
 
   const regionKey=currentRefineRegionKey();
   if(neighborhood && regionKey){
