@@ -1597,6 +1597,153 @@ body.match-results-mode{padding-bottom:235px}
 }
 </style>
 
+
+<style>
+/* ===== HOTFIX FINAL · WIZARD + REFINO COMPACTO ===== */
+
+/* Fora do feed de MATCH, o refinamento não existe visualmente nem captura toque. */
+body:not(.match-results-mode) .refine-match-shell{
+  display:none !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+/* No feed, exibe como barra compacta flutuante. */
+body.match-results-mode .refine-match-shell{
+  display:block !important;
+}
+
+@media (max-width:768px){
+  body.match-results-mode{
+    padding-bottom:205px !important;
+  }
+
+  body.match-results-mode .refine-match-shell{
+    position:fixed !important;
+    z-index:175 !important;
+    left:8px !important;
+    right:8px !important;
+    bottom:max(78px,calc(70px + env(safe-area-inset-bottom))) !important;
+    top:auto !important;
+    width:auto !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    padding:0 !important;
+    margin:0 !important;
+    transform:none !important;
+    background:transparent !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    border:0 !important;
+    border-radius:0 !important;
+    opacity:1 !important;
+    pointer-events:none !important;
+  }
+
+  body.match-results-mode .refine-match-card{
+    display:block !important;
+    width:100% !important;
+    padding:8px 9px !important;
+    border:1px solid #B5AD9F !important;
+    border-radius:15px !important;
+    background:rgba(255,255,255,.98) !important;
+    color:#242424 !important;
+    box-shadow:0 8px 24px rgba(36,36,36,.14) !important;
+    backdrop-filter:blur(12px) !important;
+    -webkit-backdrop-filter:blur(12px) !important;
+    pointer-events:auto !important;
+  }
+
+  body.match-results-mode .refine-match-head{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:8px !important;
+    margin:0 0 6px !important;
+  }
+
+  body.match-results-mode .refine-match-head h2{
+    margin:0 !important;
+    font-size:14px !important;
+    line-height:1.1 !important;
+    color:#242424 !important;
+  }
+
+  body.match-results-mode .refine-match-head p,
+  body.match-results-mode .refine-match-known,
+  body.match-results-mode .refine-match-close{
+    display:none !important;
+  }
+
+  body.match-results-mode .refine-price-grid{
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    gap:6px !important;
+    margin:0 !important;
+  }
+
+  body.match-results-mode .refine-price-grid label{
+    display:grid !important;
+    grid-template-rows:auto 36px !important;
+    gap:3px !important;
+    min-width:0 !important;
+    color:#654E28 !important;
+    font-size:9px !important;
+    line-height:1.05 !important;
+    font-weight:850 !important;
+    letter-spacing:.02em !important;
+    text-transform:uppercase !important;
+  }
+
+  body.match-results-mode .refine-price-grid label:last-child{
+    grid-column:1/-1 !important;
+  }
+
+  body.match-results-mode .refine-price-grid select,
+  body.match-results-mode .refine-price-grid input{
+    width:100% !important;
+    min-width:0 !important;
+    min-height:36px !important;
+    height:36px !important;
+    padding:0 8px !important;
+    border:1px solid #B5AD9F !important;
+    border-radius:9px !important;
+    background:#F7F4ED !important;
+    color:#242424 !important;
+    font-size:12px !important;
+    line-height:1 !important;
+  }
+
+  body.match-results-mode .apply-refine-match,
+  body.match-results-mode .clear-refine-match{
+    display:inline-block !important;
+    min-height:36px !important;
+    height:36px !important;
+    margin-top:6px !important;
+    border-radius:9px !important;
+    font-size:12px !important;
+    line-height:1 !important;
+    font-weight:900 !important;
+  }
+
+  body.match-results-mode .apply-refine-match{
+    width:calc(68% - 4px) !important;
+    margin-right:5px !important;
+    background:#E4D0A3 !important;
+    color:#171513 !important;
+    border:0 !important;
+  }
+
+  body.match-results-mode .clear-refine-match{
+    width:calc(32% - 5px) !important;
+    background:#F5F3EE !important;
+    color:#242424 !important;
+    border:1px solid #B5AD9F !important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -3877,10 +4024,20 @@ $("skipStep")?.addEventListener("click",()=>{
 });
 
 function enterMatchMode(){
-  document.body.classList.remove("home-mode");
+  // Evita que qualquer select do refinamento permaneça ativo sobre o Wizard.
+  try{ document.activeElement?.blur?.(); }catch(e){}
+
+  setRefineMatchOpen(false);
+  setFiltersOpen(false);
+  $("catalog")?.classList.remove("visible");
+  $("results")?.classList.remove("visible");
+
+  document.body.classList.remove("home-mode","match-results-mode","ad-match-mode");
   document.body.classList.add("match-mode");
-  history.pushState({ynteligenciaMatch:true,step},"");
-  setStep(step,true);
+
+  // Sempre entra no Wizard pela primeira etapa.
+  setStep(0,true);
+  history.pushState({ynteligenciaMatch:true,step:0},"");
 }
 
 function leaveMatchMode(){
@@ -3971,16 +4128,6 @@ $("clearMatch")?.addEventListener("click",()=>{
 $("wizardMatchMode")?.addEventListener("click",()=>{
   document.getElementById("wizardMatchMode")?.classList.add("active");
   document.getElementById("wizardExploreMode")?.classList.remove("active");
-
-  // O primeiro botão é uma ação real: volta para o fluxo do MATCH.
-  setFiltersOpen(false);
-  setRefineMatchOpen(false);
-  $("catalog")?.classList.remove("visible");
-  $("results")?.classList.remove("visible");
-  document.body.classList.remove("match-results-mode","ad-match-mode","home-mode");
-
-  // Sempre inicia a jornada pela primeira pergunta.
-  setStep(0,true);
   enterMatchMode();
 });
 
