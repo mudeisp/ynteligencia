@@ -1,148 +1,272 @@
+import crypto from "node:crypto";
+
+
 export default async function handler(req, res) {
+
+  /*
+   * =========================================================
+   * API CENTRAL DE LEADS
+   * YNTELIGENCIA + LANDING PAGES YINCORP
+   * =========================================================
+   */
+
+
+  /*
+   * =========================================================
+   * CORS
+   * =========================================================
+   */
+
   const allowedOrigins = new Set([
     "https://app.yincorp.com.br",
     "https://www.yincorp.com.br",
     "https://yincorp.com.br"
   ]);
 
-  const origin = req.headers.origin || "";
 
-  if (allowedOrigins.has(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+  const origin =
+    req.headers.origin || "";
+
+
+  if (
+    origin &&
+    allowedOrigins.has(origin)
+  ) {
+
+    res.setHeader(
+      "Access-Control-Allow-Origin",
+      origin
+    );
+
   }
 
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+
+  res.setHeader(
+    "Vary",
+    "Origin"
+  );
+
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
+
+
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Content-Type, Authorization"
   );
-  res.setHeader("Cache-Control", "no-store");
+
+
+  res.setHeader(
+    "Cache-Control",
+    "no-store"
+  );
+
 
   /*
-   * ==========================================
-   * CORS PREFLIGHT
-   * ==========================================
+   * =========================================================
+   * PREFLIGHT
+   * =========================================================
    */
 
   if (req.method === "OPTIONS") {
-    return res.status(204).end();
+
+    return res
+      .status(204)
+      .end();
+
   }
 
+
   /*
-   * ==========================================
+   * =========================================================
    * SOMENTE POST
-   * ==========================================
+   * =========================================================
    */
 
   if (req.method !== "POST") {
-    return res.status(405).json({
-      success: false,
-      error: "Method not allowed"
-    });
+
+    return res
+      .status(405)
+      .json({
+
+        success: false,
+
+        error:
+          "Method not allowed"
+
+      });
+
   }
 
+
   /*
-   * ==========================================
-   * BLOQUEIA ORIGENS NÃO AUTORIZADAS
-   * ==========================================
+   * =========================================================
+   * BLOQUEIA ORIGENS EXTERNAS
+   * =========================================================
    */
 
   if (
     origin &&
     !allowedOrigins.has(origin)
   ) {
-    return res.status(403).json({
-      success: false,
-      error: "Origin not allowed"
-    });
+
+    return res
+      .status(403)
+      .json({
+
+        success: false,
+
+        error:
+          "Origin not allowed"
+
+      });
+
   }
+
 
   try {
 
     /*
-     * ==========================================
+     * =======================================================
      * BODY
-     * ==========================================
+     * =======================================================
      */
 
-    let body = req.body || {};
+    let body =
+      req.body || {};
 
-    if (typeof body === "string") {
+
+    if (
+      typeof body === "string"
+    ) {
+
       try {
-        body = JSON.parse(body);
+
+        body =
+          JSON.parse(body);
+
       } catch {
-        return res.status(400).json({
-          success: false,
-          error: "JSON inválido"
-        });
+
+        return res
+          .status(400)
+          .json({
+
+            success: false,
+
+            error:
+              "JSON inválido"
+
+          });
+
       }
+
     }
+
 
     if (
       !body ||
       typeof body !== "object" ||
       Array.isArray(body)
     ) {
-      return res.status(400).json({
-        success: false,
-        error: "Dados inválidos"
-      });
+
+      return res
+        .status(400)
+        .json({
+
+          success: false,
+
+          error:
+            "Dados inválidos"
+
+        });
+
     }
 
+
     /*
-     * ==========================================
+     * =======================================================
      * NORMALIZAÇÃO
-     * APP + LPs
-     * ==========================================
+     * APP + LANDING PAGES
+     * =======================================================
      */
 
-    const nome = clean(
-      body.nome ||
-      body.name ||
-      ""
-    );
+    const nome =
+      clean(
 
-    const telefone = cleanPhone(
-      body.telefone ||
-      body.phone ||
-      ""
-    );
+        body.nome ||
+        body.name ||
+        ""
 
-    const email = clean(
-      body.email ||
-      ""
-    );
+      );
 
-    const origem = clean(
-      body.origem ||
-      body.source ||
-      "ynteligencia"
-    );
 
-    const empreendimento = clean(
-      body.empreendimento ||
-      body.property_name ||
-      body.property ||
-      ""
-    );
+    const telefone =
+      cleanPhone(
 
-    const perfil = clean(
-      body.perfil ||
-      body.profile ||
-      ""
-    );
+        body.telefone ||
+        body.phone ||
+        ""
 
-    const pagina = clean(
-      body.pagina ||
-      body.page ||
-      ""
-    );
+      );
+
+
+    const email =
+      clean(
+
+        body.email ||
+        ""
+
+      );
+
+
+    const origem =
+      clean(
+
+        body.origem ||
+        body.source ||
+        "ynteligencia"
+
+      );
+
+
+    const empreendimento =
+      clean(
+
+        body.empreendimento ||
+        body.property_name ||
+        body.property ||
+        ""
+
+      );
+
+
+    const perfil =
+      clean(
+
+        body.perfil ||
+        body.profile ||
+        ""
+
+      );
+
+
+    const pagina =
+      clean(
+
+        body.pagina ||
+        body.page ||
+        ""
+
+      );
+
 
     /*
-     * ==========================================
+     * =======================================================
      * TRACKING
-     * ==========================================
+     * =======================================================
      */
 
     const tracking = {
@@ -202,51 +326,98 @@ export default async function handler(req, res) {
 
     };
 
+
     /*
-     * ==========================================
-     * MENSAGEM
-     * ==========================================
+     * =======================================================
+     * DADOS DO IMÓVEL
+     * =======================================================
      */
 
-    const mensagem = clean(
+    const propertyId =
+      clean(
+        body.property_id ||
+        ""
+      );
 
-      body.mensagem ||
 
-      [
-        empreendimento
-          ? `Imóvel: ${empreendimento}`
-          : "",
+    const neighborhood =
+      clean(
+        body.neighborhood ||
+        ""
+      );
 
-        perfil
-          ? `Perfil: ${perfil}`
-          : "",
 
-        body.property_id
-          ? `Código: ${body.property_id}`
-          : "",
+    const propertyValue =
+      Number(
+        body.property_value ||
+        0
+      ) || 0;
 
-        body.neighborhood
-          ? `Bairro: ${body.neighborhood}`
-          : "",
 
-        body.property_value
-          ? `Valor: ${body.property_value}`
-          : "",
+    const matchScore =
+      Number(
+        body.match_score ||
+        0
+      ) || 0;
 
-        body.match_score
-          ? `MATCH: ${body.match_score}%`
-          : ""
 
-      ]
-        .filter(Boolean)
-        .join(" | ")
+    const sessionId =
+      clean(
+        body.session_id ||
+        ""
+      );
 
-    );
 
     /*
-     * ==========================================
+     * =======================================================
+     * MENSAGEM / JORNADA
+     * =======================================================
+     */
+
+    const mensagem =
+      clean(
+
+        body.mensagem ||
+
+        [
+
+          empreendimento
+            ? `Imóvel: ${empreendimento}`
+            : "",
+
+          perfil
+            ? `Perfil: ${perfil}`
+            : "",
+
+          propertyId
+            ? `Código: ${propertyId}`
+            : "",
+
+          neighborhood
+            ? `Bairro: ${neighborhood}`
+            : "",
+
+          propertyValue
+            ? `Valor: ${propertyValue}`
+            : "",
+
+          matchScore
+            ? `MATCH: ${matchScore}%`
+            : ""
+
+        ]
+
+          .filter(Boolean)
+
+          .join(" | ")
+
+      );
+
+
+    /*
+     * =======================================================
      * VALIDAÇÃO
-     * ==========================================
+     * =======================================================
      */
 
     if (
@@ -255,21 +426,24 @@ export default async function handler(req, res) {
       telefone.length > 15
     ) {
 
-      return res.status(400).json({
+      return res
+        .status(400)
+        .json({
 
-        success: false,
+          success: false,
 
-        error:
-          "Informe nome e telefone válido"
+          error:
+            "Informe nome e telefone válido"
 
-      });
+        });
 
     }
 
+
     /*
-     * ==========================================
+     * =======================================================
      * PAYLOAD CENTRAL
-     * ==========================================
+     * =======================================================
      */
 
     const payload = {
@@ -283,165 +457,201 @@ export default async function handler(req, res) {
       mensagem,
       pagina,
 
-      ...tracking,
-
       property_id:
-        clean(
-          body.property_id ||
-          ""
-        ),
+        propertyId,
 
       property_value:
-        Number(
-          body.property_value ||
-          0
-        ) || 0,
+        propertyValue,
 
-      neighborhood:
-        clean(
-          body.neighborhood ||
-          ""
-        ),
+      neighborhood,
 
       match_score:
-        Number(
-          body.match_score ||
-          0
-        ) || 0,
+        matchScore,
 
       session_id:
-        clean(
-          body.session_id ||
-          ""
-        )
+        sessionId,
+
+      ...tracking
 
     };
 
+
     /*
-     * ==========================================
+     * =======================================================
      * 1. PRAEDIUM
-     * ==========================================
+     * =======================================================
      */
 
     const praediumUrl =
+
       process.env.PRAEDIUM_WEBHOOK_URL ||
+
       process.env.PRAEDIUM_URL;
 
-    let praediumOk = false;
-    let praediumStatus = null;
+
+    let praediumOk =
+      false;
+
+
+    let praediumStatus =
+      null;
+
 
     if (praediumUrl) {
 
       try {
 
+        const praediumPayload = {
+
+          /*
+           * Compatibilidade com webhook antigo
+           */
+
+          Nome:
+            nome,
+
+          WhatsApp:
+            telefone,
+
+
+          /*
+           * Campos completos
+           */
+
+          nome,
+
+          telefone,
+
+          email,
+
+          origem,
+
+          empreendimento,
+
+          perfil,
+
+          mensagem,
+
+          pagina,
+
+
+          /*
+           * Tracking
+           */
+
+          gclid:
+            tracking.gclid,
+
+          gbraid:
+            tracking.gbraid,
+
+          wbraid:
+            tracking.wbraid,
+
+          utm_source:
+
+            tracking.utm_source ||
+
+            origem,
+
+          utm_medium:
+            tracking.utm_medium,
+
+          utm_campaign:
+            tracking.utm_campaign,
+
+          utm_content:
+
+            tracking.utm_content ||
+
+            origem,
+
+          utm_term:
+            tracking.utm_term
+
+        };
+
+
         const praediumResponse =
           await fetch(
+
             praediumUrl,
+
             {
+
               method:
                 "POST",
 
               headers: {
+
                 "Content-Type":
                   "application/json"
+
               },
 
               body:
-                JSON.stringify({
-
-                  /*
-                   * Compatibilidade antiga
-                   */
-                  Nome:
-                    nome,
-
-                  WhatsApp:
-                    telefone,
-
-                  /*
-                   * Campos novos
-                   */
-                  nome,
-                  telefone,
-                  email,
-                  origem,
-                  empreendimento,
-                  perfil,
-                  mensagem,
-                  pagina,
-
-                  /*
-                   * Tracking
-                   */
-                  gclid:
-                    tracking.gclid,
-
-                  gbraid:
-                    tracking.gbraid,
-
-                  wbraid:
-                    tracking.wbraid,
-
-                  utm_source:
-                    tracking.utm_source ||
-                    origem,
-
-                  utm_medium:
-                    tracking.utm_medium,
-
-                  utm_campaign:
-                    tracking.utm_campaign,
-
-                  utm_content:
-                    tracking.utm_content ||
-                    origem,
-
-                  utm_term:
-                    tracking.utm_term
-
-                })
+                JSON.stringify(
+                  praediumPayload
+                )
 
             }
 
           );
 
+
         praediumStatus =
           praediumResponse.status;
 
-        const responseText =
-          await praediumResponse.text();
 
-        let crmResult = null;
+        const responseText =
+
+          await praediumResponse
+            .text()
+            .catch(
+              () => ""
+            );
+
+
+        let crmResult =
+          null;
+
 
         try {
+
           crmResult =
             JSON.parse(
               responseText
             );
+
         } catch {}
 
-        const rejected =
+
+        const explicitlyRejected =
 
           crmResult &&
 
-          typeof crmResult === "object" &&
+          typeof crmResult ===
+            "object" &&
 
           (
             crmResult.success === false ||
+
             crmResult.ok === false
           );
+
 
         praediumOk =
 
           praediumResponse.ok &&
 
-          !rejected;
+          !explicitlyRejected;
+
 
         if (!praediumOk) {
 
           console.error(
 
-            "Praedium error:",
+            "PRAEDIUM_ERROR",
 
             praediumResponse.status,
 
@@ -456,50 +666,78 @@ export default async function handler(req, res) {
             "PRAEDIUM_OK",
 
             {
+
               origem,
 
               empreendimento,
 
               gclid:
+
                 tracking.gclid
+
                   ? "capturado"
+
                   : "ausente"
+
             }
 
           );
 
         }
 
+
       } catch (error) {
 
         console.error(
-          "Erro Praedium:",
+
+          "PRAEDIUM_CONNECTION_ERROR",
+
           error
+
         );
 
       }
 
+
     } else {
 
       console.warn(
+
         "PRAEDIUM_WEBHOOK_URL/PRAEDIUM_URL não configurada."
+
       );
 
     }
 
+
     /*
-     * ==========================================
+     * =======================================================
      * 2. SUPABASE
-     * ==========================================
+     * =======================================================
      */
 
     const supabaseUrl =
+
       process.env.SUPABASE_URL;
 
-    const supabaseKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    let supabaseOk = false;
+    /*
+     * ACEITA OS DOIS NOMES
+     *
+     * Na sua Vercel hoje:
+     * SUPABASE_SECRET_KEY
+     */
+
+    const supabaseKey =
+
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+
+      process.env.SUPABASE_SECRET_KEY;
+
+
+    let supabaseOk =
+      false;
+
 
     if (
       supabaseUrl &&
@@ -507,6 +745,108 @@ export default async function handler(req, res) {
     ) {
 
       try {
+
+        const supabasePayload = {
+
+          name:
+            nome,
+
+          email:
+            email,
+
+          phone:
+            telefone,
+
+          status:
+            "novo",
+
+          lead_score:
+            matchScore,
+
+          destination:
+            "yincorp",
+
+          notes:
+
+            mensagem ||
+
+            `Lead capturado em ${origem}`,
+
+          session_id:
+
+            sessionId ||
+
+            null,
+
+          metadata: {
+
+            source:
+              origem,
+
+            crm:
+
+              praediumOk
+
+                ? "praedium"
+
+                : "pending",
+
+            profile:
+              perfil,
+
+            attribution: {
+
+              gclid:
+                tracking.gclid,
+
+              gbraid:
+                tracking.gbraid,
+
+              wbraid:
+                tracking.wbraid,
+
+              utm_source:
+                tracking.utm_source,
+
+              utm_medium:
+                tracking.utm_medium,
+
+              utm_campaign:
+                tracking.utm_campaign,
+
+              utm_content:
+                tracking.utm_content,
+
+              utm_term:
+                tracking.utm_term,
+
+              landing_page:
+                pagina
+
+            },
+
+            property: {
+
+              id:
+                propertyId,
+
+              name:
+                empreendimento,
+
+              neighborhood,
+
+              value:
+                propertyValue,
+
+              match_score:
+                matchScore
+
+            }
+
+          }
+
+        };
+
 
         const supabaseResponse =
           await fetch(
@@ -535,140 +875,105 @@ export default async function handler(req, res) {
               },
 
               body:
-                JSON.stringify({
-
-                  name:
-                    nome,
-
-                  email:
-                    email,
-
-                  phone:
-                    telefone,
-
-                  status:
-                    "novo",
-
-                  lead_score:
-                    payload.match_score,
-
-                  destination:
-                    "yincorp",
-
-                  notes:
-                    mensagem ||
-                    `Lead capturado em ${origem}`,
-
-                  session_id:
-                    payload.session_id ||
-                    null,
-
-                  metadata: {
-
-                    source:
-                      origem,
-
-                    crm:
-                      praediumOk
-                        ? "praedium"
-                        : "pending",
-
-                    profile:
-                      perfil,
-
-                    attribution: {
-
-                      ...tracking,
-
-                      landing_page:
-                        pagina
-
-                    },
-
-                    property: {
-
-                      id:
-                        payload.property_id,
-
-                      name:
-                        empreendimento,
-
-                      neighborhood:
-                        payload.neighborhood,
-
-                      value:
-                        payload.property_value,
-
-                      match_score:
-                        payload.match_score
-
-                    }
-
-                  }
-
-                })
+                JSON.stringify(
+                  supabasePayload
+                )
 
             }
 
           );
 
-        supabaseOk =
-          supabaseResponse.ok;
+
+        const supabaseText =
+
+          await supabaseResponse
+            .text()
+            .catch(
+              () => ""
+            );
+
 
         if (!supabaseResponse.ok) {
 
           console.error(
 
-            "Supabase error:",
+            "SUPABASE_ERROR",
 
             supabaseResponse.status,
 
-            await supabaseResponse.text()
+            supabaseText
 
           );
 
         } else {
+
+          supabaseOk =
+            true;
+
 
           console.log(
 
             "SUPABASE_OK",
 
             {
+
               origem,
-              empreendimento
+
+              empreendimento,
+
+              gclid:
+
+                tracking.gclid
+
+                  ? "capturado"
+
+                  : "ausente"
+
             }
 
           );
 
         }
 
+
       } catch (error) {
 
         console.error(
-          "Erro Supabase:",
+
+          "SUPABASE_CONNECTION_ERROR",
+
           error
+
         );
 
       }
 
+
     } else {
 
       console.warn(
-        "SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurada."
+
+        "SUPABASE_URL/SUPABASE_SECRET_KEY não configurado."
+
       );
 
     }
 
+
     /*
-     * ==========================================
-     * 3. RESEND
-     * ==========================================
+     * =======================================================
+     * 3. RESEND / E-MAIL
+     * =======================================================
      */
 
     const resendApiKey =
+
       process.env.RESEND_API_KEY;
 
-    let emailSent = false;
+
+    let emailSent =
+      false;
+
 
     if (resendApiKey) {
 
@@ -701,28 +1006,42 @@ export default async function handler(req, res) {
                     "Ynteligencia <leads@yincorp.com.br>",
 
                   to: [
+
                     "contato.yincorp@gmail.com"
+
                   ],
 
                   subject:
+
                     `Novo lead | ${
                       empreendimento ||
                       origem
                     }`,
 
                   html:
+
                     buildEmail({
 
                       nome,
+
                       telefone,
+
                       email,
+
                       origem,
+
                       empreendimento,
+
                       perfil,
+
                       mensagem,
+
                       pagina,
+
                       tracking,
+
                       praediumOk,
+
                       supabaseOk
 
                     })
@@ -733,22 +1052,33 @@ export default async function handler(req, res) {
 
           );
 
-        emailSent =
-          emailResponse.ok;
+
+        const emailResponseText =
+
+          await emailResponse
+            .text()
+            .catch(
+              () => ""
+            );
+
 
         if (!emailResponse.ok) {
 
           console.error(
 
-            "Resend error:",
+            "RESEND_ERROR",
 
             emailResponse.status,
 
-            await emailResponse.text()
+            emailResponseText
 
           );
 
         } else {
+
+          emailSent =
+            true;
+
 
           console.log(
             "RESEND_OK"
@@ -756,101 +1086,367 @@ export default async function handler(req, res) {
 
         }
 
+
       } catch (error) {
 
         console.error(
-          "Erro Resend:",
+
+          "RESEND_CONNECTION_ERROR",
+
           error
+
         );
 
       }
 
+
     } else {
 
       console.warn(
+
         "RESEND_API_KEY não configurada."
+
       );
 
     }
 
+
     /*
-     * ==========================================
-     * RESPOSTA
-     * ==========================================
+     * =======================================================
+     * 4. META CONVERSIONS API
+     * =======================================================
      */
 
-    return res.status(200).json({
+    const metaPixelId =
 
-      success: true,
+      process.env.META_PIXEL_ID ||
 
-      source:
-        origem,
+      "1552958819302786";
 
-      property:
-        empreendimento,
 
-      delivery_status:
-        praediumOk
-          ? "webhook_accepted"
-          : "webhook_not_confirmed",
+    const metaToken =
 
-      praedium:
-        praediumOk,
+      process.env.META_CAPI_TOKEN;
 
-      praedium_status:
-        praediumStatus,
 
-      supabase:
-        supabaseOk,
+    let metaOk =
+      false;
 
-      email_sent:
-        emailSent,
 
-      tracking: {
+    if (metaToken) {
 
-        gclid:
-          !!tracking.gclid,
+      try {
 
-        gbraid:
-          !!tracking.gbraid,
+        /*
+         * Telefone em formato internacional
+         */
 
-        wbraid:
-          !!tracking.wbraid,
+        let metaPhone =
+          telefone;
 
-        utm_source:
-          !!tracking.utm_source,
 
-        utm_medium:
-          !!tracking.utm_medium,
+        if (
+          metaPhone &&
+          !metaPhone.startsWith("55")
+        ) {
 
-        utm_campaign:
-          !!tracking.utm_campaign,
+          metaPhone =
+            `55${metaPhone}`;
 
-        utm_content:
-          !!tracking.utm_content,
+        }
 
-        utm_term:
-          !!tracking.utm_term
+
+        /*
+         * SHA256
+         */
+
+        const hashedPhone =
+
+          crypto
+            .createHash("sha256")
+            .update(metaPhone)
+            .digest("hex");
+
+
+        const hashedName =
+
+          crypto
+            .createHash("sha256")
+            .update(
+              nome
+                .toLowerCase()
+                .trim()
+            )
+            .digest("hex");
+
+
+        const metaPayload = {
+
+          data: [
+
+            {
+
+              event_name:
+                "Lead",
+
+              event_time:
+
+                Math.floor(
+                  Date.now() / 1000
+                ),
+
+              action_source:
+                "website",
+
+              event_source_url:
+
+                pagina ||
+
+                undefined,
+
+              user_data: {
+
+                fn:
+                  hashedName,
+
+                ph:
+                  hashedPhone
+
+              },
+
+              custom_data: {
+
+                content_name:
+                  empreendimento,
+
+                profile:
+                  perfil,
+
+                source:
+                  origem,
+
+                gclid:
+                  tracking.gclid,
+
+                utm_source:
+
+                  tracking.utm_source ||
+
+                  "direto",
+
+                utm_medium:
+
+                  tracking.utm_medium ||
+
+                  "none",
+
+                utm_campaign:
+
+                  tracking.utm_campaign ||
+
+                  "none",
+
+                utm_content:
+
+                  tracking.utm_content ||
+
+                  "none",
+
+                utm_term:
+
+                  tracking.utm_term ||
+
+                  "none"
+
+              }
+
+            }
+
+          ]
+
+        };
+
+
+        const metaResponse =
+          await fetch(
+
+            `https://graph.facebook.com/v19.0/${metaPixelId}/events?access_token=${metaToken}`,
+
+            {
+
+              method:
+                "POST",
+
+              headers: {
+
+                "Content-Type":
+                  "application/json"
+
+              },
+
+              body:
+                JSON.stringify(
+                  metaPayload
+                )
+
+            }
+
+          );
+
+
+        const metaText =
+
+          await metaResponse
+            .text()
+            .catch(
+              () => ""
+            );
+
+
+        if (!metaResponse.ok) {
+
+          console.error(
+
+            "META_CAPI_ERROR",
+
+            metaResponse.status,
+
+            metaText
+
+          );
+
+        } else {
+
+          metaOk =
+            true;
+
+
+          console.log(
+            "META_CAPI_OK"
+          );
+
+        }
+
+
+      } catch (error) {
+
+        console.error(
+
+          "META_CAPI_CONNECTION_ERROR",
+
+          error
+
+        );
 
       }
 
-    });
+
+    } else {
+
+      console.log(
+
+        "META_CAPI_TOKEN não configurado."
+
+      );
+
+    }
+
+
+    /*
+     * =======================================================
+     * RESPOSTA DA API
+     * =======================================================
+     */
+
+    return res
+      .status(200)
+      .json({
+
+        success:
+          true,
+
+        source:
+          origem,
+
+        property:
+          empreendimento,
+
+        delivery_status:
+
+          praediumOk
+
+            ? "webhook_accepted"
+
+            : "webhook_not_confirmed",
+
+        praedium:
+          praediumOk,
+
+        praedium_status:
+          praediumStatus,
+
+        supabase:
+          supabaseOk,
+
+        email_sent:
+          emailSent,
+
+        meta:
+          metaOk,
+
+        tracking: {
+
+          gclid:
+            !!tracking.gclid,
+
+          gbraid:
+            !!tracking.gbraid,
+
+          wbraid:
+            !!tracking.wbraid,
+
+          utm_source:
+            !!tracking.utm_source,
+
+          utm_medium:
+            !!tracking.utm_medium,
+
+          utm_campaign:
+            !!tracking.utm_campaign,
+
+          utm_content:
+            !!tracking.utm_content,
+
+          utm_term:
+            !!tracking.utm_term
+
+        }
+
+      });
+
 
   } catch (error) {
 
     console.error(
-      "Lead API error:",
+
+      "LEAD_API_ERROR",
+
       error
+
     );
 
-    return res.status(500).json({
 
-      success: false,
+    return res
+      .status(500)
+      .json({
 
-      error:
-        "Erro interno ao enviar lead"
+        success:
+          false,
 
-    });
+        error:
+          "Erro interno ao enviar lead"
+
+      });
 
   }
 
@@ -858,9 +1454,9 @@ export default async function handler(req, res) {
 
 
 /*
- * ==========================================
+ * =========================================================
  * HELPERS
- * ==========================================
+ * =========================================================
  */
 
 function clean(value) {
@@ -927,18 +1523,34 @@ function escapeHtml(value) {
 }
 
 
+/*
+ * =========================================================
+ * TEMPLATE DO E-MAIL
+ * =========================================================
+ */
+
 function buildEmail({
 
   nome,
+
   telefone,
+
   email,
+
   origem,
+
   empreendimento,
+
   perfil,
+
   mensagem,
+
   pagina,
+
   tracking,
+
   praediumOk,
+
   supabaseOk
 
 }) {
@@ -955,8 +1567,8 @@ function buildEmail({
 
       <div style="
         background:#171717;
-        color:#fff;
-        padding:22px;
+        color:#ffffff;
+        padding:24px;
       ">
 
         <div style="
@@ -971,7 +1583,7 @@ function buildEmail({
         </div>
 
         <h2 style="
-          margin:7px 0 0;
+          margin:8px 0 0;
         ">
 
           Novo lead
@@ -980,10 +1592,11 @@ function buildEmail({
 
       </div>
 
+
       <div style="
-        border:1px solid #ddd;
+        border:1px solid #dddddd;
         border-top:0;
-        padding:22px;
+        padding:24px;
       ">
 
         <p>
@@ -996,6 +1609,7 @@ function buildEmail({
 
           <br>
 
+
           <strong>
             Telefone:
           </strong>
@@ -1003,6 +1617,7 @@ function buildEmail({
           ${escapeHtml(telefone)}
 
           <br>
+
 
           <strong>
             E-mail:
@@ -1015,6 +1630,7 @@ function buildEmail({
 
           <br>
 
+
           <strong>
             Origem:
           </strong>
@@ -1022,6 +1638,7 @@ function buildEmail({
           ${escapeHtml(origem)}
 
           <br>
+
 
           <strong>
             Imóvel:
@@ -1034,6 +1651,7 @@ function buildEmail({
 
           <br>
 
+
           <strong>
             Perfil:
           </strong>
@@ -1045,7 +1663,9 @@ function buildEmail({
 
         </p>
 
+
         <hr>
+
 
         <p>
 
@@ -1062,11 +1682,14 @@ function buildEmail({
 
         </p>
 
+
         <hr>
+
 
         <h3>
           Atribuição
         </h3>
+
 
         <p>
 
@@ -1081,6 +1704,7 @@ function buildEmail({
 
           <br>
 
+
           <strong>
             GBRAID:
           </strong>
@@ -1091,6 +1715,7 @@ function buildEmail({
           )}
 
           <br>
+
 
           <strong>
             WBRAID:
@@ -1103,6 +1728,7 @@ function buildEmail({
 
           <br>
 
+
           <strong>
             UTM Source:
           </strong>
@@ -1113,6 +1739,7 @@ function buildEmail({
           )}
 
           <br>
+
 
           <strong>
             UTM Medium:
@@ -1125,6 +1752,7 @@ function buildEmail({
 
           <br>
 
+
           <strong>
             UTM Campaign:
           </strong>
@@ -1135,6 +1763,7 @@ function buildEmail({
           )}
 
           <br>
+
 
           <strong>
             UTM Content:
@@ -1147,6 +1776,7 @@ function buildEmail({
 
           <br>
 
+
           <strong>
             UTM Term:
           </strong>
@@ -1158,7 +1788,9 @@ function buildEmail({
 
         </p>
 
+
         <hr>
+
 
         <p>
 
@@ -1175,6 +1807,7 @@ function buildEmail({
 
         </p>
 
+
         <p>
 
           <strong>
@@ -1188,6 +1821,7 @@ function buildEmail({
           }
 
           <br>
+
 
           <strong>
             Supabase:
