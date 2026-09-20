@@ -1294,7 +1294,7 @@ body.match-results-mode{padding-bottom:235px}
   .card-title-line{gap:7px}
   .card-neighborhood-inline{font-size:16px;color:#555555}
 
-.refine-match-shell{bottom:max(84px,calc(76px + env(safe-area-inset-bottom)));width:calc(100% - 16px)}.refine-match-card{padding:10px;border-radius:18px}.refine-match-known{margin-bottom:7px}.refine-price-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.refine-price-grid input,.refine-price-grid select{min-height:48px;height:48px;font-size:17px}.apply-refine-match,.clear-refine-match{min-height:48px;margin-top:12px}body.match-results-mode{padding-bottom:420px}
+.refine-match-shell{bottom:max(84px,calc(76px + env(safe-area-inset-bottom)));width:calc(100% - 16px)}.refine-match-card{padding:10px;border-radius:18px}.refine-match-known{margin-bottom:7px}.refine-price-grid{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.refine-price-grid input,.refine-price-grid select{min-height:44px;height:44px;font-size:16px}.apply-refine-match,.clear-refine-match{min-height:48px;margin-top:12px}body.match-results-mode{padding-bottom:370px}
   body{line-height:1.5}
   .hero{align-items:center}
   body.home-mode{height:auto;min-height:100svh;overflow:auto}
@@ -1311,15 +1311,15 @@ body.match-results-mode{padding-bottom:235px}
   .empty{background:#FFFFFF;color:#242424;border-color:#B5AD9F}
   .empty p,.filter-title{color:#555555}
   .refine-match-shell{max-height:calc(100svh - 160px);overflow-y:auto;border-radius:18px}
-  .refine-match-card{background:#FFFFFF;border-color:#B5AD9F;padding:14px;backdrop-filter:none}
-  .refine-match-head h2{font-size:20px;line-height:1.3}
-  .refine-match-known{max-height:none;overflow:visible}
+  .refine-match-card{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#FFFFFF;border-color:#B5AD9F;padding:10px;backdrop-filter:none}
+  .refine-match-head{grid-column:1/-1;margin:0}.refine-match-head h2{font-size:18px;line-height:1.3}
+  .refine-match-known{display:none}
   .refine-match-known span{font-size:16px;line-height:1.35;background:#F5F3EE;color:#654E28}
-  .refine-price-grid label{grid-template-rows:auto 48px;font-size:16px;line-height:1.35;letter-spacing:0;color:#555555;text-transform:none}
+  .refine-price-grid label{grid-template-rows:auto 44px;font-size:16px;line-height:1.35;letter-spacing:0;color:#555555;text-transform:none}
   .refine-price-grid label:last-child{grid-column:1/-1}
   .refine-price-grid input,.refine-price-grid select{background:#F5F3EE;border-color:#B5AD9F;color:#242424}
   .refine-price-grid select option{background:#F5F3EE;color:#242424}
-  .apply-refine-match,.clear-refine-match{font-size:17px;line-height:1.4}
+  .apply-refine-match,.clear-refine-match{width:100%;min-width:0;min-height:44px;margin:0;font-size:17px;line-height:1.4}
   .clear-refine-match{background:#F5F3EE;color:#242424;border-color:#B5AD9F}
   .ad-budget-card{background:#FFFFFF}
   .ad-budget-context{font-size:18px;color:#555555}
@@ -2011,8 +2011,8 @@ body.match-results-mode{padding-bottom:235px}
 </footer>
 
 <nav class="app-dock" aria-label="Navegação principal">
-  <button type="button" onclick="enterMatchMode()">
-    <b>✦</b><span>DESCOBRIR</span>
+  <button type="button" onclick="goHome()">
+    <b>✦</b><span>INÍCIO</span>
   </button>
   <button type="button" onclick="openGeneralCatalog(true)">
     <b>⌕</b><span>EXPLORAR</span>
@@ -2109,12 +2109,12 @@ body.match-results-mode{padding-bottom:235px}
     </div>
     <div class="refine-match-known" id="refineMatchKnown"></div>
     <div class="refine-price-grid">
-      <label id="refineNeighborhoodLabel">Bairro da região
+      <label id="refineNeighborhoodLabel">Bairro
         <select id="refineNeighborhood">
           <option value="">Todos os bairros da região</option>
         </select>
       </label>
-      <label>Dormitórios mínimos
+      <label>Dorms. mínimos
         <select id="refineBedrooms">
           <option value="">Sem mínimo</option>
           <option value="1">1+</option>
@@ -3706,6 +3706,8 @@ function resetMatchProfile(){
     purpose:"",
     region:"",
     budget:0,
+    budgetMin:0,
+    budgetMax:0,
     bedrooms:null,
     feature:[],
     timing:"",
@@ -5646,6 +5648,37 @@ function clearAdEntryIntent(){
   );
 }
 
+function goHome(){
+  clearAdEntryIntent();
+  resetMatchProfile();
+  resetCatalogState(false);
+  sourceMode="todos";
+  document.querySelectorAll(".source-btn").forEach(button=>{
+    button.classList.toggle("selected",button.dataset.source==="todos");
+  });
+  setFiltersOpen(false);
+  closeAdBudgetQuestion();
+  setRefineMatchOpen(false);
+  $("catalog")?.classList.remove("visible");
+  $("photoModal")?.remove();
+  $("leadModal")?.remove();
+  document.body.classList.remove("match-mode","match-results-mode","ad-match-mode");
+  document.body.classList.add("home-mode");
+  document.body.style.overflow="";
+  $("wizardMatchMode")?.classList.add("active");
+  $("wizardExploreMode")?.classList.remove("active");
+  const url=new URL(window.location.href);
+  url.searchParams.delete("imovel");
+  url.hash="";
+  history.replaceState({ynteligenciaView:"home",step:0},"",url.pathname+url.search);
+  window.scrollTo({top:0,behavior:"instant"});
+}
+
+document.querySelector(".brand-lockup")?.addEventListener("click",event=>{
+  event.preventDefault();
+  goHome();
+});
+
 function openGeneralCatalog(openFilters=true){
   clearAdEntryIntent();
   document.body.classList.remove("match-results-mode");
@@ -6463,7 +6496,7 @@ function updateAdMatchUI(){
   const neighborhoodLabel=$("refineNeighborhoodLabel");
   if(neighborhoodLabel){
     const textNode=[...neighborhoodLabel.childNodes].find(node=>node.nodeType===Node.TEXT_NODE);
-    if(textNode) textNode.nodeValue=`Bairro · ${regionName}\n        `;
+    if(textNode) textNode.nodeValue="Bairro\n        ";
   }
 
   const defaultBedrooms=adIntent.bedrooms || Number(profile.bedrooms||0) || 0;
@@ -6591,13 +6624,10 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   try{gtag('event','match_refined',{region:regionKey||adIntent.neighborhood,neighborhood:adIntent.neighborhood,bedrooms:adIntent.bedrooms,min_price:min,max_price:max});}catch(e){}
 });
 $("clearRefineMatch")?.addEventListener("click",()=>{
-  adIntent.neighborhood="";
-  adIntent.bedrooms=0;
-  adIntent.minPrice=0;
-  adIntent.maxPrice=0;
-  adIntent.active=false;
+  clearAdEntryIntent();
+  resetMatchProfile();
+  resetCatalogState(false);
   updateAdMatchUI();
-  setRefineMatchOpen(true);
   showMatches();
 });
 
@@ -6834,12 +6864,7 @@ Promise.all([
         if(id==='match') enterMatchMode();
         else if(id==='explore') openGeneralCatalog();
         else{
-          if(id==='inicio'){
-            resetCatalogState(false);
-            currentMatchById.clear();
-            document.getElementById('catalog')?.classList.remove('visible');
-            setFiltersOpen(false);
-          }
+          if(id==='inicio'){goHome();return;}
           document.body.classList.toggle('home-mode',id==='inicio');
           document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
         }
