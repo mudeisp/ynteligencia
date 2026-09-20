@@ -1541,7 +1541,7 @@ body.match-results-mode{padding-bottom:235px}
              O usuário faz um único MATCH; sourceMode continua no JS para a futura Órulo. -->
 
         <div class="step-count" aria-live="polite">
-          <strong id="stepCount">01 de 05</strong>
+          <strong id="stepCount">01 de 04</strong>
         </div>
 
         <div class="step" data-step="0">
@@ -1772,7 +1772,7 @@ body.match-results-mode{padding-bottom:235px}
           </div>
         </div>
 
-        <div class="step" data-step="4" hidden>
+        <div class="step" data-step="4" hidden aria-hidden="true" style="display:none!important">
 
           <div class="step-label">
             05 · O QUE É INDISPENSÁVEL?
@@ -3454,7 +3454,7 @@ function setStep(n,fromHistory=false){
     Math.max(
       0,
       Math.min(
-        4,
+        3,
         n
       )
     );
@@ -3477,7 +3477,7 @@ function setStep(n,fromHistory=false){
 
   const stepCount=$("stepCount");
   if(stepCount){
-    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 05`;
+    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 04`;
   }
 
 
@@ -3488,7 +3488,7 @@ function setStep(n,fromHistory=false){
 
 
   $("next").textContent=
-    step===4
+    step===3
       ? "Encontrar meus MATCHs"
       : "Continuar";
 
@@ -3515,13 +3515,6 @@ function currentValid(){
     );
   }
 
-
-  if(step===4){
-
-    return(
-      profile.feature.length>0
-    );
-  }
 
   if(step===2){
 
@@ -3653,9 +3646,19 @@ document
               );
 
             // Perguntas de escolha única avançam automaticamente.
-            if(["region","budget","bedrooms"].includes(key)){
+            if(["region","budget"].includes(key)){
               updateNext();
               window.setTimeout(()=>setStep(step+1),140);
+              return;
+            }
+
+            // Dormitórios é a última pergunta obrigatória: dispara o motor do MATCH.
+            if(key==="bedrooms"){
+              updateNext();
+              window.setTimeout(()=>{
+                trackProfileCompleted();
+                showMatchProcessing();
+              },140);
               return;
             }
           }
@@ -3777,7 +3780,7 @@ $("next")
       )return;
 
 
-      if(step<4){
+      if(step<3){
 
         setStep(
           step+1
