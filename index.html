@@ -6280,19 +6280,21 @@ function openLeadCapture(p){
           id="leadEmail"
           class="field"
           type="email"
+          required
           autocomplete="email"
-          placeholder="E-mail (opcional)"
+          inputmode="email"
+          placeholder="Seu e-mail"
           style="margin-bottom:14px">
 
         <button
           class="primary"
           type="submit"
           style="width:100%;border:0">
-          Quero falar sobre este imóvel
+          Continuar no WhatsApp
         </button>
 
         <p style="margin:10px 0 0;color:#8a94a3;font-size:11px;line-height:1.4;text-align:center">
-          Ao enviar, seus dados ficam registrados para atendimento da Yincorp.
+          Seus dados são registrados para atendimento antes de abrir a conversa no WhatsApp.
         </p>
 
       </form>
@@ -6318,6 +6320,18 @@ function openLeadCapture(p){
     .appendChild(
       modal
     );
+
+  const savedLeadName=localStorage.getItem("yincorp_contact_name") || "";
+  const savedLeadPhone=localStorage.getItem("yincorp_contact_phone") || "";
+  const savedLeadEmail=localStorage.getItem("yincorp_contact_email") || "";
+
+  const leadNameInput=document.getElementById("leadName");
+  const leadPhoneInput=document.getElementById("leadPhone");
+  const leadEmailInput=document.getElementById("leadEmail");
+
+  if(leadNameInput && !leadNameInput.value) leadNameInput.value=savedLeadName;
+  if(leadPhoneInput && !leadPhoneInput.value) leadPhoneInput.value=savedLeadPhone;
+  if(leadEmailInput && !leadEmailInput.value) leadEmailInput.value=savedLeadEmail;
 
 
   document
@@ -6503,11 +6517,13 @@ function openLeadCapture(p){
 
           const delivery=await praediumResponse.json().catch(()=>null);
           if(
-            !praediumResponse.ok || delivery?.success!==true || delivery?.praedium!==true
+            !praediumResponse.ok ||
+            delivery?.success!==true ||
+            (delivery?.praedium!==true && delivery?.supabase!==true)
           ){
 
             throw new Error(
-              "A API não confirmou o recebimento do lead."
+              "A API não confirmou o armazenamento do lead."
             );
           }
 
@@ -6690,6 +6706,11 @@ function openLeadCapture(p){
           ================================================= */
 
           try{
+            localStorage.setItem("yincorp_contact_name",lead.name || "");
+            localStorage.setItem("yincorp_contact_phone",lead.phone || "");
+            localStorage.setItem("yincorp_contact_email",lead.email || "");
+
+
 
             const leads=
               JSON.parse(
@@ -6732,8 +6753,23 @@ function openLeadCapture(p){
 
 
           showToast(
-            "Interesse enviado com sucesso para o atendimento da Yincorp."
+            "Dados confirmados. Abrindo o WhatsApp..."
           );
+
+
+          const whatsappMessage=[
+            `Olá, meu nome é ${lead.name}.`,
+            `Vim pela Ynteligencia e quero conhecer este imóvel: ${lead.property_name || "imóvel selecionado"}.`,
+            lead.neighborhood ? `Bairro: ${lead.neighborhood}.` : "",
+            lead.property_value ? `Valor: ${money(lead.property_value)}.` : "",
+            lead.property_id ? `Código: ${lead.property_id}.` : "",
+            lead.match_score ? `MATCH: ${lead.match_score}%.` : ""
+          ]
+          .filter(Boolean)
+          .join("\n");
+
+          window.location.href=
+            `https://wa.me/5511992976368?text=${encodeURIComponent(whatsappMessage)}`;
 
 
         }catch(error){
@@ -6791,7 +6827,7 @@ function openLeadCapture(p){
 
 
           submitButton.textContent=
-            "Quero falar sobre este imóvel";
+            "Continuar no WhatsApp";
         }
       }
     );
