@@ -892,6 +892,7 @@ body{background:#F7F4ED;color:#0B0B0B}
 
 /* ===== MOBILE APP BEHAVIOR ===== */
 .filters-trigger,.filters-backdrop,.filters-close{display:none}
+.wizard[data-current-step="0"] .next,
 .wizard[data-current-step="1"] .next,
 .wizard[data-current-step="2"] .next,
 .wizard[data-current-step="3"] .next{display:none}
@@ -1552,7 +1553,7 @@ body.match-results-mode{padding-bottom:235px}
           <h2>Que tipo de imóvel faz sentido?</h2>
 
           <p>
-            Você pode escolher mais de um tipo.
+            Escolha o tipo de imóvel. Ao selecionar, seguimos automaticamente.
           </p>
 
           <div class="options">
@@ -3579,6 +3580,22 @@ document
               "multi"
             )
           ){
+
+            // Tipo do imóvel continua armazenado como array para manter
+            // compatibilidade com o motor do MATCH, mas nesta etapa a
+            // escolha é única e avança automaticamente.
+            if(key==="types"){
+              profile.types=[value];
+
+              document
+                .querySelectorAll('.option[data-key="types"]')
+                .forEach(x=>x.classList.remove("selected"));
+
+              btn.classList.add("selected");
+              updateNext();
+              window.setTimeout(()=>setStep(step+1),140);
+              return;
+            }
 
             const arr=
               profile[key];
