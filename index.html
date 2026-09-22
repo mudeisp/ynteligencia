@@ -2517,17 +2517,17 @@ let properties=[];
 let sourceMode="todos";
 
 /* Contexto vindo do anúncio. Exemplos:
-   ?bairro=perdizes&dormitorios=2
-   ?bairro=vila-madalena&dormitorios=2
-   Também aceita region/bedrooms para compatibilidade. */
+   ?bairro=Brooklin&dormitorios=3&valor_min=1500000
+   ?bairro=Perdizes&dormitorios=2
+   Também aceita neighborhood/region, bedrooms, min_price e max_price para compatibilidade. */
 const adParams=new URLSearchParams(window.location.search);
 const adIntent={
-  neighborhood:formatNeighborhoodName(cleanAdParam(adParams.get("bairro") || adParams.get("region") || "")),
+  neighborhood:formatNeighborhoodName(cleanAdParam(adParams.get("bairro") || adParams.get("neighborhood") || adParams.get("region") || "")),
   bedrooms:Number(adParams.get("dormitorios") || adParams.get("bedrooms") || 0) || 0,
   minPrice:Number(adParams.get("valor_min") || adParams.get("min_price") || 0) || 0,
   maxPrice:Number(adParams.get("valor_max") || adParams.get("max_price") || 0) || 0
 };
-adIntent.active=Boolean(adIntent.neighborhood || adIntent.bedrooms);
+adIntent.active=Boolean(adIntent.neighborhood || adIntent.bedrooms || adIntent.minPrice || adIntent.maxPrice);
 
 function cleanAdParam(value){
   return String(value||"").replace(/[-_]+/g," ").trim();
@@ -6022,7 +6022,7 @@ function resetCatalogState(render=true){
 }
 
 const AD_INTENT_QUERY_KEYS=[
-  "bairro","region","dormitorios","bedrooms","project","projeto",
+  "bairro","neighborhood","region","dormitorios","bedrooms","project","projeto",
   "valor_min","min_price","valor_max","max_price"
 ];
 
@@ -6953,12 +6953,20 @@ function adIntentHasPrice(){
 
 function updateAdIntentPriceInUrl(){
   const url=new URL(window.location.href);
-  url.searchParams.delete("valor_min");
-  url.searchParams.delete("min_price");
-  url.searchParams.delete("valor_max");
-  url.searchParams.delete("max_price");
+
+  // Remove aliases antigos e grava uma URL canônica compartilhável.
+  [
+    "bairro","neighborhood","region",
+    "dormitorios","bedrooms",
+    "valor_min","min_price","valor_max","max_price"
+  ].forEach(key=>url.searchParams.delete(key));
+
+  if(adIntent.neighborhood) url.searchParams.set("bairro",adIntent.neighborhood);
+  if(adIntent.bedrooms) url.searchParams.set("dormitorios",String(adIntent.bedrooms));
   if(adIntent.minPrice) url.searchParams.set("valor_min",String(adIntent.minPrice));
   if(adIntent.maxPrice) url.searchParams.set("valor_max",String(adIntent.maxPrice));
+
+  // Mantém UTMs, GCLID/GBRAID/WBRAID e demais parâmetros da campanha.
   history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
 }
 
@@ -7052,6 +7060,7 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.minPrice=min;
   adIntent.maxPrice=max;
   adIntent.active=Boolean(neighborhood || bedrooms || min || max);
+  updateAdIntentPriceInUrl();
   updateAdMatchUI();
   setRefineMatchOpen(true);
   showMatches();
@@ -7066,7 +7075,7 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   adIntent.active=false;
 
   const url=new URL(window.location.href);
-  ["bairro","region","dormitorios","bedrooms","valor_min","min_price","valor_max","max_price"].forEach(key=>url.searchParams.delete(key));
+  ["bairro","neighborhood","region","dormitorios","bedrooms","valor_min","min_price","valor_max","max_price"].forEach(key=>url.searchParams.delete(key));
   history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
 
   updateAdMatchUI();
