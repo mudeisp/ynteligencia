@@ -7062,7 +7062,7 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.active=Boolean(neighborhood || bedrooms || min || max);
   updateAdIntentPriceInUrl();
   updateAdMatchUI();
-  setRefineMatchOpen(!window.matchMedia("(min-width:769px)").matches);
+  setRefineMatchOpen(false);
   showMatches();
   try{gtag('event','match_refined',{region:regionKey||adIntent.neighborhood,neighborhood:adIntent.neighborhood,bedrooms:adIntent.bedrooms,min_price:min,max_price:max});}catch(e){}
 });
@@ -7545,10 +7545,48 @@ Promise.all([
   window.addEventListener("scroll", updateVisibility, {passive:true});
   updateVisibility();
 
-  fab.addEventListener("click", () => {
+  fab.addEventListener("click", (event) => {
+    event.preventDefault();
+
+    // Abre o refinamento já apontando para o próximo bairro do circuito.
+    // Dormitórios e faixa de valor permanecem como estão.
+    try{
+      if(typeof updateAdMatchUI === "function") updateAdMatchUI();
+
+      const neighborhoodSelect = document.getElementById("refineNeighborhood");
+      const nextOption = neighborhoodSelect
+        ? [...neighborhoodSelect.options].find(option =>
+            normalizeNeighborhood(option.value) === normalizeNeighborhood(route.next)
+          )
+        : null;
+
+      if(!nextOption){
+        if(typeof showToast === "function"){
+          showToast(`Ainda não encontramos opções disponíveis em ${route.next} para este circuito.`);
+        }
+        return;
+      }
+
+      neighborhoodSelect.value = nextOption.value;
+
+      // Mantém o contexto do circuito para telemetria no clique de abertura.
+      window.__pendingNeighborhoodComparison = {
+        from_neighborhood: currentRaw,
+        to_neighborhood: route.next,
+        circuit_tier: route.tier,
+        circuit_zone: route.zone
+      };
+
+      if(typeof setRefineMatchOpen === "function") setRefineMatchOpen(true);
+    }catch(e){
+      console.warn("Falha ao abrir refinamento do circuito:", e);
+      window.location.href = fab.href;
+      return;
+    }
+
     try{
       if(typeof gtag === "function"){
-        gtag("event", "neighborhood_compare_click", {
+        gtag("event", "neighborhood_compare_open", {
           from_neighborhood: currentRaw,
           to_neighborhood: route.next,
           circuit_tier: route.tier,
@@ -7561,7 +7599,7 @@ Promise.all([
 
     try{
       if(typeof supabaseTrack === "function"){
-        supabaseTrack("neighborhood_compare_click", {
+        supabaseTrack("neighborhood_compare_open", {
           from_neighborhood: currentRaw,
           to_neighborhood: route.next,
           circuit_tier: route.tier,
