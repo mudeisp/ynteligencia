@@ -4821,7 +4821,7 @@ function showMatches(){
 
   /* Primeiro mostra o motor/resultados. No desktop o refinamento fica minimizado. */
   updateAdMatchUI();
-  setRefineMatchOpen(!window.matchMedia("(min-width:769px)").matches);
+  setRefineMatchOpen(false);
 
 
   $("resultSummary")
@@ -7079,7 +7079,7 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
 
   updateAdMatchUI();
-  setRefineMatchOpen(!window.matchMedia("(min-width:769px)").matches);
+  setRefineMatchOpen(false);
   showMatches();
   showToast("Refinamento limpo. Voltamos ao seu MATCH original.");
 });
@@ -7469,44 +7469,18 @@ Promise.all([
     .trim();
 
   const circuit = {
-    /* =====================================================
-       ZONA OESTE · NÍVEL 1 · PREMIUM
-       Pinheiros → Vila Madalena → Perdizes → Pompéia → Pinheiros
-    ===================================================== */
     "pinheiros": {zone:"oeste",next:"Vila Madalena",tier:"premium",label:"Ver imóveis na Vila Madalena",reason:"Continue comparando no circuito premium"},
     "vila madalena": {zone:"oeste",next:"Perdizes",tier:"premium",label:"Ver imóveis em Perdizes",reason:"Continue comparando no circuito premium"},
     "perdizes": {zone:"oeste",next:"Pompéia",tier:"premium",label:"Ver imóveis na Pompéia",reason:"Compare opções próximas na Zona Oeste"},
     "pompeia": {zone:"oeste",next:"Pinheiros",tier:"premium",label:"Ver imóveis em Pinheiros",reason:"Continue comparando no circuito premium"},
-
-    /* =====================================================
-       ZONA OESTE · NÍVEL 2 · MÉDIO / MÉDIO-ALTO
-       Vila Romana → Lapa → Água Branca → Barra Funda → Vila Romana
-    ===================================================== */
     "vila romana": {zone:"oeste",next:"Lapa",tier:"medio",label:"Ver imóveis na Lapa",reason:"Compare alternativas na mesma faixa regional"},
     "lapa": {zone:"oeste",next:"Água Branca",tier:"medio",label:"Ver imóveis na Água Branca",reason:"Compare alternativas na mesma faixa regional"},
     "agua branca": {zone:"oeste",next:"Barra Funda",tier:"medio",label:"Ver imóveis na Barra Funda",reason:"Compare mobilidade, metragem e valor"},
     "barra funda": {zone:"oeste",next:"Vila Romana",tier:"medio",label:"Ver imóveis na Vila Romana",reason:"Compare alternativas na mesma faixa regional"},
-
-    /* =====================================================
-       ZONA SUL · NÍVEL 1 · PREMIUM
-       Moema → Campo Belo → Brooklin → Vila Olímpia → Moema
-
-       Circuito pensado para intenção comparável de compra:
-       bairros consolidados, ticket alto, mobilidade e eixo corporativo.
-    ===================================================== */
     "moema": {zone:"sul",next:"Campo Belo",tier:"premium",label:"Ver imóveis no Campo Belo",reason:"Compare outra opção premium da Zona Sul"},
     "campo belo": {zone:"sul",next:"Brooklin",tier:"premium",label:"Ver imóveis no Brooklin",reason:"Compare localização, metragem e mobilidade"},
     "brooklin": {zone:"sul",next:"Vila Olímpia",tier:"premium",label:"Ver imóveis na Vila Olímpia",reason:"Continue comparando no eixo premium"},
     "vila olimpia": {zone:"sul",next:"Moema",tier:"premium",label:"Ver imóveis em Moema",reason:"Compare outra referência premium da Zona Sul"},
-
-    /* =====================================================
-       ZONA SUL · NÍVEL 2 · MÉDIO / MÉDIO-ALTO
-       Vila Mariana → Vila Clementino → Saúde → Chácara Santo Antônio
-       → Santo Amaro → Vila Mariana
-
-       Aqui a comparação prioriza custo-benefício, acesso ao metrô,
-       serviços e alternativa de metragem/ticket.
-    ===================================================== */
     "vila mariana": {zone:"sul",next:"Vila Clementino",tier:"medio",label:"Ver imóveis na Vila Clementino",reason:"Compare bairros próximos com perfil semelhante"},
     "vila clementino": {zone:"sul",next:"Saúde",tier:"medio",label:"Ver imóveis na Saúde",reason:"Compare metragem, mobilidade e valor"},
     "saude": {zone:"sul",next:"Chácara Santo Antônio",tier:"medio",label:"Ver imóveis na Chácara Santo Antônio",reason:"Compare alternativas no eixo da Zona Sul"},
@@ -7514,84 +7488,208 @@ Promise.all([
     "santo amaro": {zone:"sul",next:"Vila Mariana",tier:"medio",label:"Ver imóveis na Vila Mariana",reason:"Volte ao circuito de comparação da Zona Sul"}
   };
 
-  const url = new URL(window.location.href);
-  const currentRaw = url.searchParams.get("bairro") || url.searchParams.get("neighborhood") || "";
-  const currentKey = normalizeNeighborhood(currentRaw);
-  const route = circuit[currentKey];
-  if(!route) return;
+  const satelliteMap = {
+    "sumarezinho": {zone:"oeste",next:"Vila Madalena",tier:"resgate"},
+    "alto da lapa": {zone:"oeste",next:"Vila Romana",tier:"resgate"},
+    "vila ipojuca": {zone:"oeste",next:"Vila Romana",tier:"resgate"},
+    "jaguare": {zone:"oeste",next:"Vila Leopoldina",tier:"resgate"},
+    "vila leopoldina": {zone:"oeste",next:"Lapa",tier:"resgate"},
+    "butanta": {zone:"oeste",next:"Pinheiros",tier:"resgate"},
+    "rio pequeno": {zone:"oeste",next:"Butantã",tier:"resgate"},
+    "morumbi": {zone:"sul",next:"Brooklin",tier:"resgate"},
+    "planalto paulista": {zone:"sul",next:"Saúde",tier:"resgate"},
+    "mirandopolis": {zone:"sul",next:"Vila Mariana",tier:"resgate"},
+    "jabaquara": {zone:"sul",next:"Saúde",tier:"resgate"},
+    "ibirapuera": {zone:"sul",next:"Moema",tier:"resgate"},
+    "itaim bibi": {zone:"sul",next:"Vila Olímpia",tier:"resgate"}
+  };
 
-  const bedrooms = url.searchParams.get("dormitorios") || url.searchParams.get("bedrooms") || "";
+  const zoneNeighborhoods = {
+    oeste: ["Pinheiros","Vila Madalena","Perdizes","Pompéia","Vila Romana","Lapa","Água Branca","Barra Funda","Vila Leopoldina","Butantã","Sumarezinho","Alto da Lapa","Vila Ipojuca","Jaguaré"],
+    sul: ["Moema","Campo Belo","Brooklin","Vila Olímpia","Vila Mariana","Vila Clementino","Saúde","Chácara Santo Antônio","Santo Amaro","Morumbi","Planalto Paulista","Mirandópolis","Jabaquara","Ibirapuera","Itaim Bibi"]
+  };
 
-  url.searchParams.delete("bairro");
-  url.searchParams.delete("neighborhood");
-  url.searchParams.delete("region");
-  url.searchParams.set("bairro", route.next);
+  const anchorPriority = [
+    "Pinheiros","Perdizes","Vila Madalena","Pompéia","Vila Romana","Lapa",
+    "Moema","Brooklin","Campo Belo","Vila Olímpia","Vila Mariana","Saúde","Santo Amaro"
+  ];
 
-  fab.href = url.pathname + url.search + url.hash;
-  fab.dataset.fromNeighborhood = currentRaw;
-  fab.dataset.toNeighborhood = route.next;
-  fab.dataset.tier = route.tier;
+  function getAvailableNeighborhoods(){
+    const select = document.getElementById("refineNeighborhood");
+    if(!select) return [];
+    return [...select.options]
+      .map(option => String(option.value || "").trim())
+      .filter(Boolean)
+      .filter((value,index,array) => array.findIndex(v => normalizeNeighborhood(v) === normalizeNeighborhood(value)) === index);
+  }
 
-  const zoneLabel = route.zone === "sul" ? "ZONA SUL" : "ZONA OESTE";
-  kicker.textContent = route.tier === "premium"
-    ? `COMPARE · ${zoneLabel} PREMIUM`
-    : `COMPARE · ${zoneLabel}`;
-  title.textContent = route.label;
-  subtitle.textContent = bedrooms ? `${route.reason} · ${bedrooms}+ dormitórios` : route.reason;
+  function findAvailable(name, available){
+    const key = normalizeNeighborhood(name);
+    return available.find(item => normalizeNeighborhood(item) === key) || null;
+  }
 
-  fab.classList.add("is-ready");
+  function inferZone(current){
+    const key = normalizeNeighborhood(current);
+    for(const [zone,names] of Object.entries(zoneNeighborhoods)){
+      if(names.some(name => normalizeNeighborhood(name) === key)) return zone;
+    }
+    return null;
+  }
 
-  const updateVisibility = () => fab.classList.toggle("is-visible", window.scrollY > 420);
-  window.addEventListener("scroll", updateVisibility, {passive:true});
-  updateVisibility();
+  function firstAvailable(candidates, available, current){
+    const currentKey = normalizeNeighborhood(current);
+    for(const candidate of candidates){
+      const found = findAvailable(candidate, available);
+      if(found && normalizeNeighborhood(found) !== currentKey) return found;
+    }
+    return null;
+  }
 
-  fab.addEventListener("click", (event) => {
+  function getCompassRoute(currentRaw){
+    const currentKey = normalizeNeighborhood(currentRaw);
+    const available = getAvailableNeighborhoods();
+    if(!available.length) return null;
+
+    // 1. Circuito conhecido: usa o próximo bairro se houver estoque/opção no filtro.
+    const direct = circuit[currentKey];
+    if(direct){
+      const exact = findAvailable(direct.next, available);
+      if(exact){
+        return {...direct,next:exact,mode:"circuit"};
+      }
+      const sameZone = firstAvailable(zoneNeighborhoods[direct.zone] || [], available, currentRaw);
+      if(sameZone){
+        return {zone:direct.zone,next:sameZone,tier:"resgate",mode:"rescue",label:`Ver imóveis em ${sameZone}`,reason:"A Bússola encontrou outra opção disponível na região"};
+      }
+    }
+
+    // 2. Bairro satélite: conduz para uma porta de entrada do circuito.
+    const satellite = satelliteMap[currentKey];
+    if(satellite){
+      const exact = findAvailable(satellite.next, available);
+      const fallback = exact || firstAvailable(zoneNeighborhoods[satellite.zone] || [], available, currentRaw);
+      if(fallback){
+        return {zone:satellite.zone,next:fallback,tier:"resgate",mode:"rescue",label:`Ver imóveis em ${fallback}`,reason:"A Bússola encontrou um bairro próximo para continuar sua busca"};
+      }
+    }
+
+    // 3. Bairro reconhecido pela zona, mesmo sem rota cadastrada.
+    const zone = inferZone(currentRaw);
+    if(zone){
+      const fallback = firstAvailable(zoneNeighborhoods[zone] || [], available, currentRaw);
+      if(fallback){
+        return {zone,next:fallback,tier:"resgate",mode:"rescue",label:`Ver imóveis em ${fallback}`,reason:"A Bússola encontrou outra opção disponível na mesma região"};
+      }
+    }
+
+    // 4. Fora do mapa: nunca deixa o comprador sem saída.
+    const globalFallback = firstAvailable(anchorPriority, available, currentRaw) || available.find(item => normalizeNeighborhood(item) !== currentKey);
+    if(globalFallback){
+      return {zone:"explorar",next:globalFallback,tier:"resgate",mode:"rescue",label:`Explorar ${globalFallback}`,reason:"A Bússola encontrou uma nova região para você comparar"};
+    }
+
+    return null;
+  }
+
+  let activeRoute = null;
+  let activeCurrent = "";
+
+  function renderCompass(){
+    const url = new URL(window.location.href);
+    const currentRaw = url.searchParams.get("bairro") || url.searchParams.get("neighborhood") || "";
+    const route = getCompassRoute(currentRaw);
+
+    activeRoute = route;
+    activeCurrent = currentRaw;
+
+    if(!route){
+      fab.classList.remove("is-ready","is-visible");
+      return;
+    }
+
+    const bedrooms = url.searchParams.get("dormitorios") || url.searchParams.get("bedrooms") || "";
+    url.searchParams.delete("bairro");
+    url.searchParams.delete("neighborhood");
+    url.searchParams.delete("region");
+    url.searchParams.set("bairro", route.next);
+
+    fab.href = url.pathname + url.search + url.hash;
+    fab.dataset.fromNeighborhood = currentRaw;
+    fab.dataset.toNeighborhood = route.next;
+    fab.dataset.tier = route.tier;
+
+    if(route.mode === "circuit"){
+      const zoneLabel = route.zone === "sul" ? "ZONA SUL" : "ZONA OESTE";
+      kicker.textContent = route.tier === "premium" ? `COMPARE · ${zoneLabel} PREMIUM` : `COMPARE · ${zoneLabel}`;
+    }else{
+      kicker.textContent = "BÚSSOLA · CONTINUE EXPLORANDO";
+    }
+
+    title.textContent = route.label || `Ver imóveis em ${route.next}`;
+    subtitle.textContent = bedrooms ? `${route.reason} · ${bedrooms}+ dormitórios` : route.reason;
+    fab.classList.add("is-ready");
+    fab.classList.toggle("is-visible", window.scrollY > 420);
+  }
+
+  window.addEventListener("scroll", () => {
+    if(activeRoute) fab.classList.toggle("is-visible", window.scrollY > 420);
+  }, {passive:true});
+
+  window.addEventListener("popstate", () => setTimeout(renderCompass, 50));
+
+  // O MATCH atualiza a URL sem necessariamente recarregar a página.
+  // Esta checagem leve mantém a Bússola sincronizada após Aplicar.
+  let lastSearch = window.location.search;
+  setInterval(() => {
+    if(window.location.search !== lastSearch){
+      lastSearch = window.location.search;
+      renderCompass();
+    }
+  }, 400);
+
+  fab.addEventListener("click", event => {
     event.preventDefault();
+    const route = activeRoute;
+    const currentRaw = activeCurrent;
+    if(!route) return;
 
-    // Abre o refinamento já apontando para o próximo bairro do circuito.
-    // Dormitórios e faixa de valor permanecem como estão.
     try{
       if(typeof updateAdMatchUI === "function") updateAdMatchUI();
-
       const neighborhoodSelect = document.getElementById("refineNeighborhood");
       const nextOption = neighborhoodSelect
-        ? [...neighborhoodSelect.options].find(option =>
-            normalizeNeighborhood(option.value) === normalizeNeighborhood(route.next)
-          )
+        ? [...neighborhoodSelect.options].find(option => normalizeNeighborhood(option.value) === normalizeNeighborhood(route.next))
         : null;
 
       if(!nextOption){
-        if(typeof showToast === "function"){
-          showToast(`Ainda não encontramos opções disponíveis em ${route.next} para este circuito.`);
-        }
+        renderCompass();
+        if(typeof showToast === "function") showToast("Atualizamos as opções disponíveis. Escolha outra região.");
         return;
       }
 
       neighborhoodSelect.value = nextOption.value;
-
-      // Mantém o contexto do circuito para telemetria no clique de abertura.
       window.__pendingNeighborhoodComparison = {
         from_neighborhood: currentRaw,
         to_neighborhood: route.next,
         circuit_tier: route.tier,
-        circuit_zone: route.zone
+        circuit_zone: route.zone,
+        compass_mode: route.mode
       };
 
       if(typeof setRefineMatchOpen === "function") setRefineMatchOpen(true);
     }catch(e){
-      console.warn("Falha ao abrir refinamento do circuito:", e);
+      console.warn("Falha ao abrir a Bússola:", e);
       window.location.href = fab.href;
       return;
     }
 
     try{
       if(typeof gtag === "function"){
-        gtag("event", "neighborhood_compare_open", {
+        gtag("event", route.mode === "circuit" ? "neighborhood_compare_open" : "neighborhood_compass_open", {
           from_neighborhood: currentRaw,
           to_neighborhood: route.next,
           circuit_tier: route.tier,
           circuit_zone: route.zone,
-          bedrooms: bedrooms || undefined,
+          compass_mode: route.mode,
           page_location: window.location.href
         });
       }
@@ -7599,20 +7697,25 @@ Promise.all([
 
     try{
       if(typeof supabaseTrack === "function"){
-        supabaseTrack("neighborhood_compare_open", {
+        supabaseTrack(route.mode === "circuit" ? "neighborhood_compare_open" : "neighborhood_compass_open", {
           from_neighborhood: currentRaw,
           to_neighborhood: route.next,
           circuit_tier: route.tier,
           circuit_zone: route.zone,
-          bedrooms: Number(bedrooms || 0) || 0,
+          compass_mode: route.mode,
           pathname: window.location.pathname,
           search: window.location.search
         });
       }
     }catch(e){}
   });
+
+  // Espera o catálogo preencher o select antes da primeira decisão.
+  setTimeout(renderCompass, 250);
+  setTimeout(renderCompass, 1200);
 })();
 </script>
+
 
 <script>
 /* PWA: registra o Service Worker sem alterar interface, MATCH ou tracking. */
