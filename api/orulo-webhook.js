@@ -276,7 +276,6 @@ function normalizeBuilding({
         ? Number(typology.stock)
         : null;
 
-    // Não publica tipologia sem estoque.
     if (
       stock !== null &&
       stock <= 0
@@ -292,10 +291,6 @@ function normalizeBuilding({
       typology.original_price ??
       building.min_price ??
       null;
-
-    // =====================================================
-    // CAPA
-    // =====================================================
 
     const imageUrl =
       galleryImages[0] ||
@@ -313,10 +308,6 @@ function normalizeBuilding({
       ] ||
       null;
 
-    // =====================================================
-    // TÍTULO
-    // =====================================================
-
     const titleParts = [
       building.name,
 
@@ -328,10 +319,6 @@ function normalizeBuilding({
         ? `${typology.bedrooms} dorm`
         : null
     ].filter(Boolean);
-
-    // =====================================================
-    // FEATURES DA UNIDADE
-    // =====================================================
 
     const typologyUnitFeatures =
       unitFeatures.filter(
@@ -356,10 +343,6 @@ function normalizeBuilding({
             );
         }
       );
-
-    // =====================================================
-    // PROPERTY
-    // =====================================================
 
     rows.push({
       external_id:
@@ -446,16 +429,8 @@ function normalizeBuilding({
         typology_id:
           String(typology.id),
 
-        // =================================================
-        // GALERIA
-        // =================================================
-
         images:
           galleryImages,
-
-        // =================================================
-        // TIPOLOGIA
-        // =================================================
 
         typology: {
           id:
@@ -516,10 +491,6 @@ function normalizeBuilding({
             null
         },
 
-        // =================================================
-        // EMPREENDIMENTO
-        // =================================================
-
         building: {
           id:
             building.id ??
@@ -545,10 +516,6 @@ function normalizeBuilding({
             building.type ??
             null,
 
-          // -----------------------------------------------
-          // INCORPORADORA
-          // -----------------------------------------------
-
           developer:
             building.developer
               ?.name ??
@@ -565,17 +532,9 @@ function normalizeBuilding({
               ?.name ??
             null,
 
-          // -----------------------------------------------
-          // DESCRIÇÃO
-          // -----------------------------------------------
-
           description:
             building.description ??
             null,
-
-          // -----------------------------------------------
-          // DATAS
-          // -----------------------------------------------
 
           opening_date:
             building.opening_date ??
@@ -584,10 +543,6 @@ function normalizeBuilding({
           launch_date:
             building.launch_date ??
             null,
-
-          // -----------------------------------------------
-          // FICHA TÉCNICA
-          // -----------------------------------------------
 
           total_units:
             building.total_units ??
@@ -621,24 +576,12 @@ function normalizeBuilding({
             building.stock ??
             null,
 
-          // -----------------------------------------------
-          // ENDEREÇO
-          // -----------------------------------------------
-
           address:
             building.address ??
             null,
 
-          // -----------------------------------------------
-          // FOTOS
-          // -----------------------------------------------
-
           images:
             galleryImages,
-
-          // -----------------------------------------------
-          // FEATURES
-          // -----------------------------------------------
 
           building_features:
             buildingFeatures,
@@ -648,10 +591,6 @@ function normalizeBuilding({
 
           unit_features:
             unitFeatures,
-
-          // -----------------------------------------------
-          // MÍDIA / LINKS
-          // -----------------------------------------------
 
           webpage:
             building.webpage ??
@@ -681,10 +620,6 @@ function normalizeBuilding({
             building.files ??
             [],
 
-          // -----------------------------------------------
-          // COMERCIAL
-          // -----------------------------------------------
-
           payment_conditions:
             building
               .payment_conditions ??
@@ -698,10 +633,6 @@ function normalizeBuilding({
             building
               .last_updated_pricetable_at ??
             null,
-
-          // -----------------------------------------------
-          // CONTROLE
-          // -----------------------------------------------
 
           updated_at:
             building.updated_at ??
@@ -849,14 +780,6 @@ async function deactivateStaleRows(
 
   const affected = [];
 
-  /*
-   * Fazemos PATCH individual por external_id.
-   *
-   * Isso é intencional:
-   * evita qualquer possibilidade de um filtro amplo
-   * desativar outro empreendimento.
-   */
-
   for (
     const externalId
     of staleExternalIds
@@ -915,7 +838,6 @@ async function deactivateStaleRows(
         affected.push(...data);
       }
     } catch {
-      // Sem retorno JSON.
     }
   }
 
@@ -1000,6 +922,27 @@ export default async function handler(
   req,
   res
 ) {
+
+  // =======================================================
+  // DIAGNÓSTICO TEMPORÁRIO — EVENTO ÓRULO
+  // =======================================================
+
+  console.log(
+    "ORULO_WEBHOOK_METHOD",
+    req.method
+  );
+
+  console.log(
+    "ORULO_WEBHOOK_HEADER_NAMES",
+    Object.keys(req.headers || {})
+  );
+
+  console.log(
+    "ORULO_WEBHOOK_BODY",
+    JSON.stringify(req.body || {})
+  );
+
+
   res.setHeader(
     "Cache-Control",
     "no-store"
@@ -1200,10 +1143,6 @@ export default async function handler(
 
     // =====================================================
     // 6. EXCLUDED_FROM_DISTRIBUTION
-    //
-    // Ainda NÃO alteramos.
-    // Esse status será tratado separadamente após
-    // fecharmos client_id / regra de distribuição.
     // =====================================================
 
     if (
@@ -1238,10 +1177,6 @@ export default async function handler(
       status ===
         "added_to_distribution"
     ) {
-      // ===================================================
-      // 7.1 AUTENTICA ÓRULO
-      // ===================================================
-
       const accessToken =
         await getOruloToken();
 
@@ -1254,20 +1189,12 @@ export default async function handler(
       };
 
 
-      // ===================================================
-      // 7.2 BUSCA BUILDING
-      // ===================================================
-
       const building =
         await getBuilding(
           buildingId,
           oruloHeaders
         );
 
-
-      // ===================================================
-      // 7.3 SOMENTE RESIDENCIAL
-      // ===================================================
 
       const finality =
         String(
@@ -1286,15 +1213,6 @@ export default async function handler(
             finality
           }
         );
-
-        /*
-         * Nesta versão NÃO desativamos automaticamente
-         * um building apenas porque veio com finalidade
-         * diferente.
-         *
-         * O evento removed continua sendo o mecanismo
-         * explícito de remoção.
-         */
 
         return res.status(200).json({
           ok: true,
@@ -1320,10 +1238,6 @@ export default async function handler(
       }
 
 
-      // ===================================================
-      // 7.4 IMAGENS + TIPOLOGIAS
-      // ===================================================
-
       const [
         galleryImages,
         typologies
@@ -1340,10 +1254,6 @@ export default async function handler(
       ]);
 
 
-      // ===================================================
-      // 7.5 NORMALIZA
-      // ===================================================
-
       const rows =
         normalizeBuilding({
           building,
@@ -1352,16 +1262,6 @@ export default async function handler(
           galleryImages
         });
 
-
-      // ===================================================
-      // 7.6 PROTEÇÃO
-      //
-      // Se a Órulo retornar zero properties válidas,
-      // NÃO desativamos automaticamente as antigas aqui.
-      //
-      // Isso evita apagar um building inteiro devido a
-      // resposta incompleta/transitória da API.
-      // ===================================================
 
       if (!rows.length) {
         console.warn(
@@ -1396,20 +1296,12 @@ export default async function handler(
       }
 
 
-      // ===================================================
-      // 7.7 BUSCA SOMENTE REGISTROS EXISTENTES DO BUILDING
-      // ===================================================
-
       const existingRows =
         await getExistingBuildingRows(
           buildingId,
           supabaseSecretKey
         );
 
-
-      // ===================================================
-      // 7.8 CALCULA TIPOLOGIAS ANTIGAS
-      // ===================================================
 
       const incomingExternalIds =
         new Set(
@@ -1437,10 +1329,6 @@ export default async function handler(
           );
 
 
-      // ===================================================
-      // 7.9 UPSERT SOMENTE DAS TIPOLOGIAS RECEBIDAS
-      // ===================================================
-
       const savedRows =
         await upsertBuildingRows(
           rows,
@@ -1448,21 +1336,12 @@ export default async function handler(
         );
 
 
-      // ===================================================
-      // 7.10 DESATIVA SOMENTE TIPOLOGIAS ANTIGAS
-      //      DO MESMO BUILDING
-      // ===================================================
-
       const deactivatedRows =
         await deactivateStaleRows(
           staleExternalIds,
           supabaseSecretKey
         );
 
-
-      // ===================================================
-      // 7.11 LOG
-      // ===================================================
 
       console.log(
         "ORULO_WEBHOOK_ACTIVE_PROCESSED",
@@ -1489,10 +1368,6 @@ export default async function handler(
         }
       );
 
-
-      // ===================================================
-      // 7.12 RESULTADO
-      // ===================================================
 
       return res.status(200).json({
         ok: true,
@@ -1595,15 +1470,6 @@ export default async function handler(
       "ORULO_WEBHOOK_FATAL",
       error
     );
-
-    /*
-     * Continuamos respondendo HTTP 200 ao emissor.
-     *
-     * IMPORTANTE:
-     * Isso ainda NÃO é a arquitetura final de recuperação
-     * de falhas. Antes da homologação precisamos fechar
-     * reconciliação/retentativa.
-     */
 
     return res.status(200).json({
       ok: true,
