@@ -932,6 +932,22 @@ body.ad-match-mode .results .card-body{padding-bottom:150px}
 @media (min-width:769px){.ad-budget-shell{place-items:center}.ad-budget-card{border-radius:28px;padding:30px}}
 
 
+.catalog-search-btn{
+  min-height:52px;
+  padding:0 20px;
+  border:0;
+  border-radius:14px;
+  background:#171717;
+  color:#fff;
+  font-weight:900;
+  white-space:nowrap;
+}
+.catalog-search-btn:active{transform:scale(.98)}
+@media (max-width:768px){
+  .explore-box{grid-template-columns:1fr!important}
+  .catalog-search-btn{width:100%;min-height:54px;background:#E4D0A3;color:#171513}
+}
+
 .catalog-region-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.catalog-region-btn{min-height:42px;padding:0 15px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-weight:850;font-size:12px}.catalog-region-btn.selected{background:var(--dark);border-color:var(--dark);color:#fff}
 </style>
 <style>
@@ -2215,8 +2231,14 @@ body.match-results-mode .refine-match-shell{
       <input
         id="catalogSearch"
         class="field"
-        placeholder="Empreendimento, bairro, endereço ou código">
+        placeholder="Empreendimento, condomínio, bairro, endereço ou código">
 
+      <button
+        id="catalogSearchBtn"
+        class="catalog-search-btn"
+        type="button">
+        BUSCAR IMÓVEL
+      </button>
 
     </div>
 
@@ -5969,6 +5991,26 @@ $("showCatalog")
         });
     }
   );
+
+
+function executeCatalogSearch(){
+  $("catalog").classList.add("visible");
+  renderCatalog();
+
+  $("catalog").scrollIntoView({
+    behavior:"smooth",
+    block:"start"
+  });
+}
+
+$("catalogSearchBtn").addEventListener("click", executeCatalogSearch);
+
+$("catalogSearch").addEventListener("keydown", event=>{
+  if(event.key === "Enter"){
+    event.preventDefault();
+    executeCatalogSearch();
+  }
+});
 
 
 [
