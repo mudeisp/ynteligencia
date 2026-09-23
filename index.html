@@ -2465,7 +2465,7 @@ body.match-results-mode .refine-match-shell{
   </div>
 </div>
 
-<button class="refine-match-fab" id="refineMatchFab" type="button">✦ Refinar meu MATCH</button>
+<button class="refine-match-fab" id="refineMatchFab" type="button">✦ Refinar MATCH</button>
 <div class="refine-match-shell" id="refineMatchShell" aria-hidden="true">
   <div class="refine-match-card" aria-labelledby="refineMatchTitle">
     <div class="refine-match-head">
@@ -4819,9 +4819,9 @@ function showMatches(){
       "visible"
     );
 
-  /* Primeiro mostra o motor/resultados; o refinamento aparece como barra compacta. */
+  /* Primeiro mostra o motor/resultados. No desktop o refinamento fica minimizado. */
   updateAdMatchUI();
-  setRefineMatchOpen(true);
+  setRefineMatchOpen(!window.matchMedia("(min-width:769px)").matches);
 
 
   $("resultSummary")
@@ -7062,7 +7062,7 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.active=Boolean(neighborhood || bedrooms || min || max);
   updateAdIntentPriceInUrl();
   updateAdMatchUI();
-  setRefineMatchOpen(true);
+  setRefineMatchOpen(!window.matchMedia("(min-width:769px)").matches);
   showMatches();
   try{gtag('event','match_refined',{region:regionKey||adIntent.neighborhood,neighborhood:adIntent.neighborhood,bedrooms:adIntent.bedrooms,min_price:min,max_price:max});}catch(e){}
 });
@@ -7079,7 +7079,7 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
 
   updateAdMatchUI();
-  setRefineMatchOpen(true);
+  setRefineMatchOpen(!window.matchMedia("(min-width:769px)").matches);
   showMatches();
   showToast("Refinamento limpo. Voltamos ao seu MATCH original.");
 });
@@ -7356,9 +7356,16 @@ Promise.all([
 
 
 <!-- =========================================================
-     COMPARAÇÃO CONTEXTUAL ENTRE BAIRROS
-     Circuito: Perdizes → Pompéia → Pinheiros → Perdizes
-     Preserva dormitórios, faixa de valor, UTMs e IDs de Ads.
+     COMPARAÇÃO CONTEXTUAL ENTRE BAIRROS · ZONA OESTE
+
+     NÍVEL 1 · PREMIUM
+     Pinheiros → Vila Madalena → Perdizes → Pompéia → Pinheiros
+
+     NÍVEL 2 · MÉDIO / MÉDIO-ALTO
+     Vila Romana → Lapa → Água Branca → Barra Funda → Vila Romana
+
+     Preserva dormitórios, faixa de valor, UTMs, GCLID/GBRAID/WBRAID
+     e demais parâmetros da campanha. Troca somente o bairro.
 ========================================================== -->
 <style>
   .neighborhood-compare-fab{
@@ -7369,7 +7376,7 @@ Promise.all([
     display:none;
     align-items:center;
     gap:10px;
-    width:min(286px,calc(100vw - 28px));
+    width:min(300px,calc(100vw - 28px));
     padding:11px 13px;
     border:1px solid rgba(198,167,107,.52);
     border-radius:16px;
@@ -7384,101 +7391,61 @@ Promise.all([
     pointer-events:none;
     transition:opacity .22s ease,transform .22s ease,box-shadow .22s ease;
   }
-
-  .neighborhood-compare-fab.is-ready{
-    display:flex;
-  }
-
-  .neighborhood-compare-fab.is-visible{
-    opacity:1;
-    transform:translateY(0);
-    pointer-events:auto;
-  }
-
-  .neighborhood-compare-fab:hover{
-    box-shadow:0 18px 42px rgba(32,28,23,.19);
-    transform:translateY(-2px);
-  }
+  .neighborhood-compare-fab.is-ready{display:flex}
+  .neighborhood-compare-fab.is-visible{opacity:1;transform:translateY(0);pointer-events:auto}
+  .neighborhood-compare-fab:hover{box-shadow:0 18px 42px rgba(32,28,23,.19);transform:translateY(-2px)}
 
   .neighborhood-compare-icon{
-    width:34px;
-    height:34px;
-    flex:0 0 34px;
-    display:grid;
-    place-items:center;
-    border-radius:50%;
-    background:#F0ECE3;
-    border:1px solid #DED8CD;
-    color:#6A635A;
-    font-size:15px;
+    width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;
+    border-radius:50%;background:#F0ECE3;border:1px solid #DED8CD;color:#6A635A;font-size:15px;
   }
+  .neighborhood-compare-copy{min-width:0;display:flex;flex-direction:column;gap:1px}
+  .neighborhood-compare-kicker{font-size:9px;line-height:1.2;letter-spacing:.11em;font-weight:800;color:#7D776E;text-transform:uppercase}
+  .neighborhood-compare-title{font-size:13px;line-height:1.25;font-weight:800;color:#4A443C}
+  .neighborhood-compare-subtitle{margin-top:1px;font-size:10px;line-height:1.25;color:#7D776E}
+  .neighborhood-compare-arrow{margin-left:auto;flex:0 0 auto;font-size:18px;line-height:1;color:#9A7D46}
 
-  .neighborhood-compare-copy{
-    min-width:0;
-    display:flex;
-    flex-direction:column;
-    gap:1px;
-  }
-
-  .neighborhood-compare-kicker{
-    font-size:9px;
-    line-height:1.2;
-    letter-spacing:.11em;
-    font-weight:800;
-    color:#7D776E;
-    text-transform:uppercase;
-  }
-
-  .neighborhood-compare-title{
-    font-size:13px;
-    line-height:1.25;
-    font-weight:800;
-    color:#4A443C;
-  }
-
-  .neighborhood-compare-subtitle{
-    margin-top:1px;
-    font-size:10px;
-    line-height:1.25;
-    color:#7D776E;
-  }
-
-  .neighborhood-compare-arrow{
-    margin-left:auto;
-    flex:0 0 auto;
-    font-size:18px;
-    line-height:1;
-    color:#9A7D46;
+  /* Refinar MATCH minimizado no desktop. */
+  @media(min-width:769px){
+    .refine-match-fab{
+      display:flex!important;
+      left:auto!important;
+      right:18px!important;
+      bottom:18px!important;
+      transform:none!important;
+      min-height:36px!important;
+      height:36px!important;
+      width:auto!important;
+      padding:0 13px!important;
+      border:1px solid rgba(198,167,107,.42)!important;
+      border-radius:999px!important;
+      background:rgba(24,24,22,.92)!important;
+      color:#F7F4ED!important;
+      box-shadow:0 10px 26px rgba(0,0,0,.18)!important;
+      font-size:11px!important;
+      font-weight:800!important;
+      opacity:.88;
+      white-space:nowrap;
+      -webkit-backdrop-filter:blur(12px);
+      backdrop-filter:blur(12px);
+    }
+    .refine-match-fab:hover{opacity:1}
+    .refine-match-shell{bottom:62px!important}
+    body.match-results-mode{padding-bottom:78px!important}
   }
 
   @media(max-width:768px){
-    .neighborhood-compare-fab{
-      left:10px;
-      bottom:82px;
-      width:min(252px,calc(100vw - 20px));
-      padding:9px 11px;
-      border-radius:14px;
-    }
-    .neighborhood-compare-icon{
-      width:30px;
-      height:30px;
-      flex-basis:30px;
-      font-size:13px;
-    }
-    .neighborhood-compare-title{font-size:12px;}
-    .neighborhood-compare-subtitle{font-size:9px;}
+    .neighborhood-compare-fab{left:10px;bottom:82px;width:min(262px,calc(100vw - 20px));padding:9px 11px;border-radius:14px}
+    .neighborhood-compare-icon{width:30px;height:30px;flex-basis:30px;font-size:13px}
+    .neighborhood-compare-title{font-size:12px}
+    .neighborhood-compare-subtitle{font-size:9px}
   }
 </style>
 
-<a
-  id="neighborhoodCompareFab"
-  class="neighborhood-compare-fab"
-  href="#"
-  aria-label="Comparar imóveis em outro bairro"
->
+<a id="neighborhoodCompareFab" class="neighborhood-compare-fab" href="#" aria-label="Comparar imóveis em outro bairro">
   <span class="neighborhood-compare-icon" aria-hidden="true">↔</span>
   <span class="neighborhood-compare-copy">
-    <span class="neighborhood-compare-kicker">COMPARE A REGIÃO</span>
+    <span class="neighborhood-compare-kicker" id="neighborhoodCompareKicker">COMPARE A REGIÃO</span>
     <strong class="neighborhood-compare-title" id="neighborhoodCompareTitle"></strong>
     <span class="neighborhood-compare-subtitle" id="neighborhoodCompareSubtitle"></span>
   </span>
@@ -7488,9 +7455,10 @@ Promise.all([
 <script>
 (() => {
   const fab = document.getElementById("neighborhoodCompareFab");
+  const kicker = document.getElementById("neighborhoodCompareKicker");
   const title = document.getElementById("neighborhoodCompareTitle");
   const subtitle = document.getElementById("neighborhoodCompareSubtitle");
-  if(!fab || !title || !subtitle) return;
+  if(!fab || !kicker || !title || !subtitle) return;
 
   const normalizeNeighborhood = value => String(value || "")
     .normalize("NFD")
@@ -7501,48 +7469,45 @@ Promise.all([
     .trim();
 
   const circuit = {
-    "perdizes": { next:"Pompéia", label:"Ver imóveis na Pompéia" },
-    "pompeia":  { next:"Pinheiros", label:"Ver imóveis em Pinheiros" },
-    "pinheiros":{ next:"Perdizes", label:"Ver imóveis em Perdizes" }
+    /* NÍVEL 1 · PREMIUM */
+    "pinheiros": {next:"Vila Madalena",tier:"premium",label:"Ver imóveis na Vila Madalena",reason:"Continue comparando no circuito premium"},
+    "vila madalena": {next:"Perdizes",tier:"premium",label:"Ver imóveis em Perdizes",reason:"Continue comparando no circuito premium"},
+    "perdizes": {next:"Pompéia",tier:"premium",label:"Ver imóveis na Pompéia",reason:"Compare opções próximas na Zona Oeste"},
+    "pompeia": {next:"Pinheiros",tier:"premium",label:"Ver imóveis em Pinheiros",reason:"Continue comparando no circuito premium"},
+
+    /* NÍVEL 2 · MÉDIO / MÉDIO-ALTO */
+    "vila romana": {next:"Lapa",tier:"medio",label:"Ver imóveis na Lapa",reason:"Compare alternativas na mesma faixa regional"},
+    "lapa": {next:"Água Branca",tier:"medio",label:"Ver imóveis na Água Branca",reason:"Compare alternativas na mesma faixa regional"},
+    "agua branca": {next:"Barra Funda",tier:"medio",label:"Ver imóveis na Barra Funda",reason:"Compare mobilidade, metragem e valor"},
+    "barra funda": {next:"Vila Romana",tier:"medio",label:"Ver imóveis na Vila Romana",reason:"Compare alternativas na mesma faixa regional"}
   };
 
   const url = new URL(window.location.href);
-  const currentRaw =
-    url.searchParams.get("bairro") ||
-    url.searchParams.get("neighborhood") ||
-    "";
-
+  const currentRaw = url.searchParams.get("bairro") || url.searchParams.get("neighborhood") || "";
   const currentKey = normalizeNeighborhood(currentRaw);
   const route = circuit[currentKey];
-
-  // Só aparece nas três jornadas bairristas definidas.
   if(!route) return;
 
-  const bedrooms =
-    url.searchParams.get("dormitorios") ||
-    url.searchParams.get("bedrooms") ||
-    "";
+  const bedrooms = url.searchParams.get("dormitorios") || url.searchParams.get("bedrooms") || "";
 
-  // Mantém toda a atribuição atual e troca somente o bairro.
   url.searchParams.delete("bairro");
   url.searchParams.delete("neighborhood");
   url.searchParams.delete("region");
   url.searchParams.set("bairro", route.next);
 
   fab.href = url.pathname + url.search + url.hash;
+  fab.dataset.fromNeighborhood = currentRaw;
+  fab.dataset.toNeighborhood = route.next;
+  fab.dataset.tier = route.tier;
+
+  kicker.textContent = route.tier === "premium" ? "COMPARE · ZONA OESTE PREMIUM" : "COMPARE · ZONA OESTE";
   title.textContent = route.label;
-  subtitle.textContent = bedrooms
-    ? `Compare mantendo ${bedrooms}+ dormitórios`
-    : "Compare opções equivalentes sem refazer o filtro";
+  subtitle.textContent = bedrooms ? `${route.reason} · ${bedrooms}+ dormitórios` : route.reason;
 
   fab.classList.add("is-ready");
 
-  const updateVisibility = () => {
-    const shouldShow = window.scrollY > 420;
-    fab.classList.toggle("is-visible", shouldShow);
-  };
-
-  window.addEventListener("scroll", updateVisibility, { passive:true });
+  const updateVisibility = () => fab.classList.toggle("is-visible", window.scrollY > 420);
+  window.addEventListener("scroll", updateVisibility, {passive:true});
   updateVisibility();
 
   fab.addEventListener("click", () => {
@@ -7551,8 +7516,22 @@ Promise.all([
         gtag("event", "neighborhood_compare_click", {
           from_neighborhood: currentRaw,
           to_neighborhood: route.next,
+          circuit_tier: route.tier,
           bedrooms: bedrooms || undefined,
           page_location: window.location.href
+        });
+      }
+    }catch(e){}
+
+    try{
+      if(typeof supabaseTrack === "function"){
+        supabaseTrack("neighborhood_compare_click", {
+          from_neighborhood: currentRaw,
+          to_neighborhood: route.next,
+          circuit_tier: route.tier,
+          bedrooms: Number(bedrooms || 0) || 0,
+          pathname: window.location.pathname,
+          search: window.location.search
         });
       }
     }catch(e){}
