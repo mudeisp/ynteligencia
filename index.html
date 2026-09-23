@@ -7469,17 +7469,49 @@ Promise.all([
     .trim();
 
   const circuit = {
-    /* NÍVEL 1 · PREMIUM */
-    "pinheiros": {next:"Vila Madalena",tier:"premium",label:"Ver imóveis na Vila Madalena",reason:"Continue comparando no circuito premium"},
-    "vila madalena": {next:"Perdizes",tier:"premium",label:"Ver imóveis em Perdizes",reason:"Continue comparando no circuito premium"},
-    "perdizes": {next:"Pompéia",tier:"premium",label:"Ver imóveis na Pompéia",reason:"Compare opções próximas na Zona Oeste"},
-    "pompeia": {next:"Pinheiros",tier:"premium",label:"Ver imóveis em Pinheiros",reason:"Continue comparando no circuito premium"},
+    /* =====================================================
+       ZONA OESTE · NÍVEL 1 · PREMIUM
+       Pinheiros → Vila Madalena → Perdizes → Pompéia → Pinheiros
+    ===================================================== */
+    "pinheiros": {zone:"oeste",next:"Vila Madalena",tier:"premium",label:"Ver imóveis na Vila Madalena",reason:"Continue comparando no circuito premium"},
+    "vila madalena": {zone:"oeste",next:"Perdizes",tier:"premium",label:"Ver imóveis em Perdizes",reason:"Continue comparando no circuito premium"},
+    "perdizes": {zone:"oeste",next:"Pompéia",tier:"premium",label:"Ver imóveis na Pompéia",reason:"Compare opções próximas na Zona Oeste"},
+    "pompeia": {zone:"oeste",next:"Pinheiros",tier:"premium",label:"Ver imóveis em Pinheiros",reason:"Continue comparando no circuito premium"},
 
-    /* NÍVEL 2 · MÉDIO / MÉDIO-ALTO */
-    "vila romana": {next:"Lapa",tier:"medio",label:"Ver imóveis na Lapa",reason:"Compare alternativas na mesma faixa regional"},
-    "lapa": {next:"Água Branca",tier:"medio",label:"Ver imóveis na Água Branca",reason:"Compare alternativas na mesma faixa regional"},
-    "agua branca": {next:"Barra Funda",tier:"medio",label:"Ver imóveis na Barra Funda",reason:"Compare mobilidade, metragem e valor"},
-    "barra funda": {next:"Vila Romana",tier:"medio",label:"Ver imóveis na Vila Romana",reason:"Compare alternativas na mesma faixa regional"}
+    /* =====================================================
+       ZONA OESTE · NÍVEL 2 · MÉDIO / MÉDIO-ALTO
+       Vila Romana → Lapa → Água Branca → Barra Funda → Vila Romana
+    ===================================================== */
+    "vila romana": {zone:"oeste",next:"Lapa",tier:"medio",label:"Ver imóveis na Lapa",reason:"Compare alternativas na mesma faixa regional"},
+    "lapa": {zone:"oeste",next:"Água Branca",tier:"medio",label:"Ver imóveis na Água Branca",reason:"Compare alternativas na mesma faixa regional"},
+    "agua branca": {zone:"oeste",next:"Barra Funda",tier:"medio",label:"Ver imóveis na Barra Funda",reason:"Compare mobilidade, metragem e valor"},
+    "barra funda": {zone:"oeste",next:"Vila Romana",tier:"medio",label:"Ver imóveis na Vila Romana",reason:"Compare alternativas na mesma faixa regional"},
+
+    /* =====================================================
+       ZONA SUL · NÍVEL 1 · PREMIUM
+       Moema → Campo Belo → Brooklin → Vila Olímpia → Moema
+
+       Circuito pensado para intenção comparável de compra:
+       bairros consolidados, ticket alto, mobilidade e eixo corporativo.
+    ===================================================== */
+    "moema": {zone:"sul",next:"Campo Belo",tier:"premium",label:"Ver imóveis no Campo Belo",reason:"Compare outra opção premium da Zona Sul"},
+    "campo belo": {zone:"sul",next:"Brooklin",tier:"premium",label:"Ver imóveis no Brooklin",reason:"Compare localização, metragem e mobilidade"},
+    "brooklin": {zone:"sul",next:"Vila Olímpia",tier:"premium",label:"Ver imóveis na Vila Olímpia",reason:"Continue comparando no eixo premium"},
+    "vila olimpia": {zone:"sul",next:"Moema",tier:"premium",label:"Ver imóveis em Moema",reason:"Compare outra referência premium da Zona Sul"},
+
+    /* =====================================================
+       ZONA SUL · NÍVEL 2 · MÉDIO / MÉDIO-ALTO
+       Vila Mariana → Vila Clementino → Saúde → Chácara Santo Antônio
+       → Santo Amaro → Vila Mariana
+
+       Aqui a comparação prioriza custo-benefício, acesso ao metrô,
+       serviços e alternativa de metragem/ticket.
+    ===================================================== */
+    "vila mariana": {zone:"sul",next:"Vila Clementino",tier:"medio",label:"Ver imóveis na Vila Clementino",reason:"Compare bairros próximos com perfil semelhante"},
+    "vila clementino": {zone:"sul",next:"Saúde",tier:"medio",label:"Ver imóveis na Saúde",reason:"Compare metragem, mobilidade e valor"},
+    "saude": {zone:"sul",next:"Chácara Santo Antônio",tier:"medio",label:"Ver imóveis na Chácara Santo Antônio",reason:"Compare alternativas no eixo da Zona Sul"},
+    "chacara santo antonio": {zone:"sul",next:"Santo Amaro",tier:"medio",label:"Ver imóveis em Santo Amaro",reason:"Compare mobilidade, estoque e faixa de valor"},
+    "santo amaro": {zone:"sul",next:"Vila Mariana",tier:"medio",label:"Ver imóveis na Vila Mariana",reason:"Volte ao circuito de comparação da Zona Sul"}
   };
 
   const url = new URL(window.location.href);
@@ -7500,7 +7532,10 @@ Promise.all([
   fab.dataset.toNeighborhood = route.next;
   fab.dataset.tier = route.tier;
 
-  kicker.textContent = route.tier === "premium" ? "COMPARE · ZONA OESTE PREMIUM" : "COMPARE · ZONA OESTE";
+  const zoneLabel = route.zone === "sul" ? "ZONA SUL" : "ZONA OESTE";
+  kicker.textContent = route.tier === "premium"
+    ? `COMPARE · ${zoneLabel} PREMIUM`
+    : `COMPARE · ${zoneLabel}`;
   title.textContent = route.label;
   subtitle.textContent = bedrooms ? `${route.reason} · ${bedrooms}+ dormitórios` : route.reason;
 
@@ -7517,6 +7552,7 @@ Promise.all([
           from_neighborhood: currentRaw,
           to_neighborhood: route.next,
           circuit_tier: route.tier,
+          circuit_zone: route.zone,
           bedrooms: bedrooms || undefined,
           page_location: window.location.href
         });
@@ -7529,6 +7565,7 @@ Promise.all([
           from_neighborhood: currentRaw,
           to_neighborhood: route.next,
           circuit_tier: route.tier,
+          circuit_zone: route.zone,
           bedrooms: Number(bedrooms || 0) || 0,
           pathname: window.location.pathname,
           search: window.location.search
