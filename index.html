@@ -7653,6 +7653,13 @@ Promise.all([
     const currentRaw = activeCurrent;
     if(!route) return;
 
+    // Se a Bússola for acionada dentro da ficha do imóvel,
+    // fecha a ficha antes de abrir o Refinar MATCH.
+    const propertyDetail = document.getElementById("photoModal");
+    if(propertyDetail){
+      propertyDetail.remove();
+    }
+
     try{
       if(typeof updateAdMatchUI === "function") updateAdMatchUI();
       const neighborhoodSelect = document.getElementById("refineNeighborhood");
