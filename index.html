@@ -7545,47 +7545,167 @@ Promise.all([
     return null;
   }
 
+  function getActiveZone(currentRaw){
+    const url = new URL(window.location.href);
+
+    // 1) Região explícita na URL tem prioridade.
+    const regionRaw = normalizeNeighborhood(
+      url.searchParams.get("region") ||
+      url.searchParams.get("regiao") ||
+      url.searchParams.get("zona") ||
+      ""
+    );
+
+    if(regionRaw){
+      if(regionRaw.includes("oeste")) return "oeste";
+      if(regionRaw.includes("sul")) return "sul";
+    }
+
+    // 2) Se a URL já está em um bairro conhecido, a zona desse bairro vale.
+    const neighborhoodZone = inferZone(currentRaw);
+    if(neighborhoodZone) return neighborhoodZone;
+
+    // 3) Preserva a intenção regional escolhida na sessão.
+    try{
+      const stored = sessionStorage.getItem("ynteligencia_active_zone");
+      if(stored === "oeste" || stored === "sul") return stored;
+    }catch(e){}
+
+    return null;
+  }
+
+  function rememberActiveZone(zone){
+    if(zone !== "oeste" && zone !== "sul") return;
+    try{
+      sessionStorage.setItem("ynteligencia_active_zone", zone);
+    }catch(e){}
+  }
+
   function getCompassRoute(currentRaw){
     const currentKey = normalizeNeighborhood(currentRaw);
     const available = getAvailableNeighborhoods();
     if(!available.length) return null;
 
-    // 1. Circuito conhecido: usa o próximo bairro se houver estoque/opção no filtro.
+    // A zona ativa é uma trava. Enquanto existir contexto regional,
+    // a Bússola nunca recomenda bairro de outra zona.
+    const activeZone = getActiveZone(currentRaw);
+    if(activeZone) rememberActiveZone(activeZone);
+
+    const zoneCandidates = activeZone
+      ? (zoneNeighborhoods[activeZone] || [])
+      : [];
+
     const direct = circuit[currentKey];
+
+    // 1. Circuito conhecido, respeitando obrigatoriamente a zona ativa.
     if(direct){
-      const exact = findAvailable(direct.next, available);
+      const lockedZone = activeZone || direct.zone;
+      rememberActiveZone(lockedZone);
+
+      // Só aceita o próximo bairro se ele também pertencer à zona travada.
+      const nextZone = inferZone(direct.next);
+      const exact = nextZone === lockedZone
+        ? findAvailable(direct.next, available)
+        : null;
+
       if(exact){
-        return {...direct,next:exact,mode:"circuit"};
+        return {...direct,zone:lockedZone,next:exact,mode:"circuit"};
       }
-      const sameZone = firstAvailable(zoneNeighborhoods[direct.zone] || [], available, currentRaw);
+
+      const sameZone = firstAvailable(
+        zoneNeighborhoods[lockedZone] || [],
+        available,
+        currentRaw
+      );
+
       if(sameZone){
-        return {zone:direct.zone,next:sameZone,tier:"resgate",mode:"rescue",label:`Ver imóveis em ${sameZone}`,reason:"A Bússola encontrou outra opção disponível na região"};
+        return {
+          zone:lockedZone,
+          next:sameZone,
+          tier:"resgate",
+          mode:"rescue",
+          label:`Ver imóveis em ${sameZone}`,
+          reason:"A Bússola encontrou outra opção disponível na mesma região"
+        };
       }
+
+      // Não cruza de zona automaticamente.
+      return null;
     }
 
-    // 2. Bairro satélite: conduz para uma porta de entrada do circuito.
+    // 2. Bairro satélite: também permanece preso à zona ativa.
     const satellite = satelliteMap[currentKey];
     if(satellite){
-      const exact = findAvailable(satellite.next, available);
-      const fallback = exact || firstAvailable(zoneNeighborhoods[satellite.zone] || [], available, currentRaw);
+      const lockedZone = activeZone || satellite.zone;
+      rememberActiveZone(lockedZone);
+
+      const targetZone = inferZone(satellite.next);
+      const exact = targetZone === lockedZone
+        ? findAvailable(satellite.next, available)
+        : null;
+
+      const fallback = exact || firstAvailable(
+        zoneNeighborhoods[lockedZone] || [],
+        available,
+        currentRaw
+      );
+
       if(fallback){
-        return {zone:satellite.zone,next:fallback,tier:"resgate",mode:"rescue",label:`Ver imóveis em ${fallback}`,reason:"A Bússola encontrou um bairro próximo para continuar sua busca"};
+        return {
+          zone:lockedZone,
+          next:fallback,
+          tier:"resgate",
+          mode:"rescue",
+          label:`Ver imóveis em ${fallback}`,
+          reason:"A Bússola encontrou um bairro próximo para continuar sua busca"
+        };
       }
+
+      return null;
     }
 
-    // 3. Bairro reconhecido pela zona, mesmo sem rota cadastrada.
-    const zone = inferZone(currentRaw);
-    if(zone){
-      const fallback = firstAvailable(zoneNeighborhoods[zone] || [], available, currentRaw);
+    // 3. Região selecionada sem bairro atual:
+    // recomenda SOMENTE bairros daquela região.
+    if(activeZone){
+      const fallback = firstAvailable(
+        zoneCandidates,
+        available,
+        currentRaw
+      );
+
       if(fallback){
-        return {zone,next:fallback,tier:"resgate",mode:"rescue",label:`Ver imóveis em ${fallback}`,reason:"A Bússola encontrou outra opção disponível na mesma região"};
+        return {
+          zone:activeZone,
+          next:fallback,
+          tier:"resgate",
+          mode:"rescue",
+          label:`Ver imóveis em ${fallback}`,
+          reason:"Continue explorando imóveis na região selecionada"
+        };
       }
+
+      // Se não houver opção naquela zona, não manda para outra zona.
+      return null;
     }
 
-    // 4. Fora do mapa: nunca deixa o comprador sem saída.
-    const globalFallback = firstAvailable(anchorPriority, available, currentRaw) || available.find(item => normalizeNeighborhood(item) !== currentKey);
+    // 4. Sem qualquer intenção regional:
+    // mantém o comportamento aberto da Bússola.
+    const globalFallback =
+      firstAvailable(anchorPriority, available, currentRaw) ||
+      available.find(item => normalizeNeighborhood(item) !== currentKey);
+
     if(globalFallback){
-      return {zone:"explorar",next:globalFallback,tier:"resgate",mode:"rescue",label:`Explorar ${globalFallback}`,reason:"A Bússola encontrou uma nova região para você comparar"};
+      const fallbackZone = inferZone(globalFallback);
+      if(fallbackZone) rememberActiveZone(fallbackZone);
+
+      return {
+        zone:fallbackZone || "explorar",
+        next:globalFallback,
+        tier:"resgate",
+        mode:"rescue",
+        label:`Explorar ${globalFallback}`,
+        reason:"A Bússola encontrou uma nova região para você comparar"
+      };
     }
 
     return null;
