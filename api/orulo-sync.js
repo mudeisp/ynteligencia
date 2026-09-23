@@ -58,35 +58,103 @@ export default async function handler(req, res) {
     };
 
     // =========================================================
-    // 2. BUSCA EMPREENDIMENTOS
+    // 2. BUSCA EMPREENDIMENTOS — PAGINAÇÃO COMPLETA
     // =========================================================
 
-    const params = new URLSearchParams({
-      state: "SP",
-      city: "São Paulo",
-      results_per_page: "50",
-      page: "1"
-    });
+    const buildings = [];
+    const RESULTS_PER_PAGE = 50;
+    const MAX_PAGES = 100;
 
-    const buildingsResponse = await fetch(
-      `https://www.orulo.com.br/api/v2/buildings?${params.toString()}`,
-      {
-        headers: oruloHeaders
-      }
-    );
+    let currentPage = 1;
+    let totalPagesDetected = null;
 
-    const buildingsData = await buildingsResponse.json();
-
-    if (!buildingsResponse.ok) {
-      return res.status(502).json({
-        ok: false,
-        error: "Falha ao consultar catálogo Órulo"
+    while (currentPage <= MAX_PAGES) {
+      const params = new URLSearchParams({
+        state: "SP",
+        city: "São Paulo",
+        results_per_page: String(RESULTS_PER_PAGE),
+        page: String(currentPage)
       });
+
+      const buildingsResponse = await fetch(
+        `https://www.orulo.com.br/api/v2/buildings?${params.toString()}`,
+        {
+          headers: oruloHeaders
+        }
+      );
+
+      let buildingsData = {};
+
+      try {
+        buildingsData = await buildingsResponse.json();
+      } catch {
+        buildingsData = {};
+      }
+
+      if (!buildingsResponse.ok) {
+        return res.status(502).json({
+          ok: false,
+          error: "Falha ao consultar catálogo Órulo",
+          page: currentPage,
+          status: buildingsResponse.status
+        });
+      }
+
+      const pageBuildings = Array.isArray(buildingsData.buildings)
+        ? buildingsData.buildings
+        : [];
+
+      buildings.push(...pageBuildings);
+
+      const informedTotalPages =
+        Number(
+          buildingsData.total_pages ??
+          buildingsData.meta?.total_pages ??
+          buildingsData.pagination?.total_pages ??
+          buildingsData.pagination?.pages ??
+          0
+        ) || 0;
+
+      if (informedTotalPages > 0) {
+        totalPagesDetected = informedTotalPages;
+      }
+
+      console.log(
+        "ORULO_SYNC_PAGE_RECEIVED",
+        {
+          page: currentPage,
+          received: pageBuildings.length,
+          accumulated: buildings.length,
+          totalPagesDetected
+        }
+      );
+
+      if (
+        totalPagesDetected !== null &&
+        currentPage >= totalPagesDetected
+      ) {
+        break;
+      }
+
+      if (pageBuildings.length < RESULTS_PER_PAGE) {
+        break;
+      }
+
+      currentPage++;
     }
 
-    const buildings = Array.isArray(buildingsData.buildings)
-      ? buildingsData.buildings
-      : [];
+    if (currentPage > MAX_PAGES) {
+      throw new Error(
+        `ORULO_PAGINATION_SAFETY_LIMIT_${MAX_PAGES}`
+      );
+    }
+
+    if (!buildings.length) {
+      return res.status(502).json({
+        ok: false,
+        error: "Nenhum empreendimento retornado pela Órulo"
+      });
+    }
 
     // =========================================================
     // 3. DETALHES + FOTOS + TIPOLOGIAS + NORMALIZAÇÃO
@@ -118,7 +186,7 @@ export default async function handler(req, res) {
         residentialBuildings++;
 
         // =====================================================
-        // 3.2 DETALHE COMPLETO
+        // 3.2 DETALHE COMPLETO DO EMPREENDIMENTO
         // =====================================================
 
         let building = buildingSummary;
@@ -170,8 +238,6 @@ export default async function handler(req, res) {
           );
         }
 
-        // Confirma novamente a finalidade após carregar detalhe.
-
         const finality = String(
           building.finality ||
           buildingSummary.finality ||
@@ -185,7 +251,7 @@ export default async function handler(req, res) {
         }
 
         // =====================================================
-        // 3.3 GALERIA
+        // 3.3 GALERIA DE FOTOS
         // =====================================================
 
         let galleryImages = [];
@@ -215,14 +281,13 @@ export default async function handler(req, res) {
                 : [];
 
             galleryImages = oruloImages
-              .map(
-                (image) =>
-                  image?.["1024x1024"] ||
-                  image?.["2280x1800"] ||
-                  image?.["520x280"] ||
-                  image?.["200x140"] ||
-                  image?.url ||
-                  null
+              .map((image) =>
+                image?.["1024x1024"] ||
+                image?.["2280x1800"] ||
+                image?.["520x280"] ||
+                image?.["200x140"] ||
+                image?.url ||
+                null
               )
               .filter(Boolean)
               .filter(
@@ -279,7 +344,7 @@ export default async function handler(req, res) {
             : [];
 
         // =====================================================
-        // 3.5 FEATURES
+        // 3.5 CARACTERÍSTICAS DO EMPREENDIMENTO
         // =====================================================
 
         const buildingFeatures =
@@ -319,10 +384,6 @@ export default async function handler(req, res) {
             buildingSummary.min_price ??
             null;
 
-          // ===================================================
-          // CAPA
-          // ===================================================
-
           const imageUrl =
             galleryImages[0] ||
             building.default_image?.["1024x1024"] ||
@@ -334,10 +395,6 @@ export default async function handler(req, res) {
             buildingSummary.default_image?.["2280x1800"] ||
             buildingSummary.default_image?.["200x140"] ||
             null;
-
-          // ===================================================
-          // TÍTULO
-          // ===================================================
 
           const titleParts = [
             building.name ||
@@ -351,10 +408,6 @@ export default async function handler(req, res) {
               ? `${typology.bedrooms} dorm`
               : null
           ].filter(Boolean);
-
-          // ===================================================
-          // FEATURES ASSOCIADAS À TIPOLOGIA
-          // ===================================================
 
           const typologyUnitFeatures =
             unitFeatures.filter((feature) => {
@@ -372,10 +425,6 @@ export default async function handler(req, res) {
                 .map(String)
                 .includes(String(typology.id));
             });
-
-          // ===================================================
-          // PROPERTY
-          // ===================================================
 
           rows.push({
             external_id: externalId,
@@ -442,10 +491,6 @@ export default async function handler(req, res) {
 
             active: true,
 
-            // =================================================
-            // RAW DATA
-            // =================================================
-
             raw_data: {
               source: "orulo",
 
@@ -455,16 +500,8 @@ export default async function handler(req, res) {
               typology_id:
                 String(typology.id),
 
-              // ===============================================
-              // GALERIA
-              // ===============================================
-
               images:
                 galleryImages,
-
-              // ===============================================
-              // TIPOLOGIA
-              // ===============================================
 
               typology: {
                 id:
@@ -518,10 +555,6 @@ export default async function handler(req, res) {
                   null
               },
 
-              // ===============================================
-              // EMPREENDIMENTO
-              // ===============================================
-
               building: {
                 id:
                   building.id ??
@@ -550,10 +583,6 @@ export default async function handler(req, res) {
                   building.type ??
                   null,
 
-                // ---------------------------------------------
-                // INCORPORADORA
-                // ---------------------------------------------
-
                 developer:
                   building.developer?.name ??
                   building.publisher?.name ??
@@ -567,18 +596,9 @@ export default async function handler(req, res) {
                   building.publisher?.name ??
                   null,
 
-                // ---------------------------------------------
-                // DESCRIÇÃO
-                // ---------------------------------------------
-
                 description:
                   building.description ??
                   null,
-
-                // ---------------------------------------------
-                // DATAS
-                // opening_date = entrega
-                // ---------------------------------------------
 
                 opening_date:
                   building.opening_date ??
@@ -587,10 +607,6 @@ export default async function handler(req, res) {
                 launch_date:
                   building.launch_date ??
                   null,
-
-                // ---------------------------------------------
-                // FICHA TÉCNICA
-                // ---------------------------------------------
 
                 total_units:
                   building.total_units ??
@@ -624,43 +640,22 @@ export default async function handler(req, res) {
                   building.stock ??
                   null,
 
-                // ---------------------------------------------
-                // ENDEREÇO
-                // ---------------------------------------------
-
                 address:
                   building.address ??
                   buildingSummary.address ??
                   null,
 
-                // ---------------------------------------------
-                // FOTOS
-                // ---------------------------------------------
-
                 images:
                   galleryImages,
-
-                // ---------------------------------------------
-                // CARACTERÍSTICAS CONDOMINIAIS
-                // ---------------------------------------------
 
                 building_features:
                   buildingFeatures,
 
-                // Compatibilidade com versão anterior
                 features:
                   buildingFeatures,
 
-                // ---------------------------------------------
-                // CARACTERÍSTICAS DAS UNIDADES
-                // ---------------------------------------------
-
                 unit_features:
                   unitFeatures,
-
-                // ---------------------------------------------
-                // MÍDIA / LINKS
-                // ---------------------------------------------
 
                 webpage:
                   building.webpage ??
@@ -691,10 +686,6 @@ export default async function handler(req, res) {
                   building.files ??
                   [],
 
-                // ---------------------------------------------
-                // COMERCIAL
-                // ---------------------------------------------
-
                 payment_conditions:
                   building.payment_conditions ??
                   [],
@@ -706,10 +697,6 @@ export default async function handler(req, res) {
                 last_updated_pricetable_at:
                   building.last_updated_pricetable_at ??
                   null,
-
-                // ---------------------------------------------
-                // CONTROLE
-                // ---------------------------------------------
 
                 updated_at:
                   building.updated_at ??
@@ -862,6 +849,12 @@ export default async function handler(req, res) {
 
       buildings_received:
         buildings.length,
+
+      pages_loaded:
+        currentPage,
+
+      total_pages_detected:
+        totalPagesDetected,
 
       residential_buildings:
         residentialBuildings,
