@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -7688,64 +7689,124 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
 
 async function loadAllNewPropertyRows(){
 
+  /*
+    Supabase/PostgREST limita uma resposta grande a 1.000 linhas.
+    Então buscamos em páginas usando o header Range.
+
+    Exemplo:
+    0-999
+    1000-1999
+    2000-2999
+    ...
+  */
   const PAGE_SIZE = 1000;
 
-  let offset = 0;
+  let from = 0;
   let allRows = [];
 
   while(true){
 
-    const pageUrl =
-      `${SUPABASE_PROPERTIES_URL}` +
-      `&limit=${PAGE_SIZE}` +
-      `&offset=${offset}`;
+    const to =
+      from + PAGE_SIZE - 1;
 
     const response =
       await fetch(
-        pageUrl,
+        SUPABASE_PROPERTIES_URL +
+        "&order=external_id.asc",
         {
           cache:"no-store",
+
           headers:{
             "apikey":
               SUPABASE_PUBLISHABLE_KEY,
+
             "Authorization":
-              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+
+            "Range-Unit":
+              "items",
+
+            "Range":
+              `${from}-${to}`
           }
         }
       );
 
+
     if(!response.ok){
+
       throw new Error(
         `Supabase properties: ${response.status}`
       );
+
     }
+
 
     const rows =
       await response.json();
 
+
     if(!Array.isArray(rows)){
-      break;
+
+      throw new Error(
+        "Supabase properties: resposta inválida"
+      );
+
     }
 
-    allRows.push(...rows);
+
+    allRows.push(
+      ...rows
+    );
+
 
     console.log(
-      "Ynteligencia Supabase page:",
+      "Ynteligencia Supabase página:",
       {
-        offset,
-        received: rows.length,
-        totalLoaded: allRows.length
+        from,
+        to,
+        recebidos:
+          rows.length,
+        acumulado:
+          allRows.length
       }
     );
 
-    if(rows.length < PAGE_SIZE){
+
+    /*
+      Se vier menos que 1.000,
+      chegamos à última página.
+    */
+    if(
+      rows.length <
+      PAGE_SIZE
+    ){
       break;
     }
 
-    offset += PAGE_SIZE;
+
+    from +=
+      PAGE_SIZE;
+
+
+    /*
+      Proteção contra loop acidental.
+      Muito acima do estoque atual.
+    */
+    if(
+      from > 50000
+    ){
+      console.warn(
+        "Paginação interrompida por proteção de segurança."
+      );
+      break;
+    }
+
   }
 
+
   return allRows;
+
 }
 
 
@@ -7785,12 +7846,13 @@ let newProperties=[];
 try{
 
   /*
-    Carrega TODOS os imóveis novos do Supabase em páginas de 1.000.
-    O PostgREST/Supabase pode limitar respostas grandes, então
-    uma única chamada pode devolver apenas parte da tabela.
+    IMPORTANTE:
+    não fazemos mais uma única chamada ao Supabase.
+    Carregamos todas as páginas para não parar em 1.000 imóveis.
   */
   const novosRows=
     await loadAllNewPropertyRows();
+
 
   newProperties=
     Array.isArray(novosRows)
@@ -7803,22 +7865,25 @@ try{
           )
       : [];
 
+
   console.log(
     "Ynteligencia novos carregados:",
     {
-      supabaseRows:
+      recebidosDoSupabase:
         Array.isArray(novosRows)
           ? novosRows.length
           : 0,
 
-      validNewProperties:
+      novosValidos:
         newProperties.length,
 
       brooklinPaulista:
         newProperties.filter(
           p=>
-            norm(p.neighborhood)
-              .includes("brooklin paulista")
+            norm(
+              p.neighborhood
+            ) ===
+            "brooklin paulista"
         ).length
     }
   );
