@@ -2129,6 +2129,77 @@ body.campaign-catalog-mode .catalog{
 }
 </style>
 
+
+<style>
+/* V4 · CTA principal minimalista: foto + WhatsApp */
+.specialist-float{
+  width:82px!important;
+  min-width:82px!important;
+  max-width:82px!important;
+  height:58px!important;
+  min-height:58px!important;
+  padding:0!important;
+  right:12px!important;
+  border-radius:18px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.specialist-float .specialist-copy{
+  width:32px!important;
+  min-width:32px!important;
+  height:58px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0!important;
+  margin:0!important;
+}
+.specialist-float .specialist-kicker,
+.specialist-float .specialist-title{
+  display:none!important;
+}
+.specialist-float .specialist-whatsapp{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+  font-size:0!important;
+}
+.specialist-float .specialist-whatsapp svg{
+  width:25px!important;
+  height:25px!important;
+}
+.specialist-float .specialist-photo-wrap{
+  position:absolute!important;
+  left:6px!important;
+  bottom:6px!important;
+  width:48px!important;
+  height:68px!important;
+}
+.specialist-float .specialist-photo{
+  width:48px!important;
+  height:68px!important;
+  border-radius:14px!important;
+  object-fit:cover!important;
+  object-position:center top!important;
+}
+@media(max-width:768px){
+  .specialist-float{
+    left:auto!important;
+    right:10px!important;
+    width:82px!important;
+    min-width:82px!important;
+    max-width:82px!important;
+    padding:0!important;
+  }
+  .specialist-float .specialist-copy{
+    margin-left:50px!important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -2828,9 +2899,7 @@ body.campaign-catalog-mode .catalog{
     <span class="specialist-whatsapp">
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <path fill="currentColor" d="M16.02 3C8.84 3 3 8.72 3 15.76c0 2.25.6 4.45 1.75 6.38L3 29l7.04-1.81a13.18 13.18 0 0 0 5.97 1.45h.01C23.2 28.64 29 22.92 29 15.88 29 8.83 23.2 3 16.02 3Zm0 23.49h-.01a10.9 10.9 0 0 1-5.56-1.5l-.4-.24-4.18 1.08 1.12-4-.26-.41a10.46 10.46 0 0 1-1.67-5.66c0-5.86 4.92-10.63 10.97-10.63 2.93 0 5.68 1.12 7.75 3.15a10.43 10.43 0 0 1 3.21 7.59c-.01 5.86-4.93 10.62-10.97 10.62Zm6.02-7.95c-.33-.16-1.95-.94-2.25-1.05-.3-.11-.52-.16-.74.16-.22.32-.85 1.05-1.04 1.27-.19.21-.38.24-.71.08-.33-.16-1.39-.5-2.65-1.59a9.9 9.9 0 0 1-1.83-2.23c-.19-.32-.02-.5.14-.66.15-.14.33-.37.49-.56.16-.19.22-.32.33-.53.11-.21.05-.4-.03-.56-.08-.16-.74-1.75-1.01-2.4-.27-.64-.54-.55-.74-.56h-.63c-.22 0-.57.08-.87.4-.3.32-1.14 1.09-1.14 2.66 0 1.56 1.17 3.07 1.33 3.28.16.21 2.3 3.44 5.57 4.82.78.33 1.38.52 1.86.67.78.24 1.49.21 2.05.13.63-.09 1.95-.78 2.22-1.53.27-.75.27-1.4.19-1.53-.08-.13-.3-.21-.63-.37Z"/>
-      </svg>
-      WhatsApp
-    </span>
+      </svg></span>
   </span>
 </button>
 
@@ -6122,7 +6191,7 @@ function openPropertySpecialist(p){
 }
 
 
-function extractFloorplans(raw){
+function extractFloorplans(raw,p=null){
   const found=[];
   const seen=new Set();
 
@@ -6130,40 +6199,73 @@ function extractFloorplans(raw){
     if(typeof value!=="string")return;
     const url=clean(value);
     if(!validURL(url) || seen.has(url))return;
+    if(!/\.(jpg|jpeg|png|webp|avif)(\?|$)/i.test(url) && !/image|photo|media|cdn|orulo/i.test(url))return;
     seen.add(url);
     found.push(url);
   }
 
-  function walk(value,path="",depth=0){
-    if(value==null || depth>9)return;
-    const plantContext=/plant|planta|floor.?plan|floorplan|blueprint|typolog/i.test(path);
+  function objectText(obj){
+    if(!obj || typeof obj!=="object")return "";
+    return Object.entries(obj)
+      .filter(([k,v])=>typeof v==="string" && !/^https?:\/\//i.test(v))
+      .map(([k,v])=>`${k} ${v}`)
+      .join(" ");
+  }
 
-    if(typeof value==="string"){
-      if(plantContext && /^https?:\/\//i.test(value))add(value);
-      return;
-    }
+  function collectUrls(obj){
+    if(!obj || typeof obj!=="object")return;
+    Object.entries(obj).forEach(([k,v])=>{
+      if(typeof v==="string" && /^https?:\/\//i.test(v)){
+        if(/url|image|photo|picture|file|src|original|large|medium/i.test(k))add(v);
+      }else if(Array.isArray(v)){
+        v.forEach(item=>{
+          if(typeof item==="string" && /^https?:\/\//i.test(item))add(item);
+          else if(item && typeof item==="object")collectUrls(item);
+        });
+      }else if(v && typeof v==="object"){
+        collectUrls(v);
+      }
+    });
+  }
+
+  function walk(value,path="",depth=0){
+    if(value==null || depth>10)return;
 
     if(Array.isArray(value)){
       value.forEach((item,index)=>walk(item,`${path}[${index}]`,depth+1));
       return;
     }
 
-    if(typeof value==="object"){
-      Object.entries(value).forEach(([key,val])=>{
-        const next=path ? `${path}.${key}` : key;
-        const keyIsPlant=/plant|planta|floor.?plan|floorplan|blueprint/i.test(key);
+    if(typeof value!=="object")return;
 
-        if(typeof val==="string"){
-          if((plantContext || keyIsPlant) && /^https?:\/\//i.test(val))add(val);
-        }else{
-          walk(val,next,depth+1);
-        }
-      });
-    }
+    const context=`${path} ${objectText(value)}`;
+    const isPlant=/\b(planta|plantas|floor\s*plan|floorplan|blueprint|layout|tipologia|typology)\b/i.test(context);
+
+    if(isPlant)collectUrls(value);
+
+    Object.entries(value).forEach(([key,val])=>{
+      const next=path ? `${path}.${key}` : key;
+      if(typeof val==="string"){
+        if(/\b(planta|plantas|floor.?plan|blueprint|layout|tipologia|typology)\b/i.test(next) &&
+           /^https?:\/\//i.test(val)) add(val);
+      }else{
+        walk(val,next,depth+1);
+      }
+    });
   }
 
+  // Procura tanto no raw_data quanto em estruturas já normalizadas do imóvel.
   walk(raw,"raw_data",0);
-  return found.slice(0,8);
+  if(p){
+    walk(p,"property",0);
+    walk(p.photos,"property.photos",0);
+    walk(p.images,"property.images",0);
+    walk(p.floorplans,"property.floorplans",0);
+    walk(p.plans,"property.plans",0);
+    walk(p.typologies,"property.typologies",0);
+  }
+
+  return found.slice(0,12);
 }
 
 function propertyMapQuery(p,addressData){
@@ -6224,6 +6326,48 @@ function openFloorplan(url,p){
   document.body.appendChild(box);
 }
 
+
+function extractPropertyOptions(raw,p=null){
+  const options=[];
+  const seen=new Set();
+
+  function add(label){
+    label=clean(label);
+    if(!label || label.length>120)return;
+    const key=normalizeText(label);
+    if(!key || seen.has(key))return;
+    seen.add(key);
+    options.push(label);
+  }
+
+  const candidates=[
+    raw?.typologies, raw?.typology, raw?.units, raw?.unit_types,
+    raw?.building?.typologies, raw?.building?.units,
+    p?.typologies, p?.rawData?.typologies
+  ];
+
+  candidates.forEach(list=>{
+    if(!list)return;
+    (Array.isArray(list)?list:[list]).forEach(item=>{
+      if(typeof item==="string"){add(item);return}
+      if(!item || typeof item!=="object")return;
+      const areaValue=item.area || item.private_area || item.usable_area;
+      const bedrooms=item.bedrooms ?? item.rooms;
+      const suites=item.suites;
+      const parking=item.parking_spaces ?? item.parking;
+      const parts=[];
+      if(item.name || item.title || item.label)parts.push(item.name || item.title || item.label);
+      if(areaValue)parts.push(`${area(areaValue)} m²`);
+      if(bedrooms)parts.push(`${bedrooms} dorm.`);
+      if(suites)parts.push(`${suites} suíte${Number(suites)>1?"s":""}`);
+      if(parking)parts.push(`${parking} vaga${Number(parking)>1?"s":""}`);
+      if(parts.length)add(parts.join(" · "));
+    });
+  });
+
+  return options.slice(0,10);
+}
+
 function showPhotoModal(id){
   const p=propertyForInteraction(id);
   if(!p)return;
@@ -6269,7 +6413,8 @@ function showPhotoModal(id){
   const building=raw.building && typeof raw.building==="object" ? raw.building : {};
   const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
   const addressData=building.address && typeof building.address==="object" ? building.address : {};
-  const floorplans=extractFloorplans(raw);
+  const floorplans=extractFloorplans(raw,p);
+  const propertyOptions=extractPropertyOptions(raw,p);
   const mapQuery=propertyMapQuery(p,addressData);
   const mapEmbedUrl=mapQuery
     ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`
@@ -6393,10 +6538,19 @@ function showPhotoModal(id){
           <p>${esc(description)}</p>
         </section>` : ""}
 
-      ${floorplans.length ? `
-        <section class="detail-section detail-floorplans">
-          <div class="detail-section-title">Plantas</div>
-          <h3>Plantas do condomínio</h3>
+      ${propertyOptions.length ? `
+        <section class="detail-section">
+          <div class="detail-section-title">Opções</div>
+          <h3>Opções disponíveis neste condomínio</h3>
+          <div class="detail-chips">
+            ${propertyOptions.map(option=>`<span>${esc(option)}</span>`).join("")}
+          </div>
+        </section>` : ""}
+
+      <section class="detail-section detail-floorplans">
+        <div class="detail-section-title">Plantas</div>
+        <h3>Plantas do condomínio</h3>
+        ${floorplans.length ? `
           <div class="detail-floorplan-grid">
             ${floorplans.map((url,index)=>`
               <button type="button" class="detail-floorplan-card" data-floorplan="${esc(url)}">
@@ -6404,8 +6558,10 @@ function showPhotoModal(id){
                 <span>Ver planta ${index+1}</span>
               </button>
             `).join("")}
-          </div>
-        </section>` : ""}
+          </div>` :
+          `<p class="detail-map-address">Planta não disponível nos dados deste imóvel.</p>`
+        }
+      </section>
 
       ${mapEmbedUrl ? `
         <section class="detail-section detail-location-section">
