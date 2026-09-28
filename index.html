@@ -2260,6 +2260,13 @@ body.match-results-mode .refine-match-shell{
           <option value="usados">Somente usados</option>
         </select>
 
+        <select id="catalogSort" class="field" aria-label="Ordenar imóveis">
+          <option value="price_asc">Mais barato primeiro</option>
+          <option value="price_desc">Mais caro primeiro</option>
+          <option value="area_desc">Maior área primeiro</option>
+          <option value="area_asc">Menor área primeiro</option>
+        </select>
+
         <select id="catalogType" class="field">
           <option value="">Todos os tipos</option>
           <option value="apartamento">Apartamento</option>
@@ -5806,6 +5813,9 @@ function renderCatalog(){
   const catalogSource=
     $("catalogSource")?.value || "todos";
 
+  const catalogSort=
+    $("catalogSort")?.value || "price_asc";
+
   /*
     Mantém sourceMode coerente com a busca do catálogo
     para tracking e interações posteriores.
@@ -5976,6 +5986,71 @@ function renderCatalog(){
     );
 
 
+  /*
+    ORDENAÇÃO DO CATÁLOGO
+    Padrão: mais barato → mais caro.
+    Imóveis sem preço vão para o final.
+  */
+  list.sort((a,b)=>{
+
+    const valueA=
+      Number(a.value || 0);
+
+    const valueB=
+      Number(b.value || 0);
+
+    const areaA=
+      Number(a.area || 0);
+
+    const areaB=
+      Number(b.area || 0);
+
+
+    if(catalogSort==="price_desc"){
+
+      if(!valueA && !valueB)return 0;
+      if(!valueA)return 1;
+      if(!valueB)return -1;
+
+      return valueB - valueA;
+
+    }
+
+
+    if(catalogSort==="area_desc"){
+
+      if(!areaA && !areaB)return 0;
+      if(!areaA)return 1;
+      if(!areaB)return -1;
+
+      return areaB - areaA;
+
+    }
+
+
+    if(catalogSort==="area_asc"){
+
+      if(!areaA && !areaB)return 0;
+      if(!areaA)return 1;
+      if(!areaB)return -1;
+
+      return areaA - areaB;
+
+    }
+
+
+    /*
+      price_asc — padrão
+    */
+    if(!valueA && !valueB)return 0;
+    if(!valueA)return 1;
+    if(!valueB)return -1;
+
+    return valueA - valueB;
+
+  });
+
+
   $("catalogStatus")
     .textContent=
       `${list.length} imóveis disponíveis`;
@@ -6051,6 +6126,7 @@ const CATALOG_QUERY_KEYS=[
   "busca",
   "tipo",
   "source",
+  "ordem",
   "valor_min",
   "valor_max",
   "dormitorios",
@@ -6095,6 +6171,9 @@ function updateCatalogUrl(){
 
   const type=
     $("catalogType")?.value || "";
+
+  const sort=
+    $("catalogSort")?.value || "price_asc";
 
   const minPrice=
     numberBR(
@@ -6163,6 +6242,16 @@ function updateCatalogUrl(){
     url.searchParams.set(
       "tipo",
       type
+    );
+  }
+
+  if(
+    sort &&
+    sort!=="price_asc"
+  ){
+    url.searchParams.set(
+      "ordem",
+      sort
     );
   }
 
@@ -6298,6 +6387,27 @@ function loadCatalogFromUrl(){
   setValue(
     "catalogType",
     params.get("tipo") || ""
+  );
+
+  const requestedSort=
+    (
+      params.get("ordem") ||
+      "price_asc"
+    ).toLowerCase();
+
+  const safeSort=
+    [
+      "price_asc",
+      "price_desc",
+      "area_desc",
+      "area_asc"
+    ].includes(requestedSort)
+      ? requestedSort
+      : "price_asc";
+
+  setValue(
+    "catalogSort",
+    safeSort
   );
 
   setValue(
@@ -6450,6 +6560,7 @@ $("catalogSearch").addEventListener("keydown", event=>{
   "catalogSearch",
   "catalogNeighborhood",
   "catalogSource",
+  "catalogSort",
   "catalogType",
   "minPrice",
   "maxPrice",
@@ -6490,6 +6601,7 @@ function resetCatalogState(render=true){
   ].forEach(id=>{ if($(id)) $(id).value=""; });
 
   if($("catalogSource")) $("catalogSource").value="todos";
+  if($("catalogSort")) $("catalogSort").value="price_asc";
   sourceMode="todos";
 
   catalogRegion="";
