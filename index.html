@@ -1981,6 +1981,68 @@ body.campaign-catalog-mode .catalog{
 }
 </style>
 
+
+<style>
+/* ===== YNTELIGENCIA ADS V2: CATÁLOGO → DETALHE → CONVERSÃO ===== */
+.specialist-float{
+  min-width:0!important;max-width:300px!important;right:16px!important;
+  padding:8px 11px 8px 8px!important
+}
+.specialist-photo-wrap,.specialist-photo{width:52px!important;height:52px!important}
+.specialist-title{font-size:14px!important}
+.specialist-kicker{font-size:8px!important}
+.specialist-whatsapp{font-size:11px!important;margin-top:3px!important}
+
+.detail-specialist{
+  margin:22px 0 8px;padding:16px;border:1px solid #ded8cd;border-radius:20px;
+  background:#fcfaf6;display:flex;align-items:center;gap:13px
+}
+.detail-specialist img{
+  width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center top;
+  flex:0 0 64px;border:3px solid #fff;box-shadow:0 5px 16px rgba(0,0,0,.12)
+}
+.detail-specialist-copy{flex:1;min-width:0}
+.detail-specialist-copy small{
+  display:block;font-size:9px;font-weight:900;letter-spacing:.12em;color:#8b6c35;
+  text-transform:uppercase;margin-bottom:3px
+}
+.detail-specialist-copy strong{display:block;font-size:17px;line-height:1.15;color:#29251f}
+.detail-specialist-copy p{margin:4px 0 0;font-size:12px;line-height:1.4;color:#6e685f}
+.detail-specialist button{
+  border:0;border-radius:999px;background:#159b50;color:#fff;font-weight:900;
+  padding:12px 15px;cursor:pointer;white-space:nowrap
+}
+.detail-similar{margin:26px 0 92px;padding-top:20px;border-top:1px solid #ded8cd}
+.detail-similar h3{margin:0 0 4px;font-size:20px}
+.detail-similar>p{margin:0 0 13px;color:#777168;font-size:12px}
+.detail-similar-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.detail-similar-card{
+  border:1px solid #ded8cd;border-radius:15px;background:#fff;overflow:hidden;
+  padding:0;text-align:left;cursor:pointer
+}
+.detail-similar-card img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:#eee}
+.detail-similar-card span{display:block;padding:9px 10px 11px}
+.detail-similar-card strong{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-similar-card em{display:block;margin-top:3px;font-style:normal;color:#756f66;font-size:11px}
+.detail-similar-card b{display:block;margin-top:5px;font-size:12px}
+
+@media(max-width:768px){
+  .specialist-float{
+    left:auto!important;right:9px!important;width:215px!important;
+    bottom:max(9px,env(safe-area-inset-bottom))!important;
+    min-height:56px!important;padding:7px 9px 7px 60px!important
+  }
+  .specialist-photo-wrap{left:8px!important;bottom:6px!important;width:48px!important;height:66px!important}
+  .specialist-photo{width:48px!important;height:66px!important;border-radius:14px!important}
+  .specialist-kicker{display:none!important}
+  .specialist-title{font-size:12px!important}
+  .detail-specialist{display:grid;grid-template-columns:56px 1fr;padding:13px;gap:10px}
+  .detail-specialist img{width:56px;height:56px}
+  .detail-specialist button{grid-column:1/-1;width:100%}
+  .detail-similar-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -2675,8 +2737,8 @@ body.campaign-catalog-mode .catalog{
   </span>
 
   <span class="specialist-copy">
-    <span class="specialist-kicker">Atendimento personalizado</span>
-    <span class="specialist-title">Falar com o especialista</span>
+    <span class="specialist-kicker" id="specialistFloatKicker">Precisa de ajuda?</span>
+    <span class="specialist-title" id="specialistFloatTitle">Falar com o especialista</span>
     <span class="specialist-whatsapp">
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <path fill="currentColor" d="M16.02 3C8.84 3 3 8.72 3 15.76c0 2.25.6 4.45 1.75 6.38L3 29l7.04-1.81a13.18 13.18 0 0 0 5.97 1.45h.01C23.2 28.64 29 22.92 29 15.88 29 8.83 23.2 3 16.02 3Zm0 23.49h-.01a10.9 10.9 0 0 1-5.56-1.5l-.4-.24-4.18 1.08 1.12-4-.26-.41a10.46 10.46 0 0 1-1.67-5.66c0-5.86 4.92-10.63 10.97-10.63 2.93 0 5.68 1.12 7.75 3.15a10.43 10.43 0 0 1 3.21 7.59c-.01 5.86-4.93 10.62-10.97 10.62Zm6.02-7.95c-.33-.16-1.95-.94-2.25-1.05-.3-.11-.52-.16-.74.16-.22.32-.85 1.05-1.04 1.27-.19.21-.38.24-.71.08-.33-.16-1.39-.5-2.65-1.59a9.9 9.9 0 0 1-1.83-2.23c-.19-.32-.02-.5.14-.66.15-.14.33-.37.49-.56.16-.19.22-.32.33-.53.11-.21.05-.4-.03-.56-.08-.16-.74-1.75-1.01-2.4-.27-.64-.54-.55-.74-.56h-.63c-.22 0-.57.08-.87.4-.3.32-1.14 1.09-1.14 2.66 0 1.56 1.17 3.07 1.33 3.28.16.21 2.3 3.44 5.57 4.82.78.33 1.38.52 1.86.67.78.24 1.49.21 2.05.13.63-.09 1.95-.78 2.22-1.53.27-.75.27-1.4.19-1.53-.08-.13-.3-.21-.63-.37Z"/>
@@ -5899,9 +5961,98 @@ function detailUpdatedLabel(p,building,typology){
   return `Atualizado há ${days} dias`;
 }
 
+
+function renderDetailSimilar(base,modal){
+  const grid=modal?.querySelector("#detailSimilarGrid");
+  const section=modal?.querySelector("#detailSimilarSection");
+  if(!grid || !section || !base)return;
+
+  const n=normalizeText(base.neighborhood||"");
+  const beds=Number(base.bedrooms)||0;
+  const price=Number(base.value)||0;
+
+  const ranked=(properties||[])
+    .filter(x=>String(x.id)!==String(base.id))
+    .map(x=>{
+      let score=0;
+      if(n && normalizeText(x.neighborhood||"")===n)score+=6;
+      if(beds && Number(x.bedrooms)===beds)score+=3;
+      const xv=Number(x.value)||0;
+      if(price && xv){
+        const d=Math.abs(xv-price)/price;
+        if(d<=.15)score+=3;
+        else if(d<=.30)score+=1;
+      }
+      if(String(x.source||"")===String(base.source||""))score+=1;
+      return {x,score};
+    })
+    .filter(v=>v.score>=5)
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,4);
+
+  if(!ranked.length){section.style.display="none";return}
+
+  grid.innerHTML=ranked.map(({x})=>{
+    const imgs=photoList(x);
+    const img=imgs[0]||"";
+    return `
+      <button type="button" class="detail-similar-card" data-property-id="${esc(String(x.id||""))}">
+        ${img?`<img src="${esc(img)}" alt="${esc(x.name||"Imóvel")}" loading="lazy">`:""}
+        <span>
+          <strong>${esc(x.name||"Imóvel")}</strong>
+          <em>${esc(x.neighborhood||"")}${x.bedrooms?` · ${x.bedrooms} dorms.`:""}${x.area?` · ${area(x.area)} m²`:""}</em>
+          <b>${Number(x.value)>0?money(x.value):"Consulte"}</b>
+        </span>
+      </button>`;
+  }).join("");
+
+  grid.querySelectorAll("[data-property-id]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const pid=btn.dataset.propertyId;
+      try{gtag("event","similar_property_click",{from_property_id:String(base.id||""),property_id:String(pid||"")})}catch(error){}
+      modal.remove();
+      showPhotoModal(pid);
+    });
+  });
+}
+
+function openPropertySpecialist(p){
+  if(!p)return;
+  try{
+    gtag("event","property_whatsapp_click",{
+      property_id:String(p.id||""),
+      property_name:p.name||"",
+      neighborhood:p.neighborhood||"",
+      property_value:Number(p.value)||0
+    });
+  }catch(error){}
+  supabaseTrack("property_whatsapp_click",{
+    property_id:String(p.id||""),
+    property_name:p.name||"",
+    neighborhood:p.neighborhood||"",
+    property_value:Number(p.value)||0
+  });
+  openLeadCapture(p);
+}
+
 function showPhotoModal(id){
   const p=propertyForInteraction(id);
   if(!p)return;
+
+  try{
+    sessionStorage.setItem("ynt_catalog_scroll",String(window.scrollY||0));
+    sessionStorage.setItem("ynt_catalog_url",window.location.href);
+  }catch(error){}
+
+  try{
+    gtag("event","property_view",{
+      property_id:String(p.id||""),
+      property_name:p.name||"",
+      neighborhood:p.neighborhood||"",
+      property_value:Number(p.value)||0,
+      source_mode:p.source||sourceMode||"todos"
+    });
+  }catch(error){}
 
   supabaseTrack("property_view",{
     property:{
@@ -5974,6 +6125,7 @@ function showPhotoModal(id){
   const modal=document.createElement("div");
   modal.id="photoModal";
   modal.className="photo-detail-shell";
+  modal.dataset.propertyId=String(p.id||"");
 
   modal.innerHTML=`
     <div class="detail-gallery">
@@ -6053,11 +6205,27 @@ function showPhotoModal(id){
           <h3>${esc(p.neighborhood || "São Paulo")}</h3>
           <p>${esc(fullAddress)}</p>
         </section>` : ""}
+
+      <section class="detail-specialist">
+        <img src="/PERFIL.jfif" alt="Especialista Ynteligencia">
+        <div class="detail-specialist-copy">
+          <small>Atendimento personalizado</small>
+          <strong>Gostou deste imóvel?</strong>
+          <p>Posso verificar disponibilidade, condições e agendamento de visita.</p>
+        </div>
+        <button class="detail-specialist-btn" type="button">Falar com o especialista</button>
+      </section>
+
+      <section class="detail-similar" id="detailSimilarSection">
+        <h3>Imóveis semelhantes</h3>
+        <p>Outras opções próximas da sua busca.</p>
+        <div class="detail-similar-grid" id="detailSimilarGrid"></div>
+      </section>
     </main>
 
     <div class="detail-sticky-cta">
       <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">Compartilhar</button>
-      <button class="detail-interest-btn" type="button">Quero conhecer</button>
+      <button class="detail-interest-btn" type="button">Falar com o especialista</button>
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
@@ -6078,8 +6246,10 @@ function showPhotoModal(id){
     ].filter(Boolean).join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
   });
-  modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>interest(String(p.id||""),String(p.name||"")));
+  modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
+  modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   document.body.appendChild(modal);
+  renderDetailSimilar(p,modal);
   updateDetailGallery();
 }
 
@@ -6167,7 +6337,16 @@ document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
   btn.addEventListener("click",()=>setCatalogRegion(btn.dataset.region || ""));
 });
 
+
+function updateSpecialistContext(){
+  const kicker=$("specialistFloatKicker");
+  if(!kicker)return;
+  const n=$("catalogNeighborhood")?.value || adIntent?.neighborhood || "";
+  kicker.textContent=n ? `Dúvidas sobre ${n}?` : "Precisa de ajuda?";
+}
+
 function renderCatalog(){
+  updateSpecialistContext();
 
   /*
     Não renderiza catálogo vazio durante a carga.
@@ -7326,15 +7505,19 @@ $("specialistFloat")?.addEventListener(
       console.warn("specialist_cta_click não registrado:",error);
     }
 
+    const openDetail=document.getElementById("photoModal");
+    if(openDetail){
+      const detailId=openDetail.dataset?.propertyId;
+      const detailProperty=detailId ? propertyForInteraction(detailId) : null;
+      if(detailProperty){openPropertySpecialist(detailProperty);return;}
+    }
+
     openLeadCapture({
       id:"specialist-general",
       name:"Atendimento personalizado Ynteligencia",
-      neighborhood:
-        $("catalogNeighborhood")?.value ||
-        adIntent?.neighborhood ||
-        "",
+      neighborhood:$("catalogNeighborhood")?.value || adIntent?.neighborhood || "",
       value:0,
-      source:"especialista"
+      source:"especialista_catalogo"
     });
   }
 );
@@ -7378,11 +7561,11 @@ function openLeadCapture(p){
       </button>
 
       <div style="font-size:11px;font-weight:900;letter-spacing:1.3px;color:#D6B56F;margin-bottom:8px">
-        TENHO INTERESSE
+        ATENDIMENTO PERSONALIZADO
       </div>
 
       <h2 style="margin:0 42px 8px 0;font-size:28px;line-height:1.1;color:#182232">
-        Receba atendimento sobre este imóvel
+        Quer informações sobre este imóvel?
       </h2>
 
       <p style="margin:0 0 18px;color:#697487;line-height:1.5">
