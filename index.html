@@ -6281,8 +6281,10 @@ function extractAllPropertyImages(p,raw){
     if(typeof url!=="string")return;
     url=clean(url);
     if(!validURL(url) || seen.has(url))return;
+    // Aceita também Google Drive/thumbnail. As fotos dos usados no photos.json
+    // usam URLs como drive.google.com/thumbnail?... e não possuem extensão .jpg.
     if(!/\.(jpg|jpeg|png|webp|avif)(\?|$)/i.test(url) &&
-       !/image|photo|media|cdn|orulo|cloudinary|amazonaws/i.test(url))return;
+       !/image|photo|picture|media|cdn|thumbnail|drive\.google\.com|orulo|cloudinary|amazonaws/i.test(url))return;
     seen.add(url);
     result.push({url,meta:clean(meta)});
   }
@@ -6323,10 +6325,14 @@ function extractAllPropertyImages(p,raw){
     }
   }
 
-  // Primeiro, as fotos que o app já conhece.
+  // Primeiro, TODAS as fotos que o app já conhece.
+  // Nos usados, photoList() lê prioritariamente photos.json.
   try{
-    (photoList(p)||[]).forEach((url,i)=>add(url,`Foto ${i+1}`));
-  }catch(error){}
+    const knownPhotos=photoList(p)||[];
+    knownPhotos.forEach((url,i)=>add(url,`Foto ${i+1}`));
+  }catch(error){
+    console.warn("Falha ao carregar fotos conhecidas do imóvel:",error);
+  }
 
   // Depois, todas as estruturas disponíveis.
   walk(p?.photos,"property.photos",0);
@@ -6710,6 +6716,17 @@ function showPhotoModal(id){
   const detailPhotos=allPropertyImages.length
     ? allPropertyImages.map(item=>item.url)
     : photos;
+
+  console.info("YNT_DETAIL_PHOTOS",{
+    property_id:String(p.id||""),
+    source:p.source||"",
+    photos_json_or_property:photos.length,
+    gallery_total:detailPhotos.length,
+    manifest_has_key:Boolean(
+      photoManifest[String(p.id)] ||
+      photoManifest[p.id]
+    )
+  });
 
   if(!detailPhotos.length){
     showToast("As imagens deste imóvel ainda estão sendo atualizadas.");
