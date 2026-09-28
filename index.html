@@ -2431,6 +2431,10 @@ body.match-results-mode .refine-match-shell{
       id="catalogGrid">
     </div>
 
+    <div style="display:flex;justify-content:center;margin:28px 0 8px;">
+      <button id="catalogLoadMore" type="button" class="catalog-search-btn" style="display:none;min-width:220px;">CARREGAR MAIS 30</button>
+    </div>
+
   </div>
 </section>
 
@@ -2600,6 +2604,15 @@ let sourceMode="todos";
 let inventoryReady=false;
 let inventoryLoading=true;
 let inventoryLoadError=false;
+
+const CATALOG_PAGE_SIZE=30;
+let usedPropertiesCache=[];
+let newPropertiesCache=[];
+let newCatalogOffset=0;
+let newCatalogHasMore=true;
+let newCatalogLoading=false;
+let newCatalogTotal=0;
+let newCatalogRequestId=0;
 
 /*
   LOCALIZAÇÃO ATIVA
@@ -5905,8 +5918,8 @@ function setCatalogRegion(regionKey){
   // Se o catálogo já estiver aberto, a troca de região atualiza na hora
   // e também gera o caminho compartilhável.
   if($("catalog").classList.contains("visible")){
-    renderCatalog();
     updateCatalogUrl();
+    executeCatalogSearch();
   }
 }
 
@@ -6206,9 +6219,21 @@ function renderCatalog(){
   });
 
 
-  $("catalogStatus")
-    .textContent=
-      `${list.length} imóveis disponíveis`;
+  const usedFilteredCount=list.filter(p=>p.source!=="novos").length;
+  const sourceForStatus=$("catalogSource")?.value || "todos";
+  let totalAvailable=list.length;
+  if(sourceForStatus==="novos") totalAvailable=newCatalogTotal || list.length;
+  else if(sourceForStatus==="todos") totalAvailable=usedFilteredCount + (newCatalogTotal || list.filter(p=>p.source==="novos").length);
+
+  $("catalogStatus").textContent=`${list.length} exibidos${totalAvailable>list.length ? ` · ${totalAvailable} encontrados` : ""}`;
+
+  const loadMoreButton=$("catalogLoadMore");
+  if(loadMoreButton){
+    const canLoadMore=sourceForStatus!=="usados" && newCatalogHasMore;
+    loadMoreButton.style.display=canLoadMore ? "" : "none";
+    loadMoreButton.disabled=newCatalogLoading;
+    loadMoreButton.textContent=newCatalogLoading ? "CARREGANDO..." : "CARREGAR MAIS 30";
+  }
 
 
   $("catalogGrid")
@@ -6573,10 +6598,11 @@ function loadCatalogFromUrl(){
   };
 
 
-  setValue(
-    "catalogNeighborhood",
-    params.get("bairro") || ""
-  );
+  const urlNeighborhood=params.get("bairro") || "";
+  if(urlNeighborhood && $("catalogNeighborhood") && ![...$("catalogNeighborhood").options].some(option=>norm(option.value)===norm(urlNeighborhood))){
+    $("catalogNeighborhood").insertAdjacentHTML("beforeend",`<option value="${esc(urlNeighborhood)}">${esc(urlNeighborhood)}</option>`);
+  }
+  setValue("catalogNeighborhood",urlNeighborhood);
 
   setValue(
     "catalogSearch",
@@ -6692,7 +6718,7 @@ function loadCatalogFromUrl(){
   setRefineMatchOpen(false);
   setFiltersOpen(false);
 
-  renderCatalog();
+  executeCatalogSearch();
 
 
   /*
@@ -6734,61 +6760,17 @@ function renderCatalogAndUpdateUrl(){
 
 
 async function applyCatalogLocation(){
-
-  const nextCity=
-    clean(
-      $("catalogCity")?.value ||
-      "São Paulo"
-    ) || "São Paulo";
-
-  const nextState=
-    String(
-      $("catalogState")?.value ||
-      "SP"
-    )
-    .trim()
-    .toUpperCase() || "SP";
-
-
-  const changed=
-    norm(nextCity)!==norm(activeCity) ||
-    nextState!==activeState;
-
-
-  activeCity=nextCity;
-  activeState=nextState;
-
-  updateCatalogUrl();
-
-
-  if(!changed){
-    renderCatalog();
-    return;
-  }
-
-
-  /*
-    Troca de cidade = nova consulta no Supabase.
-    Não baixa o Brasil inteiro.
-  */
-  inventoryReady=false;
-  inventoryLoading=true;
-  inventoryLoadError=false;
-
-  renderCatalog();
-
+  activeCity=clean($("catalogCity")?.value || "São Paulo") || "São Paulo";
+  activeState=String($("catalogState")?.value || "SP").trim().toUpperCase() || "SP";
   resetCatalogState(false);
-
-  await loadInventory();
-
-  if($("catalog")){
-    $("catalog").classList.add("visible");
-  }
-
+  await fetchNewCatalogPage({reset:true});
+  inventoryReady=true;
+  inventoryLoading=false;
+  inventoryLoadError=false;
+  $("catalog")?.classList.add("visible");
   renderCatalog();
   updateCatalogUrl();
 }
-
 
 $("catalogCity")?.addEventListener(
   "change",
@@ -6803,45 +6785,35 @@ $("catalogState")?.addEventListener(
 
 async function executeCatalogSearch(){
   $("catalog").classList.add("visible");
-
-  const nextCity=
-    clean(
-      $("catalogCity")?.value ||
-      activeCity
-    ) || activeCity;
-
-  const nextState=
-    String(
-      $("catalogState")?.value ||
-      activeState
-    ).trim().toUpperCase() || activeState;
-
-  if(
-    norm(nextCity)!==norm(activeCity) ||
-    nextState!==activeState
-  ){
-    activeCity=nextCity;
-    activeState=nextState;
-
-    inventoryReady=false;
-    inventoryLoading=true;
-    inventoryLoadError=false;
-
-    renderCatalog();
-
-    await loadInventory();
-  }
-
+  activeCity=clean($("catalogCity")?.value || activeCity) || activeCity;
+  activeState=String($("catalogState")?.value || activeState).trim().toUpperCase() || activeState;
+  if($("catalogStatus")) $("catalogStatus").textContent="Carregando imóveis...";
+  if($("catalogLoadMore")) $("catalogLoadMore").style.display="none";
+  await fetchNewCatalogPage({reset:true});
+  inventoryReady=true;
+  inventoryLoading=false;
+  inventoryLoadError=false;
   renderCatalog();
   updateCatalogUrl();
-
-  $("catalog").scrollIntoView({
-    behavior:"smooth",
-    block:"start"
-  });
+  $("catalog").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 $("catalogSearchBtn").addEventListener("click", executeCatalogSearch);
+
+$("catalogLoadMore")?.addEventListener("click",async()=>{
+  const button=$("catalogLoadMore");
+  if(button){button.disabled=true;button.textContent="CARREGANDO...";}
+  try{
+    await fetchNewCatalogPage({reset:false});
+    renderCatalog();
+  }catch(error){
+    console.error("Erro ao carregar mais imóveis:",error);
+    showToast("Não foi possível carregar mais imóveis agora.");
+  }finally{
+    if(button)button.disabled=false;
+    renderCatalog();
+  }
+});
 
 $("catalogSearch").addEventListener("keydown", event=>{
   if(event.key === "Enter"){
@@ -6852,30 +6824,24 @@ $("catalogSearch").addEventListener("keydown", event=>{
 
 
 [
-  "catalogSearch",
   "catalogNeighborhood",
   "catalogSource",
   "catalogSort",
   "catalogType",
+  "catalogBedrooms",
+  "catalogParking"
+]
+.forEach(id=>$(id)?.addEventListener("change",()=>{updateCatalogUrl();executeCatalogSearch();}));
+
+[
+  "catalogSearch",
   "minPrice",
   "maxPrice",
-  "catalogBedrooms",
   "minArea",
-  "catalogParking",
   "maxCondo",
   "maxIptu"
 ]
-.forEach(
-  id=>
-    $(id)?.addEventListener(
-
-      $(id).tagName==="SELECT"
-        ? "change"
-        : "input",
-
-      renderCatalogAndUpdateUrl
-    )
-);
+.forEach(id=>$(id)?.addEventListener("input",updateCatalogUrl));
 
 
 function resetCatalogState(render=true){
@@ -7981,294 +7947,113 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
    INVENTÁRIO
 ========================================================= */
 
-async function loadAllNewPropertyRows(){
+function catalogServerQuery(offset=0){
+  const url=new URL("https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties");
+  url.searchParams.set("source","eq.novos");
+  url.searchParams.set("active","eq.true");
+  url.searchParams.set("select","*");
+  url.searchParams.set("city",`eq.${activeCity}`);
+  url.searchParams.set("state",`eq.${activeState}`);
 
-  /*
-    Supabase/PostgREST costuma limitar respostas a 1.000 linhas.
-    O filtro city/state acontece no servidor ANTES do download.
-    Paginação explícita por URL evita depender de Range/CORS:
+  const neighborhood=$("catalogNeighborhood")?.value || "";
+  const search=clean($("catalogSearch")?.value || "");
+  const minPrice=numberBR($("minPrice")?.value || "");
+  const maxPrice=numberBR($("maxPrice")?.value || "");
+  const bedrooms=$("catalogBedrooms")?.value || "";
+  const minArea=numberBR($("minArea")?.value || "");
+  const parking=$("catalogParking")?.value || "";
+  const sort=$("catalogSort")?.value || "price_asc";
 
-    offset=0&limit=1000
-    offset=1000&limit=1000
-    offset=2000&limit=1000
-    ...
-  */
-
-  const PAGE_SIZE=1000;
-
-  let offset=0;
-  let allRows=[];
-
-
-  while(true){
-
-    const locationFilter=
-      `&city=eq.${encodeURIComponent(activeCity)}` +
-      `&state=eq.${encodeURIComponent(activeState)}`;
-
-    const url=
-      `${SUPABASE_PROPERTIES_URL}` +
-      locationFilter +
-      `&order=external_id.asc` +
-      `&limit=${PAGE_SIZE}` +
-      `&offset=${offset}`;
-
-
-    console.log(
-      "Ynteligencia buscando Supabase:",
-      {
-        city:activeCity,
-        state:activeState,
-        offset,
-        limit:PAGE_SIZE
-      }
-    );
-
-
-    const response=
-      await fetch(
-        url,
-        {
-          cache:"no-store",
-
-          headers:{
-            "apikey":
-              SUPABASE_PUBLISHABLE_KEY,
-
-            "Authorization":
-              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
-          }
-        }
-      );
-
-
-    if(!response.ok){
-
-      const responseText=
-        await response.text().catch(()=>"" );
-
-      throw new Error(
-        `Supabase properties página ${offset}: ${response.status} ${responseText}`
-      );
-
-    }
-
-
-    const rows=
-      await response.json();
-
-
-    if(!Array.isArray(rows)){
-
-      throw new Error(
-        `Supabase properties página ${offset}: resposta inválida`
-      );
-
-    }
-
-
-    allRows.push(
-      ...rows
-    );
-
-
-    console.log(
-      "Ynteligencia Supabase página carregada:",
-      {
-        offset,
-        recebidos:rows.length,
-        acumulado:allRows.length
-      }
-    );
-
-
-    /*
-      Última página.
-    */
-    if(
-      rows.length < PAGE_SIZE
-    ){
-      break;
-    }
-
-
-    offset += PAGE_SIZE;
-
-
-    /*
-      Proteção contra loop acidental.
-    */
-    if(offset > 50000){
-
-      console.warn(
-        "Paginação do Supabase interrompida por limite de segurança."
-      );
-
-      break;
-    }
-
+  if(neighborhood) url.searchParams.set("neighborhood",`eq.${neighborhood}`);
+  if(minPrice && maxPrice){
+    url.searchParams.set("and",`(price.gte.${minPrice},price.lte.${maxPrice})`);
+  }else if(minPrice){
+    url.searchParams.set("price",`gte.${minPrice}`);
+  }else if(maxPrice){
+    url.searchParams.set("price",`lte.${maxPrice}`);
   }
+  if(bedrooms) url.searchParams.set("bedrooms",`gte.${Number(bedrooms)}`);
+  if(minArea) url.searchParams.set("area",`gte.${minArea}`);
+  if(parking) url.searchParams.set("parking_spaces",parking==="0" ? "eq.0" : `gte.${Number(parking)}`);
+  if(search){
+    const safeSearch=search.replace(/[(),]/g," ").trim();
+    if(safeSearch){
+      url.searchParams.set("or",`(development_name.ilike.*${safeSearch}*,neighborhood.ilike.*${safeSearch}*,external_id.ilike.*${safeSearch}*)`);
+    }
+  }
+  const orderMap={price_asc:"price.asc.nullslast",price_desc:"price.desc.nullslast",area_desc:"area.desc.nullslast",area_asc:"area.asc.nullslast"};
+  url.searchParams.set("order",orderMap[sort] || orderMap.price_asc);
+  url.searchParams.set("limit",String(CATALOG_PAGE_SIZE));
+  url.searchParams.set("offset",String(offset));
+  return url.toString();
+}
 
+async function fetchNewCatalogPage({reset=false}={}){
+  const source=$("catalogSource")?.value || "todos";
+  if(source==="usados"){
+    if(reset){newPropertiesCache=[];newCatalogOffset=0;newCatalogHasMore=false;newCatalogTotal=0;}
+    properties=deduplicate([...usedPropertiesCache]);
+    return;
+  }
+  if(newCatalogLoading) return;
+  if(!reset && !newCatalogHasMore) return;
+  if(reset){newCatalogOffset=0;newCatalogHasMore=true;newCatalogTotal=0;newPropertiesCache=[];}
 
-  return allRows;
-
+  const requestId=++newCatalogRequestId;
+  newCatalogLoading=true;
+  try{
+    const response=await fetch(catalogServerQuery(newCatalogOffset),{
+      cache:"no-store",
+      headers:{
+        "apikey":SUPABASE_PUBLISHABLE_KEY,
+        "Authorization":`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Prefer":"count=exact"
+      }
+    });
+    if(!response.ok){
+      const t=await response.text().catch(()=>"");
+      throw new Error(`Supabase catálogo: ${response.status} ${t}`);
+    }
+    const rows=await response.json();
+    if(requestId!==newCatalogRequestId) return;
+    const contentRange=response.headers.get("content-range") || "";
+    const totalMatch=contentRange.match(/\/(\d+)$/);
+    if(totalMatch) newCatalogTotal=Number(totalMatch[1])||0;
+    const mapped=Array.isArray(rows)?rows.map(mapOruloProperty).filter(p=>p.id&&p.value>0):[];
+    newPropertiesCache=deduplicate([...newPropertiesCache,...mapped]);
+    newCatalogOffset += Array.isArray(rows)?rows.length:0;
+    newCatalogHasMore=Array.isArray(rows) && rows.length===CATALOG_PAGE_SIZE && (!newCatalogTotal || newCatalogOffset<newCatalogTotal);
+    properties=deduplicate([...usedPropertiesCache,...newPropertiesCache]);
+  }finally{
+    newCatalogLoading=false;
+  }
 }
 
 async function loadInventory(){
-
   inventoryLoading=true;
   inventoryReady=false;
   inventoryLoadError=false;
-
   try{
-
-    const response=
-      await fetch(
-        CSV_FILE,
-        {
-          cache:"no-store"
-        }
-      );
-
-
-    if(!response.ok){
-
-      throw new Error(
-        "CSV não encontrado"
-      );
-    }
-
-const text=
-  await response.text();
-
-const usedProperties=
-  deduplicate(
-    parseCSV(text)
-      .map(
-        mapProperty
-      )
-  );
-
-let newProperties=[];
-
-try{
-
-  /*
-    IMPORTANTE:
-    não fazemos mais uma única chamada ao Supabase.
-    Carregamos todas as páginas para não parar em 1.000 imóveis.
-  */
-  const novosRows=
-    await loadAllNewPropertyRows();
-
-
-  newProperties=
-    Array.isArray(novosRows)
-      ? novosRows
-          .map(mapOruloProperty)
-          .filter(
-            p=>
-              p.id &&
-              p.value>0
-          )
-      : [];
-
-
-  console.log(
-    "Ynteligencia novos carregados:",
-    {
-      recebidosDoSupabase:
-        Array.isArray(novosRows)
-          ? novosRows.length
-          : 0,
-
-      novosValidos:
-        newProperties.length,
-
-      brooklinPaulista:
-        newProperties.filter(
-          p=>
-            norm(
-              p.neighborhood
-            ) ===
-            "brooklin paulista"
-        ).length,
-
-      totalPaginasEstimadas:
-        Math.ceil(
-          (Array.isArray(novosRows) ? novosRows.length : 0) / 1000
-        )
-    }
-  );
-
-}catch(error){
-
-  console.warn(
-    "Não foi possível carregar imóveis novos:",
-    error
-  );
-
-  newProperties=[];
-}
-
-properties=
-  deduplicate([
-    ...usedProperties,
-    ...newProperties
-  ]);
-
-console.log(
-  "Ynteligencia inventory:",
-  {
-    usados:usedProperties.length,
-    novos:newProperties.length,
-    total:properties.length
-  }
-);
-
-fillCatalogNeighborhoods();
-
-inventoryLoading=false;
-inventoryReady=true;
-inventoryLoadError=false;
-
-/*
-  Se o usuário abriu o Explorar antes da carga terminar,
-  redesenha automaticamente assim que o inventário estiver pronto.
-*/
-if(
-  $("catalog")?.classList.contains("visible")
-){
-  renderCatalog();
-}
-
-
+    const response=await fetch(CSV_FILE,{cache:"no-store"});
+    if(!response.ok) throw new Error("CSV não encontrado");
+    const text=await response.text();
+    usedPropertiesCache=deduplicate(parseCSV(text).map(mapProperty));
+    await fetchNewCatalogPage({reset:true});
+    properties=deduplicate([...usedPropertiesCache,...newPropertiesCache]);
+    fillCatalogNeighborhoods();
+    inventoryLoading=false;
+    inventoryReady=true;
+    inventoryLoadError=false;
+    if($("catalog")?.classList.contains("visible")) renderCatalog();
   }catch(error){
-
-    console.error(
-      "Falha ao carregar inventário:",
-      error
-    );
-
+    console.error("Falha ao carregar inventário:",error);
     inventoryLoading=false;
     inventoryReady=false;
     inventoryLoadError=true;
-
-    /*
-      Não mostramos "0 imóveis" como se fosse resultado real.
-    */
-    if(
-      $("catalog")?.classList.contains("visible")
-    ){
-      renderCatalog();
-    }
-
-    showToast(
-      "Não foi possível atualizar o estoque agora. Tente novamente em instantes."
-    );
+    if($("catalog")?.classList.contains("visible")) renderCatalog();
+    showToast("Não foi possível atualizar o estoque agora. Tente novamente em instantes.");
   }
 }
-
 
 function applyHeroInventoryPhoto(){
   const featured=
