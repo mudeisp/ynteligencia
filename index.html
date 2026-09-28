@@ -2200,6 +2200,71 @@ body.campaign-catalog-mode .catalog{
 }
 </style>
 
+
+<style>
+/* ===== V5 · GALERIA COMPLETA NO VER DETALHES ===== */
+.detail-gallery-all-btn{
+  position:absolute;right:14px;bottom:14px;z-index:5;
+  border:0;border-radius:999px;background:rgba(20,20,20,.86);color:#fff;
+  padding:10px 14px;font-size:12px;font-weight:900;cursor:pointer;
+  backdrop-filter:blur(8px)
+}
+.detail-gallery-count{
+  position:absolute;left:14px;bottom:14px;z-index:5;
+  border-radius:999px;background:rgba(20,20,20,.76);color:#fff;
+  padding:8px 11px;font-size:11px;font-weight:800
+}
+.all-gallery-shell{
+  position:fixed;inset:0;z-index:10000;background:#111;color:#fff;
+  display:flex;flex-direction:column
+}
+.all-gallery-head{
+  height:64px;flex:0 0 64px;display:flex;align-items:center;justify-content:space-between;
+  gap:14px;padding:0 16px;border-bottom:1px solid rgba(255,255,255,.14)
+}
+.all-gallery-head strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-gallery-head button{
+  width:42px;height:42px;border:0;border-radius:50%;background:rgba(255,255,255,.12);
+  color:#fff;font-size:24px;cursor:pointer
+}
+.all-gallery-stage{
+  position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+  padding:18px 70px;background:#0c0c0c
+}
+.all-gallery-stage img{
+  max-width:100%;max-height:100%;object-fit:contain;user-select:none
+}
+.all-gallery-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.12);
+  color:#fff;font-size:28px;cursor:pointer
+}
+.all-gallery-prev{left:14px}.all-gallery-next{right:14px}
+.all-gallery-caption{
+  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+  background:rgba(0,0,0,.65);padding:7px 11px;border-radius:999px;
+  font-size:11px;white-space:nowrap
+}
+.all-gallery-thumbs{
+  flex:0 0 auto;display:flex;gap:8px;overflow-x:auto;padding:10px 12px 14px;
+  border-top:1px solid rgba(255,255,255,.12);background:#151515
+}
+.all-gallery-thumb{
+  width:88px;height:66px;flex:0 0 88px;border:2px solid transparent;border-radius:9px;
+  overflow:hidden;padding:0;background:#222;cursor:pointer
+}
+.all-gallery-thumb.active{border-color:#c6a76b}
+.all-gallery-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+@media(max-width:768px){
+  .all-gallery-stage{padding:10px 0 80px}
+  .all-gallery-nav{width:42px;height:42px}
+  .all-gallery-prev{left:8px}.all-gallery-next{right:8px}
+  .all-gallery-thumb{width:72px;height:54px;flex-basis:72px}
+  .detail-gallery-all-btn{right:10px;bottom:10px;padding:9px 11px}
+  .detail-gallery-count{left:10px;bottom:10px}
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -6191,6 +6256,160 @@ function openPropertySpecialist(p){
 }
 
 
+
+function extractAllPropertyImages(p,raw){
+  const result=[];
+  const seen=new Set();
+
+  function add(url,meta=""){
+    if(typeof url!=="string")return;
+    url=clean(url);
+    if(!validURL(url) || seen.has(url))return;
+    if(!/\.(jpg|jpeg|png|webp|avif)(\?|$)/i.test(url) &&
+       !/image|photo|media|cdn|orulo|cloudinary|amazonaws/i.test(url))return;
+    seen.add(url);
+    result.push({url,meta:clean(meta)});
+  }
+
+  function walk(value,path="",depth=0,context=""){
+    if(value==null || depth>11)return;
+
+    if(typeof value==="string"){
+      if(/^https?:\/\//i.test(value) &&
+         /photo|image|picture|gallery|media|plant|planta|floor|layout|typolog|facade|fachada/i.test(path)){
+        add(value,context || path);
+      }
+      return;
+    }
+
+    if(Array.isArray(value)){
+      value.forEach((item,i)=>walk(item,`${path}[${i}]`,depth+1,context));
+      return;
+    }
+
+    if(typeof value==="object"){
+      const localMeta=[
+        value.title,value.name,value.label,value.caption,value.description,
+        value.category,value.type,value.kind,value.tag
+      ].filter(v=>typeof v==="string").join(" · ");
+
+      Object.entries(value).forEach(([key,val])=>{
+        const next=path?`${path}.${key}`:key;
+        if(typeof val==="string" && /^https?:\/\//i.test(val)){
+          if(/url|src|image|photo|picture|original|large|medium|file/i.test(key) ||
+             /photo|image|picture|gallery|media|plant|planta|floor|layout|typolog/i.test(next)){
+            add(val,localMeta || context || next);
+          }
+        }else{
+          walk(val,next,depth+1,localMeta || context);
+        }
+      });
+    }
+  }
+
+  // Primeiro, as fotos que o app já conhece.
+  try{
+    (photoList(p)||[]).forEach((url,i)=>add(url,`Foto ${i+1}`));
+  }catch(error){}
+
+  // Depois, todas as estruturas disponíveis.
+  walk(p?.photos,"property.photos",0);
+  walk(p?.images,"property.images",0);
+  walk(p?.gallery,"property.gallery",0);
+  walk(p?.floorplans,"property.floorplans",0);
+  walk(p?.plans,"property.plans",0);
+  walk(p?.typologies,"property.typologies",0);
+  walk(raw,"raw_data",0);
+
+  return result.slice(0,120);
+}
+
+function openAllPropertyGallery(items,p,startIndex=0){
+  if(!items?.length)return;
+
+  const old=document.getElementById("allGalleryShell");
+  if(old)old.remove();
+
+  let index=Math.max(0,Math.min(Number(startIndex)||0,items.length-1));
+  const shell=document.createElement("div");
+  shell.id="allGalleryShell";
+  shell.className="all-gallery-shell";
+  shell.innerHTML=`
+    <div class="all-gallery-head">
+      <strong>${esc(p?.name||"Galeria do imóvel")} · ${items.length} ${items.length===1?"imagem":"imagens"}</strong>
+      <button type="button" class="all-gallery-close" aria-label="Fechar">×</button>
+    </div>
+    <div class="all-gallery-stage">
+      <button type="button" class="all-gallery-nav all-gallery-prev" aria-label="Anterior">‹</button>
+      <img class="all-gallery-main" alt="${esc(p?.name||"Imóvel")}">
+      <button type="button" class="all-gallery-nav all-gallery-next" aria-label="Próxima">›</button>
+      <div class="all-gallery-caption"></div>
+    </div>
+    <div class="all-gallery-thumbs">
+      ${items.map((item,i)=>`
+        <button type="button" class="all-gallery-thumb" data-gallery-index="${i}">
+          <img src="${esc(item.url)}" alt="Imagem ${i+1}" loading="lazy">
+        </button>
+      `).join("")}
+    </div>
+  `;
+
+  function render(){
+    const item=items[index];
+    const main=shell.querySelector(".all-gallery-main");
+    const caption=shell.querySelector(".all-gallery-caption");
+    if(main)main.src=item.url;
+    if(caption)caption.textContent=`${index+1} / ${items.length}${item.meta?` · ${item.meta}`:""}`;
+    shell.querySelectorAll(".all-gallery-thumb").forEach((btn,i)=>{
+      btn.classList.toggle("active",i===index);
+      if(i===index)btn.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
+    });
+  }
+
+  function move(delta){
+    index=(index+delta+items.length)%items.length;
+    render();
+  }
+
+  shell.querySelector(".all-gallery-close")?.addEventListener("click",()=>shell.remove());
+  shell.querySelector(".all-gallery-prev")?.addEventListener("click",()=>move(-1));
+  shell.querySelector(".all-gallery-next")?.addEventListener("click",()=>move(1));
+  shell.querySelectorAll("[data-gallery-index]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      index=Number(btn.dataset.galleryIndex)||0;
+      render();
+    });
+  });
+
+  shell.addEventListener("click",e=>{if(e.target===shell) shell.remove()});
+  document.addEventListener("keydown",function galleryKeys(e){
+    if(!document.getElementById("allGalleryShell")){
+      document.removeEventListener("keydown",galleryKeys);
+      return;
+    }
+    if(e.key==="Escape")shell.remove();
+    if(e.key==="ArrowLeft")move(-1);
+    if(e.key==="ArrowRight")move(1);
+  });
+
+  try{
+    gtag("event","property_gallery_view",{
+      property_id:String(p?.id||""),
+      property_name:p?.name||"",
+      images_count:items.length
+    });
+  }catch(error){}
+
+  supabaseTrack("property_gallery_view",{
+    property_id:String(p?.id||""),
+    property_name:p?.name||"",
+    images_count:items.length
+  });
+
+  document.body.appendChild(shell);
+  render();
+}
+
 function extractFloorplans(raw,p=null){
   const found=[];
   const seen=new Set();
@@ -6413,6 +6632,7 @@ function showPhotoModal(id){
   const building=raw.building && typeof raw.building==="object" ? raw.building : {};
   const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
   const addressData=building.address && typeof building.address==="object" ? building.address : {};
+  const allPropertyImages=extractAllPropertyImages(p,raw);
   const floorplans=extractFloorplans(raw,p);
   const propertyOptions=extractPropertyOptions(raw,p);
   const mapQuery=propertyMapQuery(p,addressData);
@@ -6470,7 +6690,10 @@ function showPhotoModal(id){
     <div class="detail-gallery">
       <div class="detail-gallery-track">
         ${photos.map((url,i)=>`<img class="detail-gallery-slide" src="${esc(url)}" alt="${esc(p.name)} — foto ${i+1}" loading="${i===0?"eager":"lazy"}">`).join("")}
-      </div>
+      ${allPropertyImages.length ? `
+          <span class="detail-gallery-count">${allPropertyImages.length} ${allPropertyImages.length===1?"foto":"fotos"}</span>
+          <button type="button" class="detail-gallery-all-btn">Ver todas as fotos</button>
+        ` : ""}</div>
       <button class="detail-gallery-close" type="button" aria-label="Voltar" onclick="this.closest('#photoModal').remove()">‹</button>
       <div class="detail-gallery-counter">1 / ${photos.length}</div>
       ${photos.length>1 ? `
@@ -6628,6 +6851,10 @@ function showPhotoModal(id){
   modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   document.body.appendChild(modal);
+
+  modal.querySelector(".detail-gallery-all-btn")?.addEventListener("click",()=>{
+    openAllPropertyGallery(allPropertyImages,p,0);
+  });
 
   modal.querySelectorAll("[data-floorplan]").forEach(btn=>{
     btn.addEventListener("click",()=>openFloorplan(btn.dataset.floorplan,p));
