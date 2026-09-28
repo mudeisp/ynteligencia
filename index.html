@@ -2539,7 +2539,7 @@ let properties=[];
 let sourceMode="todos";
 
 /* Contexto vindo do anúncio. Exemplos:
-   ?bairro=Brooklin&dormitorios=3&valor_min=1500000
+   ?bairro=Brooklin&source=novos&valor_min=1
    ?bairro=Perdizes&dormitorios=2
    Também aceita neighborhood/region, bedrooms, min_price e max_price para compatibilidade. */
 const adParams=new URLSearchParams(window.location.search);
@@ -2547,9 +2547,21 @@ const adIntent={
   neighborhood:formatNeighborhoodName(cleanAdParam(adParams.get("bairro") || adParams.get("neighborhood") || adParams.get("region") || "")),
   bedrooms:Number(adParams.get("dormitorios") || adParams.get("bedrooms") || 0) || 0,
   minPrice:Number(adParams.get("valor_min") || adParams.get("min_price") || 0) || 0,
-  maxPrice:Number(adParams.get("valor_max") || adParams.get("max_price") || 0) || 0
+  maxPrice:Number(adParams.get("valor_max") || adParams.get("max_price") || 0) || 0,
+  source:cleanAdParam(adParams.get("source") || "").toLocaleLowerCase("pt-BR")
 };
-adIntent.active=Boolean(adIntent.neighborhood || adIntent.bedrooms || adIntent.minPrice || adIntent.maxPrice);
+
+if(!["novos","usados","todos"].includes(adIntent.source)){
+  adIntent.source="";
+}
+
+adIntent.active=Boolean(
+  adIntent.neighborhood ||
+  adIntent.bedrooms ||
+  adIntent.minPrice ||
+  adIntent.maxPrice ||
+  adIntent.source
+);
 
 function cleanAdParam(value){
   return String(value||"").replace(/[-_]+/g," ").trim();
@@ -2579,12 +2591,33 @@ function parseBRLCurrencyInput(value){
 
 function propertyMatchesAdNeighborhood(p){
   if(!adIntent.neighborhood) return true;
+
   const wanted=norm(adIntent.neighborhood);
-  const haystack=norm(`${p.neighborhood||""} ${p.address||""}`);
-  return haystack.includes(wanted);
+  const propertyNeighborhood=norm(p.neighborhood||"");
+  const propertyAddress=norm(p.address||"");
+
+  // Campanha "Brooklin" = família Brooklin.
+  // Inclui apenas os três nomes desejados e evita bairros/cidades aleatórios.
+  if(wanted==="brooklin"){
+    return [
+      "brooklin",
+      "brooklin novo",
+      "brooklin paulista"
+    ].includes(propertyNeighborhood);
+  }
+
+  // Se a campanha pedir explicitamente uma variação, respeita exatamente.
+  if(wanted==="brooklin novo" || wanted==="brooklin paulista"){
+    return propertyNeighborhood===wanted;
+  }
+
+  // Demais bairros: primeiro tenta bairro exato; endereço fica como compatibilidade.
+  return propertyNeighborhood===wanted || propertyAddress.includes(wanted);
 }
 
 function propertyMatchesAdRequirements(p){
+  if(adIntent.source==="novos" && p.source!=="novos") return false;
+  if(adIntent.source==="usados" && p.source==="novos") return false;
   if(adIntent.bedrooms && Number(p.bedrooms)<Number(adIntent.bedrooms)) return false;
   if(adIntent.minPrice && (!p.value || Number(p.value)<adIntent.minPrice)) return false;
   if(adIntent.maxPrice && (!p.value || Number(p.value)>adIntent.maxPrice)) return false;
@@ -4787,7 +4820,10 @@ function showMatches(){
           adIntent.minPrice || 0,
 
         max_price:
-          adIntent.maxPrice || 0
+          adIntent.maxPrice || 0,
+
+        inventory_source:
+          adIntent.source || "todos"
       },
 
       profile:{
@@ -4850,7 +4886,7 @@ function showMatches(){
     .textContent=
       adIntent.active
         ? (scored.length
-            ? `${scored.length} imóveis · ${adIntent.neighborhood || "sua região"}${adIntent.bedrooms ? ` · ${adIntent.bedrooms}+ dormitórios` : ""}${(adIntent.minPrice||adIntent.maxPrice) ? ` · ${adIntent.minPrice ? "de "+money(adIntent.minPrice) : ""}${adIntent.maxPrice ? " até "+money(adIntent.maxPrice) : ""}` : ""}${scored.some(p=>p.adAlternative) ? " · incluindo alternativas próximas" : ""}`
+            ? `${scored.length} imóveis${adIntent.source==="novos" ? " novos" : adIntent.source==="usados" ? " usados" : ""} · ${adIntent.neighborhood || "sua região"}${adIntent.bedrooms ? ` · ${adIntent.bedrooms}+ dormitórios` : ""}${(adIntent.minPrice||adIntent.maxPrice) ? ` · ${adIntent.minPrice ? "de "+money(adIntent.minPrice) : ""}${adIntent.maxPrice ? " até "+money(adIntent.maxPrice) : ""}` : ""}${scored.some(p=>p.adAlternative) ? " · incluindo alternativas próximas" : ""}`
             : "Não encontramos imóveis nessa combinação. Refine ou amplie a faixa de valor.")
         : (scored.length
             ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
@@ -6941,6 +6977,8 @@ function updateAdMatchUI(){
   if(known){
     const parts=[];
     if(regionKey) parts.push(`<span>📍 ${esc(regionName)}</span>`);
+    if(adIntent.source==="novos") parts.push(`<span>✦ Somente novos</span>`);
+    if(adIntent.source==="usados") parts.push(`<span>⌂ Somente usados</span>`);
     if(profile.types?.length) parts.push(`<span>⌂ ${esc(profile.types.join(", "))}</span>`);
     if(adIntent.neighborhood) parts.push(`<span>◎ ${esc(adIntent.neighborhood)}</span>`);
     known.innerHTML=parts.join("");
@@ -6948,9 +6986,15 @@ function updateAdMatchUI(){
 
   const neighborhoodSelect=$("refineNeighborhood");
   if(neighborhoodSelect){
+    const sourceFilteredProperties=properties.filter(p=>{
+      if(adIntent.source==="novos") return p.source==="novos";
+      if(adIntent.source==="usados") return p.source!=="novos";
+      return true;
+    });
+
     const availableProperties=regionKey
-      ? properties.filter(p=>propertyMatchesRegion(p,regionKey))
-      : properties;
+      ? sourceFilteredProperties.filter(p=>propertyMatchesRegion(p,regionKey))
+      : sourceFilteredProperties;
 
     const neighborhoods=[...new Set(
       availableProperties
@@ -7000,13 +7044,15 @@ function updateAdIntentPriceInUrl(){
   [
     "bairro","neighborhood","region",
     "dormitorios","bedrooms",
-    "valor_min","min_price","valor_max","max_price"
+    "valor_min","min_price","valor_max","max_price",
+    "source"
   ].forEach(key=>url.searchParams.delete(key));
 
   if(adIntent.neighborhood) url.searchParams.set("bairro",adIntent.neighborhood);
   if(adIntent.bedrooms) url.searchParams.set("dormitorios",String(adIntent.bedrooms));
   if(adIntent.minPrice) url.searchParams.set("valor_min",String(adIntent.minPrice));
   if(adIntent.maxPrice) url.searchParams.set("valor_max",String(adIntent.maxPrice));
+  if(adIntent.source) url.searchParams.set("source",adIntent.source);
 
   // Mantém UTMs, GCLID/GBRAID/WBRAID e demais parâmetros da campanha.
   history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
@@ -7101,7 +7147,7 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.bedrooms=bedrooms;
   adIntent.minPrice=min;
   adIntent.maxPrice=max;
-  adIntent.active=Boolean(neighborhood || bedrooms || min || max);
+  adIntent.active=Boolean(neighborhood || bedrooms || min || max || adIntent.source);
   updateAdIntentPriceInUrl();
   updateAdMatchUI();
   setRefineMatchOpen(false);
@@ -7114,10 +7160,11 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   adIntent.bedrooms=0;
   adIntent.minPrice=0;
   adIntent.maxPrice=0;
-  adIntent.active=false;
+  adIntent.active=Boolean(adIntent.source);
 
   const url=new URL(window.location.href);
   ["bairro","neighborhood","region","dormitorios","bedrooms","valor_min","min_price","valor_max","max_price"].forEach(key=>url.searchParams.delete(key));
+  if(adIntent.source) url.searchParams.set("source",adIntent.source);
   history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
 
   updateAdMatchUI();
