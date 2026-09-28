@@ -4469,8 +4469,7 @@ window.addEventListener("popstate",event=>{
 });
 
 
-$("next")
-  .addEventListener(
+$("next")?.addEventListener(
     "click",
     ()=>{
 
@@ -4495,8 +4494,7 @@ $("next")
   );
 
 
-$("back")
-  .addEventListener(
+$("back")?.addEventListener(
     "click",
     ()=>{
 
@@ -4551,8 +4549,7 @@ $("wizardExploreMode")?.addEventListener("click",()=>{
   openGeneralCatalog(true);
 });
 
-$("startHero")
-  .addEventListener(
+$("startHero")?.addEventListener(
     "click",
     ()=>{
 
@@ -4577,22 +4574,19 @@ $("startHero")
   );
 
 
-$("navMatch")
-  .addEventListener(
-    "click",
-    ()=>enterMatchMode()
-  );
+$("navMatch")?.addEventListener(
+  "click",
+  ()=>enterMatchMode()
+);
 
 
-$("exploreHero")
-  .addEventListener(
+$("exploreHero")?.addEventListener(
     "click",
     ()=>openGeneralCatalog(true)
   );
 
 
-$("navExplore")
-  .addEventListener(
+$("navExplore")?.addEventListener(
     "click",
     ()=>openGeneralCatalog(true)
   );
