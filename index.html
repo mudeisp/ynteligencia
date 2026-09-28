@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -3702,8 +3703,7 @@ function photoList(p){
 
     return m
       .map(normalizePhotoURL)
-      .filter(Boolean)
-      .slice(0,8);
+      .filter(Boolean);
   }
 
 
@@ -3711,8 +3711,7 @@ function photoList(p){
 
     return p.photos
       .map(normalizePhotoURL)
-      .filter(Boolean)
-      .slice(0,8);
+      .filter(Boolean);
   }
 
 
@@ -3724,8 +3723,7 @@ function photoList(p){
     return raw
       .split("|")
       .map(normalizePhotoURL)
-      .filter(Boolean)
-      .slice(0,8);
+      .filter(Boolean);
   }
 
 
@@ -4741,12 +4739,31 @@ function leaveMatchMode(){
 }
 
 window.addEventListener("popstate",event=>{
+  // Se existe detalhe aberto, Voltar fecha o detalhe e mantém o catálogo.
+  if(document.getElementById("allGalleryShell")){
+    document.getElementById("allGalleryShell")?.remove();
+    return;
+  }
+
+  if(document.getElementById("photoModal")){
+    closePropertyDetail({fromPopState:true});
+    const savedScroll=Number(sessionStorage.getItem("ynt_catalog_scroll")||0);
+    requestAnimationFrame(()=>window.scrollTo(0,savedScroll));
+    return;
+  }
+
   if(event.state?.ynteligenciaMatch){
     document.body.classList.add("match-mode");
     setStep(Number(event.state.step)||0,true);
   }else{
     leaveMatchMode();
-    document.body.classList.add("home-mode");
+    // Não derruba o catálogo para home quando a navegação atual é Explore/Ads.
+    if(document.body.classList.contains("campaign-catalog-mode") ||
+       $("catalog")?.classList.contains("visible")){
+      document.body.classList.remove("home-mode");
+    }else{
+      document.body.classList.add("home-mode");
+    }
   }
 });
 
@@ -6371,7 +6388,10 @@ function openAllPropertyGallery(items,p,startIndex=0){
     render();
   }
 
-  shell.querySelector(".all-gallery-close")?.addEventListener("click",()=>shell.remove());
+  shell.querySelector(".all-gallery-close")?.addEventListener("click",()=>{
+    if(history.state?.ynteligenciaAllGallery)history.back();
+    else shell.remove();
+  });
   shell.querySelector(".all-gallery-prev")?.addEventListener("click",()=>move(-1));
   shell.querySelector(".all-gallery-next")?.addEventListener("click",()=>move(1));
   shell.querySelectorAll("[data-gallery-index]").forEach(btn=>{
@@ -6407,6 +6427,20 @@ function openAllPropertyGallery(items,p,startIndex=0){
   });
 
   document.body.appendChild(shell);
+
+  if(!history.state?.ynteligenciaAllGallery){
+    history.pushState(
+      {
+        ...(history.state || {}),
+        ynteligenciaPropertyDetail:true,
+        ynteligenciaAllGallery:true,
+        propertyId:String(p?.id||"")
+      },
+      "",
+      window.location.href
+    );
+  }
+
   render();
 }
 
@@ -6587,6 +6621,17 @@ function extractPropertyOptions(raw,p=null){
   return options.slice(0,10);
 }
 
+
+function closePropertyDetail({fromPopState=false}={}){
+  const modal=document.getElementById("photoModal");
+  if(modal)modal.remove();
+  document.body.style.overflow="";
+
+  if(!fromPopState && history.state?.ynteligenciaPropertyDetail){
+    history.back();
+  }
+}
+
 function showPhotoModal(id){
   const p=propertyForInteraction(id);
   if(!p)return;
@@ -6620,7 +6665,7 @@ function showPhotoModal(id){
   });
 
   const photos=photoList(p);
-  if(!photos.length){
+  if(!detailPhotos.length){
     showToast("As imagens deste imóvel ainda estão sendo atualizadas.");
     return;
   }
@@ -6628,11 +6673,27 @@ function showPhotoModal(id){
   const old=document.getElementById("photoModal");
   if(old)old.remove();
 
+  // Cria uma etapa de navegação interna para o botão/gesto Voltar do celular.
+  if(!history.state?.ynteligenciaPropertyDetail){
+    history.pushState(
+      {
+        ...(history.state || {}),
+        ynteligenciaPropertyDetail:true,
+        propertyId:String(p.id||"")
+      },
+      "",
+      window.location.href
+    );
+  }
+
   const raw=p.rawData && typeof p.rawData==="object" ? p.rawData : {};
   const building=raw.building && typeof raw.building==="object" ? raw.building : {};
   const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
   const addressData=building.address && typeof building.address==="object" ? building.address : {};
   const allPropertyImages=extractAllPropertyImages(p,raw);
+  const detailPhotos=allPropertyImages.length
+    ? allPropertyImages.map(item=>item.url)
+    : photos;
   const floorplans=extractFloorplans(raw,p);
   const propertyOptions=extractPropertyOptions(raw,p);
   const mapQuery=propertyMapQuery(p,addressData);
@@ -6695,8 +6756,8 @@ function showPhotoModal(id){
           <button type="button" class="detail-gallery-all-btn">Ver todas as fotos</button>
         ` : ""}</div>
       <button class="detail-gallery-close" type="button" aria-label="Voltar" onclick="this.closest('#photoModal').remove()">‹</button>
-      <div class="detail-gallery-counter">1 / ${photos.length}</div>
-      ${photos.length>1 ? `
+      <div class="detail-gallery-counter">1 / ${detailPhotos.length}</div>
+      ${detailPhotos.length>1 ? `
         <button class="detail-gallery-arrow prev" type="button" aria-label="Foto anterior" onclick="moveDetailPhoto(-1)">‹</button>
         <button class="detail-gallery-arrow next" type="button" aria-label="Próxima foto" onclick="moveDetailPhoto(1)">›</button>
         <div class="detail-gallery-dots">
