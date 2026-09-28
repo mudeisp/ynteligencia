@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -2254,6 +2255,12 @@ body.match-results-mode .refine-match-shell{
 
       <div class="filter-grid">
 
+        <select id="catalogSource" class="field" aria-label="Tipo de estoque">
+          <option value="todos">Novos e usados</option>
+          <option value="novos">Somente novos</option>
+          <option value="usados">Somente usados</option>
+        </select>
+
         <select id="catalogType" class="field">
           <option value="">Todos os tipos</option>
           <option value="apartamento">Apartamento</option>
@@ -2539,29 +2546,31 @@ let properties=[];
 let sourceMode="todos";
 
 /* Contexto vindo do anúncio. Exemplos:
-   ?bairro=Brooklin&source=novos&valor_min=1
+   ?bairro=Brooklin&dormitorios=3&valor_min=1500000
    ?bairro=Perdizes&dormitorios=2
    Também aceita neighborhood/region, bedrooms, min_price e max_price para compatibilidade. */
 const adParams=new URLSearchParams(window.location.search);
+const initialViewMode=(adParams.get("modo") || "").toLowerCase();
+
 const adIntent={
   neighborhood:formatNeighborhoodName(cleanAdParam(adParams.get("bairro") || adParams.get("neighborhood") || adParams.get("region") || "")),
   bedrooms:Number(adParams.get("dormitorios") || adParams.get("bedrooms") || 0) || 0,
   minPrice:Number(adParams.get("valor_min") || adParams.get("min_price") || 0) || 0,
-  maxPrice:Number(adParams.get("valor_max") || adParams.get("max_price") || 0) || 0,
-  source:cleanAdParam(adParams.get("source") || "").toLocaleLowerCase("pt-BR")
+  maxPrice:Number(adParams.get("valor_max") || adParams.get("max_price") || 0) || 0
 };
 
-if(!["novos","usados","todos"].includes(adIntent.source)){
-  adIntent.source="";
-}
-
-adIntent.active=Boolean(
-  adIntent.neighborhood ||
-  adIntent.bedrooms ||
-  adIntent.minPrice ||
-  adIntent.maxPrice ||
-  adIntent.source
-);
+/*
+  URLs com modo=explorar pertencem ao catálogo.
+  Assim bairro/valor da campanha não entram no fluxo de MATCH.
+*/
+adIntent.active=
+  initialViewMode!=="explorar" &&
+  Boolean(
+    adIntent.neighborhood ||
+    adIntent.bedrooms ||
+    adIntent.minPrice ||
+    adIntent.maxPrice
+  );
 
 function cleanAdParam(value){
   return String(value||"").replace(/[-_]+/g," ").trim();
@@ -2591,33 +2600,12 @@ function parseBRLCurrencyInput(value){
 
 function propertyMatchesAdNeighborhood(p){
   if(!adIntent.neighborhood) return true;
-
   const wanted=norm(adIntent.neighborhood);
-  const propertyNeighborhood=norm(p.neighborhood||"");
-  const propertyAddress=norm(p.address||"");
-
-  // Campanha "Brooklin" = família Brooklin.
-  // Inclui apenas os três nomes desejados e evita bairros/cidades aleatórios.
-  if(wanted==="brooklin"){
-    return [
-      "brooklin",
-      "brooklin novo",
-      "brooklin paulista"
-    ].includes(propertyNeighborhood);
-  }
-
-  // Se a campanha pedir explicitamente uma variação, respeita exatamente.
-  if(wanted==="brooklin novo" || wanted==="brooklin paulista"){
-    return propertyNeighborhood===wanted;
-  }
-
-  // Demais bairros: primeiro tenta bairro exato; endereço fica como compatibilidade.
-  return propertyNeighborhood===wanted || propertyAddress.includes(wanted);
+  const haystack=norm(`${p.neighborhood||""} ${p.address||""}`);
+  return haystack.includes(wanted);
 }
 
 function propertyMatchesAdRequirements(p){
-  if(adIntent.source==="novos" && p.source!=="novos") return false;
-  if(adIntent.source==="usados" && p.source==="novos") return false;
   if(adIntent.bedrooms && Number(p.bedrooms)<Number(adIntent.bedrooms)) return false;
   if(adIntent.minPrice && (!p.value || Number(p.value)<adIntent.minPrice)) return false;
   if(adIntent.maxPrice && (!p.value || Number(p.value)>adIntent.maxPrice)) return false;
@@ -4689,29 +4677,15 @@ function showMatches(){
   let rankedProperties;
 
   if(adIntent.active){
-    /*
-      ENTRADA DIRETA DE CAMPANHA:
-      mostra TODOS os imóveis que atendem aos filtros duros da URL.
-
-      Importante:
-      aqui NÃO usamos o corte mínimo de MATCH (score >= 45),
-      porque a campanha "todos os novos do Brooklin" deve mostrar
-      todo o estoque elegível do bairro, e não apenas os imóveis
-      que pontuaram alto no perfil do usuário.
-    */
-    const eligible=properties
-      .filter(propertyMatchesAdRequirements)
-      .filter(propertyMatchesAdNeighborhood)
-      .map(p=>({
-        ...p,
-        match:scoreProperty(p)
-      }))
-      .sort((a,b)=>
-        b.match.score-a.match.score ||
-        a.value-b.value
-      );
-
-    rankedProperties=eligible;
+    /* Jornada de mídia: respeita integralmente a intenção declarada.
+       Bairro + dormitórios + faixa de preço são filtros duros.
+       Se não houver imóveis suficientes no bairro pedido, NÃO completa
+       o feed silenciosamente com outros bairros/cidades. Isso evita que
+       uma busca por Perdizes retorne Morumbi, Butantã ou homônimos de
+       outras cidades. O feed mostra apenas os imóveis realmente elegíveis. */
+    const eligible=properties.filter(propertyMatchesAdRequirements);
+    const exact=rankList(eligible.filter(propertyMatchesAdNeighborhood));
+    rankedProperties=exact.slice(0,12);
   }else{
     rankedProperties=rankList(properties);
   }
@@ -4726,11 +4700,8 @@ function showMatches(){
   let scored;
 
   if(adIntent.active){
-    /*
-      Campanha por URL = todos os imóveis elegíveis.
-      Sem limite de 12 resultados.
-    */
-    scored=rankedProperties.slice();
+    /* Não reordena alternativas acima dos imóveis do bairro solicitado. */
+    scored=rankedProperties.slice(0,12);
   }else{
     const novos=rankedProperties.filter(p=>p.source==="novos").slice(0,6);
     const usados=rankedProperties.filter(p=>p.source!=="novos").slice(0,6);
@@ -4837,10 +4808,7 @@ function showMatches(){
           adIntent.minPrice || 0,
 
         max_price:
-          adIntent.maxPrice || 0,
-
-        inventory_source:
-          adIntent.source || "todos"
+          adIntent.maxPrice || 0
       },
 
       profile:{
@@ -4903,7 +4871,7 @@ function showMatches(){
     .textContent=
       adIntent.active
         ? (scored.length
-            ? `${scored.length} imóveis${adIntent.source==="novos" ? " novos" : adIntent.source==="usados" ? " usados" : ""} · ${adIntent.neighborhood || "sua região"}${adIntent.bedrooms ? ` · ${adIntent.bedrooms}+ dormitórios` : ""}${(adIntent.minPrice||adIntent.maxPrice) ? ` · ${adIntent.minPrice ? "de "+money(adIntent.minPrice) : ""}${adIntent.maxPrice ? " até "+money(adIntent.maxPrice) : ""}` : ""}${scored.some(p=>p.adAlternative) ? " · incluindo alternativas próximas" : ""}`
+            ? `${scored.length} imóveis · ${adIntent.neighborhood || "sua região"}${adIntent.bedrooms ? ` · ${adIntent.bedrooms}+ dormitórios` : ""}${(adIntent.minPrice||adIntent.maxPrice) ? ` · ${adIntent.minPrice ? "de "+money(adIntent.minPrice) : ""}${adIntent.maxPrice ? " até "+money(adIntent.maxPrice) : ""}` : ""}${scored.some(p=>p.adAlternative) ? " · incluindo alternativas próximas" : ""}`
             : "Não encontramos imóveis nessa combinação. Refine ou amplie a faixa de valor.")
         : (scored.length
             ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
@@ -5822,8 +5790,12 @@ function setCatalogRegion(regionKey){
   fillCatalogNeighborhoodsForRegion(catalogRegion);
   $("catalogNeighborhood").value="";
 
-  // Se o catálogo já estiver aberto, a troca de região atualiza na hora.
-  if($("catalog").classList.contains("visible"))renderCatalog();
+  // Se o catálogo já estiver aberto, a troca de região atualiza na hora
+  // e também gera o caminho compartilhável.
+  if($("catalog").classList.contains("visible")){
+    renderCatalog();
+    updateCatalogUrl();
+  }
 }
 
 document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
@@ -5831,6 +5803,15 @@ document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
 });
 
 function renderCatalog(){
+
+  const catalogSource=
+    $("catalogSource")?.value || "todos";
+
+  /*
+    Mantém sourceMode coerente com a busca do catálogo
+    para tracking e interações posteriores.
+  */
+  sourceMode=catalogSource;
 
   const q=
     norm(
@@ -5902,6 +5883,17 @@ function renderCatalog(){
 
 
         return(
+
+          (
+            catalogSource==="todos" ||
+            (
+              catalogSource==="novos"
+                ? p.source==="novos"
+                : p.source!=="novos"
+            )
+          )
+
+          &&
 
           (!q ||
             searchable.includes(q))
@@ -5995,7 +5987,6 @@ function renderCatalog(){
       list.length
 
         ? list
-            .slice(0,60)
             .map(
               p=>
                 card(
@@ -6036,6 +6027,7 @@ $("showCatalog")
 
 
       renderCatalog();
+      updateCatalogUrl();
 
 
       $("catalog")
@@ -6046,9 +6038,398 @@ $("showCatalog")
   );
 
 
+
+/* =========================================================
+   URL COMPARTILHÁVEL DO EXPLORAR
+   Toda combinação de filtros vira um caminho reutilizável
+   em Google Ads / Meta Ads / WhatsApp.
+========================================================= */
+
+const CATALOG_QUERY_KEYS=[
+  "modo",
+  "regiao",
+  "bairro",
+  "busca",
+  "tipo",
+  "source",
+  "valor_min",
+  "valor_max",
+  "dormitorios",
+  "area_min",
+  "vagas",
+  "condominio_max",
+  "iptu_max"
+];
+
+function updateCatalogUrl(){
+
+  const url=
+    new URL(window.location.href);
+
+  /*
+    Remove somente filtros do catálogo.
+    UTMs, GCLID, GBRAID, WBRAID e outros parâmetros
+    de atribuição permanecem intactos.
+  */
+  CATALOG_QUERY_KEYS.forEach(
+    key=>url.searchParams.delete(key)
+  );
+
+  url.searchParams.set(
+    "modo",
+    "explorar"
+  );
+
+  const region=
+    catalogRegion || "";
+
+  const neighborhood=
+    $("catalogNeighborhood")?.value || "";
+
+  const search=
+    clean(
+      $("catalogSearch")?.value || ""
+    );
+
+  const source=
+    $("catalogSource")?.value || "todos";
+
+  const type=
+    $("catalogType")?.value || "";
+
+  const minPrice=
+    numberBR(
+      $("minPrice")?.value || ""
+    );
+
+  const maxPrice=
+    numberBR(
+      $("maxPrice")?.value || ""
+    );
+
+  const bedrooms=
+    $("catalogBedrooms")?.value || "";
+
+  const minArea=
+    numberBR(
+      $("minArea")?.value || ""
+    );
+
+  const parking=
+    $("catalogParking")?.value || "";
+
+  const maxCondo=
+    numberBR(
+      $("maxCondo")?.value || ""
+    );
+
+  const maxIptu=
+    numberBR(
+      $("maxIptu")?.value || ""
+    );
+
+
+  if(region){
+    url.searchParams.set(
+      "regiao",
+      region
+    );
+  }
+
+  if(neighborhood){
+    url.searchParams.set(
+      "bairro",
+      neighborhood
+    );
+  }
+
+  if(search){
+    url.searchParams.set(
+      "busca",
+      search
+    );
+  }
+
+  if(
+    source &&
+    source!=="todos"
+  ){
+    url.searchParams.set(
+      "source",
+      source
+    );
+  }
+
+  if(type){
+    url.searchParams.set(
+      "tipo",
+      type
+    );
+  }
+
+  if(minPrice){
+    url.searchParams.set(
+      "valor_min",
+      String(minPrice)
+    );
+  }
+
+  if(maxPrice){
+    url.searchParams.set(
+      "valor_max",
+      String(maxPrice)
+    );
+  }
+
+  if(bedrooms){
+    url.searchParams.set(
+      "dormitorios",
+      bedrooms
+    );
+  }
+
+  if(minArea){
+    url.searchParams.set(
+      "area_min",
+      String(minArea)
+    );
+  }
+
+  if(parking){
+    url.searchParams.set(
+      "vagas",
+      parking
+    );
+  }
+
+  if(maxCondo){
+    url.searchParams.set(
+      "condominio_max",
+      String(maxCondo)
+    );
+  }
+
+  if(maxIptu){
+    url.searchParams.set(
+      "iptu_max",
+      String(maxIptu)
+    );
+  }
+
+
+  history.replaceState(
+    {
+      ...(history.state || {}),
+      ynteligenciaView:"catalog"
+    },
+    "",
+    url.pathname +
+    url.search +
+    url.hash
+  );
+
+  return url.toString();
+}
+
+
+function loadCatalogFromUrl(){
+
+  const params=
+    new URLSearchParams(
+      window.location.search
+    );
+
+  if(
+    (
+      params.get("modo") ||
+      ""
+    ).toLowerCase()!=="explorar"
+  ){
+    return false;
+  }
+
+
+  /*
+    1. Região
+  */
+  catalogRegion=
+    params.get("regiao") || "";
+
+  document
+    .querySelectorAll(
+      ".catalog-region-btn"
+    )
+    .forEach(btn=>{
+
+      btn.classList.toggle(
+        "selected",
+        (btn.dataset.region || "") ===
+        catalogRegion
+      );
+
+    });
+
+
+  /*
+    2. Reconstrói a lista de bairros
+    antes de selecionar o bairro salvo na URL.
+  */
+  fillCatalogNeighborhoodsForRegion(
+    catalogRegion
+  );
+
+
+  const setValue=(id,value)=>{
+    const el=$(id);
+    if(!el)return;
+    el.value=value ?? "";
+  };
+
+
+  setValue(
+    "catalogNeighborhood",
+    params.get("bairro") || ""
+  );
+
+  setValue(
+    "catalogSearch",
+    params.get("busca") || ""
+  );
+
+  setValue(
+    "catalogType",
+    params.get("tipo") || ""
+  );
+
+  setValue(
+    "minPrice",
+    params.get("valor_min") || ""
+  );
+
+  setValue(
+    "maxPrice",
+    params.get("valor_max") || ""
+  );
+
+  setValue(
+    "catalogBedrooms",
+    params.get("dormitorios") || ""
+  );
+
+  setValue(
+    "minArea",
+    params.get("area_min") || ""
+  );
+
+  setValue(
+    "catalogParking",
+    params.get("vagas") || ""
+  );
+
+  setValue(
+    "maxCondo",
+    params.get("condominio_max") || ""
+  );
+
+  setValue(
+    "maxIptu",
+    params.get("iptu_max") || ""
+  );
+
+
+  const requestedSource=
+    (
+      params.get("source") ||
+      "todos"
+    ).toLowerCase();
+
+  const safeSource=
+    [
+      "todos",
+      "novos",
+      "usados"
+    ].includes(requestedSource)
+      ? requestedSource
+      : "todos";
+
+  setValue(
+    "catalogSource",
+    safeSource
+  );
+
+  sourceMode=
+    safeSource;
+
+
+  /*
+    3. Abre diretamente no Explorar.
+  */
+  document.body
+    .classList
+    .remove(
+      "home-mode",
+      "match-mode",
+      "match-results-mode",
+      "ad-match-mode"
+    );
+
+  $("results")
+    ?.classList
+    .remove("visible");
+
+  $("catalog")
+    ?.classList
+    .add("visible");
+
+  setRefineMatchOpen(false);
+  setFiltersOpen(false);
+
+  renderCatalog();
+
+
+  /*
+    4. Mantém a URL normalizada com os filtros efetivamente aplicados.
+  */
+  updateCatalogUrl();
+
+
+  setTimeout(
+    ()=>{
+
+      $("explore")
+        ?.scrollIntoView({
+          behavior:"instant",
+          block:"start"
+        });
+
+    },
+    60
+  );
+
+
+  return true;
+}
+
+
+function renderCatalogAndUpdateUrl(){
+
+  renderCatalog();
+
+  if(
+    $("catalog")
+      ?.classList
+      .contains("visible")
+  ){
+    updateCatalogUrl();
+  }
+}
+
+
 function executeCatalogSearch(){
   $("catalog").classList.add("visible");
+
   renderCatalog();
+  updateCatalogUrl();
 
   $("catalog").scrollIntoView({
     behavior:"smooth",
@@ -6069,6 +6450,7 @@ $("catalogSearch").addEventListener("keydown", event=>{
 [
   "catalogSearch",
   "catalogNeighborhood",
+  "catalogSource",
   "catalogType",
   "minPrice",
   "maxPrice",
@@ -6080,13 +6462,13 @@ $("catalogSearch").addEventListener("keydown", event=>{
 ]
 .forEach(
   id=>
-    $(id).addEventListener(
+    $(id)?.addEventListener(
 
       $(id).tagName==="SELECT"
         ? "change"
         : "input",
 
-      renderCatalog
+      renderCatalogAndUpdateUrl
     )
 );
 
@@ -6108,12 +6490,22 @@ function resetCatalogState(render=true){
     "catalogParking"
   ].forEach(id=>{ if($(id)) $(id).value=""; });
 
+  if($("catalogSource")) $("catalogSource").value="todos";
+  sourceMode="todos";
+
   catalogRegion="";
   document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
     btn.classList.toggle("selected", !btn.dataset.region);
   });
   fillCatalogNeighborhoodsForRegion("");
-  if(render && $("catalog")?.classList.contains("visible")) renderCatalog();
+
+  if(
+    render &&
+    $("catalog")?.classList.contains("visible")
+  ){
+    renderCatalog();
+    updateCatalogUrl();
+  }
 }
 
 const AD_INTENT_QUERY_KEYS=[
@@ -6994,8 +7386,6 @@ function updateAdMatchUI(){
   if(known){
     const parts=[];
     if(regionKey) parts.push(`<span>📍 ${esc(regionName)}</span>`);
-    if(adIntent.source==="novos") parts.push(`<span>✦ Somente novos</span>`);
-    if(adIntent.source==="usados") parts.push(`<span>⌂ Somente usados</span>`);
     if(profile.types?.length) parts.push(`<span>⌂ ${esc(profile.types.join(", "))}</span>`);
     if(adIntent.neighborhood) parts.push(`<span>◎ ${esc(adIntent.neighborhood)}</span>`);
     known.innerHTML=parts.join("");
@@ -7003,15 +7393,9 @@ function updateAdMatchUI(){
 
   const neighborhoodSelect=$("refineNeighborhood");
   if(neighborhoodSelect){
-    const sourceFilteredProperties=properties.filter(p=>{
-      if(adIntent.source==="novos") return p.source==="novos";
-      if(adIntent.source==="usados") return p.source!=="novos";
-      return true;
-    });
-
     const availableProperties=regionKey
-      ? sourceFilteredProperties.filter(p=>propertyMatchesRegion(p,regionKey))
-      : sourceFilteredProperties;
+      ? properties.filter(p=>propertyMatchesRegion(p,regionKey))
+      : properties;
 
     const neighborhoods=[...new Set(
       availableProperties
@@ -7061,15 +7445,13 @@ function updateAdIntentPriceInUrl(){
   [
     "bairro","neighborhood","region",
     "dormitorios","bedrooms",
-    "valor_min","min_price","valor_max","max_price",
-    "source"
+    "valor_min","min_price","valor_max","max_price"
   ].forEach(key=>url.searchParams.delete(key));
 
   if(adIntent.neighborhood) url.searchParams.set("bairro",adIntent.neighborhood);
   if(adIntent.bedrooms) url.searchParams.set("dormitorios",String(adIntent.bedrooms));
   if(adIntent.minPrice) url.searchParams.set("valor_min",String(adIntent.minPrice));
   if(adIntent.maxPrice) url.searchParams.set("valor_max",String(adIntent.maxPrice));
-  if(adIntent.source) url.searchParams.set("source",adIntent.source);
 
   // Mantém UTMs, GCLID/GBRAID/WBRAID e demais parâmetros da campanha.
   history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
@@ -7164,7 +7546,7 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.bedrooms=bedrooms;
   adIntent.minPrice=min;
   adIntent.maxPrice=max;
-  adIntent.active=Boolean(neighborhood || bedrooms || min || max || adIntent.source);
+  adIntent.active=Boolean(neighborhood || bedrooms || min || max);
   updateAdIntentPriceInUrl();
   updateAdMatchUI();
   setRefineMatchOpen(false);
@@ -7177,11 +7559,10 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   adIntent.bedrooms=0;
   adIntent.minPrice=0;
   adIntent.maxPrice=0;
-  adIntent.active=Boolean(adIntent.source);
+  adIntent.active=false;
 
   const url=new URL(window.location.href);
   ["bairro","neighborhood","region","dormitorios","bedrooms","valor_min","min_price","valor_max","max_price"].forEach(key=>url.searchParams.delete(key));
-  if(adIntent.source) url.searchParams.set("source",adIntent.source);
   history.replaceState(history.state||{},"",url.pathname+url.search+url.hash);
 
   updateAdMatchUI();
@@ -7345,10 +7726,23 @@ Promise.all([
       }
     }
 
+    /*
+      URL gerada pelo Explorar:
+      abre o catálogo com a mesma busca salva na URL.
+    */
+    const openedCatalogFromUrl=
+      !sharedPropertyId &&
+      loadCatalogFromUrl();
+
     /* Se o clique veio de um anúncio com intenção conhecida, entrega
        os imóveis imediatamente. A home e o wizard continuam intactos
-       para acessos normais ao domínio. */
-    if(adIntent.active && !sharedPropertyId){
+       para acessos normais ao domínio.
+       Esse fluxo só roda quando NÃO for uma URL modo=explorar. */
+    if(
+      !openedCatalogFromUrl &&
+      adIntent.active &&
+      !sharedPropertyId
+    ){
       updateAdMatchUI();
       document.body.classList.remove("home-mode");
       if(adIntentHasPrice()){
