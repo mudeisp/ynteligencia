@@ -7686,6 +7686,69 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
    INVENTÁRIO
 ========================================================= */
 
+async function loadAllNewPropertyRows(){
+
+  const PAGE_SIZE = 1000;
+
+  let offset = 0;
+  let allRows = [];
+
+  while(true){
+
+    const pageUrl =
+      `${SUPABASE_PROPERTIES_URL}` +
+      `&limit=${PAGE_SIZE}` +
+      `&offset=${offset}`;
+
+    const response =
+      await fetch(
+        pageUrl,
+        {
+          cache:"no-store",
+          headers:{
+            "apikey":
+              SUPABASE_PUBLISHABLE_KEY,
+            "Authorization":
+              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+          }
+        }
+      );
+
+    if(!response.ok){
+      throw new Error(
+        `Supabase properties: ${response.status}`
+      );
+    }
+
+    const rows =
+      await response.json();
+
+    if(!Array.isArray(rows)){
+      break;
+    }
+
+    allRows.push(...rows);
+
+    console.log(
+      "Ynteligencia Supabase page:",
+      {
+        offset,
+        received: rows.length,
+        totalLoaded: allRows.length
+      }
+    );
+
+    if(rows.length < PAGE_SIZE){
+      break;
+    }
+
+    offset += PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
+
 async function loadInventory(){
 
   try{
@@ -7721,28 +7784,13 @@ let newProperties=[];
 
 try{
 
-  const novosResponse=
-    await fetch(
-      SUPABASE_PROPERTIES_URL,
-      {
-        cache:"no-store",
-        headers:{
-          "apikey":
-            SUPABASE_PUBLISHABLE_KEY,
-          "Authorization":
-            `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
-        }
-      }
-    );
-
-  if(!novosResponse.ok){
-    throw new Error(
-      `Supabase properties: ${novosResponse.status}`
-    );
-  }
-
+  /*
+    Carrega TODOS os imóveis novos do Supabase em páginas de 1.000.
+    O PostgREST/Supabase pode limitar respostas grandes, então
+    uma única chamada pode devolver apenas parte da tabela.
+  */
   const novosRows=
-    await novosResponse.json();
+    await loadAllNewPropertyRows();
 
   newProperties=
     Array.isArray(novosRows)
@@ -7754,6 +7802,26 @@ try{
               p.value>0
           )
       : [];
+
+  console.log(
+    "Ynteligencia novos carregados:",
+    {
+      supabaseRows:
+        Array.isArray(novosRows)
+          ? novosRows.length
+          : 0,
+
+      validNewProperties:
+        newProperties.length,
+
+      brooklinPaulista:
+        newProperties.filter(
+          p=>
+            norm(p.neighborhood)
+              .includes("brooklin paulista")
+        ).length
+    }
+  );
 
 }catch(error){
 
