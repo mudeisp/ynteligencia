@@ -2220,6 +2220,47 @@ body.match-results-mode .refine-match-shell{
 
     <div class="explore-box">
 
+      <input
+        id="catalogCity"
+        class="field"
+        type="text"
+        value="São Paulo"
+        placeholder="Cidade"
+        aria-label="Cidade ativa">
+
+      <select
+        id="catalogState"
+        class="field"
+        aria-label="Estado ativo">
+        <option value="SP" selected>SP</option>
+        <option value="AC">AC</option>
+        <option value="AL">AL</option>
+        <option value="AP">AP</option>
+        <option value="AM">AM</option>
+        <option value="BA">BA</option>
+        <option value="CE">CE</option>
+        <option value="DF">DF</option>
+        <option value="ES">ES</option>
+        <option value="GO">GO</option>
+        <option value="MA">MA</option>
+        <option value="MT">MT</option>
+        <option value="MS">MS</option>
+        <option value="MG">MG</option>
+        <option value="PA">PA</option>
+        <option value="PB">PB</option>
+        <option value="PR">PR</option>
+        <option value="PE">PE</option>
+        <option value="PI">PI</option>
+        <option value="RJ">RJ</option>
+        <option value="RN">RN</option>
+        <option value="RS">RS</option>
+        <option value="RO">RO</option>
+        <option value="RR">RR</option>
+        <option value="SC">SC</option>
+        <option value="SE">SE</option>
+        <option value="TO">TO</option>
+      </select>
+
       <select
         id="catalogNeighborhood"
         class="field">
@@ -2550,6 +2591,40 @@ const SUPABASE_PROPERTIES_URL =
   "https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties?source=eq.novos&active=eq.true&select=*";
 let properties=[];
 let sourceMode="todos";
+
+/*
+  Estado do inventário.
+  Evita mostrar "0 imóveis" enquanto CSV + Supabase
+  ainda estão sendo carregados.
+*/
+let inventoryReady=false;
+let inventoryLoading=true;
+let inventoryLoadError=false;
+
+/*
+  LOCALIZAÇÃO ATIVA
+  - O banco continua com o Brasil inteiro.
+  - O app abre por padrão em São Paulo/SP.
+  - URL pode sobrescrever com ?cidade=Vitória&estado=ES
+*/
+const initialLocationParams=
+  new URLSearchParams(window.location.search);
+
+let activeCity=
+  cleanAdParam(
+    initialLocationParams.get("cidade") ||
+    initialLocationParams.get("city") ||
+    "São Paulo"
+  ) || "São Paulo";
+
+let activeState=
+  String(
+    initialLocationParams.get("estado") ||
+    initialLocationParams.get("state") ||
+    "SP"
+  )
+  .trim()
+  .toUpperCase() || "SP";
 
 /* Contexto vindo do anúncio. Exemplos:
    ?bairro=Brooklin&dormitorios=3&valor_min=1500000
@@ -3426,6 +3501,22 @@ function mapProperty(
       ) ||
       "Bairro não informado",
 
+    city:
+      clean(
+        field(
+          row,
+          ["Cidade","city"]
+        )
+      ),
+
+    state:
+      clean(
+        field(
+          row,
+          ["UF","Estado","state"]
+        )
+      ).toUpperCase(),
+
 
     address:
       clean(
@@ -3669,6 +3760,21 @@ function mapOruloProperty(row){
         addressData.area ||
         ""
       ),
+
+    city:
+      clean(
+        row.city ||
+        addressData.city ||
+        ""
+      ),
+
+    state:
+      clean(
+        row.state ||
+        addressData.state ||
+        addressData.uf ||
+        ""
+      ).toUpperCase(),
 
     address:
       clean(
@@ -5810,8 +5916,41 @@ document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
 
 function renderCatalog(){
 
+  /*
+    Não renderiza catálogo vazio durante a carga.
+  */
+  if(!inventoryReady){
+
+    if($("catalogStatus")){
+      $("catalogStatus").textContent=
+        inventoryLoadError
+          ? "Não foi possível atualizar o estoque agora."
+          : "Carregando imóveis...";
+    }
+
+    if($("catalogGrid")){
+      $("catalogGrid").innerHTML=`
+        <div class="empty">
+          <h3>${inventoryLoadError ? "Estoque temporariamente indisponível" : "Carregando estoque"}</h3>
+          <p>${inventoryLoadError ? "Atualize a página em alguns instantes." : "Estamos carregando os imóveis disponíveis."}</p>
+        </div>
+      `;
+    }
+
+    return;
+  }
+
+
   const catalogSource=
     $("catalogSource")?.value || "todos";
+
+  if($("catalogCity")){
+    $("catalogCity").value=activeCity;
+  }
+
+  if($("catalogState")){
+    $("catalogState").value=activeState;
+  }
 
   const catalogSort=
     $("catalogSort")?.value || "price_asc";
@@ -5891,7 +6030,23 @@ function renderCatalog(){
           );
 
 
+        const cityOk=
+          !p.city ||
+          norm(p.city)===norm(activeCity);
+
+        const stateOk=
+          !p.state ||
+          String(p.state).toUpperCase()===activeState;
+
         return(
+
+          cityOk
+
+          &&
+
+          stateOk
+
+          &&
 
           (
             catalogSource==="todos" ||
@@ -6121,6 +6276,10 @@ $("showCatalog")
 
 const CATALOG_QUERY_KEYS=[
   "modo",
+  "cidade",
+  "city",
+  "estado",
+  "state",
   "regiao",
   "bairro",
   "busca",
@@ -6153,6 +6312,16 @@ function updateCatalogUrl(){
   url.searchParams.set(
     "modo",
     "explorar"
+  );
+
+  url.searchParams.set(
+    "cidade",
+    activeCity
+  );
+
+  url.searchParams.set(
+    "estado",
+    activeState
   );
 
   const region=
@@ -6334,6 +6503,36 @@ function loadCatalogFromUrl(){
     ).toLowerCase()!=="explorar"
   ){
     return false;
+  }
+
+
+  /*
+    0. Localização
+  */
+  activeCity=
+    cleanAdParam(
+      params.get("cidade") ||
+      params.get("city") ||
+      activeCity ||
+      "São Paulo"
+    ) || "São Paulo";
+
+  activeState=
+    String(
+      params.get("estado") ||
+      params.get("state") ||
+      activeState ||
+      "SP"
+    )
+    .trim()
+    .toUpperCase() || "SP";
+
+  if($("catalogCity")){
+    $("catalogCity").value=activeCity;
+  }
+
+  if($("catalogState")){
+    $("catalogState").value=activeState;
   }
 
 
@@ -6534,8 +6733,104 @@ function renderCatalogAndUpdateUrl(){
 }
 
 
-function executeCatalogSearch(){
+async function applyCatalogLocation(){
+
+  const nextCity=
+    clean(
+      $("catalogCity")?.value ||
+      "São Paulo"
+    ) || "São Paulo";
+
+  const nextState=
+    String(
+      $("catalogState")?.value ||
+      "SP"
+    )
+    .trim()
+    .toUpperCase() || "SP";
+
+
+  const changed=
+    norm(nextCity)!==norm(activeCity) ||
+    nextState!==activeState;
+
+
+  activeCity=nextCity;
+  activeState=nextState;
+
+  updateCatalogUrl();
+
+
+  if(!changed){
+    renderCatalog();
+    return;
+  }
+
+
+  /*
+    Troca de cidade = nova consulta no Supabase.
+    Não baixa o Brasil inteiro.
+  */
+  inventoryReady=false;
+  inventoryLoading=true;
+  inventoryLoadError=false;
+
+  renderCatalog();
+
+  resetCatalogState(false);
+
+  await loadInventory();
+
+  if($("catalog")){
+    $("catalog").classList.add("visible");
+  }
+
+  renderCatalog();
+  updateCatalogUrl();
+}
+
+
+$("catalogCity")?.addEventListener(
+  "change",
+  applyCatalogLocation
+);
+
+$("catalogState")?.addEventListener(
+  "change",
+  applyCatalogLocation
+);
+
+
+async function executeCatalogSearch(){
   $("catalog").classList.add("visible");
+
+  const nextCity=
+    clean(
+      $("catalogCity")?.value ||
+      activeCity
+    ) || activeCity;
+
+  const nextState=
+    String(
+      $("catalogState")?.value ||
+      activeState
+    ).trim().toUpperCase() || activeState;
+
+  if(
+    norm(nextCity)!==norm(activeCity) ||
+    nextState!==activeState
+  ){
+    activeCity=nextCity;
+    activeState=nextState;
+
+    inventoryReady=false;
+    inventoryLoading=true;
+    inventoryLoadError=false;
+
+    renderCatalog();
+
+    await loadInventory();
+  }
 
   renderCatalog();
   updateCatalogUrl();
@@ -7689,29 +7984,50 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
 async function loadAllNewPropertyRows(){
 
   /*
-    Supabase/PostgREST limita uma resposta grande a 1.000 linhas.
-    Então buscamos em páginas usando o header Range.
+    Supabase/PostgREST costuma limitar respostas a 1.000 linhas.
+    O filtro city/state acontece no servidor ANTES do download.
+    Paginação explícita por URL evita depender de Range/CORS:
 
-    Exemplo:
-    0-999
-    1000-1999
-    2000-2999
+    offset=0&limit=1000
+    offset=1000&limit=1000
+    offset=2000&limit=1000
     ...
   */
-  const PAGE_SIZE = 1000;
 
-  let from = 0;
-  let allRows = [];
+  const PAGE_SIZE=1000;
+
+  let offset=0;
+  let allRows=[];
+
 
   while(true){
 
-    const to =
-      from + PAGE_SIZE - 1;
+    const locationFilter=
+      `&city=eq.${encodeURIComponent(activeCity)}` +
+      `&state=eq.${encodeURIComponent(activeState)}`;
 
-    const response =
+    const url=
+      `${SUPABASE_PROPERTIES_URL}` +
+      locationFilter +
+      `&order=external_id.asc` +
+      `&limit=${PAGE_SIZE}` +
+      `&offset=${offset}`;
+
+
+    console.log(
+      "Ynteligencia buscando Supabase:",
+      {
+        city:activeCity,
+        state:activeState,
+        offset,
+        limit:PAGE_SIZE
+      }
+    );
+
+
+    const response=
       await fetch(
-        SUPABASE_PROPERTIES_URL +
-        "&order=external_id.asc",
+        url,
         {
           cache:"no-store",
 
@@ -7720,13 +8036,7 @@ async function loadAllNewPropertyRows(){
               SUPABASE_PUBLISHABLE_KEY,
 
             "Authorization":
-              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-
-            "Range-Unit":
-              "items",
-
-            "Range":
-              `${from}-${to}`
+              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
           }
         }
       );
@@ -7734,21 +8044,24 @@ async function loadAllNewPropertyRows(){
 
     if(!response.ok){
 
+      const responseText=
+        await response.text().catch(()=>"" );
+
       throw new Error(
-        `Supabase properties: ${response.status}`
+        `Supabase properties página ${offset}: ${response.status} ${responseText}`
       );
 
     }
 
 
-    const rows =
+    const rows=
       await response.json();
 
 
     if(!Array.isArray(rows)){
 
       throw new Error(
-        "Supabase properties: resposta inválida"
+        `Supabase properties página ${offset}: resposta inválida`
       );
 
     }
@@ -7760,44 +8073,37 @@ async function loadAllNewPropertyRows(){
 
 
     console.log(
-      "Ynteligencia Supabase página:",
+      "Ynteligencia Supabase página carregada:",
       {
-        from,
-        to,
-        recebidos:
-          rows.length,
-        acumulado:
-          allRows.length
+        offset,
+        recebidos:rows.length,
+        acumulado:allRows.length
       }
     );
 
 
     /*
-      Se vier menos que 1.000,
-      chegamos à última página.
+      Última página.
     */
     if(
-      rows.length <
-      PAGE_SIZE
+      rows.length < PAGE_SIZE
     ){
       break;
     }
 
 
-    from +=
-      PAGE_SIZE;
+    offset += PAGE_SIZE;
 
 
     /*
       Proteção contra loop acidental.
-      Muito acima do estoque atual.
     */
-    if(
-      from > 50000
-    ){
+    if(offset > 50000){
+
       console.warn(
-        "Paginação interrompida por proteção de segurança."
+        "Paginação do Supabase interrompida por limite de segurança."
       );
+
       break;
     }
 
@@ -7808,8 +8114,11 @@ async function loadAllNewPropertyRows(){
 
 }
 
-
 async function loadInventory(){
+
+  inventoryLoading=true;
+  inventoryReady=false;
+  inventoryLoadError=false;
 
   try{
 
@@ -7883,7 +8192,12 @@ try{
               p.neighborhood
             ) ===
             "brooklin paulista"
-        ).length
+        ).length,
+
+      totalPaginasEstimadas:
+        Math.ceil(
+          (Array.isArray(novosRows) ? novosRows.length : 0) / 1000
+        )
     }
   );
 
@@ -7914,14 +8228,43 @@ console.log(
 
 fillCatalogNeighborhoods();
 
+inventoryLoading=false;
+inventoryReady=true;
+inventoryLoadError=false;
+
+/*
+  Se o usuário abriu o Explorar antes da carga terminar,
+  redesenha automaticamente assim que o inventário estiver pronto.
+*/
+if(
+  $("catalog")?.classList.contains("visible")
+){
+  renderCatalog();
+}
+
 
   }catch(error){
 
-    properties=[];
+    console.error(
+      "Falha ao carregar inventário:",
+      error
+    );
 
+    inventoryLoading=false;
+    inventoryReady=false;
+    inventoryLoadError=true;
+
+    /*
+      Não mostramos "0 imóveis" como se fosse resultado real.
+    */
+    if(
+      $("catalog")?.classList.contains("visible")
+    ){
+      renderCatalog();
+    }
 
     showToast(
-      "Estamos atualizando o estoque de imóveis. A busca continua disponível."
+      "Não foi possível atualizar o estoque agora. Tente novamente em instantes."
     );
   }
 }
@@ -7946,6 +8289,13 @@ function applyHeroInventoryPhoto(){
 ========================================================= */
 
 setStep(0);
+
+if($("catalogCity")){
+  $("catalogCity").value=activeCity;
+}
+if($("catalogState")){
+  $("catalogState").value=activeState;
+}
 
 
 Promise.all([
