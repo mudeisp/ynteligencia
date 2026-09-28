@@ -2043,6 +2043,92 @@ body.campaign-catalog-mode .catalog{
 }
 </style>
 
+
+<style>
+/* ===== DETALHE V3 · PLANTAS + MAPA ===== */
+.detail-floorplans{margin-top:24px}
+.detail-floorplan-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-top:12px
+}
+.detail-floorplan-card{
+  border:1px solid #ded8cd;
+  border-radius:16px;
+  overflow:hidden;
+  background:#fff;
+  padding:0;
+  cursor:pointer
+}
+.detail-floorplan-card img{
+  display:block;
+  width:100%;
+  aspect-ratio:4/3;
+  object-fit:contain;
+  background:#f7f4ed
+}
+.detail-floorplan-card span{
+  display:block;
+  padding:9px 11px;
+  font-size:12px;
+  font-weight:800;
+  color:#4a443c
+}
+.detail-map-wrap{
+  margin-top:12px;
+  overflow:hidden;
+  border:1px solid #ded8cd;
+  border-radius:18px;
+  background:#f0ece3
+}
+.detail-map-wrap iframe{
+  display:block;
+  width:100%;
+  height:320px;
+  border:0
+}
+.detail-map-address{
+  margin:10px 0 0!important;
+  font-size:13px!important;
+  color:#6e685f
+}
+.floorplan-lightbox{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(0,0,0,.88)
+}
+.floorplan-lightbox img{
+  max-width:min(1100px,96vw);
+  max-height:90vh;
+  object-fit:contain;
+  background:#fff;
+  border-radius:14px
+}
+.floorplan-lightbox button{
+  position:absolute;
+  top:18px;
+  right:18px;
+  width:44px;
+  height:44px;
+  border:0;
+  border-radius:50%;
+  background:#fff;
+  color:#222;
+  font-size:24px;
+  cursor:pointer
+}
+@media(max-width:768px){
+  .detail-floorplan-grid{grid-template-columns:1fr}
+  .detail-map-wrap iframe{height:280px}
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -6035,6 +6121,109 @@ function openPropertySpecialist(p){
   openLeadCapture(p);
 }
 
+
+function extractFloorplans(raw){
+  const found=[];
+  const seen=new Set();
+
+  function add(value){
+    if(typeof value!=="string")return;
+    const url=clean(value);
+    if(!validURL(url) || seen.has(url))return;
+    seen.add(url);
+    found.push(url);
+  }
+
+  function walk(value,path="",depth=0){
+    if(value==null || depth>9)return;
+    const plantContext=/plant|planta|floor.?plan|floorplan|blueprint|typolog/i.test(path);
+
+    if(typeof value==="string"){
+      if(plantContext && /^https?:\/\//i.test(value))add(value);
+      return;
+    }
+
+    if(Array.isArray(value)){
+      value.forEach((item,index)=>walk(item,`${path}[${index}]`,depth+1));
+      return;
+    }
+
+    if(typeof value==="object"){
+      Object.entries(value).forEach(([key,val])=>{
+        const next=path ? `${path}.${key}` : key;
+        const keyIsPlant=/plant|planta|floor.?plan|floorplan|blueprint/i.test(key);
+
+        if(typeof val==="string"){
+          if((plantContext || keyIsPlant) && /^https?:\/\//i.test(val))add(val);
+        }else{
+          walk(val,next,depth+1);
+        }
+      });
+    }
+  }
+
+  walk(raw,"raw_data",0);
+  return found.slice(0,8);
+}
+
+function propertyMapQuery(p,addressData){
+  const lat=Number(
+    addressData?.latitude ??
+    addressData?.lat ??
+    p?.rawData?.latitude ??
+    p?.rawData?.lat
+  );
+  const lng=Number(
+    addressData?.longitude ??
+    addressData?.lng ??
+    addressData?.lon ??
+    p?.rawData?.longitude ??
+    p?.rawData?.lng ??
+    p?.rawData?.lon
+  );
+
+  if(Number.isFinite(lat) && Number.isFinite(lng) && lat!==0 && lng!==0){
+    return `${lat},${lng}`;
+  }
+
+  return clean([
+    p?.address,
+    p?.neighborhood,
+    addressData?.city || p?.city || "São Paulo",
+    addressData?.state || addressData?.uf || p?.state || "SP"
+  ].filter(Boolean).join(", "));
+}
+
+function openFloorplan(url,p){
+  const old=document.getElementById("floorplanLightbox");
+  if(old)old.remove();
+
+  try{
+    gtag("event","floorplan_view",{
+      property_id:String(p?.id||""),
+      property_name:p?.name||"",
+      neighborhood:p?.neighborhood||""
+    });
+  }catch(error){}
+
+  supabaseTrack("floorplan_view",{
+    property_id:String(p?.id||""),
+    property_name:p?.name||"",
+    neighborhood:p?.neighborhood||""
+  });
+
+  const box=document.createElement("div");
+  box.id="floorplanLightbox";
+  box.className="floorplan-lightbox";
+  box.innerHTML=`
+    <button type="button" aria-label="Fechar">×</button>
+    <img src="${esc(url)}" alt="Planta do imóvel">
+  `;
+  box.querySelector("button")?.addEventListener("click",()=>box.remove());
+  box.addEventListener("click",e=>{if(e.target===box)box.remove()});
+  document.body.appendChild(box);
+}
+
 function showPhotoModal(id){
   const p=propertyForInteraction(id);
   if(!p)return;
@@ -6080,6 +6269,11 @@ function showPhotoModal(id){
   const building=raw.building && typeof raw.building==="object" ? raw.building : {};
   const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
   const addressData=building.address && typeof building.address==="object" ? building.address : {};
+  const floorplans=extractFloorplans(raw);
+  const mapQuery=propertyMapQuery(p,addressData);
+  const mapEmbedUrl=mapQuery
+    ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`
+    : "";
   const isNew=String(p.source||"").toLowerCase()==="novos";
   const updatedLabel=isNew ? detailUpdatedLabel(p,building,typology) : "";
   const detailReasons=(p.match?.reasons || []).slice(0,4);
@@ -6199,12 +6393,41 @@ function showPhotoModal(id){
           <p>${esc(description)}</p>
         </section>` : ""}
 
-      ${fullAddress ? `
+      ${floorplans.length ? `
+        <section class="detail-section detail-floorplans">
+          <div class="detail-section-title">Plantas</div>
+          <h3>Plantas do condomínio</h3>
+          <div class="detail-floorplan-grid">
+            ${floorplans.map((url,index)=>`
+              <button type="button" class="detail-floorplan-card" data-floorplan="${esc(url)}">
+                <img src="${esc(url)}" alt="Planta ${index+1} — ${esc(p.name)}" loading="lazy">
+                <span>Ver planta ${index+1}</span>
+              </button>
+            `).join("")}
+          </div>
+        </section>` : ""}
+
+      ${mapEmbedUrl ? `
+        <section class="detail-section detail-location-section">
+          <div class="detail-section-title">Localização</div>
+          <h3>${esc(p.neighborhood || "São Paulo")}</h3>
+          <div class="detail-map-wrap">
+            <iframe
+              class="detail-map-frame"
+              title="Mapa de localização de ${esc(p.name)}"
+              src="${esc(mapEmbedUrl)}"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              allowfullscreen>
+            </iframe>
+          </div>
+          ${fullAddress ? `<p class="detail-map-address">${esc(fullAddress)}</p>` : ""}
+        </section>` : (fullAddress ? `
         <section class="detail-section">
           <div class="detail-section-title">Localização</div>
           <h3>${esc(p.neighborhood || "São Paulo")}</h3>
           <p>${esc(fullAddress)}</p>
-        </section>` : ""}
+        </section>` : "")}
 
       <section class="detail-specialist">
         <img src="/PERFIL.jfif" alt="Especialista Ynteligencia">
@@ -6249,6 +6472,35 @@ function showPhotoModal(id){
   modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   document.body.appendChild(modal);
+
+  modal.querySelectorAll("[data-floorplan]").forEach(btn=>{
+    btn.addEventListener("click",()=>openFloorplan(btn.dataset.floorplan,p));
+  });
+
+  const mapFrame=modal.querySelector(".detail-map-frame");
+  if(mapFrame){
+    let mapTracked=false;
+    const mapObserver=new IntersectionObserver(entries=>{
+      if(!mapTracked && entries.some(entry=>entry.isIntersecting)){
+        mapTracked=true;
+        try{
+          gtag("event","map_view",{
+            property_id:String(p.id||""),
+            property_name:p.name||"",
+            neighborhood:p.neighborhood||""
+          });
+        }catch(error){}
+        supabaseTrack("map_view",{
+          property_id:String(p.id||""),
+          property_name:p.name||"",
+          neighborhood:p.neighborhood||""
+        });
+        mapObserver.disconnect();
+      }
+    },{threshold:.35});
+    mapObserver.observe(mapFrame);
+  }
+
   renderDetailSimilar(p,modal);
   updateDetailGallery();
 }
