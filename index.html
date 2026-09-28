@@ -6393,6 +6393,20 @@ function openAllPropertyGallery(items,p,startIndex=0){
   });
   shell.querySelector(".all-gallery-prev")?.addEventListener("click",()=>move(-1));
   shell.querySelector(".all-gallery-next")?.addEventListener("click",()=>move(1));
+
+  const stage=shell.querySelector(".all-gallery-stage");
+  let touchStartX=null;
+  stage?.addEventListener("touchstart",e=>{
+    touchStartX=e.touches?.[0]?.clientX ?? null;
+  },{passive:true});
+  stage?.addEventListener("touchend",e=>{
+    if(touchStartX==null)return;
+    const endX=e.changedTouches?.[0]?.clientX ?? touchStartX;
+    const delta=endX-touchStartX;
+    touchStartX=null;
+    if(Math.abs(delta)<45)return;
+    move(delta<0 ? 1 : -1);
+  },{passive:true});
   shell.querySelectorAll("[data-gallery-index]").forEach(btn=>{
     btn.addEventListener("click",()=>{
       index=Number(btn.dataset.galleryIndex)||0;
@@ -6400,13 +6414,20 @@ function openAllPropertyGallery(items,p,startIndex=0){
     });
   });
 
-  shell.addEventListener("click",e=>{if(e.target===shell) shell.remove()});
+  shell.addEventListener("click",e=>{
+    if(e.target!==shell)return;
+    if(history.state?.ynteligenciaAllGallery)history.back();
+    else shell.remove();
+  });
   document.addEventListener("keydown",function galleryKeys(e){
     if(!document.getElementById("allGalleryShell")){
       document.removeEventListener("keydown",galleryKeys);
       return;
     }
-    if(e.key==="Escape")shell.remove();
+    if(e.key==="Escape"){
+      if(history.state?.ynteligenciaAllGallery)history.back();
+      else shell.remove();
+    }
     if(e.key==="ArrowLeft")move(-1);
     if(e.key==="ArrowRight")move(1);
   });
@@ -6751,18 +6772,18 @@ function showPhotoModal(id){
   modal.innerHTML=`
     <div class="detail-gallery">
       <div class="detail-gallery-track">
-        ${photos.map((url,i)=>`<img class="detail-gallery-slide" src="${esc(url)}" alt="${esc(p.name)} — foto ${i+1}" loading="${i===0?"eager":"lazy"}">`).join("")}
+        ${detailPhotos.map((url,i)=>`<img class="detail-gallery-slide" src="${esc(url)}" alt="${esc(p.name)} — foto ${i+1}" loading="${i===0?"eager":"lazy"}">`).join("")}
       ${allPropertyImages.length ? `
           <span class="detail-gallery-count">${allPropertyImages.length} ${allPropertyImages.length===1?"foto":"fotos"}</span>
-          <button type="button" class="detail-gallery-all-btn">Ver todas as fotos</button>
+          ${allPropertyImages.length>1 ? `<button type="button" class="detail-gallery-all-btn">Ver todas as fotos</button>` : ""}
         ` : ""}</div>
-      <button class="detail-gallery-close" type="button" aria-label="Voltar" onclick="this.closest('#photoModal').remove()">‹</button>
+      <button class="detail-gallery-close" type="button" aria-label="Voltar" onclick="closePropertyDetail()">‹</button>
       <div class="detail-gallery-counter">1 / ${detailPhotos.length}</div>
       ${detailPhotos.length>1 ? `
         <button class="detail-gallery-arrow prev" type="button" aria-label="Foto anterior" onclick="moveDetailPhoto(-1)">‹</button>
         <button class="detail-gallery-arrow next" type="button" aria-label="Próxima foto" onclick="moveDetailPhoto(1)">›</button>
         <div class="detail-gallery-dots">
-          ${photos.map((_,i)=>`<button class="detail-gallery-dot ${i===0?"active":""}" type="button" aria-label="Ir para foto ${i+1}" onclick="goDetailPhoto(${i})"></button>`).join("")}
+          ${detailPhotos.length<=20 ? detailPhotos.map((_,i)=>`<button class="detail-gallery-dot ${i===0?"active":""}" type="button" aria-label="Ir para foto ${i+1}" onclick="goDetailPhoto(${i})"></button>`).join("") : ""}
         </div>` : ""}
     </div>
 
@@ -6915,7 +6936,11 @@ function showPhotoModal(id){
   document.body.appendChild(modal);
 
   modal.querySelector(".detail-gallery-all-btn")?.addEventListener("click",()=>{
-    openAllPropertyGallery(allPropertyImages,p,0);
+    const track=modal.querySelector(".detail-gallery-track");
+    const current=track && track.clientWidth
+      ? Math.round(track.scrollLeft/track.clientWidth)
+      : 0;
+    openAllPropertyGallery(allPropertyImages,p,current);
   });
 
   modal.querySelectorAll("[data-floorplan]").forEach(btn=>{
