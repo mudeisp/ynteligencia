@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -4689,15 +4690,29 @@ function showMatches(){
   let rankedProperties;
 
   if(adIntent.active){
-    /* Jornada de mídia: respeita integralmente a intenção declarada.
-       Bairro + dormitórios + faixa de preço são filtros duros.
-       Se não houver imóveis suficientes no bairro pedido, NÃO completa
-       o feed silenciosamente com outros bairros/cidades. Isso evita que
-       uma busca por Perdizes retorne Morumbi, Butantã ou homônimos de
-       outras cidades. O feed mostra apenas os imóveis realmente elegíveis. */
-    const eligible=properties.filter(propertyMatchesAdRequirements);
-    const exact=rankList(eligible.filter(propertyMatchesAdNeighborhood));
-    rankedProperties=exact.slice(0,12);
+    /*
+      ENTRADA DIRETA DE CAMPANHA:
+      mostra TODOS os imóveis que atendem aos filtros duros da URL.
+
+      Importante:
+      aqui NÃO usamos o corte mínimo de MATCH (score >= 45),
+      porque a campanha "todos os novos do Brooklin" deve mostrar
+      todo o estoque elegível do bairro, e não apenas os imóveis
+      que pontuaram alto no perfil do usuário.
+    */
+    const eligible=properties
+      .filter(propertyMatchesAdRequirements)
+      .filter(propertyMatchesAdNeighborhood)
+      .map(p=>({
+        ...p,
+        match:scoreProperty(p)
+      }))
+      .sort((a,b)=>
+        b.match.score-a.match.score ||
+        a.value-b.value
+      );
+
+    rankedProperties=eligible;
   }else{
     rankedProperties=rankList(properties);
   }
@@ -4712,8 +4727,11 @@ function showMatches(){
   let scored;
 
   if(adIntent.active){
-    /* Não reordena alternativas acima dos imóveis do bairro solicitado. */
-    scored=rankedProperties.slice(0,12);
+    /*
+      Campanha por URL = todos os imóveis elegíveis.
+      Sem limite de 12 resultados.
+    */
+    scored=rankedProperties.slice();
   }else{
     const novos=rankedProperties.filter(p=>p.source==="novos").slice(0,6);
     const usados=rankedProperties.filter(p=>p.source!=="novos").slice(0,6);
