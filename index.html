@@ -6122,7 +6122,7 @@ function renderDetailSimilar(base,modal){
   const section=modal?.querySelector("#detailSimilarSection");
   if(!grid || !section || !base)return;
 
-  const n=normalizeText(base.neighborhood||"");
+  const n=norm(base.neighborhood||"");
   const beds=Number(base.bedrooms)||0;
   const price=Number(base.value)||0;
 
@@ -6130,7 +6130,7 @@ function renderDetailSimilar(base,modal){
     .filter(x=>String(x.id)!==String(base.id))
     .map(x=>{
       let score=0;
-      if(n && normalizeText(x.neighborhood||"")===n)score+=6;
+      if(n && norm(x.neighborhood||"")===n)score+=6;
       if(beds && Number(x.bedrooms)===beds)score+=3;
       const xv=Number(x.value)||0;
       if(price && xv){
@@ -6334,7 +6334,7 @@ function extractPropertyOptions(raw,p=null){
   function add(label){
     label=clean(label);
     if(!label || label.length>120)return;
-    const key=normalizeText(label);
+    const key=norm(label);
     if(!key || seen.has(key))return;
     seen.add(key);
     options.push(label);
