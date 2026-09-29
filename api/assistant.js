@@ -5,7 +5,9 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       service: "Match IA",
-      openai_key_configured: Boolean(process.env.OPENAI_API_KEY)
+      openai_key_configured: Boolean(
+        process.env.OPENAI_API_KEY
+      )
     });
   }
 
@@ -17,19 +19,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey =
+      process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
       return res.status(500).json({
         success: false,
-        error: "OPENAI_API_KEY não configurada na Vercel"
+        error:
+          "OPENAI_API_KEY não configurada"
       });
     }
 
-    const body = req.body || {};
+    const body =
+      req.body || {};
 
     const message =
-      String(body.message || "").trim();
+      String(
+        body.message || ""
+      ).trim();
 
     const property =
       body.property &&
@@ -39,7 +46,7 @@ export default async function handler(req, res) {
 
     const history =
       Array.isArray(body.history)
-        ? body.history.slice(-16)
+        ? body.history.slice(-12)
         : [];
 
     if (!message) {
@@ -49,125 +56,131 @@ export default async function handler(req, res) {
       });
     }
 
-    const safeHistory =
-      history
-        .filter(
-          item =>
-            item &&
-            ["user", "assistant"].includes(item.role) &&
-            String(item.content || "").trim()
-        )
-        .map(
-          item => ({
-            role: item.role,
-            content: String(
-              item.content || ""
-            ).slice(0, 2200)
-          })
-        );
-
     const propertyContext =
       JSON.stringify(
         property,
         null,
         2
-      ).slice(0, 16000);
+      ).slice(0, 18000);
 
-    const instructions = `
-Você é a Match IA, assistente de compra imobiliária dentro do app Ynteligencia.
 
-Seu papel não é parecer um chatbot de atendimento.
+    const systemPrompt = `
+Você é a Match IA, assistente imobiliária dentro do app Ynteligencia.
 
-Converse como uma boa consultora imobiliária:
-natural, objetiva, inteligente e sem pressão.
+Você está conversando com uma pessoa que está olhando um imóvel específico.
 
-CONTEXTO
+FALE COMO UMA BOA CONSULTORA IMOBILIÁRIA.
 
-O cliente está olhando um imóvel específico.
+Seja:
+- natural;
+- direta;
+- simpática;
+- útil;
+- sem pressão comercial.
 
-Os dados desse imóvel estão no final destas instruções.
+IMPORTANTE:
 
-COMO CONVERSAR
+Responda EXATAMENTE ao que a pessoa perguntou.
 
-- Responda primeiro a pergunta do cliente.
+Exemplo:
 
-- Depois, se ajudar, faça UMA pergunta curta para avançar a conversa.
+Pergunta:
+"Qual é o bairro?"
 
-- Use português do Brasil.
+Resposta:
+"Esse imóvel fica em Vila Anastácio."
 
-- Evite repetir frases como "posso te ajudar".
+Não aproveite uma pergunta simples para falar de estoque, condições ou outros assuntos que não foram perguntados.
 
-- Não faça interrogatório.
+Se a resposta estiver nos dados do imóvel, responda diretamente.
 
-- Não peça telefone ou WhatsApp sem motivo.
+Se não estiver nos dados, diga claramente que essa informação não consta na ficha.
 
-- Não diga que é ChatGPT.
+Não invente informações.
 
-- Não mencione OpenAI.
-
-- Seu nome é Match IA.
-
-- Prefira respostas de 2 a 5 frases.
+Você pode usar:
+- nome do imóvel;
+- bairro;
+- endereço;
+- preço;
+- metragem;
+- dormitórios;
+- vagas;
+- estoque;
+- condições;
+- incorporadora;
+- características;
+- descrição;
+- datas;
+- localização.
 
 DISPONIBILIDADE
 
-- Se houver availability.typology_stock ou availability.building_stock maior que zero, diga claramente quantas unidades constam na ficha.
+Quando perguntarem se está disponível:
+- informe o estoque cadastrado, se houver;
+- diga que é o estoque da última atualização;
+- não prometa disponibilidade em tempo real.
 
-- Se houver data de atualização, informe que é o estoque da última atualização disponível.
-
-- Não diga que está disponível agora sem confirmação humana.
-
-- Se o cliente pedir confirmação atual, reserva ou unidade específica, termine com:
+Se a pessoa quiser confirmação em tempo real, visita, reserva ou negociação, finalize com:
 
 [[HANDOFF]]
 
-CONDIÇÕES COMERCIAIS
+CONDIÇÕES
 
-- Leia:
+Se houver condições comerciais nos dados, explique de forma simples.
 
-commercial.payment_conditions
-commercial.opportunity
-commercial.original_price
-commercial.discount_price
+Se não houver, diga:
+"Essa condição não consta na ficha que tenho aqui."
 
-- Se houver dados, explique-os antes de oferecer atendimento humano.
+E ofereça o atendimento humano apenas se fizer sentido.
 
-- Nunca invente entrada, parcela, financiamento ou desconto.
+CONVERSA
 
-- Se não houver condições na ficha, diga isso naturalmente.
+- Respostas curtas: normalmente 1 a 4 frases.
+- Faça no máximo uma pergunta por resposta.
+- Não faça interrogatório.
+- Não repita "posso te ajudar".
+- Não diga que é ChatGPT.
+- Não mencione OpenAI.
+- Seu nome é Match IA.
 
-COMPARAÇÃO
-
-- Você pode ajudar o comprador a pensar sobre metragem, valor, bairro, dormitórios e perfil do imóvel.
-
-- Se ele pedir outras opções e você não tiver outros imóveis no contexto, pergunte qual prioridade ele quer preservar.
-
-INTENÇÃO COMERCIAL
-
-Use [[HANDOFF]] somente quando o cliente:
-
-- pedir humano;
-- quiser visitar;
-- quiser negociar;
-- quiser reservar;
-- quiser confirmar disponibilidade em tempo real;
-- pedir uma condição que não esteja nos dados.
-
-Quando usar [[HANDOFF]], explique naturalmente por que vale falar com o Rafael.
-
-DADOS DO IMÓVEL ATUAL:
+DADOS DO IMÓVEL:
 
 ${propertyContext}
 `.trim();
 
-    const input = [
-      ...safeHistory,
+
+    const messages = [
+      {
+        role: "system",
+        content: systemPrompt
+      },
+
+      ...history
+        .filter(
+          item =>
+            item &&
+            ["user", "assistant"]
+              .includes(item.role)
+        )
+        .map(
+          item => ({
+            role:
+              item.role,
+
+            content:
+              String(
+                item.content || ""
+              ).slice(0, 2000)
+          })
+        ),
 
       {
         role: "user",
         content: message
       }
     ];
+
 
     const controller =
       new AbortController();
@@ -178,12 +191,14 @@ ${propertyContext}
         25000
       );
 
+
     let response;
 
     try {
+
       response =
         await fetch(
-          "https://api.openai.com/v1/responses",
+          "https://api.openai.com/v1/chat/completions",
 
           {
             method: "POST",
@@ -204,11 +219,9 @@ ${propertyContext}
                 model:
                   "gpt-5-mini",
 
-                instructions,
+                messages,
 
-                input,
-
-                max_output_tokens:
+                max_completion_tokens:
                   500
               })
           }
@@ -218,16 +231,19 @@ ${propertyContext}
       clearTimeout(timeout);
     }
 
+
     const data =
       await response
         .json()
         .catch(() => ({}));
 
+
     if (!response.ok) {
+
       console.error(
         "OPENAI_ASSISTANT_ERROR",
         response.status,
-        data
+        JSON.stringify(data)
       );
 
       return res.status(502).json({
@@ -235,60 +251,26 @@ ${propertyContext}
 
         error:
           data?.error?.message ||
-          `OpenAI respondeu com HTTP ${response.status}`
+          `OpenAI HTTP ${response.status}`
       });
     }
 
-    let reply = "";
 
-    if (
-      typeof data.output_text ===
-      "string"
-    ) {
-      reply =
-        data.output_text;
-    }
+    let reply =
+      data?.choices?.[0]
+        ?.message?.content || "";
 
-    if (
-      !reply &&
-      Array.isArray(data.output)
-    ) {
-      for (
-        const item of
-        data.output
-      ) {
-        if (
-          !Array.isArray(
-            item?.content
-          )
-        ) {
-          continue;
-        }
-
-        for (
-          const part of
-          item.content
-        ) {
-          if (
-            typeof part?.text ===
-            "string"
-          ) {
-            reply +=
-              part.text;
-          }
-        }
-      }
-    }
 
     reply =
-      String(
-        reply || ""
-      ).trim();
+      String(reply)
+        .trim();
+
 
     const handoff =
       reply.includes(
         "[[HANDOFF]]"
       );
+
 
     reply =
       reply
@@ -298,16 +280,28 @@ ${propertyContext}
         )
         .trim();
 
+
     if (!reply) {
-      reply =
-        "Me diz o que você quer entender deste imóvel — preço, disponibilidade, condições ou se vale comparar com outra opção.";
+
+      console.error(
+        "MATCH_IA_EMPTY_REPLY",
+        JSON.stringify(data)
+      );
+
+      return res.status(502).json({
+        success: false,
+        error:
+          "A IA não retornou texto"
+      });
     }
+
 
     return res.status(200).json({
       success: true,
       reply,
       handoff
     });
+
 
   } catch (error) {
 
@@ -316,21 +310,25 @@ ${propertyContext}
       error
     );
 
-    const isTimeout =
-      error?.name === "AbortError";
+
+    const timeout =
+      error?.name ===
+      "AbortError";
+
 
     return res
       .status(
-        isTimeout
+        timeout
           ? 504
           : 500
       )
       .json({
+
         success: false,
 
         error:
-          isTimeout
-            ? "A IA demorou mais que o esperado. Tente novamente."
+          timeout
+            ? "A IA demorou mais que o esperado."
             : "Erro interno na assistente"
       });
   }
