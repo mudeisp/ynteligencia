@@ -6895,6 +6895,12 @@ function aiPropertyContext(p){
     : [];
   return {
     id:String(p?.id||""),
+    building_id:String(
+      raw?.building_id ||
+      building?.id ||
+      p?.building_id ||
+      ""
+    ),
     name:p?.name||"",
     neighborhood:p?.neighborhood||"",
     city:p?.city||building?.address?.city||"São Paulo",
@@ -6972,22 +6978,18 @@ function ensureAiAssistantShell(){
     sendAiAssistantMessage(text);
   });
   shell.querySelector("#aiHumanHandoff")?.addEventListener("click",()=>{
-  if(!aiAssistantProperty)return;
+    if(!aiAssistantProperty)return;
 
-  const property = aiAssistantProperty;
-  const shell = document.getElementById("aiAssistantShell");
+    const property=aiAssistantProperty;
+    const aiShell=document.getElementById("aiAssistantShell");
 
-  shell?.classList.remove("open");
-  shell?.remove();
+    aiShell?.classList.remove("open");
+    aiShell?.remove();
+    document.body.style.overflow="hidden";
 
-  document.body.style.overflow = "hidden";
-
-  setTimeout(()=>{
-    openPropertySpecialist(property);
-  },120);
-});
-  shell.querySelector("#aiHumanHandoff")?.addEventListener("click",()=>{
-    if(aiAssistantProperty)openPropertySpecialist(aiAssistantProperty);
+    setTimeout(()=>{
+      openPropertySpecialist(property);
+    },120);
   });
 
   document.body.appendChild(shell);
@@ -7017,7 +7019,7 @@ function openAiAssistant(p){
   document.body.style.overflow="hidden";
 
   const sourceLabel=String(p.source||"").toLowerCase()==="novos" ? "lançamento" : "imóvel";
-  appendAiMessage("assistant",`Oi! Vi que você está olhando ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. O que você quer entender primeiro: disponibilidade, condições de pagamento ou se vale comparar com outra opção?`);
+  appendAiMessage("assistant",`Oi! Vi que você está olhando ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Pode me perguntar o que quiser sobre este imóvel — e também posso buscar outras unidades e opções do nosso estoque para comparar com você.`);
 
   try{
     gtag("event","ai_assistant_open",{
@@ -9251,7 +9253,7 @@ function openLeadCapture(p){
 
 
   modal.style.cssText=
-    "position:fixed;inset:0;z-index:250;background:rgba(7,15,27,.82);display:flex;align-items:center;justify-content:center;padding:20px";
+    "position:fixed;inset:0;z-index:400;background:rgba(7,15,27,.82);display:flex;align-items:center;justify-content:center;padding:20px";
 
 
   modal.innerHTML=
