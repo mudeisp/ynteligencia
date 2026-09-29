@@ -7007,6 +7007,66 @@ function appendAiMessage(role,text){
   box.scrollTop=box.scrollHeight;
 }
 
+function extractBrazilianPhone(text){
+  const candidates=String(text||"").match(/(?:\+?55[\s.-]*)?(?:\(?\d{2}\)?[\s.-]*)?(?:9?\d{4})[\s.-]*\d{4}/g) || [];
+
+  for(const candidate of candidates){
+    let digits=String(candidate).replace(/\D/g,"");
+
+    if((digits.length===12 || digits.length===13) && digits.startsWith("55")){
+      digits=digits.slice(2);
+    }
+
+    if(digits.length===10 || digits.length===11){
+      return digits;
+    }
+  }
+
+  return "";
+}
+
+function formatBrazilianPhone(phone){
+  const digits=String(phone||"").replace(/\D/g,"");
+  if(digits.length===11){
+    return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+  }
+  if(digits.length===10){
+    return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  }
+  return phone||"";
+}
+
+function openAiLeadCaptureFromPhone(phone){
+  if(!aiAssistantProperty || !phone)return;
+
+  const property=aiAssistantProperty;
+  const formattedPhone=formatBrazilianPhone(phone);
+  const aiShell=document.getElementById("aiAssistantShell");
+
+  try{
+    gtag("event","ai_phone_detected",{
+      property_id:String(property.id||""),
+      property_name:property.name||""
+    });
+  }catch(error){}
+
+  supabaseTrack("ai_phone_detected",{
+    property_id:String(property.id||""),
+    property_name:property.name||""
+  });
+
+  aiShell?.classList.remove("open");
+  aiShell?.remove();
+  document.body.style.overflow="hidden";
+
+  setTimeout(()=>{
+    openLeadCapture(property,{
+      phone:formattedPhone,
+      source:"match_ia_phone"
+    });
+  },160);
+}
+
 function openAiAssistant(p){
   if(!p)return;
   aiAssistantProperty=p;
@@ -7047,6 +7107,23 @@ async function sendAiAssistantMessage(text){
   appendAiMessage("user",text);
   aiAssistantHistory.push({role:"user",content:text});
   aiAssistantHistory=aiAssistantHistory.slice(-10);
+
+  const detectedPhone=extractBrazilianPhone(text);
+  if(detectedPhone){
+    appendAiMessage(
+      "assistant",
+      "Perfeito. Vou abrir o atendimento para registrar seu WhatsApp corretamente. Seu número já vai preenchido — falta só confirmar seus dados."
+    );
+
+    aiAssistantSending=false;
+    if(send)send.disabled=false;
+
+    setTimeout(()=>{
+      openAiLeadCaptureFromPhone(detectedPhone);
+    },420);
+
+    return;
+  }
 
   const thinking=document.createElement("div");
   thinking.className="ai-msg assistant";
@@ -9231,7 +9308,7 @@ $("specialistFloat")?.addEventListener(
 );
 
 
-function openLeadCapture(p){
+function openLeadCapture(p,prefill={}){
 
   const old=
     document.getElementById(
@@ -9273,11 +9350,13 @@ function openLeadCapture(p){
       </div>
 
       <h2 style="margin:0 42px 8px 0;font-size:28px;line-height:1.1;color:#182232">
-        Quer informações sobre este imóvel?
+        ${prefill.phone ? "Vamos concluir seu atendimento" : "Quer informações sobre este imóvel?"}
       </h2>
 
       <p style="margin:0 0 18px;color:#697487;line-height:1.5">
-        ${esc(p.name||"Imóvel selecionado")}
+        ${prefill.phone
+          ? `Seu WhatsApp já veio da conversa com a Match IA. Confirme nome e e-mail para registrar o atendimento sobre ${esc(p.name||"este imóvel")}.`
+          : esc(p.name||"Imóvel selecionado")}
       </p>
 
       <form id="leadCaptureForm">
@@ -9313,7 +9392,7 @@ function openLeadCapture(p){
           class="primary"
           type="submit"
           style="width:100%;border:0">
-          Continuar no WhatsApp
+          ${prefill.phone ? "Confirmar e falar com Rafael" : "Continuar no WhatsApp"}
         </button>
 
         <p style="margin:10px 0 0;color:#8a94a3;font-size:11px;line-height:1.4;text-align:center">
@@ -9352,9 +9431,16 @@ function openLeadCapture(p){
   const leadPhoneInput=document.getElementById("leadPhone");
   const leadEmailInput=document.getElementById("leadEmail");
 
-  if(leadNameInput && !leadNameInput.value) leadNameInput.value=savedLeadName;
-  if(leadPhoneInput && !leadPhoneInput.value) leadPhoneInput.value=savedLeadPhone;
-  if(leadEmailInput && !leadEmailInput.value) leadEmailInput.value=savedLeadEmail;
+  if(leadNameInput && !leadNameInput.value) leadNameInput.value=clean(prefill.name||"") || savedLeadName;
+  if(leadPhoneInput && !leadPhoneInput.value) leadPhoneInput.value=clean(prefill.phone||"") || savedLeadPhone;
+  if(leadEmailInput && !leadEmailInput.value) leadEmailInput.value=clean(prefill.email||"") || savedLeadEmail;
+
+  if(prefill.phone){
+    setTimeout(()=>{
+      if(!leadNameInput?.value) leadNameInput?.focus();
+      else if(!leadEmailInput?.value) leadEmailInput?.focus();
+    },80);
+  }
 
 
   document
@@ -9478,7 +9564,7 @@ function openLeadCapture(p){
                     lead.email,
 
                   origem:
-                    "ynteligencia",
+                    prefill.source==="match_ia_phone" ? "ynteligencia_match_ia" : "ynteligencia",
 
                   pagina:
                     window.location.href,
@@ -9512,7 +9598,7 @@ function openLeadCapture(p){
 
                   mensagem:
 
-                    `NOVO LEAD YNTELIGENCIA | ` +
+                    `${prefill.source==="match_ia_phone" ? "NOVO LEAD MATCH IA" : "NOVO LEAD YNTELIGENCIA"} | ` +
 
                     `Código do imóvel: ${lead.property_id} | ` +
 
