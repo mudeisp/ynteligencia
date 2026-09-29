@@ -1,12 +1,20 @@
 export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+
+  if (req.method === "GET") {
+    return res.status(200).json({
+      ok: true,
+      service: "Match IA",
+      openai_key_configured: Boolean(process.env.OPENAI_API_KEY)
+    });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
       error: "Method not allowed"
     });
   }
-
-  res.setHeader("Cache-Control", "no-store");
 
   try {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -23,16 +31,16 @@ export default async function handler(req, res) {
     const message =
       String(body.message || "").trim();
 
-    const history =
-      Array.isArray(body.history)
-        ? body.history.slice(-10)
-        : [];
-
     const property =
       body.property &&
       typeof body.property === "object"
         ? body.property
         : {};
+
+    const history =
+      Array.isArray(body.history)
+        ? body.history.slice(-16)
+        : [];
 
     if (!message) {
       return res.status(400).json({
@@ -46,16 +54,15 @@ export default async function handler(req, res) {
         .filter(
           item =>
             item &&
-            ["user", "assistant"].includes(
-              item.role
-            )
+            ["user", "assistant"].includes(item.role) &&
+            String(item.content || "").trim()
         )
         .map(
           item => ({
             role: item.role,
             content: String(
               item.content || ""
-            ).slice(0, 1800)
+            ).slice(0, 2200)
           })
         );
 
@@ -64,75 +71,89 @@ export default async function handler(req, res) {
         property,
         null,
         2
-      ).slice(0, 12000);
+      ).slice(0, 16000);
 
     const instructions = `
-Você é a Match IA, concierge imobiliária da Ynteligencia.
+Você é a Match IA, assistente de compra imobiliária dentro do app Ynteligencia.
 
-Converse em português do Brasil, de forma curta, clara, útil e humana.
+Seu papel não é parecer um chatbot de atendimento.
 
-Seu contexto é UM imóvel que o cliente está vendo agora no app.
+Converse como uma boa consultora imobiliária:
+natural, objetiva, inteligente e sem pressão.
 
-Use somente os dados fornecidos abaixo como fatos sobre esse imóvel.
+CONTEXTO
 
-Os dados podem conter dois blocos especialmente importantes:
+O cliente está olhando um imóvel específico.
 
-- availability: estoque informado, status e data da última atualização da tabela.
+Os dados desse imóvel estão no final destas instruções.
 
-- commercial: condições de pagamento, oportunidade, preço original e preço com desconto.
+COMO CONVERSAR
 
-Quando o usuário perguntar sobre disponibilidade:
+- Responda primeiro a pergunta do cliente.
 
-- informe o estoque/unidades que estiverem cadastrados;
+- Depois, se ajudar, faça UMA pergunta curta para avançar a conversa.
 
-- se houver data de atualização, diga que esse é o dado informado na última atualização;
+- Use português do Brasil.
 
-- não trate estoque cadastrado como garantia de disponibilidade em tempo real;
+- Evite repetir frases como "posso te ajudar".
 
-- para confirmação em tempo real, ofereça o atendimento humano no WhatsApp.
+- Não faça interrogatório.
 
-Quando o usuário perguntar sobre condições:
+- Não peça telefone ou WhatsApp sem motivo.
 
-- leia e resuma payment_conditions, opportunity, original_price e discount_price quando existirem;
+- Não diga que é ChatGPT.
 
-- não responda apenas "fale com o atendimento" se houver condição cadastrada;
+- Não mencione OpenAI.
 
-- se não houver condição cadastrada, diga claramente que a ficha não trouxe essa informação e ofereça confirmação humana.
-
-Não invente disponibilidade, desconto, condição comercial, financiamento, prazo, metragem, endereço ou estoque.
-
-OBJETIVOS:
-
-1. Responder dúvidas sobre o imóvel atual.
-
-2. Entender o que importa para o comprador:
-- orçamento
-- dormitórios
-- região
-- novo/usado
-- morar/investir
-
-3. Ajudar a comparar e organizar a decisão.
-
-4. Quando houver intenção concreta de confirmar disponibilidade em tempo real, negociar, visitar ou falar com alguém, ofereça o botão de atendimento humano no WhatsApp.
-
-REGRAS DE CONVERSA:
-
-- Faça no máximo uma pergunta por resposta.
+- Seu nome é Match IA.
 
 - Prefira respostas de 2 a 5 frases.
 
-- Não pressione o usuário a deixar contato.
+DISPONIBILIDADE
 
-- Não diga que é ChatGPT nem mencione OpenAI.
+- Se houver availability.typology_stock ou availability.building_stock maior que zero, diga claramente quantas unidades constam na ficha.
 
-Você é "Match IA".
+- Se houver data de atualização, informe que é o estoque da última atualização disponível.
 
-- Se o usuário pedir pessoa humana, visita, negociação, reserva, disponibilidade em tempo real ou confirmação comercial, termine sua resposta com o marcador exato:
+- Não diga que está disponível agora sem confirmação humana.
+
+- Se o cliente pedir confirmação atual, reserva ou unidade específica, termine com:
 
 [[HANDOFF]]
 
-- Só use [[HANDOFF]] quando fizer sentido real encaminhar.
+CONDIÇÕES COMERCIAIS
+
+- Leia:
+
+commercial.payment_conditions
+commercial.opportunity
+commercial.original_price
+commercial.discount_price
+
+- Se houver dados, explique-os antes de oferecer atendimento humano.
+
+- Nunca invente entrada, parcela, financiamento ou desconto.
+
+- Se não houver condições na ficha, diga isso naturalmente.
+
+COMPARAÇÃO
+
+- Você pode ajudar o comprador a pensar sobre metragem, valor, bairro, dormitórios e perfil do imóvel.
+
+- Se ele pedir outras opções e você não tiver outros imóveis no contexto, pergunte qual prioridade ele quer preservar.
+
+INTENÇÃO COMERCIAL
+
+Use [[HANDOFF]] somente quando o cliente:
+
+- pedir humano;
+- quiser visitar;
+- quiser negociar;
+- quiser reservar;
+- quiser confirmar disponibilidade em tempo real;
+- pedir uma condição que não esteja nos dados.
+
+Quando usar [[HANDOFF]], explique naturalmente por que vale falar com o Rafael.
 
 DADOS DO IMÓVEL ATUAL:
 
@@ -148,43 +169,54 @@ ${propertyContext}
       }
     ];
 
-    const response =
-      await fetch(
-        "https://api.openai.com/v1/responses",
+    const controller =
+      new AbortController();
 
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            "Authorization":
-              `Bearer ${apiKey}`
-          },
-
-          body:
-            JSON.stringify({
-              model:
-                "gpt-5-mini",
-
-              instructions,
-
-              input,
-
-              max_output_tokens:
-                350,
-
-              reasoning: {
-                effort: "low"
-              },
-
-              text: {
-                verbosity: "low"
-              }
-            })
-        }
+    const timeout =
+      setTimeout(
+        () => controller.abort(),
+        25000
       );
+
+    let response;
+
+    try {
+      response =
+        await fetch(
+          "https://api.openai.com/v1/responses",
+
+          {
+            method: "POST",
+
+            signal:
+              controller.signal,
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              "Authorization":
+                `Bearer ${apiKey}`
+            },
+
+            body:
+              JSON.stringify({
+                model:
+                  "gpt-5-mini",
+
+                instructions,
+
+                input,
+
+                max_output_tokens:
+                  500
+              })
+          }
+        );
+
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const data =
       await response
@@ -203,7 +235,7 @@ ${propertyContext}
 
         error:
           data?.error?.message ||
-          "Falha ao consultar a IA"
+          `OpenAI respondeu com HTTP ${response.status}`
       });
     }
 
@@ -215,11 +247,11 @@ ${propertyContext}
     ) {
       reply =
         data.output_text;
+    }
 
-    } else if (
-      Array.isArray(
-        data.output
-      )
+    if (
+      !reply &&
+      Array.isArray(data.output)
     ) {
       for (
         const item of
@@ -268,7 +300,7 @@ ${propertyContext}
 
     if (!reply) {
       reply =
-        "Posso te ajudar a entender melhor este imóvel ou organizar uma comparação com outras opções.";
+        "Me diz o que você quer entender deste imóvel — preço, disponibilidade, condições ou se vale comparar com outra opção.";
     }
 
     return res.status(200).json({
@@ -284,10 +316,22 @@ ${propertyContext}
       error
     );
 
-    return res.status(500).json({
-      success: false,
-      error:
-        "Erro interno na assistente"
-    });
+    const isTimeout =
+      error?.name === "AbortError";
+
+    return res
+      .status(
+        isTimeout
+          ? 504
+          : 500
+      )
+      .json({
+        success: false,
+
+        error:
+          isTimeout
+            ? "A IA demorou mais que o esperado. Tente novamente."
+            : "Erro interno na assistente"
+      });
   }
 }
