@@ -1,3 +1,5 @@
+
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -2651,6 +2653,243 @@ body.campaign-catalog-mode .catalog{
 }
 </style>
 
+
+<style id="unified-search-layout-v1">
+/* =========================================================
+   BUSCA UNIFICADA · REGIÃO + BAIRRO + EMPREENDIMENTO
+   Mantém todos os filtros avançados na mesma janela.
+========================================================= */
+#catalogRegionButtons,
+#openFilters,
+.refine-match-fab,
+.refine-match-shell{
+  display:none !important;
+}
+
+.unified-search-panel{
+  width:min(980px,100%);
+  margin:0 auto;
+  padding:22px;
+  border:1px solid #DED8CD;
+  border-radius:24px;
+  background:#FCFAF6;
+  box-shadow:0 14px 38px rgba(11,11,11,.08);
+}
+
+.unified-search-main{
+  display:grid;
+  grid-template-columns:1fr 1fr 1.7fr;
+  gap:12px;
+  align-items:end;
+}
+
+.unified-field{
+  display:grid;
+  gap:7px;
+  min-width:0;
+}
+
+.unified-field > span{
+  color:#6A635A;
+  font-size:10px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.unified-search-panel .field{
+  width:100%;
+  min-width:0;
+  min-height:52px;
+  border:1px solid #DED8CD;
+  border-radius:14px;
+  background:#fff;
+  color:#171513;
+  padding:0 13px;
+  outline:0;
+}
+
+.unified-search-panel .field:focus{
+  border-color:#C6A76B;
+  box-shadow:0 0 0 3px rgba(198,167,107,.13);
+}
+
+.unified-search-separator{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:21px 0 14px;
+  color:#9A7440;
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.unified-search-separator::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:#E4DED3;
+}
+
+.unified-catalog-filters{
+  position:static !important;
+  inset:auto !important;
+  display:block !important;
+  width:auto !important;
+  max-width:none !important;
+  margin:0 !important;
+  padding:0 !important;
+  transform:none !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  pointer-events:auto !important;
+  overflow:visible !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+.unified-filter-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:11px;
+}
+
+.unified-filter-actions{
+  display:grid !important;
+  grid-template-columns:minmax(150px,.38fr) minmax(220px,.62fr) !important;
+  gap:10px !important;
+  margin-top:18px !important;
+}
+
+.unified-filter-actions .filter-reset,
+.unified-filter-actions .catalog-search-btn{
+  width:100%;
+  min-height:54px;
+  border-radius:14px;
+}
+
+.unified-filter-actions .catalog-search-btn{
+  background:#171717;
+  color:#fff;
+  border:0;
+  font-weight:900;
+}
+
+.unified-filter-actions .filter-reset{
+  border:1px solid #DED8CD;
+  background:#fff;
+  color:#5E5548;
+  font-weight:850;
+}
+
+/* elimina qualquer espaço reservado pelas versões antigas do Refinar MATCH */
+body.match-results-mode,
+body.ad-match-mode{
+  padding-bottom:86px !important;
+}
+
+@media (max-width:900px){
+  .unified-search-main{
+    grid-template-columns:1fr 1fr;
+  }
+  .unified-search-name{
+    grid-column:1/-1;
+  }
+  .unified-filter-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width:768px){
+  .explore{
+    padding:24px 0 34px !important;
+    background:#F5F3EE !important;
+  }
+
+  .explore .section-head{
+    margin-bottom:16px;
+  }
+
+  .explore .section-head h2{
+    font-size:25px;
+    line-height:1.08;
+  }
+
+  .explore .section-head p{
+    font-size:14px;
+    line-height:1.45;
+  }
+
+  .unified-search-panel{
+    width:100%;
+    padding:15px;
+    border-radius:20px;
+    border-color:#D8D0C4;
+    background:#FCFAF6;
+    box-shadow:0 10px 28px rgba(11,11,11,.07);
+  }
+
+  .unified-search-main{
+    grid-template-columns:1fr;
+    gap:11px;
+  }
+
+  .unified-search-name{
+    grid-column:auto;
+  }
+
+  .unified-field > span{
+    font-size:9px;
+  }
+
+  .unified-search-panel .field{
+    min-height:50px;
+    font-size:16px;
+    background:#fff !important;
+    color:#242424 !important;
+    border-color:#D8D0C4 !important;
+  }
+
+  .unified-search-separator{
+    margin:19px 0 12px;
+  }
+
+  .unified-filter-grid{
+    grid-template-columns:1fr 1fr;
+    gap:9px;
+  }
+
+  .unified-filter-actions{
+    grid-template-columns:1fr !important;
+    margin-top:14px !important;
+  }
+
+  .unified-filter-actions .catalog-search-btn{
+    grid-row:1;
+    min-height:56px;
+    background:#E4D0A3;
+    color:#171513;
+  }
+
+  .unified-filter-actions .filter-reset{
+    grid-row:2;
+    min-height:46px;
+    background:transparent;
+  }
+}
+
+@media (max-width:430px){
+  .unified-filter-grid{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -3100,198 +3339,147 @@ body.campaign-catalog-mode .catalog{
 
     </div>
 
-    <div class="catalog-region-buttons" id="catalogRegionButtons" aria-label="Filtrar por região">
-      <button type="button" class="catalog-region-btn" data-region="oeste">Zona Oeste</button>
-      <button type="button" class="catalog-region-btn" data-region="sul">Zona Sul</button>
-      <button type="button" class="catalog-region-btn" data-region="norte">Zona Norte</button>
-      <button type="button" class="catalog-region-btn" data-region="leste">Zona Leste</button>
-      <button type="button" class="catalog-region-btn selected" data-region="">Todos os bairros</button>
-    </div>
+    <div class="unified-search-panel" id="unifiedSearchPanel" aria-label="Busca de imóveis">
+      <!-- Mantidos ocultos para preservar a lógica atual de São Paulo/SP no backend -->
+      <input id="catalogCity" type="hidden" value="São Paulo">
+      <input id="catalogState" type="hidden" value="SP">
 
-    <div class="explore-box">
+      <div class="unified-search-main">
+        <label class="unified-field">
+          <span>Região</span>
+          <select id="catalogRegionSelect" class="field" aria-label="Região">
+            <option value="">Todas as regiões</option>
+            <option value="oeste">Zona Oeste</option>
+            <option value="sul">Zona Sul</option>
+            <option value="norte">Zona Norte</option>
+            <option value="leste">Zona Leste</option>
+          </select>
+        </label>
 
-      <input
-        id="catalogCity"
-        class="field"
-        type="text"
-        value="São Paulo"
-        placeholder="Cidade"
-        aria-label="Cidade ativa">
+        <label class="unified-field">
+          <span>Bairro</span>
+          <select id="catalogNeighborhood" class="field" aria-label="Bairro">
+            <option value="">Todos os bairros</option>
+          </select>
+        </label>
 
-      <select
-        id="catalogState"
-        class="field"
-        aria-label="Estado ativo">
-        <option value="SP" selected>SP</option>
-        <option value="AC">AC</option>
-        <option value="AL">AL</option>
-        <option value="AP">AP</option>
-        <option value="AM">AM</option>
-        <option value="BA">BA</option>
-        <option value="CE">CE</option>
-        <option value="DF">DF</option>
-        <option value="ES">ES</option>
-        <option value="GO">GO</option>
-        <option value="MA">MA</option>
-        <option value="MT">MT</option>
-        <option value="MS">MS</option>
-        <option value="MG">MG</option>
-        <option value="PA">PA</option>
-        <option value="PB">PB</option>
-        <option value="PR">PR</option>
-        <option value="PE">PE</option>
-        <option value="PI">PI</option>
-        <option value="RJ">RJ</option>
-        <option value="RN">RN</option>
-        <option value="RS">RS</option>
-        <option value="RO">RO</option>
-        <option value="RR">RR</option>
-        <option value="SC">SC</option>
-        <option value="SE">SE</option>
-        <option value="TO">TO</option>
-      </select>
-
-      <select
-        id="catalogNeighborhood"
-        class="field">
-        <option value="">
-          Todos os bairros
-        </option>
-      </select>
-
-      <input
-        id="catalogSearch"
-        class="field"
-        placeholder="Empreendimento, condomínio, bairro, endereço ou código">
-
-      <button
-        id="catalogSearchBtn"
-        class="catalog-search-btn"
-        type="button">
-        BUSCAR IMÓVEL
-      </button>
-
-    </div>
-
-    <button class="filters-trigger" id="openFilters" type="button">⌁ Abrir filtros avançados</button>
-    <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true"></div>
-
-    <div class="catalog-filters" id="catalogFilters" aria-label="Filtros avançados">
-
-      <div class="filters-sheet-head">
-        <div class="filter-title">Filtros de compra</div>
-        <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros">×</button>
+        <label class="unified-field unified-search-name">
+          <span>Empreendimento / condomínio</span>
+          <input
+            id="catalogSearch"
+            class="field"
+            placeholder="Digite o nome do empreendimento ou condomínio"
+            autocomplete="off">
+        </label>
       </div>
 
-      <div class="filter-grid">
-
-        <select id="catalogSource" class="field" aria-label="Tipo de estoque">
-          <option value="todos">Novos e usados</option>
-          <option value="novos">Somente novos</option>
-          <option value="usados">Somente usados</option>
-        </select>
-
-        <select id="catalogSort" class="field" aria-label="Ordenar imóveis">
-          <option value="price_asc">Mais barato primeiro</option>
-          <option value="price_desc">Mais caro primeiro</option>
-          <option value="area_desc">Maior área primeiro</option>
-          <option value="area_asc">Menor área primeiro</option>
-        </select>
-
-        <select id="catalogType" class="field">
-          <option value="">Todos os tipos</option>
-          <option value="apartamento">Apartamento</option>
-          <option value="casa">Casa</option>
-          <option value="studio">Studio</option>
-          <option value="cobertura">Cobertura</option>
-          <option value="sobrado">Sobrado</option>
-          <option value="comercial">Comercial</option>
-        </select>
-
-        <input
-          id="minPrice"
-          class="field"
-          type="number"
-          min="0"
-          step="10000"
-          placeholder="Preço mínimo">
-
-        <input
-          id="maxPrice"
-          class="field"
-          type="number"
-          min="0"
-          step="10000"
-          placeholder="Preço máximo">
-
-        <select
-          id="catalogBedrooms"
-          class="field">
-
-          <option value="">Dormitórios</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4+</option>
-
-        </select>
-
-        <input
-          id="minArea"
-          class="field"
-          type="number"
-          min="0"
-          step="1"
-          placeholder="Área mínima (m²)">
-
-        <select
-          id="catalogParking"
-          class="field">
-
-          <option value="">Vagas</option>
-          <option value="0">Sem vaga</option>
-          <option value="1">1+</option>
-          <option value="2">2+</option>
-          <option value="3">3+</option>
-
-        </select>
-
-        <input
-          id="maxCondo"
-          class="field"
-          type="number"
-          min="0"
-          step="50"
-          placeholder="Condomínio máx.">
-
-        <input
-          id="maxIptu"
-          class="field"
-          type="number"
-          min="0"
-          step="50"
-          placeholder="IPTU máx.">
-
+      <div class="unified-search-separator">
+        <span>Filtros de compra</span>
       </div>
 
-      <div class="filter-actions">
+      <div class="catalog-filters unified-catalog-filters" id="catalogFilters" aria-label="Filtros de compra">
+        <!-- Elementos técnicos preservados para compatibilidade com a lógica atual -->
+        <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true" style="display:none"></div>
+        <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros" style="display:none">×</button>
 
-        <button
-          class="filter-reset"
-          id="resetCatalogFilters"
-          type="button">
-          Limpar filtros
-        </button>
+        <div class="filter-grid unified-filter-grid">
+          <label class="unified-field">
+            <span>Estoque</span>
+            <select id="catalogSource" class="field" aria-label="Tipo de estoque">
+              <option value="todos">Novos e usados</option>
+              <option value="novos">Somente novos</option>
+              <option value="usados">Somente usados</option>
+            </select>
+          </label>
 
-        <button
-          class="primary"
-          id="showCatalog"
-          type="button">
-          Explorar
-        </button>
+          <label class="unified-field">
+            <span>Ordenar</span>
+            <select id="catalogSort" class="field" aria-label="Ordenar imóveis">
+              <option value="price_asc">Mais barato primeiro</option>
+              <option value="price_desc">Mais caro primeiro</option>
+              <option value="area_desc">Maior área primeiro</option>
+              <option value="area_asc">Menor área primeiro</option>
+            </select>
+          </label>
 
+          <label class="unified-field">
+            <span>Tipo</span>
+            <select id="catalogType" class="field">
+              <option value="">Todos os tipos</option>
+              <option value="apartamento">Apartamento</option>
+              <option value="casa">Casa</option>
+              <option value="studio">Studio</option>
+              <option value="cobertura">Cobertura</option>
+              <option value="sobrado">Sobrado</option>
+              <option value="comercial">Comercial</option>
+            </select>
+          </label>
+
+          <label class="unified-field">
+            <span>Dormitórios</span>
+            <select id="catalogBedrooms" class="field">
+              <option value="">Qualquer</option>
+              <option value="1">1+</option>
+              <option value="2">2+</option>
+              <option value="3">3+</option>
+              <option value="4">4+</option>
+            </select>
+          </label>
+
+          <label class="unified-field">
+            <span>Preço mínimo</span>
+            <input id="minPrice" class="field" type="number" min="0" step="10000" placeholder="R$ mínimo">
+          </label>
+
+          <label class="unified-field">
+            <span>Preço máximo</span>
+            <input id="maxPrice" class="field" type="number" min="0" step="10000" placeholder="R$ máximo">
+          </label>
+
+          <label class="unified-field">
+            <span>Área mínima</span>
+            <input id="minArea" class="field" type="number" min="0" step="1" placeholder="m² mínimos">
+          </label>
+
+          <label class="unified-field">
+            <span>Vagas</span>
+            <select id="catalogParking" class="field">
+              <option value="">Qualquer</option>
+              <option value="0">Sem vaga</option>
+              <option value="1">1+</option>
+              <option value="2">2+</option>
+              <option value="3">3+</option>
+            </select>
+          </label>
+
+          <label class="unified-field">
+            <span>Condomínio máximo</span>
+            <input id="maxCondo" class="field" type="number" min="0" step="50" placeholder="R$ máximo">
+          </label>
+
+          <label class="unified-field">
+            <span>IPTU máximo</span>
+            <input id="maxIptu" class="field" type="number" min="0" step="50" placeholder="R$ máximo">
+          </label>
+        </div>
+
+        <div class="filter-actions unified-filter-actions">
+          <button class="filter-reset" id="resetCatalogFilters" type="button">
+            Limpar filtros
+          </button>
+
+          <button id="catalogSearchBtn" class="catalog-search-btn" type="button">
+            BUSCAR IMÓVEIS
+          </button>
+
+          <!-- Mantido para compatibilidade com listeners existentes -->
+          <button class="primary" id="showCatalog" type="button" style="display:none" aria-hidden="true" tabindex="-1">
+            Explorar
+          </button>
+        </div>
       </div>
     </div>
+
   </div>
 </section>
 
@@ -6795,14 +6983,9 @@ function ensureAiAssistantShell(){
     btn.addEventListener("click",()=>sendAiAssistantMessage(btn.dataset.aiQuestion||""));
   });
   shell.querySelector("#aiHumanHandoff")?.addEventListener("click",()=>{
-  if(!aiAssistantProperty)return;
+    if(aiAssistantProperty)openPropertySpecialist(aiAssistantProperty);
+  });
 
-  closeAiAssistant();
-
-  setTimeout(()=>{
-    openPropertySpecialist(aiAssistantProperty);
-  },180);
-});
   document.body.appendChild(shell);
   return shell;
 }
@@ -11023,6 +11206,35 @@ if ("serviceWorker" in navigator) {
   }
 }
 </style>
+
+
+<script id="unified-search-behavior-v1">
+/* Região agora é um select dentro da janela única de busca. */
+(() => {
+  const regionSelect=document.getElementById("catalogRegionSelect");
+  if(regionSelect){
+    regionSelect.addEventListener("change",()=>{
+      if(typeof setCatalogRegion==="function"){
+        setCatalogRegion(regionSelect.value || "");
+      }
+    });
+
+    /* Sincroniza também quando a busca veio de URL/campanha. */
+    const syncRegion=()=>{
+      try{
+        regionSelect.value=(typeof catalogRegion!=="undefined" ? catalogRegion : "") || "";
+      }catch(error){}
+    };
+    syncRegion();
+    setTimeout(syncRegion,250);
+    setTimeout(syncRegion,1200);
+  }
+
+  document.getElementById("resetCatalogFilters")?.addEventListener("click",()=>{
+    if(regionSelect) regionSelect.value="";
+  });
+})();
+</script>
 
 </body>
 </html>
