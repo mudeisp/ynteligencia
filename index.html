@@ -1,5 +1,3 @@
-
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -6955,12 +6953,6 @@ function ensureAiAssistantShell(){
       </div>
       <div>
         <div class="ai-assistant-messages" id="aiAssistantMessages"></div>
-        <div class="ai-quick-actions" id="aiQuickActions">
-          <button type="button" data-ai-question="Tem unidade disponível desse imóvel?">Disponibilidade</button>
-          <button type="button" data-ai-question="Quais são as condições de pagamento desse imóvel?">Condições</button>
-          <button type="button" data-ai-question="Gostei desse imóvel. O que você acha que eu deveria comparar antes de decidir?">Comparar</button>
-          <button type="button" data-ai-question="Me explica rapidamente os pontos fortes desse imóvel e da localização.">Pontos fortes</button>
-        </div>
         <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Falar com Rafael no WhatsApp</button>
       </div>
       <form class="ai-assistant-input" id="aiAssistantForm">
@@ -6979,9 +6971,21 @@ function ensureAiAssistantShell(){
     input.value="";
     sendAiAssistantMessage(text);
   });
-  shell.querySelectorAll("[data-ai-question]").forEach(btn=>{
-    btn.addEventListener("click",()=>sendAiAssistantMessage(btn.dataset.aiQuestion||""));
-  });
+  shell.querySelector("#aiHumanHandoff")?.addEventListener("click",()=>{
+  if(!aiAssistantProperty)return;
+
+  const property = aiAssistantProperty;
+  const shell = document.getElementById("aiAssistantShell");
+
+  shell?.classList.remove("open");
+  shell?.remove();
+
+  document.body.style.overflow = "hidden";
+
+  setTimeout(()=>{
+    openPropertySpecialist(property);
+  },120);
+});
   shell.querySelector("#aiHumanHandoff")?.addEventListener("click",()=>{
     if(aiAssistantProperty)openPropertySpecialist(aiAssistantProperty);
   });
