@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -2296,7 +2295,7 @@ body.campaign-catalog-mode .catalog{
 .ai-assistant-input textarea:focus{border-color:#C6A76B;box-shadow:0 0 0 3px rgba(198,167,107,.13)}
 .ai-assistant-send{width:50px;height:50px;border:0;border-radius:15px;background:#171717;color:#fff;font-size:19px;font-weight:900}
 .ai-assistant-send:disabled{opacity:.45}
-.ai-human-handoff{display:none;margin:0 15px 12px;width:calc(100% - 30px);min-height:46px;border:1px solid #C6A76B;border-radius:14px;background:#F7F0E1;color:#5A4728;font-weight:900}
+.ai-human-handoff{display:block;margin:0 15px 12px;width:calc(100% - 30px);min-height:48px;border:1px solid #C6A76B;border-radius:14px;background:#F7F0E1;color:#5A4728;font-weight:900}
 .ai-human-handoff.visible{display:block}
 .detail-sticky-cta{opacity:0;transform:translateX(-50%) translateY(12px);pointer-events:none;transition:.22s ease}
 .detail-sticky-cta.ai-ready{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
@@ -3177,6 +3176,8 @@ let inventoryLoadError=false;
 
 const CATALOG_PAGE_SIZE=30;
 let usedPropertiesCache=[];
+let usedInventoryLoaded=false;
+let usedInventoryLoading=false;
 let newPropertiesCache=[];
 let newCatalogOffset=0;
 let newCatalogHasMore=true;
@@ -5653,11 +5654,11 @@ function coverHTML(p){
 
   /*
     PERFORMANCE:
-    o card usa no máximo 3 imagens. A galeria completa continua
-    disponível na ficha do imóvel. Isso evita dezenas de <img> por card.
+    o card usa somente a capa. A galeria completa é carregada
+    quando o usuário abre a ficha do imóvel.
   */
   const photos=
-    photoList(p).slice(0,3);
+    photoList(p).slice(0,1);
 
 
   if(
@@ -6358,6 +6359,9 @@ function aiPropertyContext(p){
   const raw=p?.rawData && typeof p.rawData==="object" ? p.rawData : {};
   const building=raw.building && typeof raw.building==="object" ? raw.building : {};
   const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
+  const paymentConditions=Array.isArray(building?.payment_conditions)
+    ? building.payment_conditions.slice(0,30)
+    : [];
   return {
     id:String(p?.id||""),
     name:p?.name||"",
@@ -6369,8 +6373,18 @@ function aiPropertyContext(p){
     bedrooms:Number(p?.bedrooms)||0,
     suites:Number(p?.suites)||0,
     parking:Number(p?.parking)||0,
-    stock:Number(p?.stock)||Number(typology?.stock)||0,
-    status:building?.stage||building?.status||"",
+    availability:{
+      typology_stock:Number(typology?.stock)||Number(p?.stock)||0,
+      building_stock:Number(building?.stock)||0,
+      status:building?.stage||building?.status||"",
+      price_table_updated_at:building?.last_updated_pricetable_at||building?.updated_at||""
+    },
+    commercial:{
+      payment_conditions:paymentConditions,
+      opportunity:building?.opportunity||null,
+      original_price:typology?.original_price??null,
+      discount_price:typology?.discount_price??null
+    },
     developer:building?.developer||building?.publisher||"",
     delivery:building?.opening_date||"",
     description:building?.description||p?.description||"",
@@ -6409,12 +6423,12 @@ function ensureAiAssistantShell(){
       <div>
         <div class="ai-assistant-messages" id="aiAssistantMessages"></div>
         <div class="ai-quick-actions" id="aiQuickActions">
-          <button type="button" data-ai-question="Ainda está disponível?">Disponibilidade</button>
-          <button type="button" data-ai-question="Quais são as condições e o que preciso saber sobre o preço?">Condições</button>
+          <button type="button" data-ai-question="Qual é a disponibilidade ou estoque informado para este imóvel? Diga quantas unidades constam nos dados e a data da última atualização, se houver.">Disponibilidade</button>
+          <button type="button" data-ai-question="Quais condições de pagamento, oportunidade, preço original e desconto constam nos dados deste imóvel? Mostre apenas o que estiver cadastrado.">Condições</button>
           <button type="button" data-ai-question="Quero comparar com outras opções parecidas.">Comparar</button>
           <button type="button" data-ai-question="Quero entender melhor a localização e os pontos fortes deste imóvel.">Localização</button>
         </div>
-        <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Falar com Rafael</button>
+        <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Humano no WhatsApp</button>
       </div>
       <form class="ai-assistant-input" id="aiAssistantForm">
         <textarea id="aiAssistantInput" rows="1" placeholder="Pergunte sobre este imóvel..."></textarea>
@@ -6461,12 +6475,12 @@ function openAiAssistant(p){
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
   if(box)box.innerHTML="";
-  shell.querySelector("#aiHumanHandoff")?.classList.remove("visible");
+  
   shell.classList.add("open");
   document.body.style.overflow="hidden";
 
   const sourceLabel=String(p.source||"").toLowerCase()==="novos" ? "lançamento" : "imóvel";
-  appendAiMessage("assistant",`Oi! Estou olhando este ${sourceLabel} com você: ${p.name||"esta opção"}${p.neighborhood?` em ${p.neighborhood}`:""}. Posso te ajudar com disponibilidade, condições, localização ou comparar com outras opções. O que você quer saber?`);
+  appendAiMessage("assistant",`Oi! Estou olhando este ${sourceLabel} com você: ${p.name||"esta opção"}${p.neighborhood?` em ${p.neighborhood}`:""}. Posso consultar o estoque e as condições que constam na ficha, além de localização e opções parecidas. Se preferir, o botão “Humano no WhatsApp” fica disponível durante toda a conversa.`);
 
   try{
     gtag("event","ai_assistant_open",{
@@ -6553,7 +6567,7 @@ function scheduleAiAssistantForProperty(p,modal){
     trigger.id="aiAssistantTrigger";
     trigger.type="button";
     trigger.className="ai-assistant-trigger";
-    trigger.innerHTML=`<span class="ai-orb">✦</span><span>Quer ajuda com este imóvel?<small>Pergunte à Match IA</small></span>`;
+    trigger.innerHTML=`<span class="ai-orb">✦</span><span>IA + Humano<small>Pergunte agora ou fale no WhatsApp</small></span>`;
     trigger.addEventListener("click",()=>{
       trigger.remove();
       openAiAssistant(p);
@@ -6957,9 +6971,95 @@ function closePropertyDetail({fromPopState=false}={}){
   }
 }
 
+const fullNewPropertyCache=new Map();
+
+function replacePropertyEverywhere(updated){
+  if(!updated?.id)return updated;
+  const id=String(updated.id);
+  const mergeInto=(list)=>list.map(item=>{
+    if(String(item?.id||"")!==id)return item;
+    return {
+      ...item,
+      ...updated,
+      match:item.match || updated.match
+    };
+  });
+
+  newPropertiesCache=mergeInto(newPropertiesCache);
+  properties=mergeInto(properties);
+
+  const current=propertyForInteraction(id);
+  return current || updated;
+}
+
+async function hydrateNewProperty(p){
+  if(!p || String(p.source||"").toLowerCase()!=="novos")return p;
+
+  if(
+    p.rawData &&
+    typeof p.rawData==="object" &&
+    Object.keys(p.rawData).length
+  ){
+    return p;
+  }
+
+  const id=String(p.id||"");
+  if(!id)return p;
+
+  if(fullNewPropertyCache.has(id)){
+    return fullNewPropertyCache.get(id);
+  }
+
+  const promise=(async()=>{
+    try{
+      const url=new URL("https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties");
+      url.searchParams.set("external_id",`eq.${id}`);
+      url.searchParams.set("select","*");
+      url.searchParams.set("limit","1");
+
+      const response=await fetch(url.toString(),{
+        cache:"default",
+        headers:{
+          "apikey":SUPABASE_PUBLISHABLE_KEY,
+          "Authorization":`Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+        }
+      });
+
+      if(!response.ok){
+        throw new Error(`Detalhe Supabase: ${response.status}`);
+      }
+
+      const rows=await response.json();
+      const row=Array.isArray(rows)?rows[0]:null;
+      if(!row)return p;
+
+      const full=mapOruloProperty(row);
+      const merged={
+        ...p,
+        ...full,
+        match:p.match || full.match
+      };
+
+      return replacePropertyEverywhere(merged);
+    }catch(error){
+      console.warn("Falha ao carregar detalhe completo:",error);
+      return p;
+    }
+  })();
+
+  fullNewPropertyCache.set(id,promise);
+  const result=await promise;
+  fullNewPropertyCache.set(id,result);
+  return result;
+}
+
 async function showPhotoModal(id){
-  const p=propertyForInteraction(id);
+  let p=propertyForInteraction(id);
   if(!p)return;
+
+  if(String(p.source||"").toLowerCase()==="novos"){
+    p=await hydrateNewProperty(p);
+  }
 
   /*
     O photos.json dos usados é grande. Ele não bloqueia mais a abertura
@@ -7425,6 +7525,25 @@ function renderCatalog(){
 
   const catalogSource=
     $("catalogSource")?.value || "todos";
+
+  if(catalogSource==="usados" && !usedInventoryLoaded){
+    loadUsedInventory().catch(()=>{});
+
+    if($("catalogStatus")){
+      $("catalogStatus").textContent="Carregando imóveis usados...";
+    }
+
+    if($("catalogGrid")){
+      $("catalogGrid").innerHTML=`
+        <div class="empty">
+          <h3>Carregando imóveis usados</h3>
+          <p>O catálogo de usados está entrando em segundo plano.</p>
+        </div>
+      `;
+    }
+
+    return;
+  }
 
   if($("catalogCity")){
     $("catalogCity").value=activeCity;
@@ -9457,7 +9576,7 @@ function catalogServerQuery(offset=0){
   const url=new URL("https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties");
   url.searchParams.set("source","eq.novos");
   url.searchParams.set("active","eq.true");
-  url.searchParams.set("select","*");
+  url.searchParams.set("select","id,external_id,source,title,development_name,neighborhood,city,state,price,bedrooms,bathrooms,parking_spaces,area,image_url,property_url,active,updated_at");
   url.searchParams.set("city",`eq.${activeCity}`);
   url.searchParams.set("state",`eq.${activeState}`);
 
@@ -9512,8 +9631,7 @@ async function fetchNewCatalogPage({reset=false}={}){
       cache:"no-store",
       headers:{
         "apikey":SUPABASE_PUBLISHABLE_KEY,
-        "Authorization":`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        "Prefer":"count=exact"
+        "Authorization":`Bearer ${SUPABASE_PUBLISHABLE_KEY}`
       }
     });
     if(!response.ok){
@@ -9535,28 +9653,64 @@ async function fetchNewCatalogPage({reset=false}={}){
   }
 }
 
+async function loadUsedInventory(){
+  if(usedInventoryLoaded || usedInventoryLoading)return;
+  usedInventoryLoading=true;
+
+  try{
+    const response=await fetch(CSV_FILE,{cache:"default"});
+    if(!response.ok)throw new Error("CSV não encontrado");
+
+    const text=await response.text();
+    usedPropertiesCache=deduplicate(parseCSV(text).map(mapProperty));
+    usedInventoryLoaded=true;
+    properties=deduplicate([...usedPropertiesCache,...newPropertiesCache]);
+    fillCatalogNeighborhoods();
+
+    if($("catalog")?.classList.contains("visible"))renderCatalog();
+    if($("results")?.classList.contains("visible"))showMatches();
+  }catch(error){
+    console.warn("Falha ao carregar usados em segundo plano:",error);
+  }finally{
+    usedInventoryLoading=false;
+  }
+}
+
 async function loadInventory(){
   inventoryLoading=true;
   inventoryReady=false;
   inventoryLoadError=false;
+
   try{
-    const response=await fetch(CSV_FILE,{cache:"no-store"});
-    if(!response.ok) throw new Error("CSV não encontrado");
-    const text=await response.text();
-    usedPropertiesCache=deduplicate(parseCSV(text).map(mapProperty));
+    /*
+      PERFORMANCE:
+      primeiro carregamos somente 30 novos leves do Supabase.
+      O CSV de usados entra depois, sem bloquear a primeira tela.
+    */
     await fetchNewCatalogPage({reset:true});
-    properties=deduplicate([...usedPropertiesCache,...newPropertiesCache]);
-    fillCatalogNeighborhoods();
+
+    properties=deduplicate([...newPropertiesCache]);
     inventoryLoading=false;
     inventoryReady=true;
     inventoryLoadError=false;
-    if($("catalog")?.classList.contains("visible")) renderCatalog();
+
+    fillCatalogNeighborhoods();
+    if($("catalog")?.classList.contains("visible"))renderCatalog();
+
+    const loadUsedLater=()=>loadUsedInventory().catch(()=>{});
+
+    if("requestIdleCallback" in window){
+      window.requestIdleCallback(loadUsedLater,{timeout:1400});
+    }else{
+      setTimeout(loadUsedLater,450);
+    }
+
   }catch(error){
     console.error("Falha ao carregar inventário:",error);
     inventoryLoading=false;
     inventoryReady=false;
     inventoryLoadError=true;
-    if($("catalog")?.classList.contains("visible")) renderCatalog();
+    if($("catalog")?.classList.contains("visible"))renderCatalog();
     showToast("Não foi possível atualizar o estoque agora. Tente novamente em instantes.");
   }
 }
