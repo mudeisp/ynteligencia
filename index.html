@@ -2306,6 +2306,351 @@ body.campaign-catalog-mode .catalog{
 }
 </style>
 
+
+<style id="ai-layout-premium-v3">
+/* =========================================================
+   MATCH IA · LAYOUT PREMIUM V3 · DESKTOP + MOBILE
+   Somente camada visual. Não altera a integração/API.
+========================================================= */
+.ai-assistant-shell{
+  padding:22px;
+  align-items:center;
+  justify-content:center;
+  background:rgba(8,8,8,.48);
+  backdrop-filter:blur(14px) saturate(120%);
+  -webkit-backdrop-filter:blur(14px) saturate(120%);
+}
+
+.ai-assistant-card{
+  width:min(660px,calc(100vw - 44px));
+  height:min(760px,calc(100dvh - 44px));
+  max-height:820px;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:28px;
+  background:#F9F6EF;
+  box-shadow:0 36px 110px rgba(0,0,0,.38);
+}
+
+.ai-assistant-head{
+  min-height:76px;
+  padding:15px 18px 15px 20px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:#151513;
+}
+
+.ai-assistant-brand{gap:12px}
+.ai-assistant-brand .ai-orb{
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+  border:1px solid rgba(255,255,255,.16);
+  background:linear-gradient(145deg,#E9D8AE,#C6A76B);
+  box-shadow:0 8px 24px rgba(198,167,107,.18);
+  font-size:17px;
+}
+.ai-assistant-brand strong{
+  font-size:17px;
+  line-height:1.15;
+  letter-spacing:-.02em;
+}
+.ai-assistant-brand small{
+  margin-top:4px;
+  color:#AFA99E;
+  font-size:11px;
+  letter-spacing:.01em;
+}
+.ai-assistant-close{
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+  border:1px solid rgba(255,255,255,.07);
+  background:#24231F;
+  color:#F8F4EA;
+  font-size:25px;
+  transition:.15s ease;
+}
+.ai-assistant-close:hover{background:#302E29;transform:scale(1.03)}
+
+/* O div intermediário passa a ser o corpo rolável/flexível do chat */
+.ai-assistant-card > div:nth-child(2){
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:#F9F6EF;
+}
+
+.ai-assistant-messages{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  padding:24px 24px 14px;
+  background:
+    radial-gradient(circle at 100% 0,rgba(198,167,107,.08),transparent 240px),
+    #F9F6EF;
+  scroll-behavior:smooth;
+}
+.ai-assistant-messages::-webkit-scrollbar{width:7px}
+.ai-assistant-messages::-webkit-scrollbar-thumb{background:#D8D0C2;border-radius:999px}
+
+.ai-msg{
+  max-width:78%;
+  margin:9px 0;
+  padding:12px 15px;
+  border-radius:17px;
+  font-size:14px;
+  line-height:1.52;
+  letter-spacing:-.005em;
+  box-shadow:none;
+}
+.ai-msg.assistant{
+  position:relative;
+  margin-left:0;
+  border:1px solid #E4DED2;
+  border-bottom-left-radius:7px;
+  background:#FFFDF9;
+  color:#25221E;
+}
+.ai-msg.user{
+  margin-left:auto;
+  border:1px solid #171715;
+  border-bottom-right-radius:7px;
+  background:#171715;
+  color:#FFFDF8;
+}
+
+.ai-quick-actions{
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  overflow:visible;
+  padding:11px 18px 9px;
+  border-top:1px solid #EAE3D8;
+  background:#F9F6EF;
+}
+.ai-quick-actions button{
+  min-width:0;
+  min-height:40px;
+  padding:0 10px;
+  border:1px solid #DDD4C5;
+  border-radius:12px;
+  background:#FFFDF9;
+  color:#5A4728;
+  font-size:11px;
+  font-weight:850;
+  line-height:1.15;
+  white-space:normal;
+  transition:.15s ease;
+}
+.ai-quick-actions button:hover{
+  border-color:#C6A76B;
+  background:#F6EFE1;
+  transform:translateY(-1px);
+}
+
+.ai-human-handoff{
+  flex:0 0 auto;
+  position:relative;
+  margin:0 18px 10px;
+  width:calc(100% - 36px);
+  min-height:44px;
+  padding:0 15px 0 44px;
+  border:1px solid rgba(29,130,85,.30);
+  border-radius:13px;
+  background:#EFF8F3;
+  color:#17633F;
+  text-align:left;
+  font-size:12px;
+  font-weight:900;
+  box-shadow:none;
+}
+.ai-human-handoff::before{
+  content:"↗";
+  position:absolute;
+  left:13px;
+  top:50%;
+  width:24px;
+  height:24px;
+  transform:translateY(-50%);
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#1F8A5B;
+  color:#fff;
+  font-size:12px;
+}
+.ai-human-handoff::after{
+  content:"atendimento humano";
+  position:absolute;
+  right:13px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#668574;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+.ai-human-handoff:hover{background:#E8F5EE;border-color:rgba(29,130,85,.45)}
+
+.ai-assistant-input{
+  position:relative;
+  grid-template-columns:minmax(0,1fr) 46px;
+  gap:8px;
+  padding:12px 14px max(12px,env(safe-area-inset-bottom));
+  border-top:1px solid #E5DED2;
+  background:#FFFDF9;
+}
+.ai-assistant-input textarea{
+  min-height:46px;
+  max-height:120px;
+  padding:12px 14px;
+  border:1px solid #DCD4C8;
+  border-radius:14px;
+  background:#F9F7F2;
+  color:#171513;
+  font-size:14px;
+  line-height:1.4;
+}
+.ai-assistant-input textarea::placeholder{color:#918A80}
+.ai-assistant-input textarea:focus{
+  background:#fff;
+  border-color:#C6A76B;
+  box-shadow:0 0 0 3px rgba(198,167,107,.12);
+}
+.ai-assistant-send{
+  width:46px;
+  height:46px;
+  align-self:end;
+  border-radius:14px;
+  background:#171715;
+  color:#F1E2BE;
+  font-size:18px;
+  transition:.15s ease;
+}
+.ai-assistant-send:hover{background:#27251F;transform:translateY(-1px)}
+
+/* Botão flutuante mais discreto e com aparência de produto */
+.ai-assistant-trigger{
+  min-height:54px;
+  max-width:270px;
+  padding:7px 14px 7px 8px;
+  gap:10px;
+  border:1px solid rgba(228,208,163,.38);
+  border-radius:18px;
+  background:rgba(20,20,18,.94);
+  box-shadow:0 14px 38px rgba(0,0,0,.30);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+.ai-assistant-trigger .ai-orb{width:38px;height:38px;flex:0 0 38px}
+.ai-assistant-trigger > span:last-child{font-size:13px;line-height:1.2;text-align:left}
+.ai-assistant-trigger small{font-size:9px;line-height:1.25;color:#AFA99E}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+@media (max-width:768px){
+  .ai-assistant-shell{
+    padding:0;
+    align-items:stretch;
+    justify-content:stretch;
+    background:#F9F6EF;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
+
+  .ai-assistant-card{
+    width:100%;
+    height:100dvh;
+    max-height:none;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+  }
+
+  .ai-assistant-head{
+    min-height:68px;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+    background:#151513;
+  }
+  .ai-assistant-brand{gap:10px}
+  .ai-assistant-brand .ai-orb{width:38px;height:38px;flex-basis:38px}
+  .ai-assistant-brand strong{font-size:16px}
+  .ai-assistant-brand small{font-size:9px;margin-top:2px}
+  .ai-assistant-close{width:38px;height:38px;flex-basis:38px;font-size:23px}
+
+  .ai-assistant-messages{
+    padding:16px 13px 10px;
+    background:#F9F6EF;
+  }
+  .ai-msg{
+    max-width:88%;
+    margin:7px 0;
+    padding:11px 13px;
+    border-radius:15px;
+    font-size:15px;
+    line-height:1.46;
+  }
+  .ai-msg.assistant{border-bottom-left-radius:5px}
+  .ai-msg.user{border-bottom-right-radius:5px}
+
+  .ai-quick-actions{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+    padding:9px 12px 8px;
+  }
+  .ai-quick-actions button{
+    min-height:42px;
+    border-radius:12px;
+    font-size:12px;
+  }
+
+  .ai-human-handoff{
+    margin:0 12px 8px;
+    width:calc(100% - 24px);
+    min-height:43px;
+    padding-left:43px;
+    border-radius:12px;
+    font-size:12px;
+  }
+  .ai-human-handoff::after{display:none}
+
+  .ai-assistant-input{
+    grid-template-columns:minmax(0,1fr) 46px;
+    padding:9px 10px calc(9px + env(safe-area-inset-bottom));
+  }
+  .ai-assistant-input textarea{
+    min-height:46px;
+    font-size:16px; /* evita zoom automático no iPhone */
+    border-radius:14px;
+  }
+  .ai-assistant-send{width:46px;height:46px;border-radius:14px}
+
+  .ai-assistant-trigger{
+    right:10px;
+    left:auto;
+    bottom:max(82px,calc(12px + env(safe-area-inset-bottom)));
+    width:auto;
+    max-width:230px;
+    min-height:50px;
+    border-radius:16px;
+    padding:6px 12px 6px 7px;
+  }
+  .ai-assistant-trigger .ai-orb{width:36px;height:36px;flex-basis:36px}
+  .ai-assistant-trigger > span:last-child{font-size:12px}
+  .ai-assistant-trigger small{font-size:8px}
+}
+
+@media (max-width:380px){
+  .ai-assistant-brand small{display:none}
+  .ai-msg{max-width:92%}
+  .ai-quick-actions button{font-size:11px}
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -6423,15 +6768,15 @@ function ensureAiAssistantShell(){
       <div>
         <div class="ai-assistant-messages" id="aiAssistantMessages"></div>
         <div class="ai-quick-actions" id="aiQuickActions">
-          <button type="button" data-ai-question="Qual é a disponibilidade ou estoque informado para este imóvel? Diga quantas unidades constam nos dados e a data da última atualização, se houver.">Disponibilidade</button>
-          <button type="button" data-ai-question="Quais condições de pagamento, oportunidade, preço original e desconto constam nos dados deste imóvel? Mostre apenas o que estiver cadastrado.">Condições</button>
-          <button type="button" data-ai-question="Quero comparar com outras opções parecidas.">Comparar</button>
-          <button type="button" data-ai-question="Quero entender melhor a localização e os pontos fortes deste imóvel.">Localização</button>
+          <button type="button" data-ai-question="Tem unidade disponível desse imóvel?">Disponibilidade</button>
+          <button type="button" data-ai-question="Quais são as condições de pagamento desse imóvel?">Condições</button>
+          <button type="button" data-ai-question="Gostei desse imóvel. O que você acha que eu deveria comparar antes de decidir?">Comparar</button>
+          <button type="button" data-ai-question="Me explica rapidamente os pontos fortes desse imóvel e da localização.">Pontos fortes</button>
         </div>
-        <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Humano no WhatsApp</button>
+        <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Falar com Rafael no WhatsApp</button>
       </div>
       <form class="ai-assistant-input" id="aiAssistantForm">
-        <textarea id="aiAssistantInput" rows="1" placeholder="Pergunte sobre este imóvel..."></textarea>
+        <textarea id="aiAssistantInput" rows="1" placeholder="Digite sua dúvida sobre este imóvel..."></textarea>
         <button class="ai-assistant-send" id="aiAssistantSend" type="submit" aria-label="Enviar">➜</button>
       </form>
     </div>`;
@@ -6480,7 +6825,7 @@ function openAiAssistant(p){
   document.body.style.overflow="hidden";
 
   const sourceLabel=String(p.source||"").toLowerCase()==="novos" ? "lançamento" : "imóvel";
-  appendAiMessage("assistant",`Oi! Estou olhando este ${sourceLabel} com você: ${p.name||"esta opção"}${p.neighborhood?` em ${p.neighborhood}`:""}. Posso consultar o estoque e as condições que constam na ficha, além de localização e opções parecidas. Se preferir, o botão “Humano no WhatsApp” fica disponível durante toda a conversa.`);
+  appendAiMessage("assistant",`Oi! Vi que você está olhando ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. O que você quer entender primeiro: disponibilidade, condições de pagamento ou se vale comparar com outra opção?`);
 
   try{
     gtag("event","ai_assistant_open",{
@@ -6512,7 +6857,7 @@ async function sendAiAssistantMessage(text){
   const thinking=document.createElement("div");
   thinking.className="ai-msg assistant";
   thinking.id="aiThinking";
-  thinking.textContent="Analisando este imóvel...";
+  thinking.textContent="Só um instante...";
   shell.querySelector("#aiAssistantMessages")?.appendChild(thinking);
 
   try{
@@ -6567,7 +6912,7 @@ function scheduleAiAssistantForProperty(p,modal){
     trigger.id="aiAssistantTrigger";
     trigger.type="button";
     trigger.className="ai-assistant-trigger";
-    trigger.innerHTML=`<span class="ai-orb">✦</span><span>IA + Humano<small>Pergunte agora ou fale no WhatsApp</small></span>`;
+    trigger.innerHTML=`<span class="ai-orb">✦</span><span>IA + Humano<small>Tire dúvidas ou fale com o Rafael</small></span>`;
     trigger.addEventListener("click",()=>{
       trigger.remove();
       openAiAssistant(p);
