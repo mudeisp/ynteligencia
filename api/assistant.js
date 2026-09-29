@@ -43,7 +43,6 @@ export default async function handler(req, res) {
 
     const safeHistory =
       history
-
         .filter(
           item =>
             item &&
@@ -51,16 +50,12 @@ export default async function handler(req, res) {
               item.role
             )
         )
-
         .map(
           item => ({
-            role:
-              item.role,
-
-            content:
-              String(
-                item.content || ""
-              ).slice(0, 1800)
+            role: item.role,
+            content: String(
+              item.content || ""
+            ).slice(0, 1800)
           })
         );
 
@@ -80,9 +75,31 @@ Seu contexto é UM imóvel que o cliente está vendo agora no app.
 
 Use somente os dados fornecidos abaixo como fatos sobre esse imóvel.
 
-Não invente disponibilidade, desconto, condição comercial, financiamento, prazo, metragem, endereço ou estoque.
+Os dados podem conter dois blocos especialmente importantes:
 
-Se a disponibilidade ou condição de hoje não estiver explicitamente confirmada nos dados, diga que precisa ser confirmada com o atendimento humano.
+- availability: estoque informado, status e data da última atualização da tabela.
+
+- commercial: condições de pagamento, oportunidade, preço original e preço com desconto.
+
+Quando o usuário perguntar sobre disponibilidade:
+
+- informe o estoque/unidades que estiverem cadastrados;
+
+- se houver data de atualização, diga que esse é o dado informado na última atualização;
+
+- não trate estoque cadastrado como garantia de disponibilidade em tempo real;
+
+- para confirmação em tempo real, ofereça o atendimento humano no WhatsApp.
+
+Quando o usuário perguntar sobre condições:
+
+- leia e resuma payment_conditions, opportunity, original_price e discount_price quando existirem;
+
+- não responda apenas "fale com o atendimento" se houver condição cadastrada;
+
+- se não houver condição cadastrada, diga claramente que a ficha não trouxe essa informação e ofereça confirmação humana.
+
+Não invente disponibilidade, desconto, condição comercial, financiamento, prazo, metragem, endereço ou estoque.
 
 OBJETIVOS:
 
@@ -97,7 +114,7 @@ OBJETIVOS:
 
 3. Ajudar a comparar e organizar a decisão.
 
-4. Quando houver intenção concreta de confirmar disponibilidade, negociar, visitar ou falar com alguém, ofereça encaminhar para o Rafael.
+4. Quando houver intenção concreta de confirmar disponibilidade em tempo real, negociar, visitar ou falar com alguém, ofereça o botão de atendimento humano no WhatsApp.
 
 REGRAS DE CONVERSA:
 
@@ -111,7 +128,7 @@ REGRAS DE CONVERSA:
 
 Você é "Match IA".
 
-- Se o usuário pedir pessoa humana, visita, negociação, reserva, disponibilidade atual ou confirmação comercial, termine sua resposta com o marcador exato:
+- Se o usuário pedir pessoa humana, visita, negociação, reserva, disponibilidade em tempo real ou confirmação comercial, termine sua resposta com o marcador exato:
 
 [[HANDOFF]]
 
