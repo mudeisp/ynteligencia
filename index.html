@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -2262,6 +2263,47 @@ body.campaign-catalog-mode .catalog{
   .all-gallery-thumb{width:72px;height:54px;flex-basis:72px}
   .detail-gallery-all-btn{right:10px;bottom:10px;padding:9px 11px}
   .detail-gallery-count{left:10px;bottom:10px}
+}
+</style>
+
+
+<style>
+/* ===== MATCH IA · ASSISTENTE EMBUTIDA ===== */
+.ai-assistant-trigger{
+  position:fixed;z-index:255;right:18px;bottom:max(92px,calc(20px + env(safe-area-inset-bottom)));
+  display:flex;align-items:center;gap:10px;min-height:54px;padding:8px 14px 8px 9px;
+  border:1px solid rgba(228,208,163,.72);border-radius:999px;background:#171717;color:#fff;
+  box-shadow:0 16px 44px rgba(0,0,0,.26);opacity:0;transform:translateY(12px) scale(.97);
+  pointer-events:none;transition:.22s ease;font-weight:900
+}
+.ai-assistant-trigger.visible{opacity:1;transform:none;pointer-events:auto}
+.ai-assistant-trigger .ai-orb{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#E4D0A3;color:#171513;font-size:18px}
+.ai-assistant-trigger small{display:block;color:#CFC7BB;font-size:10px;font-weight:700;margin-top:2px}
+.ai-assistant-shell{position:fixed;inset:0;z-index:290;display:none;align-items:flex-end;justify-content:center;background:rgba(5,6,5,.58);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.ai-assistant-shell.open{display:flex}
+.ai-assistant-card{width:min(560px,100%);height:min(760px,88dvh);display:grid;grid-template-rows:auto 1fr auto;background:#FCFAF6;color:#171513;border-radius:28px 28px 0 0;overflow:hidden;box-shadow:0 -24px 70px rgba(0,0,0,.35)}
+.ai-assistant-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 17px;border-bottom:1px solid #E7E0D5;background:#171717;color:#fff}
+.ai-assistant-brand{display:flex;align-items:center;gap:10px}.ai-assistant-brand .ai-orb{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#E4D0A3;color:#171513}
+.ai-assistant-brand strong{display:block;font-size:15px}.ai-assistant-brand small{display:block;margin-top:2px;color:#CFC7BB;font-size:10px}
+.ai-assistant-close{width:40px;height:40px;border:0;border-radius:50%;background:#282724;color:#fff;font-size:24px}
+.ai-assistant-messages{overflow:auto;padding:18px 15px 20px;background:#F7F4ED;overscroll-behavior:contain}
+.ai-msg{max-width:86%;margin:8px 0;padding:12px 14px;border-radius:16px;font-size:14px;line-height:1.48;white-space:pre-wrap}
+.ai-msg.assistant{background:#fff;border:1px solid #E4DED3;border-bottom-left-radius:5px}.ai-msg.user{margin-left:auto;background:#171717;color:#fff;border-bottom-right-radius:5px}
+.ai-quick-actions{display:flex;gap:7px;overflow-x:auto;padding:0 15px 10px;background:#F7F4ED;scrollbar-width:none}.ai-quick-actions::-webkit-scrollbar{display:none}
+.ai-quick-actions button{flex:0 0 auto;min-height:36px;padding:0 12px;border:1px solid #D7CFBF;border-radius:999px;background:#fff;color:#5A4728;font-size:12px;font-weight:850}
+.ai-assistant-input{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #E7E0D5;background:#FCFAF6}
+.ai-assistant-input textarea{resize:none;min-height:48px;max-height:110px;padding:13px 14px;border:1px solid #D8D0C4;border-radius:15px;background:#fff;color:#171513;font:inherit;outline:0}
+.ai-assistant-input textarea:focus{border-color:#C6A76B;box-shadow:0 0 0 3px rgba(198,167,107,.13)}
+.ai-assistant-send{width:50px;height:50px;border:0;border-radius:15px;background:#171717;color:#fff;font-size:19px;font-weight:900}
+.ai-assistant-send:disabled{opacity:.45}
+.ai-human-handoff{display:none;margin:0 15px 12px;width:calc(100% - 30px);min-height:46px;border:1px solid #C6A76B;border-radius:14px;background:#F7F0E1;color:#5A4728;font-weight:900}
+.ai-human-handoff.visible{display:block}
+.detail-sticky-cta{opacity:0;transform:translateX(-50%) translateY(12px);pointer-events:none;transition:.22s ease}
+.detail-sticky-cta.ai-ready{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+@media(max-width:768px){
+  .ai-assistant-trigger{right:12px;bottom:max(88px,calc(14px + env(safe-area-inset-bottom)));max-width:calc(100vw - 24px)}
+  .ai-assistant-card{height:92dvh;border-radius:24px 24px 0 0}
+  .ai-msg{max-width:90%;font-size:15px}
 }
 </style>
 
@@ -6304,6 +6346,229 @@ function openPropertySpecialist(p){
 
 
 
+/* =========================================================
+   MATCH IA · CONCIERGE DE COMPRA
+========================================================= */
+let aiAssistantProperty=null;
+let aiAssistantHistory=[];
+let aiAssistantSending=false;
+let aiAssistantTriggerTimer=null;
+
+function aiPropertyContext(p){
+  const raw=p?.rawData && typeof p.rawData==="object" ? p.rawData : {};
+  const building=raw.building && typeof raw.building==="object" ? raw.building : {};
+  const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
+  return {
+    id:String(p?.id||""),
+    name:p?.name||"",
+    neighborhood:p?.neighborhood||"",
+    city:p?.city||building?.address?.city||"São Paulo",
+    source:p?.source||"",
+    value:Number(p?.value)||0,
+    area:Number(p?.area)||0,
+    bedrooms:Number(p?.bedrooms)||0,
+    suites:Number(p?.suites)||0,
+    parking:Number(p?.parking)||0,
+    stock:Number(p?.stock)||Number(typology?.stock)||0,
+    status:building?.stage||building?.status||"",
+    developer:building?.developer||building?.publisher||"",
+    delivery:building?.opening_date||"",
+    description:building?.description||p?.description||"",
+    address:building?.address||null,
+    features:Array.isArray(building?.building_features)?building.building_features.slice(0,30):[],
+    typology:{
+      type:typology?.type||"",
+      private_area:typology?.private_area||null,
+      bedrooms:typology?.bedrooms??null,
+      bathrooms:typology?.bathrooms??null,
+      suites:typology?.suites??null,
+      parking:typology?.parking??null,
+      stock:typology?.stock??null,
+      original_price:typology?.original_price??null,
+      discount_price:typology?.discount_price??null
+    }
+  };
+}
+
+function ensureAiAssistantShell(){
+  let shell=document.getElementById("aiAssistantShell");
+  if(shell)return shell;
+
+  shell=document.createElement("div");
+  shell.id="aiAssistantShell";
+  shell.className="ai-assistant-shell";
+  shell.innerHTML=`
+    <div class="ai-assistant-card" role="dialog" aria-modal="true" aria-label="Assistente de compra">
+      <div class="ai-assistant-head">
+        <div class="ai-assistant-brand">
+          <span class="ai-orb">✦</span>
+          <span><strong>Match IA</strong><small>Assistente de compra Ynteligencia</small></span>
+        </div>
+        <button class="ai-assistant-close" type="button" aria-label="Fechar">×</button>
+      </div>
+      <div>
+        <div class="ai-assistant-messages" id="aiAssistantMessages"></div>
+        <div class="ai-quick-actions" id="aiQuickActions">
+          <button type="button" data-ai-question="Ainda está disponível?">Disponibilidade</button>
+          <button type="button" data-ai-question="Quais são as condições e o que preciso saber sobre o preço?">Condições</button>
+          <button type="button" data-ai-question="Quero comparar com outras opções parecidas.">Comparar</button>
+          <button type="button" data-ai-question="Quero entender melhor a localização e os pontos fortes deste imóvel.">Localização</button>
+        </div>
+        <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Falar com Rafael</button>
+      </div>
+      <form class="ai-assistant-input" id="aiAssistantForm">
+        <textarea id="aiAssistantInput" rows="1" placeholder="Pergunte sobre este imóvel..."></textarea>
+        <button class="ai-assistant-send" id="aiAssistantSend" type="submit" aria-label="Enviar">➜</button>
+      </form>
+    </div>`;
+
+  shell.querySelector(".ai-assistant-close")?.addEventListener("click",closeAiAssistant);
+  shell.addEventListener("click",e=>{if(e.target===shell)closeAiAssistant()});
+  shell.querySelector("#aiAssistantForm")?.addEventListener("submit",e=>{
+    e.preventDefault();
+    const input=shell.querySelector("#aiAssistantInput");
+    const text=clean(input?.value||"");
+    if(!text)return;
+    input.value="";
+    sendAiAssistantMessage(text);
+  });
+  shell.querySelectorAll("[data-ai-question]").forEach(btn=>{
+    btn.addEventListener("click",()=>sendAiAssistantMessage(btn.dataset.aiQuestion||""));
+  });
+  shell.querySelector("#aiHumanHandoff")?.addEventListener("click",()=>{
+    if(aiAssistantProperty)openPropertySpecialist(aiAssistantProperty);
+  });
+
+  document.body.appendChild(shell);
+  return shell;
+}
+
+function appendAiMessage(role,text){
+  const shell=ensureAiAssistantShell();
+  const box=shell.querySelector("#aiAssistantMessages");
+  if(!box)return;
+  const div=document.createElement("div");
+  div.className=`ai-msg ${role}`;
+  div.textContent=text;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+}
+
+function openAiAssistant(p){
+  if(!p)return;
+  aiAssistantProperty=p;
+  aiAssistantHistory=[];
+  const shell=ensureAiAssistantShell();
+  const box=shell.querySelector("#aiAssistantMessages");
+  if(box)box.innerHTML="";
+  shell.querySelector("#aiHumanHandoff")?.classList.remove("visible");
+  shell.classList.add("open");
+  document.body.style.overflow="hidden";
+
+  const sourceLabel=String(p.source||"").toLowerCase()==="novos" ? "lançamento" : "imóvel";
+  appendAiMessage("assistant",`Oi! Estou olhando este ${sourceLabel} com você: ${p.name||"esta opção"}${p.neighborhood?` em ${p.neighborhood}`:""}. Posso te ajudar com disponibilidade, condições, localização ou comparar com outras opções. O que você quer saber?`);
+
+  try{
+    gtag("event","ai_assistant_open",{
+      property_id:String(p.id||""),property_name:p.name||"",neighborhood:p.neighborhood||""
+    });
+  }catch(error){}
+  supabaseTrack("ai_assistant_open",{property_id:String(p.id||""),property_name:p.name||"",neighborhood:p.neighborhood||""});
+}
+
+function closeAiAssistant(){
+  const shell=document.getElementById("aiAssistantShell");
+  shell?.classList.remove("open");
+  if(document.getElementById("photoModal"))document.body.style.overflow="hidden";
+  else document.body.style.overflow="";
+}
+
+async function sendAiAssistantMessage(text){
+  text=clean(text);
+  if(!text || aiAssistantSending || !aiAssistantProperty)return;
+  aiAssistantSending=true;
+  const shell=ensureAiAssistantShell();
+  const send=shell.querySelector("#aiAssistantSend");
+  if(send)send.disabled=true;
+
+  appendAiMessage("user",text);
+  aiAssistantHistory.push({role:"user",content:text});
+  aiAssistantHistory=aiAssistantHistory.slice(-10);
+
+  const thinking=document.createElement("div");
+  thinking.className="ai-msg assistant";
+  thinking.id="aiThinking";
+  thinking.textContent="Analisando este imóvel...";
+  shell.querySelector("#aiAssistantMessages")?.appendChild(thinking);
+
+  try{
+    const response=await fetch("/api/assistant",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        message:text,
+        history:aiAssistantHistory.slice(0,-1),
+        property:aiPropertyContext(aiAssistantProperty),
+        page_url:window.location.href
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    thinking.remove();
+    if(!response.ok || data.success!==true)throw new Error(data.error||"Não foi possível falar com a assistente agora.");
+
+    const reply=clean(data.reply||"")||"Posso continuar te ajudando com este imóvel.";
+    appendAiMessage("assistant",reply);
+    aiAssistantHistory.push({role:"assistant",content:reply});
+    aiAssistantHistory=aiAssistantHistory.slice(-10);
+
+    if(data.handoff===true){
+      shell.querySelector("#aiHumanHandoff")?.classList.add("visible");
+    }
+
+    try{
+      gtag("event","ai_assistant_message",{property_id:String(aiAssistantProperty.id||"")});
+    }catch(error){}
+    supabaseTrack("ai_assistant_message",{property_id:String(aiAssistantProperty.id||""),message_length:text.length,handoff:Boolean(data.handoff)});
+  }catch(error){
+    thinking.remove();
+    appendAiMessage("assistant","Tive uma falha rápida aqui. Você pode tentar novamente ou falar com o Rafael para confirmar disponibilidade e condições.");
+    shell.querySelector("#aiHumanHandoff")?.classList.add("visible");
+    console.error("MATCH_IA_ERROR",error);
+  }finally{
+    aiAssistantSending=false;
+    if(send)send.disabled=false;
+  }
+}
+
+function scheduleAiAssistantForProperty(p,modal){
+  clearTimeout(aiAssistantTriggerTimer);
+  document.getElementById("aiAssistantTrigger")?.remove();
+  modal?.querySelector(".detail-sticky-cta")?.classList.remove("ai-ready");
+
+  aiAssistantTriggerTimer=setTimeout(()=>{
+    if(!document.body.contains(modal))return;
+    modal?.querySelector(".detail-sticky-cta")?.classList.add("ai-ready");
+
+    const trigger=document.createElement("button");
+    trigger.id="aiAssistantTrigger";
+    trigger.type="button";
+    trigger.className="ai-assistant-trigger";
+    trigger.innerHTML=`<span class="ai-orb">✦</span><span>Quer ajuda com este imóvel?<small>Pergunte à Match IA</small></span>`;
+    trigger.addEventListener("click",()=>{
+      trigger.remove();
+      openAiAssistant(p);
+    });
+    document.body.appendChild(trigger);
+    requestAnimationFrame(()=>trigger.classList.add("visible"));
+
+    try{
+      gtag("event","ai_assistant_prompt_view",{property_id:String(p.id||""),property_name:p.name||""});
+    }catch(error){}
+    supabaseTrack("ai_assistant_prompt_view",{property_id:String(p.id||""),property_name:p.name||""});
+  },3000);
+}
+
+
 function extractAllPropertyImages(p,raw){
   const result=[];
   const seen=new Set();
@@ -6680,6 +6945,9 @@ function extractPropertyOptions(raw,p=null){
 
 
 function closePropertyDetail({fromPopState=false}={}){
+  clearTimeout(aiAssistantTriggerTimer);
+  document.getElementById("aiAssistantTrigger")?.remove();
+  document.getElementById("aiAssistantShell")?.classList.remove("open");
   const modal=document.getElementById("photoModal");
   if(modal)modal.remove();
   document.body.style.overflow="";
@@ -6954,10 +7222,10 @@ async function showPhotoModal(id){
         <img src="/PERFIL.jfif" alt="Especialista Ynteligencia">
         <div class="detail-specialist-copy">
           <small>Atendimento personalizado</small>
-          <strong>Gostou deste imóvel?</strong>
-          <p>Posso verificar disponibilidade, condições e agendamento de visita.</p>
+          <strong>Quer entender melhor este imóvel?</strong>
+          <p>A IA pode responder sobre preço, condições, localização e comparar opções. Se precisar, ela chama o atendimento humano.</p>
         </div>
-        <button class="detail-specialist-btn" type="button">Falar com o especialista</button>
+        <button class="detail-specialist-btn" type="button">Conversar com a IA</button>
       </section>
 
       <section class="detail-similar" id="detailSimilarSection">
@@ -6969,7 +7237,7 @@ async function showPhotoModal(id){
 
     <div class="detail-sticky-cta">
       <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">Compartilhar</button>
-      <button class="detail-interest-btn" type="button">Falar com o especialista</button>
+      <button class="detail-interest-btn" type="button">✨ Perguntar à IA</button>
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
@@ -6990,9 +7258,10 @@ async function showPhotoModal(id){
     ].filter(Boolean).join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
   });
-  modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
-  modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
+  modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openAiAssistant(p));
+  modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
   document.body.appendChild(modal);
+  scheduleAiAssistantForProperty(p,modal);
 
   modal.querySelector(".detail-gallery-all-btn")?.addEventListener("click",()=>{
     const track=modal.querySelector(".detail-gallery-track");
