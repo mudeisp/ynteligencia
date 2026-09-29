@@ -3677,6 +3677,8 @@ function area(v){
 ========================================================= */
 
 let photoManifest={};
+let photoManifestLoaded=false;
+let photoManifestPromise=null;
 
 
 function normalizePhotoURL(v){
@@ -3738,36 +3740,59 @@ function photoList(p){
 
 async function loadPhotoManifest(){
 
-  try{
-
-    const r=
-      await fetch(
-        "photos.json",
-        {
-          cache:"no-store"
-        }
-      );
-
-
-    if(!r.ok)return;
-
-
-    const d=
-      await r.json();
-
-
-    if(
-      d &&
-      typeof d==="object"
-    ){
-
-      photoManifest=d;
-    }
-
-  }catch{
-
-    photoManifest={};
+  if(photoManifestLoaded){
+    return photoManifest;
   }
+
+  if(photoManifestPromise){
+    return photoManifestPromise;
+  }
+
+  photoManifestPromise=(async()=>{
+
+    try{
+
+      const r=
+        await fetch(
+          "photos.json",
+          {
+            cache:"default"
+          }
+        );
+
+
+      if(!r.ok){
+        return photoManifest;
+      }
+
+
+      const d=
+        await r.json();
+
+
+      if(
+        d &&
+        typeof d==="object"
+      ){
+
+        photoManifest=d;
+      }
+
+      photoManifestLoaded=true;
+      return photoManifest;
+
+    }catch{
+
+      photoManifest={};
+      return photoManifest;
+
+    }finally{
+
+      photoManifestPromise=null;
+    }
+  })();
+
+  return photoManifestPromise;
 }
 
 
@@ -4254,7 +4279,7 @@ function extractOruloPhotos(row, raw){
 
   walk(raw,"raw_data",0);
 
-  return found.slice(0,8);
+  return found;
 }
 
 
@@ -5584,8 +5609,13 @@ function showMatches(){
 
 function coverHTML(p){
 
+  /*
+    PERFORMANCE:
+    o card usa no máximo 3 imagens. A galeria completa continua
+    disponível na ficha do imóvel. Isso evita dezenas de <img> por card.
+  */
   const photos=
-    photoList(p);
+    photoList(p).slice(0,3);
 
 
   if(
@@ -5601,7 +5631,8 @@ function coverHTML(p){
               class="photo-slide"
               src="${esc(url)}"
               alt="${esc(p.name||"Foto do imóvel")}"
-              loading="${i===0?"eager":"lazy"}"
+              loading="lazy"
+              decoding="async"
               onerror="this.style.display='none'">
             `
         )
@@ -6658,9 +6689,20 @@ function closePropertyDetail({fromPopState=false}={}){
   }
 }
 
-function showPhotoModal(id){
+async function showPhotoModal(id){
   const p=propertyForInteraction(id);
   if(!p)return;
+
+  /*
+    O photos.json dos usados é grande. Ele não bloqueia mais a abertura
+    do app; é garantido sob demanda quando o usuário abre um usado.
+  */
+  if(
+    String(p.source||"").toLowerCase()==="usados" &&
+    !photoManifestLoaded
+  ){
+    await loadPhotoManifest();
+  }
 
   try{
     sessionStorage.setItem("ynt_catalog_scroll",String(window.scrollY||0));
@@ -9278,14 +9320,40 @@ if($("catalogState")){
 }
 
 
-Promise.all([
-  loadPhotoManifest(),
-  loadInventory()
-])
+loadInventory()
 .then(
   ()=>{
 
-    applyHeroInventoryPhoto();
+    /*
+      PERFORMANCE:
+      o app fica utilizável assim que o inventário essencial termina.
+      photos.json é carregado depois do primeiro paint e não bloqueia
+      mais a abertura da interface.
+    */
+    const loadPhotosInBackground=()=>{
+      loadPhotoManifest()
+        .then(()=>{
+          applyHeroInventoryPhoto();
+
+          if($("results")?.classList.contains("visible")){
+            showMatches();
+          }
+
+          if($("catalog")?.classList.contains("visible")){
+            renderCatalog();
+          }
+        })
+        .catch(()=>{});
+    };
+
+    if("requestIdleCallback" in window){
+      window.requestIdleCallback(
+        loadPhotosInBackground,
+        {timeout:1800}
+      );
+    }else{
+      setTimeout(loadPhotosInBackground,700);
+    }
 
     /* Link compartilhado abre diretamente a ficha técnica do imóvel. */
     const sharedPropertyId=new URLSearchParams(window.location.search).get("imovel");
@@ -9343,7 +9411,7 @@ Promise.all([
     }
 
     console.log(
-      `Ynteligencia pronta: ${properties.length} imóveis · ${Object.keys(photoManifest).length} registros de fotos`
+      `Ynteligencia pronta: ${properties.length} imóveis · fotos em carregamento progressivo`
     );
   }
 );
