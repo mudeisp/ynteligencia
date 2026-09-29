@@ -1168,45 +1168,39 @@ export default async function handler(req, res) {
 
             galleryImages =
 
-              oruloImages
+  oruloImages
 
-                .map(
-                  (image) =>
+    .map(
+      (image) =>
 
-                    image?.["1024x1024"] ||
+        image?.["1024x1024"] ||
 
-                    image?.["2280x1800"] ||
+        image?.["2280x1800"] ||
 
-                    image?.["520x280"] ||
+        image?.["520x280"] ||
 
-                    image?.["200x140"] ||
+        image?.["200x140"] ||
 
-                    image?.url ||
+        image?.url ||
 
-                    null
+        null
 
-                )
+    )
 
-                .filter(Boolean)
+    .filter(Boolean)
 
-                .filter(
+    .filter(
 
-                  (
-                    url,
-                    index,
-                    array
-                  ) =>
+      (
+        url,
+        index,
+        array
+      ) =>
 
-                    array.indexOf(url) ===
-                    index
+        array.indexOf(url) ===
+        index
 
-                )
-
-                .slice(
-                  0,
-                  8
-                );
-
+    );
 
             if (
               galleryImages.length
