@@ -11328,5 +11328,182 @@ if ("serviceWorker" in navigator) {
 })();
 </script>
 
+
+
+<style id="final-ai-mobile-refine-fix">
+/* =========================================================
+   FINAL FIX · IA MOBILE + REMOVE REFINAR MATCH
+   2026-09-29
+========================================================= */
+
+/* Refinar MATCH não faz mais parte da experiência atual.
+   Reforço no final do CSS para vencer regras legadas posteriores. */
+.refine-match-fab,
+.refine-match-shell,
+body.match-results-mode .refine-match-fab,
+body.match-results-mode .refine-match-shell,
+body.ad-match-mode .refine-match-fab,
+body.ad-match-mode .refine-match-shell{
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+@media (max-width:768px){
+  /* O viewport real é atualizado por JS via visualViewport.
+     Isso mantém o campo de digitação visível quando o teclado abre. */
+  .ai-assistant-shell.open{
+    display:flex !important;
+    position:fixed !important;
+    inset:0 auto auto 0 !important;
+    width:100vw !important;
+    height:var(--ai-mobile-vh,100dvh) !important;
+    min-height:0 !important;
+    align-items:stretch !important;
+    justify-content:stretch !important;
+    overflow:hidden !important;
+    background:#F9F6EF !important;
+  }
+
+  .ai-assistant-card{
+    width:100% !important;
+    height:100% !important;
+    max-height:none !important;
+    min-height:0 !important;
+    display:grid !important;
+    grid-template-rows:auto minmax(0,1fr) auto !important;
+    overflow:hidden !important;
+    border-radius:0 !important;
+  }
+
+  .ai-assistant-card > div:nth-child(2){
+    min-height:0 !important;
+    overflow:hidden !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+
+  .ai-assistant-messages{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+    overscroll-behavior:contain !important;
+    padding:14px 12px 12px !important;
+    scroll-padding-bottom:16px !important;
+  }
+
+  .ai-human-handoff{
+    flex:0 0 auto !important;
+    margin:0 10px 8px !important;
+    width:calc(100% - 20px) !important;
+  }
+
+  .ai-assistant-input{
+    position:relative !important;
+    z-index:5 !important;
+    flex:0 0 auto !important;
+    grid-template-columns:minmax(0,1fr) 48px !important;
+    gap:8px !important;
+    width:100% !important;
+    padding:8px 10px max(8px,env(safe-area-inset-bottom)) !important;
+    background:#FFFDF9 !important;
+    border-top:1px solid #E5DED2 !important;
+  }
+
+  .ai-assistant-input textarea{
+    width:100% !important;
+    min-width:0 !important;
+    min-height:48px !important;
+    max-height:108px !important;
+    padding:13px 14px !important;
+    margin:0 !important;
+    resize:none !important;
+    overflow-y:auto !important;
+    border-radius:14px !important;
+    font-size:16px !important;
+    line-height:1.35 !important;
+    -webkit-text-size-adjust:100% !important;
+    touch-action:manipulation !important;
+  }
+
+  .ai-assistant-send{
+    width:48px !important;
+    height:48px !important;
+    min-width:48px !important;
+    align-self:end !important;
+    margin:0 !important;
+    border-radius:14px !important;
+    touch-action:manipulation !important;
+  }
+
+  /* Com teclado aberto, reduz um pouco o cabeçalho para ganhar área útil. */
+  body.ai-keyboard-open .ai-assistant-head{
+    min-height:56px !important;
+    padding-top:8px !important;
+    padding-bottom:8px !important;
+  }
+  body.ai-keyboard-open .ai-assistant-brand .ai-orb{
+    width:34px !important;
+    height:34px !important;
+    flex-basis:34px !important;
+  }
+  body.ai-keyboard-open .ai-assistant-brand small{
+    display:none !important;
+  }
+  body.ai-keyboard-open .ai-human-handoff{
+    min-height:40px !important;
+    margin-bottom:6px !important;
+  }
+}
+</style>
+
+<script id="final-ai-mobile-viewport-fix">
+(function(){
+  function updateAiMobileViewport(){
+    const vv=window.visualViewport;
+    const height=vv && vv.height ? Math.round(vv.height) : window.innerHeight;
+    document.documentElement.style.setProperty('--ai-mobile-vh', height + 'px');
+
+    const keyboardOpen = vv
+      ? (window.innerHeight - vv.height > 120)
+      : false;
+    document.body.classList.toggle('ai-keyboard-open', keyboardOpen);
+
+    const box=document.getElementById('aiAssistantMessages');
+    if(box && document.getElementById('aiAssistantShell')?.classList.contains('open')){
+      requestAnimationFrame(()=>{ box.scrollTop=box.scrollHeight; });
+    }
+  }
+
+  updateAiMobileViewport();
+  window.addEventListener('resize', updateAiMobileViewport, {passive:true});
+  window.addEventListener('orientationchange', updateAiMobileViewport, {passive:true});
+
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', updateAiMobileViewport, {passive:true});
+    window.visualViewport.addEventListener('scroll', updateAiMobileViewport, {passive:true});
+  }
+
+  document.addEventListener('focusin', function(event){
+    if(event.target && event.target.id==='aiAssistantInput'){
+      updateAiMobileViewport();
+      setTimeout(updateAiMobileViewport, 120);
+      setTimeout(()=>{
+        const box=document.getElementById('aiAssistantMessages');
+        if(box) box.scrollTop=box.scrollHeight;
+      },180);
+    }
+  });
+
+  document.addEventListener('focusout', function(event){
+    if(event.target && event.target.id==='aiAssistantInput'){
+      setTimeout(updateAiMobileViewport,120);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
