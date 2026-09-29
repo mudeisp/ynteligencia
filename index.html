@@ -6795,9 +6795,14 @@ function ensureAiAssistantShell(){
     btn.addEventListener("click",()=>sendAiAssistantMessage(btn.dataset.aiQuestion||""));
   });
   shell.querySelector("#aiHumanHandoff")?.addEventListener("click",()=>{
-    if(aiAssistantProperty)openPropertySpecialist(aiAssistantProperty);
-  });
+  if(!aiAssistantProperty)return;
 
+  closeAiAssistant();
+
+  setTimeout(()=>{
+    openPropertySpecialist(aiAssistantProperty);
+  },180);
+});
   document.body.appendChild(shell);
   return shell;
 }
