@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -892,10 +893,8 @@ body{background:#F7F4ED;color:#0B0B0B}
 
 /* ===== MOBILE APP BEHAVIOR ===== */
 .filters-trigger,.filters-backdrop,.filters-close{display:none}
-.wizard[data-current-step="0"] .next,
-.wizard[data-current-step="1"] .next,
-.wizard[data-current-step="2"] .next,
-.wizard[data-current-step="3"] .next{display:none}
+/* O CTA do wizard permanece visível: o usuário decide quando avançar/buscar. */
+.wizard .next{display:inline-flex!important;align-items:center;justify-content:center}
 .step.active{animation:stepFromRight .25s cubic-bezier(.22,.8,.24,1) both}
 .wizard[data-direction="back"] .step.active{animation-name:stepFromLeft}
 @keyframes stepFromRight{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
@@ -2886,308 +2885,30 @@ body.ad-match-mode{
     grid-template-columns:1fr;
   }
 }
-</style>
 
-
-<style id="catalog-mobile-filter-v2">
-/* =========================================================
-   CATÁLOGO MOBILE · FILTRO RECOLHIDO + BOTTOM SHEET
-   Mantém IDs, lógica de busca, paginação, URLs e telemetria.
-========================================================= */
-.catalog-quick-row{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) auto;
-  gap:10px;
-  align-items:end;
-  margin-top:16px;
-}
-.catalog-source-quick{min-width:0}
-.catalog-filters-button{
-  display:none;
-  min-width:132px;
-  min-height:52px;
-  margin:0;
-  padding:0 18px;
-  border:1px solid #C9C0B2;
-  border-radius:14px;
-  background:#F0ECE3;
-  color:#242424;
-  font-size:14px;
-  font-weight:900;
-  letter-spacing:.03em;
-}
-.active-filter-chips{
-  display:flex;
-  gap:7px;
-  flex-wrap:wrap;
-  margin-top:10px;
-}
-.active-filter-chips:empty{display:none}
-.active-filter-chip{
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  min-height:34px;
-  padding:0 10px;
-  border:1px solid #D8D0C4;
-  border-radius:999px;
-  background:#fff;
-  color:#4A443C;
-  font-size:12px;
-  font-weight:800;
-}
-.active-filter-chip button{
-  width:20px;
-  height:20px;
-  display:grid;
-  place-items:center;
-  padding:0;
-  border:0;
-  border-radius:50%;
-  background:#EEE9E0;
-  color:#5A5248;
-  font-size:14px;
-  line-height:1;
-}
-.filter-subtitle{
-  margin-top:4px;
-  color:#77736B;
-  font-size:12px;
-  line-height:1.35;
-}
-.secondary-filters{
-  margin-top:14px;
-  border-top:1px solid #E4DED3;
-  border-bottom:1px solid #E4DED3;
-}
-.secondary-filters summary{
-  min-height:50px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  cursor:pointer;
-  list-style:none;
-  color:#5A4728;
-  font-size:13px;
-  font-weight:900;
-}
-.secondary-filters summary::-webkit-details-marker{display:none}
-.secondary-filters summary::after{content:"⌄";font-size:20px;transition:.2s}
-.secondary-filters[open] summary::after{transform:rotate(180deg)}
-.secondary-filter-grid{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:10px;
-  padding:0 0 14px;
-}
-
-@media (min-width:769px){
-  .catalog-filters-button{display:none !important}
-  .unified-catalog-filters{
-    position:static !important;
-    inset:auto !important;
-    display:block !important;
-    width:auto !important;
-    max-width:none !important;
-    margin:18px 0 0 !important;
-    padding:0 !important;
-    transform:none !important;
-    opacity:1 !important;
-    visibility:visible !important;
-    pointer-events:auto !important;
-    overflow:visible !important;
-    border:0 !important;
-    border-radius:0 !important;
-    background:transparent !important;
-    box-shadow:none !important;
-  }
-  .filters-sheet-head{display:none}
-  #filtersBackdrop{display:none !important}
-  #closeFilters{display:none !important}
-}
-
-@media (max-width:768px){
-  .explore{
-    padding:18px 0 22px !important;
-  }
-  .explore .section-head{
-    margin-bottom:12px !important;
-  }
-  .explore .section-head h2{
-    font-size:24px !important;
-    line-height:1.08 !important;
-  }
-  .explore .section-head p{
-    font-size:14px !important;
-    line-height:1.4 !important;
-  }
-  .unified-search-panel{
-    padding:14px !important;
-    border-radius:18px !important;
-  }
-  .unified-search-main{
-    gap:9px !important;
-  }
-  .catalog-quick-row{
-    margin-top:12px;
-    grid-template-columns:minmax(0,1fr) 128px;
-  }
-  .catalog-source-quick .field{
-    min-height:52px !important;
-  }
-  .catalog-filters-button{
-    display:flex !important;
-    align-items:center;
-    justify-content:center;
-    gap:7px;
-    min-height:52px !important;
-  }
-  #filtersBackdrop.filters-backdrop{
-    position:fixed !important;
-    inset:0 !important;
-    z-index:274 !important;
-    display:block !important;
-    background:rgba(11,11,11,.56) !important;
-    opacity:0 !important;
-    pointer-events:none !important;
-    backdrop-filter:blur(3px);
-    -webkit-backdrop-filter:blur(3px);
-    transition:opacity .2s ease !important;
-  }
-  #filtersBackdrop.filters-backdrop.open{
-    opacity:1 !important;
-    pointer-events:auto !important;
-  }
-  .unified-catalog-filters{
-    position:fixed !important;
-    z-index:275 !important;
-    left:0 !important;
-    right:0 !important;
-    bottom:0 !important;
-    top:auto !important;
-    width:100% !important;
-    max-width:none !important;
-    max-height:min(86svh,760px) !important;
-    margin:0 !important;
-    padding:20px 16px calc(18px + env(safe-area-inset-bottom)) !important;
-    border:1px solid #E4DED3 !important;
-    border-bottom:0 !important;
-    border-radius:26px 26px 0 0 !important;
-    background:#FCFAF6 !important;
-    box-shadow:0 -22px 70px rgba(11,11,11,.22) !important;
-    overflow-y:auto !important;
-    overscroll-behavior:contain;
-    transform:translateY(104%) !important;
-    opacity:1 !important;
-    visibility:visible !important;
-    pointer-events:none !important;
-    transition:transform .26s cubic-bezier(.22,.8,.24,1) !important;
-  }
-  .unified-catalog-filters.open{
-    transform:translateY(0) !important;
-    pointer-events:auto !important;
-  }
-  .filters-sheet-head{
-    position:sticky;
-    top:-20px;
-    z-index:2;
-    display:flex !important;
-    align-items:flex-start;
-    justify-content:space-between;
-    gap:14px;
-    margin:-2px -2px 16px;
-    padding:4px 2px 13px;
-    border-bottom:1px solid #E8E1D6;
-    background:#FCFAF6;
-  }
-  .filters-sheet-head .filter-title{
-    margin:0 !important;
-    color:#242424;
-    font-size:22px !important;
-    line-height:1.1;
-    font-weight:950;
-    letter-spacing:-.03em !important;
-    text-transform:none !important;
-  }
-  #closeFilters.filters-close{
-    display:grid !important;
-    place-items:center;
-    flex:0 0 42px;
-    width:42px;
-    height:42px;
-    border:0;
-    border-radius:50%;
-    background:#F0ECE3;
-    color:#654E28;
-    font-size:27px;
-  }
-  .unified-filter-grid{
-    grid-template-columns:1fr 1fr !important;
-    gap:9px !important;
-  }
-  .unified-filter-grid .unified-field:nth-child(3),
-  .unified-filter-grid .unified-field:nth-child(4){
-    grid-column:auto;
-  }
-  .secondary-filter-grid{
-    grid-template-columns:1fr !important;
-  }
-  .unified-filter-actions{
-    position:sticky;
-    bottom:calc(-18px - env(safe-area-inset-bottom));
-    z-index:3;
-    grid-template-columns:.72fr 1.28fr !important;
-    gap:8px !important;
-    margin:16px -16px calc(-18px - env(safe-area-inset-bottom)) !important;
-    padding:10px 16px calc(12px + env(safe-area-inset-bottom));
-    border-top:1px solid #E4DED3;
-    background:rgba(252,250,246,.96);
-    backdrop-filter:blur(16px);
-    -webkit-backdrop-filter:blur(16px);
-  }
-  .unified-filter-actions .catalog-search-btn{
-    grid-row:auto !important;
-    min-height:54px !important;
-    background:#171717 !important;
-    color:#fff !important;
-  }
-  .unified-filter-actions .filter-reset{
-    grid-row:auto !important;
-    min-height:54px !important;
-    border:1px solid #D8D0C4 !important;
-    background:#fff !important;
-  }
-  .catalog .result-top{
-    margin:0 !important;
-    padding:18px 16px 14px !important;
-    background:#F5F3EE;
-  }
-  .catalog .result-top h2{
-    margin:0 !important;
-    font-size:28px !important;
-    line-height:1.04 !important;
-    letter-spacing:-.04em !important;
-    color:#242424 !important;
-  }
-  .catalog .result-top p{
-    margin-top:5px !important;
-    font-size:14px !important;
-    line-height:1.35 !important;
-    color:#6A635A !important;
-  }
-}
-
-@media (max-width:430px){
-  .unified-filter-grid{
-    grid-template-columns:1fr 1fr !important;
-  }
-  .catalog-quick-row{
-    grid-template-columns:minmax(0,1fr) 116px;
-  }
-  .catalog-filters-button{
-    min-width:116px;
-    padding:0 12px;
-  }
+/* ===== YNTELIGENCIA · REFINAMENTO 3 ETAPAS + ASSISTENTE ===== */
+.wizard-subquestion{margin-top:24px;padding-top:20px;border-top:1px solid rgba(181,173,159,.45)}
+.wizard-subquestion>strong{display:block;margin-bottom:12px;font-size:15px;letter-spacing:.01em;color:#654E28}
+.compact-options{gap:10px}
+.priorities-options .option{min-height:54px}
+.ai-assistant-brand .ai-orb{font-size:22px;background:#EEF3FF}
+.ai-human-handoff{display:block!important}
+@media(max-width:700px){
+  .app-dock{display:none!important}
+  body{padding-bottom:0!important}
+  .wizard-inner{padding-bottom:calc(92px + env(safe-area-inset-bottom))!important}
+  .wizard-actions{grid-template-columns:auto 1fr!important;gap:8px!important}
+  .wizard-actions .clear-match{display:none!important}
+  .wizard-actions .back{min-width:92px}
+  .wizard-actions .next{width:100%;min-height:58px;border-radius:16px;font-size:17px;font-weight:900}
+  .wizard-subquestion{margin-top:18px;padding-top:16px}
+  .compact-options{grid-template-columns:1fr 1fr!important}
+  .compact-options .option{min-height:54px;padding:11px 10px;font-size:15px}
+  .compact-options .option small{font-size:10px;line-height:1.25;margin-top:3px}
+  .detail-sticky-cta{grid-template-columns:1fr 1fr!important}
+  .detail-share-btn,.detail-interest-btn{font-size:14px!important;line-height:1.15;padding:8px!important}
+  .ai-assistant-card{height:94dvh!important}
+  .ai-assistant-messages{padding-bottom:18px!important}
 }
 </style>
 
@@ -3262,300 +2983,77 @@ body.ad-match-mode{
              O usuário faz um único MATCH; sourceMode continua no JS para a futura Órulo. -->
 
         <div class="step-count" aria-live="polite">
-          <strong id="stepCount">01 de 04</strong>
+          <strong id="stepCount">01 de 03</strong>
         </div>
 
         <div class="step" data-step="0">
+          <div class="step-label">01 · IMÓVEL E REGIÃO</div>
+          <h2>O que você procura e onde?</h2>
+          <p>Escolha o tipo de imóvel e a região. Você pode ajustar tudo antes da busca.</p>
 
-          <div class="step-label">
-            01 · TIPO DE IMÓVEL
+          <div class="wizard-subquestion">
+            <strong>Tipo de imóvel</strong>
+            <div class="options compact-options">
+              <button class="option multi" data-key="types" data-value="apartamento">Apartamento</button>
+              <button class="option multi" data-key="types" data-value="casa">Casa</button>
+              <button class="option multi" data-key="types" data-value="studio">Studio</button>
+              <button class="option multi" data-key="types" data-value="cobertura">Cobertura</button>
+              <button class="option multi" data-key="types" data-value="sobrado">Sobrado</button>
+            </div>
           </div>
 
-          <h2>Que tipo de imóvel faz sentido?</h2>
-
-          <p>
-            Escolha o tipo de imóvel. Ao selecionar, seguimos automaticamente.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="apartamento">
-              Apartamento
-            </button>
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="casa">
-              Casa
-            </button>
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="studio">
-              Studio
-            </button>
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="cobertura">
-              Cobertura
-            </button>
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="sobrado">
-              Sobrado
-            </button>
-
+          <div class="wizard-subquestion">
+            <strong>Região</strong>
+            <div class="options compact-options">
+              <button class="option" data-key="region" data-value="oeste">Zona Oeste<small>Perdizes, Pinheiros, Pompéia e região</small></button>
+              <button class="option" data-key="region" data-value="sul">Zona Sul<small>Moema, Vila Mariana, Brooklin e região</small></button>
+              <button class="option" data-key="region" data-value="norte">Zona Norte<small>Santana, Tucuruvi e região</small></button>
+              <button class="option" data-key="region" data-value="leste">Zona Leste<small>Tatuapé, Mooca, Anália Franco e região</small></button>
+            </div>
           </div>
         </div>
 
         <div class="step" data-step="1" hidden>
+          <div class="step-label">02 · ORÇAMENTO E TAMANHO</div>
+          <h2>Qual imóvel cabe no seu momento?</h2>
+          <p>Defina a faixa de investimento e a quantidade mínima de dormitórios.</p>
 
-          <div class="step-label">
-            02 · REGIÃO
+          <div class="wizard-subquestion">
+            <strong>Orçamento</strong>
+            <div class="options compact-options">
+              <button class="option" data-key="budget" data-value="400000" data-budget-min="1" data-budget-max="400000" data-budget-label="Até R$ 400 mil">Até R$ 400 mil</button>
+              <button class="option" data-key="budget" data-value="600000" data-budget-min="400001" data-budget-max="600000" data-budget-label="R$ 401 mil a R$ 600 mil">R$ 401 mil a R$ 600 mil</button>
+              <button class="option" data-key="budget" data-value="800000" data-budget-min="600001" data-budget-max="800000" data-budget-label="R$ 601 mil a R$ 800 mil">R$ 601 mil a R$ 800 mil</button>
+              <button class="option" data-key="budget" data-value="1000000" data-budget-min="800001" data-budget-max="1000000" data-budget-label="R$ 801 mil a R$ 1 milhão">R$ 801 mil a R$ 1 milhão</button>
+              <button class="option" data-key="budget" data-value="1500000" data-budget-min="1000001" data-budget-max="1500000" data-budget-label="R$ 1,01 milhão a R$ 1,5 milhão">R$ 1,01 milhão a R$ 1,5 milhão</button>
+              <button class="option" data-key="budget" data-value="1500001" data-budget-min="1500001" data-budget-max="0" data-budget-label="Acima de R$ 1,5 milhão">Acima de R$ 1,5 milhão</button>
+            </div>
           </div>
 
-          <h2>Onde você quer estar?</h2>
-
-          <p>
-            Escolha uma região prioritária.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option"
-              data-key="region"
-              data-value="oeste">
-              Zona Oeste
-              <small>Perdizes, Pinheiros, Pompéia e região</small>
-            </button>
-
-            <button
-              class="option"
-              data-key="region"
-              data-value="sul">
-              Zona Sul
-              <small>Moema, Vila Mariana, Brooklin e região</small>
-            </button>
-
-            <button
-              class="option"
-              data-key="region"
-              data-value="norte">
-              Zona Norte
-              <small>Santana, Tucuruvi e região</small>
-            </button>
-
-            <button
-              class="option"
-              data-key="region"
-              data-value="leste">
-              Zona Leste
-              <small>Tatuapé, Mooca, Anália Franco e região</small>
-            </button>
-
+          <div class="wizard-subquestion">
+            <strong>Dormitórios mínimos</strong>
+            <div class="options compact-options">
+              <button class="option" data-key="bedrooms" data-value="1">1 ou mais</button>
+              <button class="option" data-key="bedrooms" data-value="2">2 ou mais</button>
+              <button class="option" data-key="bedrooms" data-value="3">3 ou mais</button>
+              <button class="option" data-key="bedrooms" data-value="4">4 ou mais</button>
+            </div>
           </div>
         </div>
 
         <div class="step" data-step="2" hidden>
+          <div class="step-label">03 · PRIORIDADES</div>
+          <h2>O que faria este imóvel combinar mais com você?</h2>
+          <p>Esta etapa é opcional. Marque quantas prioridades quiser e toque em <strong>BUSCAR IMÓVEIS</strong>.</p>
 
-          <div class="step-label">
-            03 · ORÇAMENTO
-          </div>
-
-          <h2>
-            Qual é o seu limite de investimento?
-          </h2>
-
-          <p>
-            Usaremos esse valor como referência, mas o MATCH
-            também encontra oportunidades próximas.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="400000"
-              data-budget-min="1"
-              data-budget-max="400000"
-              data-budget-label="Até R$ 400 mil">
-              Até R$ 400 mil
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="600000"
-              data-budget-min="400001"
-              data-budget-max="600000"
-              data-budget-label="R$ 401 mil a R$ 600 mil">
-              R$ 401 mil a R$ 600 mil
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="800000"
-              data-budget-min="600001"
-              data-budget-max="800000"
-              data-budget-label="R$ 601 mil a R$ 800 mil">
-              R$ 601 mil a R$ 800 mil
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="1000000"
-              data-budget-min="800001"
-              data-budget-max="1000000"
-              data-budget-label="R$ 801 mil a R$ 1 milhão">
-              R$ 801 mil a R$ 1 milhão
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="1500000"
-              data-budget-min="1000001"
-              data-budget-max="1500000"
-              data-budget-label="R$ 1,01 milhão a R$ 1,5 milhão">
-              R$ 1,01 milhão a R$ 1,5 milhão
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="1500001"
-              data-budget-min="1500001"
-              data-budget-max="0"
-              data-budget-label="Acima de R$ 1,5 milhão">
-              Acima de R$ 1,5 milhão
-            </button>
-
-          </div>
-        </div>
-
-        <div class="step" data-step="3" hidden>
-
-          <div class="step-label">
-            04 · TAMANHO
-          </div>
-
-          <h2>
-            Quantos dormitórios você precisa, no mínimo?
-          </h2>
-
-          <p>
-            Vamos considerar essa quantidade ou mais.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option"
-              data-key="bedrooms"
-              data-value="1">
-              1 ou mais
-            </button>
-
-            <button
-              class="option"
-              data-key="bedrooms"
-              data-value="2">
-              2 ou mais
-            </button>
-
-            <button
-              class="option"
-              data-key="bedrooms"
-              data-value="3">
-              3 ou mais
-            </button>
-
-            <button
-              class="option"
-              data-key="bedrooms"
-              data-value="4">
-              4 ou mais
-            </button>
-
-          </div>
-        </div>
-
-        <div class="step" data-step="4" hidden aria-hidden="true" style="display:none!important">
-
-          <div class="step-label">
-            05 · O QUE É INDISPENSÁVEL?
-          </div>
-
-          <h2>Escolha suas prioridades.</h2>
-
-          <p>
-            Esses critérios terão peso maior no seu MATCH.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="area50">
-              Área maior
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="suite">
-              Suíte
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="parking">
-              Vaga
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="balcony">
-              Varanda
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="pool">
-              Piscina
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="metro">
-              Metrô próximo
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="lowcondo">
-              Condomínio baixo
-            </button>
-
+          <div class="options compact-options priorities-options">
+            <button class="option multi" data-key="feature" data-value="area50">Área maior</button>
+            <button class="option multi" data-key="feature" data-value="suite">Suíte</button>
+            <button class="option multi" data-key="feature" data-value="parking">Vaga</button>
+            <button class="option multi" data-key="feature" data-value="balcony">Varanda</button>
+            <button class="option multi" data-key="feature" data-value="pool">Piscina</button>
+            <button class="option multi" data-key="feature" data-value="metro">Metrô próximo</button>
+            <button class="option multi" data-key="feature" data-value="lowcondo">Condomínio baixo</button>
           </div>
         </div>
 
@@ -3674,36 +3172,35 @@ body.ad-match-mode{
         </label>
       </div>
 
-      <div class="catalog-quick-row">
-        <label class="unified-field catalog-source-quick">
-          <span>Estoque</span>
-          <select id="catalogSource" class="field" aria-label="Tipo de estoque">
-            <option value="todos">Novos e usados</option>
-            <option value="novos">Somente novos</option>
-            <option value="usados">Somente usados</option>
-          </select>
-        </label>
-
-        <button class="filters-trigger catalog-filters-button" id="openFilters" type="button" aria-controls="catalogFilters" aria-expanded="false">
-          <span aria-hidden="true">⚙</span>
-          FILTROS
-        </button>
+      <div class="unified-search-separator">
+        <span>Filtros de compra</span>
       </div>
 
-      <div class="active-filter-chips" id="activeFilterChips" aria-live="polite"></div>
-
-      <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true"></div>
-
       <div class="catalog-filters unified-catalog-filters" id="catalogFilters" aria-label="Filtros de compra">
-        <div class="filters-sheet-head">
-          <div>
-            <div class="filter-title">Filtrar imóveis</div>
-            <div class="filter-subtitle">Refine somente o que importa para você.</div>
-          </div>
-          <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros">×</button>
-        </div>
+        <!-- Elementos técnicos preservados para compatibilidade com a lógica atual -->
+        <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true" style="display:none"></div>
+        <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros" style="display:none">×</button>
 
         <div class="filter-grid unified-filter-grid">
+          <label class="unified-field">
+            <span>Estoque</span>
+            <select id="catalogSource" class="field" aria-label="Tipo de estoque">
+              <option value="todos">Novos e usados</option>
+              <option value="novos">Somente novos</option>
+              <option value="usados">Somente usados</option>
+            </select>
+          </label>
+
+          <label class="unified-field">
+            <span>Ordenar</span>
+            <select id="catalogSort" class="field" aria-label="Ordenar imóveis">
+              <option value="price_asc">Mais barato primeiro</option>
+              <option value="price_desc">Mais caro primeiro</option>
+              <option value="area_desc">Maior área primeiro</option>
+              <option value="area_asc">Menor área primeiro</option>
+            </select>
+          </label>
+
           <label class="unified-field">
             <span>Tipo</span>
             <select id="catalogType" class="field">
@@ -3753,32 +3250,17 @@ body.ad-match-mode{
               <option value="3">3+</option>
             </select>
           </label>
+
+          <label class="unified-field">
+            <span>Condomínio máximo</span>
+            <input id="maxCondo" class="field" type="number" min="0" step="50" placeholder="R$ máximo">
+          </label>
+
+          <label class="unified-field">
+            <span>IPTU máximo</span>
+            <input id="maxIptu" class="field" type="number" min="0" step="50" placeholder="R$ máximo">
+          </label>
         </div>
-
-        <details class="secondary-filters">
-          <summary>Mais filtros</summary>
-          <div class="secondary-filter-grid">
-            <label class="unified-field">
-              <span>Ordenar</span>
-              <select id="catalogSort" class="field" aria-label="Ordenar imóveis">
-                <option value="price_asc">Mais barato primeiro</option>
-                <option value="price_desc">Mais caro primeiro</option>
-                <option value="area_desc">Maior área primeiro</option>
-                <option value="area_asc">Menor área primeiro</option>
-              </select>
-            </label>
-
-            <label class="unified-field">
-              <span>Condomínio máximo</span>
-              <input id="maxCondo" class="field" type="number" min="0" step="50" placeholder="R$ máximo">
-            </label>
-
-            <label class="unified-field">
-              <span>IPTU máximo</span>
-              <input id="maxIptu" class="field" type="number" min="0" step="50" placeholder="R$ máximo">
-            </label>
-          </div>
-        </details>
 
         <div class="filter-actions unified-filter-actions">
           <button class="filter-reset" id="resetCatalogFilters" type="button">
@@ -3786,7 +3268,7 @@ body.ad-match-mode{
           </button>
 
           <button id="catalogSearchBtn" class="catalog-search-btn" type="button">
-            VER IMÓVEIS
+            BUSCAR IMÓVEIS
           </button>
 
           <!-- Mantido para compatibilidade com listeners existentes -->
@@ -3877,20 +3359,7 @@ body.ad-match-mode{
   Ynteligencia · Inteligência imobiliária
 </footer>
 
-<nav class="app-dock" aria-label="Navegação principal">
-  <button type="button" onclick="enterMatchMode()">
-    <b>✦</b><span>DESCOBRIR</span>
-  </button>
-  <button type="button" onclick="openGeneralCatalog(false)">
-    <b>⌕</b><span>EXPLORAR</span>
-  </button>
-  <button type="button" onclick="showToast('Salvos será ativado em uma próxima etapa do produto.')">
-    <b>♡</b><span>SALVOS</span>
-  </button>
-  <button type="button" id="openAppMenuDock">
-    <b>○</b><span>PERFIL</span>
-  </button>
-</nav>
+<!-- Navegação inferior removida no mobile: Descobrir / Explorar / Salvos / Perfil. -->
 
 
 <div class="menu-backdrop" id="menuBackdrop" aria-hidden="true"></div>
@@ -5359,11 +4828,11 @@ function setStep(n,fromHistory=false){
 
 
   $("progress").style.width=
-    `${((step+1)/5)*100}%`;
+    `${((step+1)/3)*100}%`;
 
   const stepCount=$("stepCount");
   if(stepCount){
-    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 04`;
+    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 03`;
   }
 
 
@@ -5374,8 +4843,8 @@ function setStep(n,fromHistory=false){
 
 
   $("next").textContent=
-    step===3
-      ? "Encontrar meus MATCHs"
+    step===2
+      ? "BUSCAR IMÓVEIS"
       : "Continuar";
 
 
@@ -5393,40 +4862,21 @@ function setStep(n,fromHistory=false){
 
 
 function currentValid(){
-
   if(step===0){
-
-    return(
-      profile.types.length>0
-    );
+    return profile.types.length>0 && Boolean(profile.region);
   }
 
+  if(step===1){
+    return (Number(profile.budgetMin)>0 || Number(profile.budgetMax)>0) && Boolean(profile.bedrooms);
+  }
 
+  // Prioridades são opcionais.
   if(step===2){
-
-    return(
-      Number(profile.budgetMin)>0 || Number(profile.budgetMax)>0
-    );
+    return true;
   }
 
-
-  const key=
-    [
-      "types",
-      "region",
-      "budget",
-      "bedrooms",
-      "feature"
-    ][step];
-
-
-  return(
-    profile[key]!=="" &&
-    profile[key]!==null &&
-    profile[key]!==undefined
-  );
+  return false;
 }
-
 
 function updateNext(){
 
@@ -5472,7 +4922,6 @@ document
 
               btn.classList.add("selected");
               updateNext();
-              window.setTimeout(()=>setStep(step+1),140);
               return;
             }
 
@@ -5531,20 +4980,10 @@ document
                 "selected"
               );
 
-            // Perguntas de escolha única avançam automaticamente.
-            if(["region","budget"].includes(key)){
+            // No wizard em 3 etapas nenhuma escolha avança sozinha.
+            // O usuário confirma cada etapa pelo CTA Continuar / Buscar imóveis.
+            if(["region","budget","bedrooms"].includes(key)){
               updateNext();
-              window.setTimeout(()=>setStep(step+1),140);
-              return;
-            }
-
-            // Dormitórios é a última pergunta obrigatória: dispara o motor do MATCH.
-            if(key==="bedrooms"){
-              updateNext();
-              window.setTimeout(()=>{
-                trackProfileCompleted();
-                showMatchProcessing();
-              },140);
               return;
             }
           }
@@ -5694,7 +5133,7 @@ $("next")?.addEventListener(
       )return;
 
 
-      if(step<3){
+      if(step<2){
 
         setStep(
           step+1
@@ -5798,13 +5237,13 @@ $("navMatch")?.addEventListener(
 
 $("exploreHero")?.addEventListener(
     "click",
-    ()=>openGeneralCatalog(false)
+    ()=>openGeneralCatalog(true)
   );
 
 
 $("navExplore")?.addEventListener(
     "click",
-    ()=>openGeneralCatalog(false)
+    ()=>openGeneralCatalog(true)
   );
 
 
@@ -5815,7 +5254,6 @@ function setFiltersOpen(open){
   sheet.classList.toggle("open",open);
   backdrop.classList.toggle("open",open);
   backdrop.setAttribute("aria-hidden",String(!open));
-  $("openFilters")?.setAttribute("aria-expanded",String(open));
   if(window.matchMedia("(max-width:700px)").matches){
     document.body.style.overflow=open ? "hidden" : "";
   }
@@ -7272,17 +6710,17 @@ function ensureAiAssistantShell(){
     <div class="ai-assistant-card" role="dialog" aria-modal="true" aria-label="Assistente de compra">
       <div class="ai-assistant-head">
         <div class="ai-assistant-brand">
-          <span class="ai-orb">✦</span>
-          <span><strong>Match IA</strong><small>Assistente de compra Ynteligencia</small></span>
+          <span class="ai-orb" aria-hidden="true">🤖</span>
+          <span><strong>Assistente YN</strong><small>Seu assistente deste imóvel</small></span>
         </div>
         <button class="ai-assistant-close" type="button" aria-label="Fechar">×</button>
       </div>
       <div>
         <div class="ai-assistant-messages" id="aiAssistantMessages"></div>
-        <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Falar com Rafael no WhatsApp</button>
+        <button class="ai-human-handoff visible" id="aiHumanHandoff" type="button">👤 Quero falar com uma pessoa</button>
       </div>
       <form class="ai-assistant-input" id="aiAssistantForm">
-        <textarea id="aiAssistantInput" rows="1" placeholder="Digite sua dúvida sobre este imóvel..."></textarea>
+        <textarea id="aiAssistantInput" rows="1" placeholder="Digite sua mensagem..."></textarea>
         <button class="ai-assistant-send" id="aiAssistantSend" type="submit" aria-label="Enviar">➜</button>
       </form>
     </div>`;
@@ -7399,7 +6837,11 @@ function openAiAssistant(p){
   document.body.style.overflow="hidden";
 
   const sourceLabel=String(p.source||"").toLowerCase()==="novos" ? "lançamento" : "imóvel";
-  appendAiMessage("assistant",`Oi! Vi que você está olhando ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Pode me perguntar o que quiser sobre este imóvel — e também posso buscar outras unidades e opções do nosso estoque para comparar com você.`);
+  const stockKnown=Number(p.stock)>0;
+  const openingQuestion=stockKnown
+    ? `Oi! 👋 Estou aqui para te ajudar com ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Quer saber quantas unidades ainda estão disponíveis neste prédio?`
+    : `Oi! 👋 Estou aqui para te ajudar com ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Pode me perguntar sobre preço, características, localização, condições ou disponibilidade.`;
+  appendAiMessage("assistant",openingQuestion);
 
   try{
     gtag("event","ai_assistant_open",{
@@ -8261,7 +7703,7 @@ async function showPhotoModal(id){
           <strong>Quer entender melhor este imóvel?</strong>
           <p>A IA pode responder sobre preço, condições, localização e comparar opções. Se precisar, ela chama o atendimento humano.</p>
         </div>
-        <button class="detail-specialist-btn" type="button">Conversar com a IA</button>
+        <button class="detail-specialist-btn" type="button">🤖 Falar com o assistente</button>
       </section>
 
       <section class="detail-similar" id="detailSimilarSection">
@@ -8272,8 +7714,8 @@ async function showPhotoModal(id){
     </main>
 
     <div class="detail-sticky-cta">
-      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">Compartilhar</button>
-      <button class="detail-interest-btn" type="button">✨ Perguntar à IA</button>
+      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">◉ Compartilhar no WhatsApp</button>
+      <button class="detail-interest-btn" type="button">🤖 Falar com o assistente</button>
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
@@ -8297,7 +7739,8 @@ async function showPhotoModal(id){
   modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openAiAssistant(p));
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
   document.body.appendChild(modal);
-  scheduleAiAssistantForProperty(p,modal);
+  // Assistente é aberto apenas pelo CTA explícito da ficha.
+  // O antigo botão flutuante IA + Humano foi removido para manter a tela limpa.
 
   modal.querySelector(".detail-gallery-all-btn")?.addEventListener("click",()=>{
     const track=modal.querySelector(".detail-gallery-track");
@@ -9308,7 +8751,6 @@ $("catalogState")?.addEventListener(
 
 
 async function executeCatalogSearch(){
-  setFiltersOpen(false);
   $("catalog").classList.add("visible");
   activeCity=clean($("catalogCity")?.value || activeCity) || activeCity;
   activeState=String($("catalogState")?.value || activeState).trim().toUpperCase() || activeState;
@@ -9461,7 +8903,7 @@ document.querySelector(".brand-lockup")?.addEventListener("click",event=>{
   goHome();
 });
 
-function openGeneralCatalog(openFilters=false){
+function openGeneralCatalog(openFilters=true){
   clearAdEntryIntent();
   document.body.classList.remove("match-results-mode");
   resetCatalogState(false);
@@ -11823,80 +11265,6 @@ body.ad-match-mode .refine-match-shell{
       setTimeout(updateAiMobileViewport,120);
     }
   });
-})();
-</script>
-
-
-<script id="catalog-filter-chips-v2">
-(() => {
-  const $id=(id)=>document.getElementById(id);
-  const chips=$id("activeFilterChips");
-  if(!chips) return;
-
-  const formatMoney=(value)=>{
-    const n=Number(value || 0);
-    return n ? n.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}) : "";
-  };
-
-  const specs=[
-    ["catalogRegionSelect","Região",el=>el.options[el.selectedIndex]?.text || "",v=>v!==""],
-    ["catalogNeighborhood","Bairro",el=>el.options[el.selectedIndex]?.text || "",v=>v!==""],
-    ["catalogSource","Estoque",el=>el.options[el.selectedIndex]?.text || "",v=>v && v!=="todos"],
-    ["catalogType","Tipo",el=>el.options[el.selectedIndex]?.text || "",v=>v!==""],
-    ["catalogBedrooms","Dorms",el=>`${el.value}+ dorms`,v=>v!==""],
-    ["minPrice","De",el=>`A partir de ${formatMoney(el.value)}`,v=>Number(v)>0],
-    ["maxPrice","Até",el=>`Até ${formatMoney(el.value)}`,v=>Number(v)>0],
-    ["minArea","Área",el=>`${el.value} m²+`,v=>Number(v)>0],
-    ["catalogParking","Vagas",el=>el.value==="0" ? "Sem vaga" : `${el.value}+ vagas`,v=>v!==""],
-    ["maxCondo","Condomínio",el=>`Cond. até ${formatMoney(el.value)}`,v=>Number(v)>0],
-    ["maxIptu","IPTU",el=>`IPTU até ${formatMoney(el.value)}`,v=>Number(v)>0]
-  ];
-
-  function renderFilterChips(){
-    chips.innerHTML="";
-    specs.forEach(([id,label,getText,isActive])=>{
-      const el=$id(id);
-      if(!el || !isActive(String(el.value ?? ""))) return;
-      const chip=document.createElement("span");
-      chip.className="active-filter-chip";
-      const text=document.createElement("span");
-      text.textContent=getText(el);
-      const remove=document.createElement("button");
-      remove.type="button";
-      remove.setAttribute("aria-label",`Remover filtro ${label}`);
-      remove.textContent="×";
-      remove.addEventListener("click",async()=>{
-        if(id==="catalogRegionSelect"){
-          el.value="";
-          if(typeof setCatalogRegion==="function") setCatalogRegion("");
-        }else{
-          el.value=(id==="catalogSource" ? "todos" : "");
-        }
-        renderFilterChips();
-        if(typeof executeCatalogSearch==="function") await executeCatalogSearch();
-      });
-      chip.append(text,remove);
-      chips.appendChild(chip);
-    });
-  }
-
-  specs.forEach(([id])=>{
-    $id(id)?.addEventListener("change",renderFilterChips);
-    $id(id)?.addEventListener("input",renderFilterChips);
-  });
-  $id("catalogSearchBtn")?.addEventListener("click",()=>setTimeout(renderFilterChips,0));
-  $id("resetCatalogFilters")?.addEventListener("click",()=>setTimeout(renderFilterChips,0));
-
-  // ESC closes the mobile filter sheet.
-  document.addEventListener("keydown",event=>{
-    if(event.key==="Escape" && $id("catalogFilters")?.classList.contains("open")){
-      if(typeof setFiltersOpen==="function") setFiltersOpen(false);
-    }
-  });
-
-  renderFilterChips();
-  setTimeout(renderFilterChips,350);
-  setTimeout(renderFilterChips,1200);
 })();
 </script>
 
