@@ -4809,7 +4809,7 @@ function setStep(n,fromHistory=false){
     Math.max(
       0,
       Math.min(
-        3,
+        Math.max(0,steps.length-1),
         n
       )
     );
@@ -4828,11 +4828,11 @@ function setStep(n,fromHistory=false){
 
 
   $("progress").style.width=
-    `${((step+1)/3)*100}%`;
+    `${((step+1)/Math.max(1,steps.length))*100}%`;
 
   const stepCount=$("stepCount");
   if(stepCount){
-    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 03`;
+    stepCount.textContent=`${String(step+1).padStart(2,"0")} de ${String(steps.length).padStart(2,"0")}`;
   }
 
 
@@ -5085,8 +5085,9 @@ function enterMatchMode(){
   document.body.classList.remove("home-mode","match-results-mode","ad-match-mode");
   document.body.classList.add("match-mode");
 
-  // Sempre entra no Wizard pela primeira etapa.
+  // Sempre entra no Wizard pela primeira etapa e sincroniza o CTA.
   setStep(0,true);
+  updateNext();
   history.pushState({ynteligenciaMatch:true,step:0},"");
 }
 
@@ -6945,7 +6946,8 @@ function scheduleAiAssistantForProperty(p,modal){
     trigger.id="aiAssistantTrigger";
     trigger.type="button";
     trigger.className="ai-assistant-trigger";
-    trigger.innerHTML=`<span class="ai-orb">✦</span><span>IA + Humano<small>Tire dúvidas ou fale com o Rafael</small></span>`;
+    trigger.setAttribute("aria-label","Conversar com o assistente sobre este imóvel");
+    trigger.innerHTML=`<span class="ai-orb" aria-hidden="true">🤖</span><span><strong>Posso te ajudar com este imóvel?</strong><small>Me pergunte sobre preço, disponibilidade, condições ou localização.</small></span>`;
     trigger.addEventListener("click",()=>{
       trigger.remove();
       openAiAssistant(p);
@@ -7739,8 +7741,10 @@ async function showPhotoModal(id){
   modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openAiAssistant(p));
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
   document.body.appendChild(modal);
-  // Assistente é aberto apenas pelo CTA explícito da ficha.
-  // O antigo botão flutuante IA + Humano foi removido para manter a tela limpa.
+
+  // Depois de 3 segundos na ficha, o robô aparece convidando o cliente
+  // para conversar. O chat só abre se o cliente tocar no convite.
+  scheduleAiAssistantForProperty(p,modal);
 
   modal.querySelector(".detail-gallery-all-btn")?.addEventListener("click",()=>{
     const track=modal.querySelector(".detail-gallery-track");
