@@ -2912,6 +2912,302 @@ body.ad-match-mode{
 }
 </style>
 
+
+<style id="wireframe-design-override">
+:root{
+  --wf-bg:#F6F3EC;
+  --wf-surface:#FFFDF9;
+  --wf-gold:#B88945;
+  --wf-gold-soft:#E9D4B2;
+  --wf-ink:#171513;
+  --wf-muted:#77716A;
+  --wf-line:#E4DED3;
+  --wf-green:#08AF58;
+}
+
+@media (max-width: 768px){
+  html,body{background:var(--wf-bg)!important;color:var(--wf-ink)!important}
+  body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+  h1,h2,h3{letter-spacing:-.035em}
+  button{touch-action:manipulation}
+
+  /* HOME */
+  .app-header{background:transparent!important;border:0!important;position:absolute!important;color:#fff!important}
+  .app-topbar .brand-copy strong{color:#fff!important}
+  .app-topbar .brand-copy small,.nav-links{display:none!important}
+  .hero{
+    min-height:100svh!important;
+    display:flex!important;
+    align-items:flex-end!important;
+    padding:110px 0 34px!important;
+    background:
+      linear-gradient(180deg,rgba(14,12,10,.12),rgba(14,12,10,.78)),
+      var(--hero-photo, linear-gradient(135deg,#80664d,#2e2822))!important;
+    background-size:cover!important;
+    background-position:center!important;
+    color:#fff!important;
+  }
+  .hero .container{width:calc(100% - 34px)!important;margin:auto!important}
+  .hero .eyebrow{display:none!important}
+  .hero h1{
+    max-width:320px!important;
+    font-family:Georgia,"Times New Roman",serif!important;
+    font-size:44px!important;
+    line-height:.99!important;
+    font-weight:500!important;
+    margin:0 0 14px!important;
+    color:#fff!important;
+  }
+  .hero h1 span{color:#fff!important}
+  .hero p{max-width:300px!important;font-size:16px!important;line-height:1.45!important;color:rgba(255,255,255,.9)!important;margin-bottom:24px!important}
+  .hero-actions{display:block!important}
+  .hero-actions .primary{
+    width:100%!important;
+    min-height:62px!important;
+    border:0!important;
+    border-radius:16px!important;
+    background:linear-gradient(135deg,#C69A58,#A97835)!important;
+    color:white!important;
+    font-size:16px!important;
+    font-weight:800!important;
+    box-shadow:0 16px 36px rgba(0,0,0,.22)!important;
+  }
+  .hero-actions .primary::after{content:" em 3 passos  →"}
+  .hero-actions .secondary{display:none!important}
+
+  /* FILTER AS A LIGHT MOBILE SHEET */
+  body.match-mode .wizard-wrap{
+    position:fixed!important;
+    inset:0!important;
+    z-index:180!important;
+    min-height:100dvh!important;
+    padding:0!important;
+    overflow:auto!important;
+    background:rgba(21,19,16,.28)!important;
+    backdrop-filter:blur(8px)!important;
+  }
+  body.match-mode .wizard-wrap>.container{width:100%!important;max-width:none!important;padding:72px 0 0!important}
+  .wizard{
+    width:100%!important;
+    max-width:560px!important;
+    min-height:calc(100dvh - 72px)!important;
+    margin:0 auto!important;
+    border:0!important;
+    border-radius:28px 28px 0 0!important;
+    background:var(--wf-surface)!important;
+    box-shadow:0 -18px 65px rgba(25,20,14,.18)!important;
+    overflow:hidden!important;
+    color:var(--wf-ink)!important;
+  }
+  .wizard>.progress{display:none!important}
+  .wizard-inner{
+    min-height:calc(100dvh - 72px)!important;
+    display:block!important;
+    overflow:visible!important;
+    padding:0 18px calc(28px + env(safe-area-inset-bottom))!important;
+    background:var(--wf-surface)!important;
+    color:var(--wf-ink)!important;
+  }
+  .wire-wizard-head{
+    position:sticky!important;
+    top:0!important;
+    z-index:4!important;
+    margin:0 -18px!important;
+    padding:11px 18px 16px!important;
+    background:rgba(255,253,249,.96)!important;
+    backdrop-filter:blur(18px)!important;
+    border-bottom:1px solid rgba(228,222,211,.7)!important;
+  }
+  .wire-handle{display:block;width:42px;height:5px;border-radius:999px;background:#C8C5BF;margin:0 auto 16px}
+  .wire-wizard-head h2{
+    margin:0 0 16px!important;
+    font-family:Georgia,"Times New Roman",serif!important;
+    font-size:27px!important;
+    line-height:1.02!important;
+    font-weight:600!important;
+    color:var(--wf-ink)!important;
+  }
+  .wire-steps{display:grid;grid-template-columns:auto 1fr auto 1fr auto;align-items:start;gap:8px}
+  .wire-steps>span{height:2px;background:#E7E3DB;margin-top:17px}
+  .wire-step-dot{text-align:center;min-width:58px;color:#AAA39B}
+  .wire-step-dot b{
+    width:34px;height:34px;border-radius:50%;display:grid;place-items:center;margin:0 auto 6px;
+    background:#ECEAE5;color:#817A72;font-size:14px
+  }
+  .wire-step-dot small{display:block;font-size:10px;font-weight:700;color:inherit}
+  .wire-step-dot.active{color:var(--wf-ink)}
+  .wire-step-dot.active b,.wire-step-dot.done b{background:var(--wf-gold);color:#fff}
+  .step-count,.search-mode-switch{display:none!important}
+
+  .step{padding:24px 0 2px!important;animation:none!important}
+  .step[hidden]{display:none!important}
+  .step-label{font-size:10px!important;letter-spacing:.12em!important;font-weight:900!important;color:var(--wf-gold)!important;margin-bottom:7px!important}
+  .step>h2{
+    margin:0!important;
+    font-size:24px!important;
+    line-height:1.12!important;
+    font-weight:800!important;
+    color:var(--wf-ink)!important;
+  }
+  .step>p{margin:8px 0 22px!important;color:var(--wf-muted)!important;font-size:13px!important;line-height:1.45!important}
+  .wizard-subquestion{margin:0 0 26px!important}
+  .wizard-subquestion>strong{display:block;margin-bottom:10px!important;font-size:14px!important;color:var(--wf-ink)!important}
+  .wizard-subquestion>strong small{color:#A29B92;font-weight:500}
+
+  .options{gap:9px!important}
+  .option{
+    border:1px solid var(--wf-line)!important;
+    background:#fff!important;
+    color:var(--wf-ink)!important;
+    border-radius:13px!important;
+    box-shadow:none!important;
+    min-height:48px!important;
+    font-weight:700!important;
+  }
+  .option.selected{
+    border-color:#D6AA68!important;
+    background:#FFF8ED!important;
+    color:var(--wf-ink)!important;
+    box-shadow:0 0 0 1px rgba(184,137,69,.08)!important;
+  }
+
+  .wire-region-options{display:grid!important;grid-template-columns:1fr!important}
+  .wire-region-card{
+    width:100%!important;display:grid!important;grid-template-columns:66px 1fr 25px!important;
+    gap:12px!important;align-items:center!important;text-align:left!important;padding:9px!important;min-height:80px!important
+  }
+  .wire-region-art{width:66px;height:60px;display:grid;place-items:center;border-radius:10px;background:#EFEAE1;font-size:27px}
+  .wire-region-card strong{display:block;font-size:14px}
+  .wire-region-card small{display:block;margin-top:4px!important;color:#918A81!important;font-size:10px!important;line-height:1.35!important}
+  .wire-region-card i{
+    width:22px;height:22px;border:1px solid #D5D0C8;border-radius:50%;display:grid;place-items:center;
+    color:transparent;font-style:normal;font-size:12px
+  }
+  .wire-region-card.selected i{background:var(--wf-gold);border-color:var(--wf-gold);color:#fff}
+
+  .wire-two-col{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .wire-two-col .option{display:flex!important;flex-direction:column!important;gap:8px!important;justify-content:center!important;font-size:22px!important;min-height:82px!important}
+  .wire-two-col .option span{font-size:13px!important}
+  .wire-number-row{display:grid!important;grid-template-columns:repeat(4,1fr)!important}
+  .wire-number-row .option{padding:0!important;min-height:48px!important}
+  .wire-budget-list{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .wire-budget-list .option{font-size:12px!important;padding:10px!important}
+  .wire-toggle-list{display:grid!important;grid-template-columns:1fr!important}
+  .wire-toggle-list .option{
+    padding:0 2px!important;border:0!important;background:transparent!important;
+    min-height:42px!important;display:flex!important;align-items:center!important;justify-content:space-between!important
+  }
+  .wire-toggle-list .option i{
+    width:38px;height:22px;border-radius:999px;background:#D8D3CA;position:relative;transition:.2s
+  }
+  .wire-toggle-list .option i::after{
+    content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;
+    box-shadow:0 1px 4px rgba(0,0,0,.18);transition:.2s
+  }
+  .wire-toggle-list .option.selected{background:transparent!important}
+  .wire-toggle-list .option.selected i{background:var(--wf-gold)}
+  .wire-toggle-list .option.selected i::after{transform:translateX(16px)}
+
+  .wizard-actions{
+    position:static!important;
+    display:grid!important;
+    grid-template-columns:auto auto 1fr!important;
+    gap:8px!important;
+    margin:10px 0 0!important;
+    padding:0!important;
+    background:transparent!important;
+    border:0!important;
+  }
+  .wizard-actions button{min-height:52px!important;border-radius:13px!important}
+  .wizard-actions .back,.wizard-actions .clear-match{
+    border:1px solid var(--wf-line)!important;background:#fff!important;color:#625C54!important;padding:0 13px!important
+  }
+  .wizard-actions .next{
+    border:0!important;background:linear-gradient(135deg,#C89A55,#A97835)!important;color:#fff!important;font-weight:900!important;
+    box-shadow:0 12px 24px rgba(168,120,53,.18)!important
+  }
+  .wizard-actions .next:disabled{opacity:.4!important;box-shadow:none!important}
+
+  /* RESULTS */
+  .results,.catalog{background:var(--wf-bg)!important;color:var(--wf-ink)!important}
+  .results .container,.catalog .container{width:100%!important;max-width:560px!important;padding:0 14px!important}
+  .result-top{padding-top:18px!important}
+  .result-top h2{font-size:20px!important;color:var(--wf-ink)!important}
+  .result-top p{font-size:11px!important;color:var(--wf-muted)!important}
+  .grid,#matchGrid,.catalog-grid{display:grid!important;grid-template-columns:1fr!important;gap:12px!important}
+  .card,.property-card{
+    border:1px solid var(--wf-line)!important;border-radius:17px!important;background:#fff!important;
+    box-shadow:0 7px 24px rgba(42,35,27,.055)!important;overflow:hidden!important
+  }
+
+  /* PROPERTY DETAIL */
+  #photoModal{background:var(--wf-surface)!important;color:var(--wf-ink)!important}
+  #photoModal .detail-shell{background:var(--wf-surface)!important}
+  .detail-body,.detail-content{background:var(--wf-surface)!important;color:var(--wf-ink)!important}
+  .detail-price{font-size:30px!important;letter-spacing:-.04em!important}
+  .detail-main-specs{border-color:var(--wf-line)!important}
+  .detail-sticky-cta{
+    grid-template-columns:1fr!important;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom))!important;
+    background:rgba(255,253,249,.96)!important;
+    backdrop-filter:blur(18px)!important;
+    border-top:1px solid var(--wf-line)!important;
+  }
+  .detail-share-btn{
+    width:100%!important;min-height:56px!important;border:0!important;border-radius:15px!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;
+    background:var(--wf-green)!important;color:#fff!important;font-size:15px!important;font-weight:900!important;
+    box-shadow:0 10px 22px rgba(8,175,88,.18)!important
+  }
+  .detail-share-btn svg{width:25px;height:25px;display:block}
+  .detail-interest-btn,.detail-specialist{display:none!important}
+
+  /* AI INVITE: only conversational entry point */
+  .ai-assistant-trigger{
+    right:13px!important;
+    bottom:calc(84px + env(safe-area-inset-bottom))!important;
+    width:min(330px,calc(100vw - 26px))!important;
+    max-width:none!important;
+    min-height:82px!important;
+    padding:12px 14px!important;
+    display:grid!important;
+    grid-template-columns:52px 1fr!important;
+    gap:10px!important;
+    align-items:center!important;
+    border:1px solid rgba(214,207,196,.95)!important;
+    border-radius:20px!important;
+    background:rgba(255,255,255,.98)!important;
+    color:var(--wf-ink)!important;
+    box-shadow:0 14px 40px rgba(42,35,27,.18)!important;
+    backdrop-filter:blur(18px)!important;
+  }
+  .ai-assistant-trigger .ai-orb{
+    width:52px!important;height:52px!important;flex:0 0 52px!important;
+    background:linear-gradient(135deg,#EDF4FF,#DDEBFF)!important;
+    font-size:28px!important;
+    border:1px solid #DCE5F0!important;
+  }
+  .ai-assistant-trigger strong{display:block!important;font-size:14px!important;line-height:1.22!important;margin-bottom:4px!important}
+  .ai-assistant-trigger small{font-size:10px!important;line-height:1.35!important;color:#77716A!important}
+
+  /* AI CHAT */
+  .ai-assistant-shell{background:rgba(21,19,16,.3)!important;backdrop-filter:blur(9px)!important}
+  .ai-assistant-card{
+    height:94dvh!important;background:#fff!important;color:var(--wf-ink)!important;border-radius:28px 28px 0 0!important
+  }
+  .ai-assistant-head{background:#fff!important;color:var(--wf-ink)!important;border-bottom:1px solid var(--wf-line)!important}
+  .ai-assistant-brand small{color:#6E685F!important}
+  .ai-assistant-close{background:#F2EFE9!important;color:#332E29!important}
+  .ai-assistant-messages{background:#FBFAF7!important}
+  .ai-msg.assistant{background:#F1F3F5!important;border:0!important}
+  .ai-msg.user{background:#B88945!important;color:#fff!important}
+  .ai-assistant-send{background:#B88945!important}
+
+  /* Strip out obsolete dock/navigation visual clutter on mobile */
+  .mobile-bottom-nav,.mobile-dock,.bottom-nav,#mobileDock{display:none!important}
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -2965,62 +3261,107 @@ body.ad-match-mode{
 
 <section class="wizard-wrap" id="match">
   <div class="container">
-
     <div class="wizard">
-
-      <div class="progress">
-        <span id="progress"></span>
-      </div>
+      <div class="progress"><span id="progress"></span></div>
 
       <div class="wizard-inner">
-
-        <div class="search-mode-switch" aria-label="Modo de busca">
-          <button type="button" class="search-mode-btn active" id="wizardMatchMode">✦ Encontrar meu MATCH</button>
-          <button type="button" class="search-mode-btn" id="wizardExploreMode">⌕ Explorar imóveis</button>
+        <div class="wire-wizard-head">
+          <span class="wire-handle" aria-hidden="true"></span>
+          <h2>Encontre seu imóvel<br>em 3 passos</h2>
+          <div class="wire-steps" aria-label="Progresso da busca">
+            <div class="wire-step-dot active" data-wire-step="0"><b>1</b><small>Região</small></div>
+            <span></span>
+            <div class="wire-step-dot" data-wire-step="1"><b>2</b><small>Perfil</small></div>
+            <span></span>
+            <div class="wire-step-dot" data-wire-step="2"><b>3</b><small>Preço</small></div>
+          </div>
         </div>
-
-        <!-- A origem do inventário permanece interna.
-             O usuário faz um único MATCH; sourceMode continua no JS para a futura Órulo. -->
 
         <div class="step-count" aria-live="polite">
           <strong id="stepCount">01 de 03</strong>
         </div>
 
         <div class="step" data-step="0">
-          <div class="step-label">01 · IMÓVEL E REGIÃO</div>
-          <h2>O que você procura e onde?</h2>
-          <p>Escolha o tipo de imóvel e a região. Você pode ajustar tudo antes da busca.</p>
+          <div class="step-label">ETAPA 1</div>
+          <h2>Em qual região você gostaria de morar ou investir?</h2>
+          <p>Escolha uma região. Você poderá refinar sua busca nas próximas etapas.</p>
 
           <div class="wizard-subquestion">
-            <strong>Tipo de imóvel</strong>
-            <div class="options compact-options">
-              <button class="option multi" data-key="types" data-value="apartamento">Apartamento</button>
-              <button class="option multi" data-key="types" data-value="casa">Casa</button>
-              <button class="option multi" data-key="types" data-value="studio">Studio</button>
-              <button class="option multi" data-key="types" data-value="cobertura">Cobertura</button>
-              <button class="option multi" data-key="types" data-value="sobrado">Sobrado</button>
-            </div>
-          </div>
-
-          <div class="wizard-subquestion">
-            <strong>Região</strong>
-            <div class="options compact-options">
-              <button class="option" data-key="region" data-value="oeste">Zona Oeste<small>Perdizes, Pinheiros, Pompéia e região</small></button>
-              <button class="option" data-key="region" data-value="sul">Zona Sul<small>Moema, Vila Mariana, Brooklin e região</small></button>
-              <button class="option" data-key="region" data-value="norte">Zona Norte<small>Santana, Tucuruvi e região</small></button>
-              <button class="option" data-key="region" data-value="leste">Zona Leste<small>Tatuapé, Mooca, Anália Franco e região</small></button>
+            <div class="options wire-region-options">
+              <button class="option wire-region-card" data-key="region" data-value="oeste">
+                <span class="wire-region-art">🏙️</span>
+                <span><strong>Zona Oeste</strong><small>Perdizes, Pinheiros, Pompéia e região</small></span>
+                <i>✓</i>
+              </button>
+              <button class="option wire-region-card" data-key="region" data-value="sul">
+                <span class="wire-region-art">🌆</span>
+                <span><strong>Zona Sul</strong><small>Moema, Vila Mariana, Brooklin e região</small></span>
+                <i>✓</i>
+              </button>
+              <button class="option wire-region-card" data-key="region" data-value="leste">
+                <span class="wire-region-art">🏢</span>
+                <span><strong>Zona Leste</strong><small>Tatuapé, Mooca, Anália Franco e região</small></span>
+                <i>✓</i>
+              </button>
+              <button class="option wire-region-card" data-key="region" data-value="norte">
+                <span class="wire-region-art">🏙️</span>
+                <span><strong>Zona Norte</strong><small>Santana, Tucuruvi e região</small></span>
+                <i>✓</i>
+              </button>
             </div>
           </div>
         </div>
 
         <div class="step" data-step="1" hidden>
-          <div class="step-label">02 · ORÇAMENTO E TAMANHO</div>
-          <h2>Qual imóvel cabe no seu momento?</h2>
-          <p>Defina a faixa de investimento e a quantidade mínima de dormitórios.</p>
+          <div class="step-label">ETAPA 2</div>
+          <h2>Qual é o perfil do imóvel?</h2>
+          <p>Defina o que você procura. O layout foi pensado para ser rápido no celular.</p>
 
           <div class="wizard-subquestion">
-            <strong>Orçamento</strong>
-            <div class="options compact-options">
+            <strong>Finalidade</strong>
+            <div class="options wire-two-col">
+              <button class="option" data-key="purpose" data-value="morar">⌂<span>Morar</span></button>
+              <button class="option" data-key="purpose" data-value="investir">↗<span>Investir</span></button>
+            </div>
+          </div>
+
+          <div class="wizard-subquestion">
+            <strong>Tipo de imóvel</strong>
+            <div class="options wire-two-col">
+              <button class="option multi" data-key="types" data-value="apartamento">▥<span>Apartamento</span></button>
+              <button class="option multi" data-key="types" data-value="casa">⌂<span>Casa</span></button>
+              <button class="option multi" data-key="types" data-value="studio">□<span>Studio</span></button>
+              <button class="option multi" data-key="types" data-value="cobertura">⌃<span>Cobertura</span></button>
+            </div>
+          </div>
+
+          <div class="wizard-subquestion">
+            <strong>Dormitórios mínimos</strong>
+            <div class="options wire-number-row">
+              <button class="option" data-key="bedrooms" data-value="1">1</button>
+              <button class="option" data-key="bedrooms" data-value="2">2</button>
+              <button class="option" data-key="bedrooms" data-value="3">3</button>
+              <button class="option" data-key="bedrooms" data-value="4">4+</button>
+            </div>
+          </div>
+
+          <div class="wizard-subquestion">
+            <strong>Vagas de garagem</strong>
+            <div class="options wire-number-row">
+              <button class="option multi" data-key="feature" data-value="parking">1+</button>
+              <button class="option multi" data-key="feature" data-value="parking">2+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-step="2" hidden>
+          <div class="step-label">ETAPA 3</div>
+          <h2>Qual faixa de preço?</h2>
+          <p>Escolha sua faixa de investimento e, se quiser, marque alguns diferenciais.</p>
+
+          <div class="wizard-subquestion">
+            <strong>Faixa de investimento</strong>
+            <div class="options wire-budget-list">
               <button class="option" data-key="budget" data-value="400000" data-budget-min="1" data-budget-max="400000" data-budget-label="Até R$ 400 mil">Até R$ 400 mil</button>
               <button class="option" data-key="budget" data-value="600000" data-budget-min="400001" data-budget-max="600000" data-budget-label="R$ 401 mil a R$ 600 mil">R$ 401 mil a R$ 600 mil</button>
               <button class="option" data-key="budget" data-value="800000" data-budget-min="600001" data-budget-max="800000" data-budget-label="R$ 601 mil a R$ 800 mil">R$ 601 mil a R$ 800 mil</button>
@@ -3031,56 +3372,21 @@ body.ad-match-mode{
           </div>
 
           <div class="wizard-subquestion">
-            <strong>Dormitórios mínimos</strong>
-            <div class="options compact-options">
-              <button class="option" data-key="bedrooms" data-value="1">1 ou mais</button>
-              <button class="option" data-key="bedrooms" data-value="2">2 ou mais</button>
-              <button class="option" data-key="bedrooms" data-value="3">3 ou mais</button>
-              <button class="option" data-key="bedrooms" data-value="4">4 ou mais</button>
+            <strong>Outros filtros <small>(opcional)</small></strong>
+            <div class="options wire-toggle-list">
+              <button class="option multi" data-key="feature" data-value="balcony"><span>Varanda</span><i></i></button>
+              <button class="option multi" data-key="feature" data-value="pool"><span>Lazer completo</span><i></i></button>
+              <button class="option multi" data-key="feature" data-value="metro"><span>Metrô próximo</span><i></i></button>
+              <button class="option multi" data-key="feature" data-value="lowcondo"><span>Condomínio baixo</span><i></i></button>
+              <button class="option multi" data-key="feature" data-value="suite"><span>Suíte</span><i></i></button>
             </div>
           </div>
         </div>
 
-        <div class="step" data-step="2" hidden>
-          <div class="step-label">03 · PRIORIDADES</div>
-          <h2>O que faria este imóvel combinar mais com você?</h2>
-          <p>Esta etapa é opcional. Marque quantas prioridades quiser e toque em <strong>BUSCAR IMÓVEIS</strong>.</p>
-
-          <div class="options compact-options priorities-options">
-            <button class="option multi" data-key="feature" data-value="area50">Área maior</button>
-            <button class="option multi" data-key="feature" data-value="suite">Suíte</button>
-            <button class="option multi" data-key="feature" data-value="parking">Vaga</button>
-            <button class="option multi" data-key="feature" data-value="balcony">Varanda</button>
-            <button class="option multi" data-key="feature" data-value="pool">Piscina</button>
-            <button class="option multi" data-key="feature" data-value="metro">Metrô próximo</button>
-            <button class="option multi" data-key="feature" data-value="lowcondo">Condomínio baixo</button>
-          </div>
-        </div>
-
         <div class="wizard-actions">
-
-          <button
-            class="back"
-            id="back"
-            type="button">
-            Voltar
-          </button>
-
-          <button
-            class="clear-match"
-            id="clearMatch"
-            type="button">
-            Limpar
-          </button>
-
-          <button
-            class="next"
-            id="next"
-            type="button"
-            disabled>
-            Continuar
-          </button>
-
+          <button class="back" id="back" type="button">Voltar</button>
+          <button class="clear-match" id="clearMatch" type="button">Limpar</button>
+          <button class="next" id="next" type="button" disabled>Continuar</button>
         </div>
       </div>
     </div>
@@ -4835,6 +5141,11 @@ function setStep(n,fromHistory=false){
     stepCount.textContent=`${String(step+1).padStart(2,"0")} de ${String(steps.length).padStart(2,"0")}`;
   }
 
+  document.querySelectorAll("[data-wire-step]").forEach((dot,i)=>{
+    dot.classList.toggle("active",i===step);
+    dot.classList.toggle("done",i<step);
+  });
+
 
   $("back").style.visibility=
     step===0
@@ -4863,16 +5174,15 @@ function setStep(n,fromHistory=false){
 
 function currentValid(){
   if(step===0){
-    return profile.types.length>0 && Boolean(profile.region);
+    return Boolean(profile.region);
   }
 
   if(step===1){
-    return (Number(profile.budgetMin)>0 || Number(profile.budgetMax)>0) && Boolean(profile.bedrooms);
+    return Boolean(profile.purpose) && profile.types.length>0 && Boolean(profile.bedrooms);
   }
 
-  // Prioridades são opcionais.
   if(step===2){
-    return true;
+    return Number(profile.budgetMin)>0 || Number(profile.budgetMax)>0;
   }
 
   return false;
@@ -7697,18 +8007,7 @@ async function showPhotoModal(id){
           <h3>${esc(p.neighborhood || "São Paulo")}</h3>
           <p>${esc(fullAddress)}</p>
         </section>` : "")}
-
-      <section class="detail-specialist">
-        <img src="/PERFIL.jfif" alt="Especialista Ynteligencia">
-        <div class="detail-specialist-copy">
-          <small>Atendimento personalizado</small>
-          <strong>Quer entender melhor este imóvel?</strong>
-          <p>A IA pode responder sobre preço, condições, localização e comparar opções. Se precisar, ela chama o atendimento humano.</p>
-        </div>
-        <button class="detail-specialist-btn" type="button">🤖 Falar com o assistente</button>
-      </section>
-
-      <section class="detail-similar" id="detailSimilarSection">
+<section class="detail-similar" id="detailSimilarSection">
         <h3>Imóveis semelhantes</h3>
         <p>Outras opções próximas da sua busca.</p>
         <div class="detail-similar-grid" id="detailSimilarGrid"></div>
@@ -7716,8 +8015,12 @@ async function showPhotoModal(id){
     </main>
 
     <div class="detail-sticky-cta">
-      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">◉ Compartilhar no WhatsApp</button>
-      <button class="detail-interest-btn" type="button">🤖 Falar com o assistente</button>
+      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path fill="currentColor" d="M16 3a12.8 12.8 0 0 0-11 19.36L3.3 28.7l6.5-1.7A12.9 12.9 0 1 0 16 3Zm0 23.5c-2 0-3.9-.55-5.55-1.6l-.4-.24-3.85 1 1.03-3.75-.26-.4A10.6 10.6 0 1 1 16 26.5Zm5.83-7.95c-.32-.16-1.9-.94-2.2-1.05-.3-.11-.51-.16-.73.16-.21.32-.83 1.05-1.02 1.26-.19.21-.38.24-.7.08-.32-.16-1.35-.5-2.57-1.6-.95-.84-1.59-1.88-1.77-2.2-.19-.32-.02-.49.14-.65.14-.14.32-.38.48-.57.16-.19.21-.32.32-.54.11-.21.05-.4-.03-.57-.08-.16-.73-1.75-1-2.4-.26-.63-.53-.55-.73-.56h-.62c-.21 0-.56.08-.86.4-.3.32-1.13 1.1-1.13 2.69 0 1.59 1.16 3.12 1.32 3.34.16.21 2.28 3.48 5.52 4.88.77.33 1.37.53 1.84.68.77.24 1.47.21 2.03.13.62-.09 1.9-.78 2.17-1.53.27-.76.27-1.42.19-1.55-.08-.13-.3-.21-.62-.37Z"/>
+        </svg>
+        <span>Compartilhar no WhatsApp</span>
+      </button>
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
@@ -7738,8 +8041,6 @@ async function showPhotoModal(id){
     ].filter(Boolean).join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
   });
-  modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openAiAssistant(p));
-  modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
   document.body.appendChild(modal);
 
   // Depois de 3 segundos na ficha, o robô aparece convidando o cliente
@@ -11269,6 +11570,29 @@ body.ad-match-mode .refine-match-shell{
       setTimeout(updateAiMobileViewport,120);
     }
   });
+})();
+</script>
+
+
+<script>
+(function(){
+  function syncWireframeHero(){
+    try{
+      if(typeof properties==="undefined" || !Array.isArray(properties)) return;
+      const candidate=properties.find(p=>{
+        try{
+          const list=typeof photoList==="function" ? photoList(p) : [];
+          return Array.isArray(list) && list[0];
+        }catch(e){ return false; }
+      });
+      if(!candidate) return;
+      const list=photoList(candidate);
+      if(list && list[0]){
+        document.querySelector(".hero")?.style.setProperty("--hero-photo",`url("${list[0]}")`);
+      }
+    }catch(e){}
+  }
+  window.addEventListener("load",()=>setTimeout(syncWireframeHero,900));
 })();
 </script>
 
