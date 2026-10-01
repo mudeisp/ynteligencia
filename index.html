@@ -893,8 +893,10 @@ body{background:#F7F4ED;color:#0B0B0B}
 
 /* ===== MOBILE APP BEHAVIOR ===== */
 .filters-trigger,.filters-backdrop,.filters-close{display:none}
-/* O CTA do wizard permanece visível: o usuário decide quando avançar/buscar. */
-.wizard .next{display:inline-flex!important;align-items:center;justify-content:center}
+.wizard[data-current-step="0"] .next,
+.wizard[data-current-step="1"] .next,
+.wizard[data-current-step="2"] .next,
+.wizard[data-current-step="3"] .next{display:none}
 .step.active{animation:stepFromRight .25s cubic-bezier(.22,.8,.24,1) both}
 .wizard[data-direction="back"] .step.active{animation-name:stepFromLeft}
 @keyframes stepFromRight{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
@@ -2885,2027 +2887,420 @@ body.ad-match-mode{
     grid-template-columns:1fr;
   }
 }
+</style>
 
-/* ===== YNTELIGENCIA · REFINAMENTO 3 ETAPAS + ASSISTENTE ===== */
-.wizard-subquestion{margin-top:24px;padding-top:20px;border-top:1px solid rgba(181,173,159,.45)}
-.wizard-subquestion>strong{display:block;margin-bottom:12px;font-size:15px;letter-spacing:.01em;color:#654E28}
-.compact-options{gap:10px}
-.priorities-options .option{min-height:54px}
-.ai-assistant-brand .ai-orb{font-size:22px;background:#EEF3FF}
-.ai-human-handoff{display:block!important}
-@media(max-width:700px){
-  .app-dock{display:none!important}
-  body{padding-bottom:0!important}
-  .wizard-inner{padding-bottom:calc(92px + env(safe-area-inset-bottom))!important}
-  .wizard-actions{grid-template-columns:auto 1fr!important;gap:8px!important}
-  .wizard-actions .clear-match{display:none!important}
-  .wizard-actions .back{min-width:92px}
-  .wizard-actions .next{width:100%;min-height:58px;border-radius:16px;font-size:17px;font-weight:900}
-  .wizard-subquestion{margin-top:18px;padding-top:16px}
-  .compact-options{grid-template-columns:1fr 1fr!important}
-  .compact-options .option{min-height:54px;padding:11px 10px;font-size:15px}
-  .compact-options .option small{font-size:10px;line-height:1.25;margin-top:3px}
-  .detail-sticky-cta{grid-template-columns:1fr 1fr!important}
-  .detail-share-btn,.detail-interest-btn{font-size:14px!important;line-height:1.15;padding:8px!important}
-  .ai-assistant-card{height:94dvh!important}
-  .ai-assistant-messages{padding-bottom:18px!important}
+
+
+
+
+<style id="dock-cleanup-final">
+/* Rodapé simplificado: somente DESCOBRIR + PERFIL */
+.app-dock{
+  grid-template-columns:repeat(2,1fr)!important;
+}
+
+/* O bloco "Prefere procurar sozinho?" foi removido.
+   Mantém apenas o filtro/base usada pelo fluxo EXPLORAR IMÓVEIS. */
+#explore .section-head{
+  display:none!important;
 }
 </style>
 
 
-<style id="ynt-clean-interface-v1">
-:root{
-  --clean-bg:#F7F5F0;
-  --clean-surface:#FFFFFF;
-  --clean-ink:#171717;
-  --clean-muted:#75716B;
-  --clean-line:#E8E3DA;
-  --clean-soft:#F1EEE8;
-  --clean-accent:#B98B4C;
-  --clean-accent-soft:#F7EFE3;
-  --clean-green:#08AF58;
-  --clean-shadow:0 14px 45px rgba(31,27,22,.08);
-}
-
-*{box-sizing:border-box}
-html{background:var(--clean-bg)}
-body{
-  margin:0!important;
-  background:var(--clean-bg)!important;
-  color:var(--clean-ink)!important;
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif!important;
-  -webkit-font-smoothing:antialiased;
-}
-button,input,select,textarea{font:inherit}
-button{-webkit-tap-highlight-color:transparent}
-
-/* REMOVE LEGACY CHROME */
-.app-dock,.specialist-float,.nav-links,.brand-lockup,.search-mode-switch{display:none!important}
-
-/* HEADER */
-.clean-header{
-  position:fixed!important;
-  top:0!important;
-  left:0!important;
-  right:0!important;
-  height:72px!important;
-  z-index:95!important;
-  background:rgba(247,245,240,.92)!important;
-  border-bottom:1px solid rgba(232,227,218,.85)!important;
-  backdrop-filter:blur(18px)!important;
-  -webkit-backdrop-filter:blur(18px)!important;
-}
-.clean-header-inner{
-  width:min(1180px,calc(100% - 36px));
-  height:100%;
-  margin:auto;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-}
-.clean-brand{
-  display:flex;
-  align-items:center;
-  gap:11px;
-  color:var(--clean-ink);
-  text-decoration:none;
-  font-size:12px;
-  font-weight:850;
-  letter-spacing:.13em;
-}
-.clean-brand img{
-  width:38px;
-  height:38px;
-  border-radius:11px;
-  object-fit:cover;
-  box-shadow:0 5px 18px rgba(20,18,15,.12);
-}
-.clean-menu{
-  width:44px!important;
-  height:44px!important;
-  border:1px solid var(--clean-line)!important;
-  border-radius:14px!important;
-  background:#fff!important;
-  display:flex!important;
-  flex-direction:column!important;
-  justify-content:center!important;
-  align-items:center!important;
-  gap:6px!important;
-  box-shadow:none!important;
-}
-.clean-menu span{
-  display:block!important;
-  width:18px!important;
-  height:1.5px!important;
-  border-radius:3px!important;
-  background:#26231F!important;
-}
-
-/* HOME */
-.clean-home{
-  min-height:100svh!important;
-  padding:122px 0 52px!important;
-  background:var(--clean-bg)!important;
-  color:var(--clean-ink)!important;
-}
-.clean-home-inner{
-  width:min(1180px,calc(100% - 36px));
-  margin:auto;
-  display:grid;
-  grid-template-columns:minmax(0,.9fr) minmax(420px,1.1fr);
-  gap:72px;
-  align-items:center;
-}
-.clean-home-copy{max-width:510px}
-.clean-kicker{
-  display:block;
-  margin-bottom:20px;
-  color:var(--clean-accent);
-  font-size:11px;
-  font-weight:900;
-  letter-spacing:.17em;
-}
-.clean-home h1{
-  margin:0 0 20px!important;
-  color:var(--clean-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-size:clamp(46px,5.1vw,76px)!important;
-  line-height:.98!important;
-  font-weight:500!important;
-  letter-spacing:-.055em!important;
-  max-width:650px!important;
-}
-.clean-home p{
-  margin:0 0 30px!important;
-  max-width:410px!important;
-  color:var(--clean-muted)!important;
-  font-size:18px!important;
-  line-height:1.55!important;
-}
-.clean-primary{
-  min-height:58px!important;
-  padding:0 22px!important;
-  border:0!important;
-  border-radius:15px!important;
-  background:var(--clean-ink)!important;
-  color:#fff!important;
-  font-size:15px!important;
-  font-weight:850!important;
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:22px!important;
-  box-shadow:0 12px 25px rgba(23,23,23,.13)!important;
-}
-.clean-primary span{font-size:19px;font-weight:400}
-.clean-link{
-  display:block!important;
-  margin-top:17px!important;
-  padding:0!important;
-  border:0!important;
-  background:transparent!important;
-  color:#625F59!important;
-  text-decoration:underline!important;
-  text-underline-offset:4px!important;
-  font-size:13px!important;
-}
-.clean-home-visual{min-width:0}
-.clean-photo-frame{
-  position:relative;
-  min-height:610px;
-  border-radius:30px;
-  overflow:hidden;
-  background:#E8E3DA;
-  box-shadow:var(--clean-shadow);
-}
-.clean-photo{
-  position:absolute;
-  inset:0;
-  background:
-    linear-gradient(180deg,rgba(20,18,16,.02),rgba(20,18,16,.18)),
-    linear-gradient(145deg,#DDD4C7,#B8AA98);
-  background-size:cover;
-  background-position:center;
-}
-.clean-photo-caption{
-  position:absolute;
-  left:18px;
-  right:18px;
-  bottom:18px;
-  padding:18px 20px;
-  border:1px solid rgba(255,255,255,.46);
-  border-radius:18px;
-  background:rgba(255,255,255,.88);
-  backdrop-filter:blur(16px);
-  -webkit-backdrop-filter:blur(16px);
-}
-.clean-photo-caption span{
-  display:block;
-  margin-bottom:6px;
-  color:var(--clean-accent);
-  font-size:10px;
-  font-weight:900;
-  text-transform:uppercase;
-  letter-spacing:.14em;
-}
-.clean-photo-caption strong{
-  display:block;
-  color:#24211E;
-  font-family:Georgia,"Times New Roman",serif;
-  font-size:22px;
-  line-height:1.15;
-  font-weight:500;
-}
-
-/* FILTER */
-.clean-filter-shell{
-  display:none;
-}
-body.match-mode{
-  overflow:hidden!important;
-}
-body.match-mode .clean-header{display:none!important}
-body.match-mode .clean-filter-shell{
-  display:block!important;
-  position:fixed!important;
-  inset:0!important;
-  z-index:200!important;
-  overflow-y:auto!important;
-  overscroll-behavior:contain;
-  background:var(--clean-bg)!important;
-}
-.clean-filter-page{
-  width:min(760px,100%);
-  min-height:100dvh;
-  margin:auto;
-  background:var(--clean-surface);
-  position:relative;
-}
-.clean-filter-top{
-  position:sticky;
-  top:0;
-  z-index:6;
-  display:grid;
-  grid-template-columns:44px 1fr auto;
-  gap:14px;
-  align-items:start;
-  padding:20px 22px 17px;
-  border-bottom:1px solid var(--clean-line);
-  background:rgba(255,255,255,.96);
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-}
-.clean-filter-close{
-  width:42px!important;
-  height:42px!important;
-  padding:0!important;
-  border:1px solid var(--clean-line)!important;
-  border-radius:50%!important;
-  background:#fff!important;
-  color:var(--clean-ink)!important;
-  font-size:20px!important;
-}
-.clean-filter-kicker{
-  display:block;
-  margin:2px 0 4px;
-  color:var(--clean-accent);
-  font-size:9px;
-  font-weight:900;
-  letter-spacing:.15em;
-}
-.clean-filter-top h2{
-  margin:0!important;
-  color:var(--clean-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-size:30px!important;
-  line-height:1.05!important;
-  font-weight:500!important;
-  letter-spacing:-.035em!important;
-}
-.clean-filter-top p{
-  margin:7px 0 0!important;
-  color:var(--clean-muted)!important;
-  font-size:12px!important;
-  line-height:1.45!important;
-}
-.clean-filter-clear{
-  border:0!important;
-  background:transparent!important;
-  color:#7B756E!important;
-  font-size:12px!important;
-  padding:12px 0!important;
-}
-.clean-filter-content{padding:8px 22px 38px}
-.clean-filter-block{
-  display:grid!important;
-  grid-template-columns:44px 1fr!important;
-  column-gap:13px!important;
-  padding:32px 0!important;
-}
-.clean-filter-block[hidden]{display:grid!important}
-.clean-block-number{
-  width:38px;
-  height:38px;
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  background:var(--clean-accent-soft);
-  color:var(--clean-accent);
-  font-size:11px;
-  font-weight:900;
-}
-.clean-block-head{grid-column:2}
-.clean-block-head h3{
-  margin:0!important;
-  color:var(--clean-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-size:27px!important;
-  line-height:1.08!important;
-  font-weight:500!important;
-  letter-spacing:-.035em!important;
-}
-.clean-block-head p{
-  margin:7px 0 20px!important;
-  color:var(--clean-muted)!important;
-  font-size:13px!important;
-  line-height:1.45!important;
-}
-.clean-filter-block>.options,
-.clean-filter-block>.clean-field-group{
-  grid-column:2;
-}
-.clean-divider{
-  height:1px;
-  background:var(--clean-line);
-  margin-left:57px;
-}
-.clean-field-group{margin-top:20px}
-.clean-field-label{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  margin:0 0 10px;
-  color:#38342F;
-  font-size:12px;
-  font-weight:850;
-}
-.clean-field-label small{
-  color:#969088;
-  font-weight:500;
-}
-.options{gap:8px!important}
-.option{
-  min-height:48px!important;
-  margin:0!important;
-  padding:10px 13px!important;
-  border:1px solid var(--clean-line)!important;
-  border-radius:13px!important;
-  background:#fff!important;
-  color:#292621!important;
-  box-shadow:none!important;
-  font-size:13px!important;
-  font-weight:750!important;
-  transition:border-color .15s ease,background .15s ease,transform .15s ease!important;
-}
-.option:active{transform:scale(.985)}
-.option.selected{
-  border-color:#C99B60!important;
-  background:var(--clean-accent-soft)!important;
-  color:#2D251A!important;
-  box-shadow:none!important;
-}
-.clean-region-grid{
-  grid-column:2;
-  display:grid!important;
-  grid-template-columns:1fr!important;
-}
-.clean-choice-card{
-  display:grid!important;
-  grid-template-columns:42px 1fr 24px!important;
-  align-items:center!important;
-  gap:12px!important;
-  text-align:left!important;
-  min-height:76px!important;
-  padding:10px 12px!important;
-}
-.choice-icon{
-  width:42px;
-  height:42px;
-  display:grid;
-  place-items:center;
-  border-radius:11px;
-  background:var(--clean-soft);
-  color:#6D655B;
-  font-size:19px;
-}
-.choice-copy strong{display:block;font-size:14px}
-.choice-copy small{
-  display:block;
-  margin-top:3px;
-  color:#8B857E;
-  font-size:10px;
-  line-height:1.35;
-  font-weight:500;
-}
-.choice-check{
-  width:22px;
-  height:22px;
-  display:grid;
-  place-items:center;
-  border:1px solid #D9D4CC;
-  border-radius:50%;
-  color:transparent;
-  font-size:11px;
-}
-.clean-choice-card.selected .choice-check{
-  border-color:var(--clean-accent);
-  background:var(--clean-accent);
-  color:#fff;
-}
-.clean-pill-row{display:grid!important;grid-template-columns:1fr 1fr!important}
-.clean-type-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important}
-.clean-type-grid .option:last-child{grid-column:1/-1}
-.clean-number-row{display:grid!important;grid-template-columns:repeat(4,1fr)!important}
-.clean-number-row .option{padding:0!important}
-.clean-budget-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important}
-.clean-budget-grid .option{font-size:11px!important}
-.clean-toggle-list{display:grid!important;grid-template-columns:1fr!important}
-.clean-toggle-list .option{
-  min-height:43px!important;
-  padding:0!important;
-  border:0!important;
-  border-bottom:1px solid #F0ECE5!important;
-  border-radius:0!important;
-  background:transparent!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  text-align:left!important;
-}
-.clean-toggle-list .option.selected{background:transparent!important}
-.clean-toggle-list .option i{
-  position:relative;
-  width:38px;
-  height:22px;
-  border-radius:999px;
-  background:#D9D5CF;
-  flex:0 0 38px;
-}
-.clean-toggle-list .option i::after{
-  content:"";
-  position:absolute;
-  width:18px;
-  height:18px;
-  top:2px;
-  left:2px;
-  border-radius:50%;
-  background:#fff;
-  box-shadow:0 1px 4px rgba(0,0,0,.14);
-  transition:.16s ease;
-}
-.clean-toggle-list .option.selected i{background:var(--clean-accent)}
-.clean-toggle-list .option.selected i::after{transform:translateX(16px)}
-
-.clean-filter-submit{
-  margin:14px 0 18px 57px;
-  padding:19px;
-  border:1px solid var(--clean-line);
-  border-radius:19px;
-  background:#FBF9F5;
-}
-.clean-filter-submit>div{margin-bottom:15px}
-.clean-filter-submit strong{
-  display:block;
-  margin-bottom:4px;
-  font-size:14px;
-}
-.clean-filter-submit>div span{
-  display:block;
-  color:var(--clean-muted);
-  font-size:11px;
-  line-height:1.4;
-}
-.clean-filter-submit .next{
-  width:100%!important;
-  min-height:57px!important;
-  border:0!important;
-  border-radius:14px!important;
-  background:var(--clean-ink)!important;
-  color:#fff!important;
-  font-size:15px!important;
-  font-weight:850!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:18px!important;
-}
-.clean-filter-submit .next span{font-size:19px;font-weight:400}
-.clean-filter-page>.progress,
-.clean-filter-page>.step-count{display:none!important}
-
-/* RESULTS */
-.results,.catalog{
-  background:var(--clean-bg)!important;
-  color:var(--clean-ink)!important;
-}
-.results.visible,.catalog.visible{padding-top:92px!important}
-.results .container,.catalog .container{
-  width:min(1060px,calc(100% - 28px))!important;
-  max-width:1060px!important;
-}
-.result-top{
-  display:flex!important;
-  align-items:flex-end!important;
-  justify-content:space-between!important;
-  gap:18px!important;
-  margin-bottom:22px!important;
-}
-.result-top h2{
-  margin:0!important;
-  color:var(--clean-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-size:34px!important;
-  font-weight:500!important;
-  letter-spacing:-.035em!important;
-}
-.result-top p{color:var(--clean-muted)!important;font-size:13px!important}
-.reset-link{
-  border:1px solid var(--clean-line)!important;
-  border-radius:12px!important;
-  background:#fff!important;
-  color:#555049!important;
-  padding:10px 13px!important;
-  font-size:11px!important;
-}
-.grid,#matchGrid,.catalog-grid{
-  display:grid!important;
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  gap:16px!important;
-}
-.card,.property-card{
-  overflow:hidden!important;
-  border:1px solid var(--clean-line)!important;
-  border-radius:19px!important;
-  background:#fff!important;
-  box-shadow:0 9px 30px rgba(38,31,24,.05)!important;
-  color:var(--clean-ink)!important;
-}
-.card img,.property-card img{object-fit:cover!important}
-
-/* DETAIL */
-.photo-detail-shell{
-  background:var(--clean-bg)!important;
-  color:var(--clean-ink)!important;
-}
-.detail-gallery{
-  background:#111!important;
-}
-.detail-property{
-  width:min(760px,100%)!important;
-  margin:0 auto!important;
-  padding:27px 20px 112px!important;
-  background:#fff!important;
-  color:var(--clean-ink)!important;
-}
-.detail-property h1{
-  margin:10px 0 6px!important;
-  color:var(--clean-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-size:34px!important;
-  line-height:1.05!important;
-  font-weight:500!important;
-  letter-spacing:-.04em!important;
-}
-.detail-location{color:var(--clean-muted)!important}
-.detail-price{
-  margin-top:17px!important;
-  color:var(--clean-ink)!important;
-  font-size:31px!important;
-  font-weight:850!important;
-  letter-spacing:-.035em!important;
-}
-.detail-price-m2{color:#8A847C!important}
-.detail-main-specs{
-  margin-top:24px!important;
-  padding:17px 0!important;
-  border-top:1px solid var(--clean-line)!important;
-  border-bottom:1px solid var(--clean-line)!important;
-}
-.detail-spec strong{color:var(--clean-ink)!important}
-.detail-spec span{color:#918A81!important}
-.detail-section{
-  border-top:1px solid var(--clean-line)!important;
-  padding-top:25px!important;
-}
-.detail-section-title{
-  color:var(--clean-accent)!important;
-  font-size:9px!important;
-  letter-spacing:.14em!important;
-}
-.detail-section h3{
-  color:var(--clean-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-size:24px!important;
-  font-weight:500!important;
-}
-.detail-section p{color:#69635C!important}
-.detail-sticky-cta{
-  position:fixed!important;
-  left:0!important;
-  right:0!important;
-  bottom:0!important;
-  z-index:110!important;
-  display:block!important;
-  padding:10px max(14px,calc((100% - 730px)/2)) calc(10px + env(safe-area-inset-bottom))!important;
-  background:rgba(255,255,255,.96)!important;
-  border-top:1px solid var(--clean-line)!important;
-  backdrop-filter:blur(18px)!important;
-  -webkit-backdrop-filter:blur(18px)!important;
-}
-.detail-share-btn{
-  width:100%!important;
-  min-height:56px!important;
-  border:0!important;
-  border-radius:15px!important;
-  background:var(--clean-green)!important;
-  color:#fff!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:10px!important;
-  font-size:14px!important;
-  font-weight:900!important;
-  box-shadow:0 9px 20px rgba(8,175,88,.17)!important;
-}
-.detail-share-btn svg{width:24px;height:24px;display:block!important}
-.detail-interest-btn,.detail-specialist{display:none!important}
-
-/* AI INVITE */
-.ai-assistant-trigger{
-  position:fixed!important;
-  z-index:150!important;
-  right:14px!important;
-  bottom:calc(82px + env(safe-area-inset-bottom))!important;
-  width:min(332px,calc(100vw - 28px))!important;
-  min-height:80px!important;
-  padding:11px 13px!important;
-  display:grid!important;
-  grid-template-columns:52px 1fr!important;
-  gap:10px!important;
-  align-items:center!important;
-  border:1px solid var(--clean-line)!important;
-  border-radius:20px!important;
-  background:rgba(255,255,255,.98)!important;
-  color:var(--clean-ink)!important;
-  box-shadow:0 16px 42px rgba(31,27,22,.17)!important;
-  text-align:left!important;
-}
-.ai-assistant-trigger .ai-orb{
-  width:52px!important;
-  height:52px!important;
-  border-radius:16px!important;
-  display:grid!important;
-  place-items:center!important;
-  background:#EDF3FF!important;
-  font-size:28px!important;
-}
-.ai-assistant-trigger strong{
-  display:block!important;
-  margin-bottom:4px!important;
-  color:var(--clean-ink)!important;
-  font-size:13px!important;
-  line-height:1.24!important;
-}
-.ai-assistant-trigger small{
-  color:#767069!important;
-  font-size:10px!important;
-  line-height:1.35!important;
-}
-
-/* AI CHAT */
-.ai-assistant-shell{
-  background:rgba(25,22,18,.28)!important;
-  backdrop-filter:blur(9px)!important;
-}
-.ai-assistant-card{
-  background:#fff!important;
-  color:var(--clean-ink)!important;
-}
-.ai-assistant-head{
-  background:#fff!important;
-  border-bottom:1px solid var(--clean-line)!important;
-  color:var(--clean-ink)!important;
-}
-.ai-assistant-brand small{color:var(--clean-muted)!important}
-.ai-assistant-close{background:var(--clean-soft)!important;color:#3A352F!important}
-.ai-assistant-messages{background:#FBFAF7!important}
-.ai-msg.assistant{background:#F0F1F2!important;color:#2C2925!important;border:0!important}
-.ai-msg.user{background:var(--clean-accent)!important;color:#fff!important}
-.ai-assistant-input{background:#fff!important;border-top:1px solid var(--clean-line)!important}
-.ai-assistant-input textarea{
-  background:#F7F6F3!important;
-  border:1px solid var(--clean-line)!important;
-  color:var(--clean-ink)!important;
-}
-.ai-assistant-send{background:var(--clean-ink)!important;color:#fff!important}
-.ai-human-handoff{
-  background:#fff!important;
-  border:1px solid var(--clean-line)!important;
-  color:#3C3833!important;
-}
-
-/* SIDE MENU remains functional but visually simplified */
-.app-side-menu{
-  background:#fff!important;
-  color:var(--clean-ink)!important;
-  border-left:1px solid var(--clean-line)!important;
-}
-.app-side-menu a,.app-side-menu button{color:var(--clean-ink)!important}
-
-/* MOBILE */
-@media(max-width:760px){
-  .clean-header{height:66px!important}
-  .clean-header-inner{width:calc(100% - 28px)}
-  .clean-brand img{width:36px;height:36px}
-  .clean-brand span{font-size:10px}
-  .clean-menu{width:42px!important;height:42px!important}
-
-  .clean-home{
-    min-height:auto!important;
-    padding:104px 0 30px!important;
-  }
-  .clean-home-inner{
-    width:calc(100% - 28px);
-    display:flex;
-    flex-direction:column;
-    gap:30px;
-    align-items:stretch;
-  }
-  .clean-home-copy{
-    max-width:none;
-    text-align:left;
-  }
-  .clean-kicker{margin-bottom:14px;font-size:9px}
-  .clean-home h1{
-    max-width:350px!important;
-    margin-bottom:14px!important;
-    font-size:44px!important;
-    line-height:1.01!important;
-  }
-  .clean-home p{
-    max-width:320px!important;
-    margin-bottom:23px!important;
-    font-size:15px!important;
-    line-height:1.5!important;
-  }
-  .clean-primary{
-    width:100%!important;
-    min-height:56px!important;
-  }
-  .clean-link{
-    width:100%!important;
-    text-align:center!important;
-    text-decoration:none!important;
-    font-size:12px!important;
-  }
-  .clean-home-visual{order:2}
-  .clean-photo-frame{
-    min-height:330px;
-    border-radius:22px;
-  }
-  .clean-photo-caption{
-    left:12px;right:12px;bottom:12px;
-    padding:13px 15px;
-    border-radius:14px;
-  }
-  .clean-photo-caption strong{font-size:18px}
-
-  .clean-filter-page{width:100%}
-  .clean-filter-top{
-    grid-template-columns:40px 1fr auto;
-    padding:14px 15px 13px;
-    gap:10px;
-  }
-  .clean-filter-close{width:38px!important;height:38px!important}
-  .clean-filter-top h2{font-size:25px!important}
-  .clean-filter-top p{font-size:10px!important}
-  .clean-filter-clear{font-size:11px!important}
-  .clean-filter-content{padding:4px 15px 28px}
-  .clean-filter-block{
-    grid-template-columns:36px 1fr!important;
-    column-gap:10px!important;
-    padding:27px 0!important;
-  }
-  .clean-block-number{width:34px;height:34px;font-size:10px}
-  .clean-block-head h3{font-size:24px!important}
-  .clean-block-head p{font-size:11px!important;margin-bottom:17px!important}
-  .clean-divider{margin-left:46px}
-  .clean-filter-submit{margin-left:46px;padding:15px}
-  .clean-type-grid{grid-template-columns:repeat(2,1fr)!important}
-  .clean-budget-grid{grid-template-columns:repeat(2,1fr)!important}
-  .option{font-size:12px!important}
-  .choice-copy strong{font-size:13px}
-  .choice-copy small{font-size:9px}
-  .clean-filter-submit .next{min-height:55px!important}
-
-  .results.visible,.catalog.visible{padding-top:82px!important}
-  .results .container,.catalog .container{width:calc(100% - 22px)!important}
-  .result-top{align-items:center!important;margin-bottom:15px!important}
-  .result-top h2{font-size:28px!important}
-  .result-top p{font-size:10px!important}
-  .grid,#matchGrid,.catalog-grid{grid-template-columns:1fr!important;gap:12px!important}
-
-  .detail-property{padding:22px 16px 110px!important}
-  .detail-property h1{font-size:29px!important}
-  .detail-price{font-size:28px!important}
-  .detail-gallery{height:43svh!important;min-height:330px!important}
-  .detail-share-btn{min-height:55px!important}
-
-  .ai-assistant-card{
-    height:94dvh!important;
-    border-radius:25px 25px 0 0!important;
-  }
-}
-</style>
 
 
-<style id="ynt-clean-final-guard">
-@media(max-width:760px){
-  .detail-sticky-cta{display:block!important;grid-template-columns:1fr!important}
-  .detail-interest-btn,.detail-specialist,.specialist-float,.app-dock{display:none!important}
-  body.match-mode .clean-filter-block.step{display:grid!important}
-  body.match-mode .clean-filter-block.step[hidden]{display:grid!important}
-  #next{display:flex!important;opacity:1!important;pointer-events:auto!important}
-}
-</style>
 
-
-<style id="ynt-v2-hard-reset">
+<style id="home-clean-final-fix">
 /* =========================================================
-   YNTELIGENCIA · V2 VISUAL HARD RESET
-   Esta camada vem por último e neutraliza CSS legado que
-   ainda estava vencendo a nova interface.
+   HOME MOBILE LIMPA — correção final
 ========================================================= */
 
-:root{
-  --v2-bg:#F8F7F3;
-  --v2-surface:#FFFFFF;
-  --v2-ink:#171717;
-  --v2-muted:#77736D;
-  --v2-line:#E7E2DA;
-  --v2-gold:#B99259;
-  --v2-gold-soft:#F3EBDD;
-  --v2-green:#13B85B;
-}
+@media(max-width:768px){
 
-/* ---------- HOME ---------- */
-.clean-home{
-  background:var(--v2-bg)!important;
-  color:var(--v2-ink)!important;
-  min-height:100svh!important;
-  padding:108px 0 38px!important;
-}
-.clean-home .clean-home-inner{
-  width:min(1120px,calc(100% - 32px))!important;
-  margin:0 auto!important;
-}
-.clean-home-copy{
-  text-align:left!important;
-}
-.clean-home h1{
-  font-size:clamp(42px,5vw,68px)!important;
-  line-height:1.01!important;
-  max-width:590px!important;
-  margin:0 0 16px!important;
-  text-align:left!important;
-  color:var(--v2-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-weight:500!important;
-  letter-spacing:-.05em!important;
-}
-.clean-home h1::after{
-  content:none!important;
-  display:none!important;
-}
-.clean-home p{
-  text-align:left!important;
-  color:var(--v2-muted)!important;
-  max-width:420px!important;
-  margin:0 0 24px!important;
-}
-#startHero.clean-primary{
-  display:inline-flex!important;
-  visibility:visible!important;
-  opacity:1!important;
-  pointer-events:auto!important;
-  min-width:245px!important;
-  min-height:56px!important;
-  border-radius:15px!important;
-  border:0!important;
-  background:var(--v2-ink)!important;
-  color:#fff!important;
-  box-shadow:none!important;
-}
-#exploreHero.clean-link{
-  display:block!important;
-  min-width:0!important;
-  width:auto!important;
-  margin:15px 0 0!important;
-  padding:0!important;
-  background:transparent!important;
-  color:#66615B!important;
-  border:0!important;
-  text-decoration:none!important;
-  font-size:12px!important;
-  text-align:left!important;
-}
-
-/* Legacy rules used to replace the new copy. Kill them explicitly. */
-.hero h1:after{
-  content:none!important;
-  display:none!important;
-}
-.hero{
-  padding:108px 0 38px!important;
-  min-height:100svh!important;
-}
-.hero-actions{
-  display:block!important;
-  justify-content:flex-start!important;
-}
-
-/* Image card */
-.clean-photo-frame{
-  background:#E9E5DE!important;
-  border-radius:24px!important;
-  min-height:560px!important;
-  box-shadow:none!important;
-}
-.clean-photo-caption{
-  border:1px solid rgba(255,255,255,.7)!important;
-  background:rgba(255,255,255,.90)!important;
-  border-radius:16px!important;
-  box-shadow:none!important;
-}
-
-/* ---------- FILTER ---------- */
-/* The legacy stylesheet hides wizard-wrap by ID/class. New scroll filter wins. */
-body.match-mode .clean-filter-shell,
-body.match-mode #match.clean-filter-shell{
-  display:block!important;
-  visibility:visible!important;
-  opacity:1!important;
-}
-.clean-filter-page{
-  background:#fff!important;
-}
-.clean-filter-top{
-  background:rgba(255,255,255,.98)!important;
-}
-.clean-filter-block.step,
-.clean-filter-block.step[hidden]{
-  display:grid!important;
-  visibility:visible!important;
-}
-.clean-filter-submit .next,
-#next{
-  display:flex!important;
-  opacity:1!important;
-  visibility:visible!important;
-  pointer-events:auto!important;
-}
-
-/* ---------- CATALOG / RESULTS ---------- */
-/* The old advanced filter panel was leaking into the results screen. */
-#catalogFilters,
-.catalog-filters,
-.unified-catalog-filters,
-#openFilters,
-.filters-backdrop{
-  display:none!important;
-}
-.catalog-toolbar{
-  margin-bottom:18px!important;
-}
-.results,
-.catalog{
-  background:var(--v2-bg)!important;
-}
-.result-top h2,
-.catalog h2{
-  color:var(--v2-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-weight:500!important;
-}
-.card,
-.property-card{
-  background:#fff!important;
-  border:1px solid var(--v2-line)!important;
-  box-shadow:none!important;
-}
-
-/* ---------- PROPERTY DETAIL ---------- */
-.photo-detail-shell{
-  z-index:240!important;
-  background:#fff!important;
-}
-.detail-property{
-  background:#fff!important;
-  color:var(--v2-ink)!important;
-}
-.detail-sticky-cta{
-  left:0!important;
-  right:0!important;
-  bottom:0!important;
-  width:100%!important;
-  max-width:none!important;
-  box-sizing:border-box!important;
-  padding:9px 14px calc(9px + env(safe-area-inset-bottom))!important;
-  background:rgba(255,255,255,.98)!important;
-  border-top:1px solid var(--v2-line)!important;
-}
-.detail-share-btn{
-  width:min(720px,100%)!important;
-  max-width:100%!important;
-  margin:0 auto!important;
-  min-height:55px!important;
-  padding:0 18px!important;
-  box-sizing:border-box!important;
-  border:0!important;
-  border-radius:14px!important;
-  background:var(--v2-green)!important;
-  color:#fff!important;
-  font-size:14px!important;
-  font-weight:850!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:10px!important;
-  white-space:nowrap!important;
-  overflow:hidden!important;
-}
-.detail-share-btn svg{
-  width:25px!important;
-  height:25px!important;
-  min-width:25px!important;
-  display:block!important;
-  flex:0 0 25px!important;
-}
-.detail-interest-btn,
-.detail-specialist,
-.specialist-float{
-  display:none!important;
-}
-
-/* ---------- AI ---------- */
-/* The previous robot was appended to BODY with z-index 150,
-   while the detail modal lives at z-index 240. It existed, but
-   literally sat behind the property screen. */
-.ai-assistant-trigger{
-  z-index:320!important;
-  position:fixed!important;
-  right:14px!important;
-  bottom:calc(78px + env(safe-area-inset-bottom))!important;
-  width:min(320px,calc(100vw - 28px))!important;
-  min-height:78px!important;
-  opacity:0!important;
-  transform:translateY(12px) scale(.98)!important;
-  pointer-events:none!important;
-  background:#fff!important;
-  border:1px solid var(--v2-line)!important;
-  border-radius:19px!important;
-  box-shadow:0 14px 38px rgba(26,22,18,.16)!important;
-  color:var(--v2-ink)!important;
-  display:grid!important;
-  grid-template-columns:50px 1fr!important;
-  gap:10px!important;
-  align-items:center!important;
-  padding:11px 12px!important;
-}
-.ai-assistant-trigger.visible{
-  opacity:1!important;
-  transform:none!important;
-  pointer-events:auto!important;
-}
-.ai-assistant-trigger .ai-orb{
-  width:50px!important;
-  height:50px!important;
-  border-radius:15px!important;
-  display:grid!important;
-  place-items:center!important;
-  background:#EEF4FF!important;
-  color:#171717!important;
-  font-size:27px!important;
-}
-.ai-assistant-trigger strong{
-  display:block!important;
-  margin:0 0 3px!important;
-  font-size:13px!important;
-  line-height:1.22!important;
-  color:var(--v2-ink)!important;
-}
-.ai-assistant-trigger small{
-  display:block!important;
-  margin:0!important;
-  color:#77716A!important;
-  font-size:10px!important;
-  line-height:1.35!important;
-}
-
-/* AI chat itself must sit above detail too */
-.ai-assistant-shell{
-  z-index:340!important;
-}
-.ai-assistant-card{
-  background:#fff!important;
-}
-
-/* ---------- MOBILE ---------- */
-@media(max-width:760px){
-  body{
-    padding-bottom:0!important;
-    background:var(--v2-bg)!important;
+  /* Header */
+  header{
+    position:fixed!important;
+    top:0!important;
+    left:0!important;
+    right:0!important;
+    z-index:100!important;
   }
 
-  .clean-header{
-    height:68px!important;
-    background:rgba(248,247,243,.97)!important;
-    border-bottom:1px solid var(--v2-line)!important;
+  .nav{
+    min-height:72px!important;
   }
 
-  .clean-home{
-    padding:98px 0 26px!important;
+  /* Home começa abaixo do header */
+  .hero{
     min-height:auto!important;
+    height:auto!important;
+    padding:
+      calc(92px + env(safe-area-inset-top))
+      0
+      34px!important;
+    display:block!important;
+    align-items:initial!important;
+    overflow:visible!important;
   }
-  .clean-home .clean-home-inner{
-    width:calc(100% - 28px)!important;
-    display:flex!important;
-    flex-direction:column!important;
-    gap:25px!important;
-  }
-  .clean-kicker{
-    font-size:9px!important;
-    margin-bottom:13px!important;
-  }
-  .clean-home h1{
-    font-size:39px!important;
-    line-height:1.02!important;
-    max-width:330px!important;
-    text-align:left!important;
-    margin-bottom:13px!important;
-  }
-  .clean-home p{
-    max-width:305px!important;
-    font-size:14px!important;
-    line-height:1.46!important;
-    text-align:left!important;
-    margin-bottom:20px!important;
-  }
-  #startHero.clean-primary{
-    width:100%!important;
-    min-width:0!important;
-    min-height:55px!important;
-  }
-  #exploreHero.clean-link{
-    width:100%!important;
+
+  .hero .container{
+    width:calc(100% - 34px)!important;
+    max-width:none!important;
+    margin:0 auto!important;
     text-align:center!important;
-    margin-top:13px!important;
-  }
-  .clean-photo-frame{
-    min-height:310px!important;
-    border-radius:20px!important;
   }
 
-  .clean-filter-top h2{
-    font-size:24px!important;
-  }
-  .clean-filter-content{
-    padding-left:14px!important;
-    padding-right:14px!important;
-  }
-
-  .results.visible,
-  .catalog.visible{
-    padding-top:82px!important;
+  /* Remove resíduos visuais antigos */
+  .hero .container:after,
+  .hero .container::after,
+  .hero:after,
+  .hero::after{
+    content:none!important;
+    display:none!important;
   }
 
-  .result-top h2,
-  .catalog h2{
-    font-size:28px!important;
+  .hero .eyebrow{
+    display:none!important;
   }
 
-  .detail-property{
-    padding-left:15px!important;
-    padding-right:15px!important;
-    padding-bottom:100px!important;
-  }
-
-  .detail-sticky-cta{
-    padding-left:12px!important;
-    padding-right:12px!important;
-  }
-
-  .detail-share-btn{
+  /* Título */
+  .hero h1{
+    display:block!important;
     width:100%!important;
-    max-width:100%!important;
-    font-size:14px!important;
-    min-height:54px!important;
+    max-width:520px!important;
+    margin:0 auto 20px!important;
+    padding:0!important;
+    color:#171513!important;
+    font-size:clamp(40px,11vw,54px)!important;
+    line-height:1.03!important;
+    letter-spacing:-.045em!important;
+    text-align:center!important;
   }
 
-  .ai-assistant-trigger{
-    right:12px!important;
-    bottom:calc(76px + env(safe-area-inset-bottom))!important;
-    width:calc(100vw - 24px)!important;
-    max-width:330px!important;
+  .hero h1 span{
+    display:inline!important;
+    color:#171513!important;
   }
+
+  /* Subtítulo */
+  .hero p{
+    width:100%!important;
+    max-width:470px!important;
+    margin:0 auto 28px!important;
+    color:#77736B!important;
+    font-size:17px!important;
+    line-height:1.55!important;
+    text-align:center!important;
+  }
+
+  /* Só um CTA */
+  .hero-actions{
+    display:block!important;
+    width:100%!important;
+    max-width:580px!important;
+    margin:0 auto!important;
+  }
+
+  .hero-actions .primary,
+  #startHero,
+  #wizardExploreOnly{
+    width:100%!important;
+    min-height:62px!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:18px!important;
+    background:#E4D0A3!important;
+    color:#171513!important;
+    font-size:18px!important;
+    font-weight:900!important;
+    box-shadow:none!important;
+  }
+
+  .hero-actions .secondary,
+  #exploreHero{
+    display:none!important;
+  }
+
+  /* Tira espaço fantasma abaixo da home */
+  body.home-mode{
+    min-height:100dvh!important;
+    height:auto!important;
+    overflow-y:auto!important;
+    padding-bottom:0!important;
+  }
+
+  body.home-mode main{
+    min-height:0!important;
+  }
+
+  body.home-mode .hero{
+    margin-bottom:0!important;
+  }
+
+  /* Esconde blocos vazios da home */
+  body.home-mode .wizard-wrap:not(.match-mode .wizard-wrap),
+  body.home-mode .explore,
+  body.home-mode .catalog,
+  body.home-mode .results{
+    display:none!important;
+  }
+
+  /* Remove WhatsApp / atendimento flutuante na home */
+  body.home-mode .specialist-float,
+  body.home-mode .whatsapp-float,
+  body.home-mode .floating-whatsapp,
+  body.home-mode .floating-contact,
+  body.home-mode [class*="specialist-float"],
+  body.home-mode [class*="whatsapp-float"]{
+    display:none!important;
+  }
+
+  /* Sem dock / rodapé */
+  .app-dock,
+  .mobile-bottom-nav,
+  .mobile-dock,
+  .bottom-nav,
+  #mobileDock{
+    display:none!important;
+  }
+
+  footer{
+    display:none!important;
+  }
+}
+
+/* Desktop também sem MATCH decorativo residual */
+.hero .container:after,
+.hero .container::after{
+  content:none!important;
+  display:none!important;
+}
+
+/* Esconde atendimento flutuante apenas na home em qualquer tela */
+body.home-mode .specialist-float,
+body.home-mode .whatsapp-float,
+body.home-mode .floating-whatsapp,
+body.home-mode .floating-contact{
+  display:none!important;
 }
 </style>
 
 
-<style id="ynt-wireframe-final">
-:root{
-  --wf-bg:#F7F3EA;
-  --wf-surface:#FFFDF9;
-  --wf-white:#FFFFFF;
-  --wf-ink:#171513;
-  --wf-muted:#74706A;
-  --wf-line:#E4DED4;
-  --wf-gold:#C69A58;
-  --wf-gold-dark:#A97B3A;
-  --wf-gold-soft:#F6ECDD;
-  --wf-green:#10B95A;
+<style id="final-button-fix">
+/* Remove CTA "Explorar imóveis" do topo no desktop */
+@media (min-width:769px){
+  header .nav-links,
+  header .top-explore,
+  header .header-explore,
+  header [data-action="explore"],
+  header a[href="#explore"],
+  header button[onclick*="openGeneralCatalog"],
+  header button[onclick*="explore"]{
+    display:none!important;
+  }
 }
 
-/* GLOBAL */
-html,body{
-  background:var(--wf-bg)!important;
-  color:var(--wf-ink)!important;
-}
-body{
-  padding-bottom:0!important;
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;
-}
-.specialist-float,.app-dock,.detail-interest-btn,.detail-specialist{
-  display:none!important;
-}
-
-/* HEADER */
-.clean-header{
-  height:68px!important;
-  background:rgba(255,253,249,.96)!important;
-  border-bottom:1px solid rgba(228,222,212,.9)!important;
-  box-shadow:none!important;
-}
-.clean-header-inner{
-  width:min(1180px,calc(100% - 28px))!important;
-}
-.clean-brand{
-  gap:10px!important;
-  color:var(--wf-ink)!important;
-  font-size:10px!important;
-  letter-spacing:.16em!important;
-}
-.clean-brand img{
-  width:38px!important;
-  height:38px!important;
-  border-radius:10px!important;
-}
-.clean-menu{
-  width:42px!important;
-  height:42px!important;
-  border:1px solid var(--wf-line)!important;
-  border-radius:13px!important;
-  background:#FFF!important;
-  box-shadow:none!important;
-}
-
-/* HOME — IMAGE FIRST, COPY SECOND ON MOBILE */
-.clean-home{
-  min-height:auto!important;
-  padding:92px 0 34px!important;
-  background:var(--wf-bg)!important;
-}
-.clean-home-inner{
-  width:min(1160px,calc(100% - 32px))!important;
-  display:grid!important;
-  grid-template-columns:1fr 1fr!important;
-  gap:44px!important;
-  align-items:center!important;
-}
-.clean-home-copy{
-  max-width:480px!important;
-}
-.clean-kicker{
-  color:var(--wf-gold-dark)!important;
-  font-size:10px!important;
-  font-weight:900!important;
-  letter-spacing:.16em!important;
-  margin-bottom:13px!important;
-}
-.clean-home h1,
-.clean-home h1:after{
-  content:none!important;
-}
-.clean-home h1{
-  display:block!important;
-  font-size:clamp(48px,5vw,72px)!important;
-  line-height:.98!important;
-  margin:0 0 16px!important;
-  max-width:520px!important;
-  color:var(--wf-ink)!important;
-  text-align:left!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-weight:500!important;
-  letter-spacing:-.055em!important;
-}
-.clean-home p{
-  margin:0 0 25px!important;
-  max-width:380px!important;
-  color:var(--wf-muted)!important;
-  text-align:left!important;
-  font-size:16px!important;
-  line-height:1.5!important;
-}
-#startHero.clean-primary{
+/* Mantém o botão principal central visível */
+#startHero,
+#wizardExploreOnly{
   display:flex!important;
   visibility:visible!important;
   opacity:1!important;
   pointer-events:auto!important;
-  width:100%!important;
-  max-width:330px!important;
-  min-height:58px!important;
-  border:0!important;
-  border-radius:15px!important;
-  background:#191817!important;
-  color:#fff!important;
-  font-size:14px!important;
-  font-weight:850!important;
-  box-shadow:none!important;
+  cursor:pointer!important;
 }
-#exploreHero.clean-link{
-  display:block!important;
-  width:auto!important;
-  margin:14px 0 0!important;
-  color:#777169!important;
-  background:transparent!important;
-  border:0!important;
-  text-align:left!important;
-  text-decoration:none!important;
-  font-size:12px!important;
-}
-.clean-home-visual{
-  min-width:0!important;
-}
-.clean-photo-frame{
-  min-height:610px!important;
-  border-radius:24px!important;
-  overflow:hidden!important;
-  background:#DDD6CB!important;
-  box-shadow:none!important;
-}
-.clean-photo-caption{
-  left:14px!important;
-  right:14px!important;
-  bottom:14px!important;
-  padding:14px 16px!important;
-  border-radius:14px!important;
-  border:1px solid rgba(255,255,255,.65)!important;
-  background:rgba(255,255,255,.90)!important;
-  box-shadow:none!important;
-}
-.clean-photo-caption span{
-  font-size:9px!important;
-  color:var(--wf-gold-dark)!important;
-}
-.clean-photo-caption strong{
-  font-size:18px!important;
-  color:var(--wf-ink)!important;
-}
+</style>
 
-/* FILTER — SINGLE SCROLL */
-body.match-mode{
-  overflow:hidden!important;
-}
-body.match-mode .clean-filter-shell,
-body.match-mode #match{
-  display:block!important;
-  visibility:visible!important;
-  opacity:1!important;
-  position:fixed!important;
-  inset:0!important;
-  z-index:260!important;
-  overflow-y:auto!important;
-  background:var(--wf-bg)!important;
-}
-body.match-mode .clean-header{display:none!important}
 
-.clean-filter-page{
-  width:min(680px,100%)!important;
-  min-height:100dvh!important;
-  margin:0 auto!important;
-  background:var(--wf-surface)!important;
-}
-.clean-filter-top{
-  position:sticky!important;
-  top:0!important;
-  z-index:20!important;
-  grid-template-columns:42px 1fr auto!important;
-  gap:10px!important;
-  padding:13px 15px!important;
-  background:rgba(255,253,249,.97)!important;
-  border-bottom:1px solid var(--wf-line)!important;
-  backdrop-filter:blur(18px)!important;
-}
-.clean-filter-kicker{display:none!important}
-.clean-filter-top h2{
-  margin:3px 0 0!important;
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  font-size:16px!important;
-  font-weight:850!important;
-  letter-spacing:-.02em!important;
-}
-.clean-filter-top p{display:none!important}
-.clean-filter-close{
-  width:38px!important;
-  height:38px!important;
-  border:0!important;
-  background:transparent!important;
-  font-size:22px!important;
-}
-.clean-filter-clear{
-  color:#8B847A!important;
-  font-size:11px!important;
-  border:0!important;
-}
-.clean-filter-content{
-  padding:8px 15px 34px!important;
-}
-.clean-filter-block,
-.clean-filter-block[hidden]{
+
+
+
+<style id="hero-two-buttons-design">
+/* HOME: somente EXPLORAR + IA */
+.hero-actions{
   display:grid!important;
-  grid-template-columns:36px 1fr!important;
-  column-gap:10px!important;
-  padding:24px 0!important;
-  visibility:visible!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:12px!important;
+  max-width:560px!important;
+  margin:28px auto 0!important;
 }
-.clean-block-number{
+
+#startHero,
+.hero-ai-btn{
+  width:100%!important;
+  min-height:60px!important;
+  border-radius:16px!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  box-shadow:none!important;
+}
+
+#startHero{
+  border:0!important;
+  background:#E4D0A3!important;
+  color:#171513!important;
+}
+
+.hero-ai-btn{
+  border:1px solid rgba(228,208,163,.55)!important;
+  background:#171717!important;
+  color:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:10px!important;
+}
+
+.hero-ai-robot{
   width:32px!important;
   height:32px!important;
   display:grid!important;
   place-items:center!important;
-  border-radius:50%!important;
-  background:linear-gradient(135deg,#D6AE6C,#B17E39)!important;
-  color:#fff!important;
-  font-size:10px!important;
-  font-weight:900!important;
+  border-radius:10px!important;
+  background:#EEF4FF!important;
+  font-size:19px!important;
 }
-.clean-block-head{
-  grid-column:2!important;
+
+@media(max-width:768px){
+  .hero-actions{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    max-width:none!important;
+  }
+
+  #startHero,
+  .hero-ai-btn{
+    min-height:58px!important;
+  }
 }
-.clean-block-head h3{
-  margin:2px 0 4px!important;
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  font-size:17px!important;
-  font-weight:850!important;
-  letter-spacing:-.025em!important;
+</style>
+
+
+
+
+
+
+
+
+<style id="region-neighborhood-filter-design">
+.unified-filter-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
 }
-.clean-block-head p{
-  margin:0 0 15px!important;
-  color:var(--wf-muted)!important;
-  font-size:11px!important;
+
+@media(max-width:1100px){
+  .unified-filter-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
 }
-.clean-filter-block>.options,
-.clean-filter-block>.clean-field-group{
-  grid-column:2!important;
+
+@media(max-width:700px){
+  .unified-filter-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  #catalogRegion,
+  #catalogNeighborhood{
+    min-height:54px!important;
+  }
 }
-.clean-divider{
-  height:1px!important;
-  margin-left:46px!important;
-  background:var(--wf-line)!important;
-}
-.clean-field-group{
-  margin-top:18px!important;
-}
-.clean-field-label{
-  margin-bottom:8px!important;
-  color:#302D29!important;
-  font-size:11px!important;
-  font-weight:850!important;
-}
-.option{
-  min-height:43px!important;
-  border:1px solid var(--wf-line)!important;
-  border-radius:999px!important;
-  background:#fff!important;
-  color:#312E2A!important;
-  box-shadow:none!important;
-  font-size:11px!important;
-  font-weight:700!important;
-}
-.option.selected{
-  border-color:var(--wf-gold)!important;
-  background:linear-gradient(135deg,#D8B170,#B98745)!important;
-  color:#fff!important;
-}
-.clean-region-grid{
-  grid-template-columns:1fr 1fr!important;
-  gap:8px!important;
-}
-.clean-choice-card{
-  min-height:48px!important;
-  grid-template-columns:1fr!important;
-  text-align:center!important;
-  padding:8px!important;
-  border-radius:999px!important;
-}
-.clean-choice-card .choice-icon,
-.clean-choice-card .choice-copy small,
-.clean-choice-card .choice-check{
-  display:none!important;
-}
-.clean-choice-card .choice-copy strong{
-  font-size:11px!important;
-  font-weight:750!important;
-}
-.clean-pill-row,
-.clean-type-grid,
-.clean-budget-grid{
-  display:grid!important;
-  grid-template-columns:1fr 1fr!important;
-  gap:8px!important;
-}
-.clean-type-grid .option:last-child{
-  grid-column:auto!important;
-}
-.clean-number-row{
-  display:grid!important;
-  grid-template-columns:repeat(4,1fr)!important;
-  gap:8px!important;
-}
-.clean-number-row .option{
-  padding:0!important;
-  min-height:43px!important;
-}
-.clean-toggle-list{
-  display:grid!important;
-  grid-template-columns:1fr!important;
-}
-.clean-toggle-list .option{
-  border:0!important;
-  border-bottom:1px solid #F0ECE5!important;
-  border-radius:0!important;
-  min-height:42px!important;
-  background:transparent!important;
-  color:#34312D!important;
-  padding:0!important;
-}
-.clean-toggle-list .option.selected{
-  background:transparent!important;
-  color:#34312D!important;
-}
-.clean-filter-submit{
-  margin:12px 0 0 46px!important;
-  padding:0!important;
-  border:0!important;
-  background:transparent!important;
-}
-.clean-filter-submit>div{
-  display:none!important;
-}
-.clean-filter-submit .next{
-  width:100%!important;
-  min-height:56px!important;
-  border:0!important;
-  border-radius:14px!important;
-  background:linear-gradient(135deg,#CFA35F,#AF7B38)!important;
-  color:#fff!important;
-  font-size:14px!important;
-  font-weight:900!important;
+</style>
+
+
+
+
+
+<style id="instant-home-whatsapp-css">
+/* WhatsApp funcional e clicável na home */
+body.home-mode #specialistFloat,
+body.home-mode .specialist-float{
   display:flex!important;
   visibility:visible!important;
   opacity:1!important;
   pointer-events:auto!important;
-  box-shadow:none!important;
+  z-index:500!important;
 }
-.clean-filter-page>.progress,
-.clean-filter-page>.step-count{
+
+/* Home does not wait for inventory */
+body.home-mode #fastInventoryStatus{
   display:none!important;
 }
 
-/* RESULTS */
-.catalog,
-.results{
-  background:var(--wf-bg)!important;
-  color:var(--wf-ink)!important;
-}
-.catalog.visible,
-.results.visible{
-  padding:82px 0 32px!important;
-}
-.catalog>.container,
-.results>.container{
-  width:min(760px,calc(100% - 22px))!important;
-  max-width:760px!important;
-  padding:0!important;
-}
-.catalog-filters,
-.unified-catalog-filters,
-#catalogFilters,
-.filters-backdrop{
-  display:none!important;
-}
-.result-top,
-.section-head{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  padding:0 2px!important;
-  margin:0 0 14px!important;
-}
-.result-top h2,
-.section-head h2{
-  margin:0!important;
-  color:var(--wf-ink)!important;
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  font-size:17px!important;
-  font-weight:850!important;
-  letter-spacing:-.025em!important;
-}
-.result-top p,
-.section-head p{
-  color:#817B74!important;
-  font-size:10px!important;
-}
-.grid,
-#matchGrid,
-.catalog-grid{
-  display:grid!important;
-  grid-template-columns:1fr!important;
-  gap:12px!important;
-}
-.results .card,
-.catalog .card,
-.card,
-.property-card{
-  width:100%!important;
-  margin:0!important;
-  border:1px solid var(--wf-line)!important;
-  border-radius:17px!important;
-  overflow:hidden!important;
-  background:#fff!important;
-  box-shadow:none!important;
-  color:var(--wf-ink)!important;
-}
-.results .cover,
-.catalog .cover{
-  aspect-ratio:16/10!important;
-  min-height:0!important;
-  border-radius:0!important;
-}
-.results .card-body,
-.catalog .card-body{
-  padding:14px 15px 16px!important;
-  background:#fff!important;
-  color:var(--wf-ink)!important;
-}
-.results .card h3,
-.catalog .card h3{
-  margin:6px 0 3px!important;
-  color:var(--wf-ink)!important;
-  font-size:19px!important;
-  line-height:1.15!important;
-  font-weight:850!important;
-}
-.results .card-address,
-.catalog .card-address{
-  min-height:0!important;
-  margin:0 0 8px!important;
-  color:#77716A!important;
-  font-size:10px!important;
-  line-height:1.4!important;
-}
-.results .price,
-.catalog .price{
-  color:var(--wf-ink)!important;
-  font-size:22px!important;
-  line-height:1.05!important;
-  margin-bottom:8px!important;
-}
-.results .features,
-.catalog .features{
-  display:flex!important;
-  gap:12px!important;
-  margin:10px 0 0!important;
-}
-.results .feature,
-.catalog .feature{
-  background:transparent!important;
-  color:#5F5A54!important;
-  padding:0!important;
-  font-size:10px!important;
-}
-.results .reasons,
-.catalog .reasons,
-.results .cost-line,
-.catalog .cost-line,
-.results .m2,
-.catalog .m2{
-  font-size:10px!important;
-}
-.results .card-actions,
-.catalog .card-actions{
+/* Filter opens immediately; no inventory gate */
+body.filter-direct-mode #explore,
+body.filter-direct-mode #unifiedSearchPanel,
+body.filter-direct-mode #catalogFilters{
   display:block!important;
-  margin-top:12px!important;
+  visibility:visible!important;
+  opacity:1!important;
 }
-.results .card-actions .view,
-.catalog .card-actions .view{
-  width:100%!important;
-  min-height:44px!important;
-  border-radius:11px!important;
-  border:0!important;
-  background:#F5EFE5!important;
-  color:#6E532E!important;
-  font-size:11px!important;
-  font-weight:850!important;
+
+/* Loading status appears only after user actually searches */
+body.filter-direct-mode .fast-inventory-status{
+  display:none!important;
 }
-.results .card-actions .interest,
-.catalog .card-actions .interest{
+</style>
+
+
+<style id="ynt-clean-flow-v1">
+#match{display:none!important}
+
+/* Normal home */
+body.home-mode #explore,
+body.home-mode #catalog,
+body.home-mode #results{
   display:none!important;
 }
 
-/* DETAIL */
-.photo-detail-shell{
-  z-index:280!important;
-  background:#fff!important;
-  color:var(--wf-ink)!important;
-}
-.detail-gallery{
-  height:48svh!important;
-  min-height:340px!important;
-  background:#111!important;
-}
-.detail-property{
-  width:min(760px,100%)!important;
-  padding:20px 16px 96px!important;
-  background:#fff!important;
-}
-.detail-property h1{
-  margin:7px 0 4px!important;
-  color:var(--wf-ink)!important;
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  font-size:24px!important;
-  font-weight:850!important;
-  letter-spacing:-.035em!important;
-}
-.detail-location{
-  color:#77716A!important;
-  font-size:11px!important;
-}
-.detail-price{
-  margin-top:13px!important;
-  color:var(--wf-ink)!important;
-  font-size:26px!important;
-  font-weight:900!important;
-}
-.detail-price-m2{
-  color:#888178!important;
-  font-size:10px!important;
-}
-.detail-main-specs{
-  margin:17px 0!important;
-  padding:13px 0!important;
-  border-top:1px solid var(--wf-line)!important;
-  border-bottom:1px solid var(--wf-line)!important;
-}
-.detail-spec strong{
-  font-size:15px!important;
-}
-.detail-spec span{
-  color:#8B857D!important;
-  font-size:9px!important;
-}
-.detail-description{
-  color:#69645E!important;
-  font-size:11px!important;
-  line-height:1.5!important;
-}
-.detail-section{
-  padding-top:19px!important;
-  border-top:1px solid var(--wf-line)!important;
-}
-.detail-section-title{
-  color:var(--wf-gold-dark)!important;
-  font-size:9px!important;
-  letter-spacing:.13em!important;
-}
-.detail-section h3{
-  color:var(--wf-ink)!important;
-  font-family:Georgia,"Times New Roman",serif!important;
-  font-size:23px!important;
-  font-weight:500!important;
-}
-.detail-sticky-cta{
-  position:fixed!important;
-  left:0!important;
-  right:0!important;
-  bottom:0!important;
-  z-index:310!important;
-  padding:9px 12px calc(9px + env(safe-area-inset-bottom))!important;
-  background:rgba(255,255,255,.97)!important;
-  border-top:1px solid var(--wf-line)!important;
-}
-.detail-share-btn{
-  width:min(730px,100%)!important;
-  min-height:54px!important;
-  margin:auto!important;
-  border:0!important;
-  border-radius:13px!important;
-  background:var(--wf-green)!important;
-  color:#fff!important;
-  font-size:13px!important;
-  font-weight:900!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:9px!important;
-  white-space:nowrap!important;
-  box-shadow:none!important;
-}
-.detail-share-btn svg{
-  width:24px!important;
-  height:24px!important;
-  flex:0 0 24px!important;
+/* Direct full-filter mode */
+body.filter-direct-mode #explore{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  min-height:100dvh!important;
+  padding-top:90px!important;
 }
 
-/* AI PROMPT + CHAT */
-.ai-assistant-trigger{
-  z-index:330!important;
-  right:12px!important;
-  bottom:calc(76px + env(safe-area-inset-bottom))!important;
-  width:min(315px,calc(100vw - 24px))!important;
-  min-height:78px!important;
-  padding:10px 11px!important;
-  grid-template-columns:50px 1fr!important;
-  gap:10px!important;
-  border:1px solid var(--wf-line)!important;
-  border-radius:18px!important;
-  background:rgba(255,255,255,.98)!important;
-  color:var(--wf-ink)!important;
-  box-shadow:0 14px 34px rgba(30,25,20,.14)!important;
-}
-.ai-assistant-trigger .ai-orb{
-  width:50px!important;
-  height:50px!important;
-  border-radius:15px!important;
-  display:grid!important;
-  place-items:center!important;
-  background:#EDF3FF!important;
-  font-size:26px!important;
-}
-.ai-assistant-trigger strong{
-  margin:0 0 3px!important;
-  color:var(--wf-ink)!important;
-  font-size:12px!important;
-  line-height:1.25!important;
-}
-.ai-assistant-trigger small{
-  color:#77716A!important;
-  font-size:9px!important;
-  line-height:1.35!important;
-}
-.ai-assistant-shell{
-  z-index:350!important;
-  background:rgba(24,21,18,.38)!important;
-}
-.ai-assistant-card{
-  background:#FFF!important;
-  color:var(--wf-ink)!important;
-}
-.ai-assistant-head{
-  background:#FFF!important;
-  color:var(--wf-ink)!important;
-  border-bottom:1px solid var(--wf-line)!important;
-}
-.ai-assistant-messages{
-  background:#FCFBF8!important;
-}
-.ai-msg.assistant{
-  background:#F1F2F3!important;
-  color:#2D2A26!important;
-}
-.ai-msg.user{
-  background:#E8D4AF!important;
-  color:#332819!important;
-}
-.ai-human-handoff{
-  background:#FFF!important;
-  color:#332F2A!important;
-  border:1px solid #D9C49E!important;
-}
-.ai-assistant-input textarea{
-  border:1px solid var(--wf-line)!important;
-  background:#F8F7F4!important;
-  color:var(--wf-ink)!important;
-}
-.ai-assistant-send{
-  background:var(--wf-gold)!important;
-  color:#fff!important;
+body.filter-direct-mode #unifiedSearchPanel{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  max-width:1100px!important;
+  margin:0 auto!important;
 }
 
-/* MENU */
-.app-side-menu{
-  background:#FFFDF9!important;
-  color:var(--wf-ink)!important;
-  box-shadow:-18px 0 50px rgba(28,24,19,.10)!important;
-}
-.app-side-menu a,
-.app-side-menu button{
-  color:var(--wf-ink)!important;
+body.filter-direct-mode #catalogFilters{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
 }
 
-/* MOBILE — APPROVED WIREFRAME */
-@media(max-width:760px){
-  .clean-home{
-    padding:82px 0 26px!important;
+/* No obsolete loading message before pressing BUSCAR */
+body.filter-direct-mode #fastInventoryStatus{
+  display:none!important;
+}
+
+@media(max-width:700px){
+  body.filter-direct-mode #explore{
+    padding-top:0!important;
   }
-  .clean-home-inner{
+
+  body.filter-direct-mode #catalogFilters{
+    position:fixed!important;
+    inset:0!important;
+    z-index:650!important;
     width:100%!important;
-    display:flex!important;
-    flex-direction:column!important;
-    gap:0!important;
-  }
-  .clean-home-visual{
-    order:1!important;
-    width:100%!important;
-  }
-  .clean-photo-frame{
-    min-height:430px!important;
+    height:100dvh!important;
+    max-height:none!important;
+    padding:22px 16px calc(28px + env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;
+    background:#FCFAF6!important;
+    transform:none!important;
     border-radius:0!important;
   }
-  .clean-photo-caption{
-    display:none!important;
-  }
-  .clean-home-copy{
-    order:2!important;
-    width:100%!important;
-    max-width:none!important;
-    padding:22px 26px 6px!important;
-    background:var(--wf-surface)!important;
-  }
-  .clean-kicker{
-    margin-bottom:9px!important;
-    font-size:8px!important;
-  }
-  .clean-home h1{
-    max-width:290px!important;
-    font-size:42px!important;
-    line-height:.98!important;
-    margin-bottom:10px!important;
-  }
-  .clean-home p{
-    max-width:290px!important;
-    margin-bottom:18px!important;
-    font-size:14px!important;
-  }
-  #startHero.clean-primary{
-    max-width:none!important;
-    min-height:54px!important;
-  }
-  #exploreHero.clean-link{
-    width:100%!important;
-    margin-top:12px!important;
-    text-align:center!important;
-    font-size:11px!important;
-  }
 
-  .clean-filter-content{
-    padding-left:14px!important;
-    padding-right:14px!important;
-  }
-
-  .catalog.visible,
-  .results.visible{
-    padding-top:76px!important;
-  }
-  .catalog>.container,
-  .results>.container{
-    width:calc(100% - 20px)!important;
-  }
-
-  .detail-gallery{
-    height:45svh!important;
-    min-height:320px!important;
-  }
-  .detail-property{
-    padding:18px 15px 94px!important;
-  }
-  .detail-share-btn{
-    width:100%!important;
-  }
-
-  .ai-assistant-card{
-    height:94dvh!important;
-    border-radius:24px 24px 0 0!important;
+  body.filter-direct-mode #closeFilters{
+    display:grid!important;
   }
 }
 </style>
@@ -4914,196 +3309,62 @@ body.match-mode .clean-header{display:none!important}
 
 <body class="home-mode">
 
-
-<header class="clean-header">
-  <div class="clean-header-inner">
-    <a href="#inicio" class="clean-brand" aria-label="Ynteligencia">
-      <img src="/icon-192.png" alt="Ynteligencia">
-      <span>YNTELIGÊNCIA</span>
+<header>
+  <div class="container nav app-topbar">
+    <a href="#inicio" class="brand-lockup" aria-label="Ynteligencia - início">
+      <img src="/icon-192.png" alt="" class="brand-icon">
+      <span class="brand-copy">
+        <strong>Ynteligencia</strong>
+        <small>IMÓVEIS QUE COMBINAM COM VOCÊ</small>
+      </span>
     </a>
 
-    <button class="clean-menu" id="openAppMenu" type="button" aria-label="Abrir menu" aria-controls="appMenu" aria-expanded="false">
-      <span></span><span></span>
+    <nav class="nav-links">
+      <button id="navExplore">Explorar imóveis</button>
+    </nav>
+
+    <button class="hamburger-btn" id="openAppMenu" type="button" aria-label="Abrir menu" aria-controls="appMenu" aria-expanded="false">
+      <span></span><span></span><span></span>
     </button>
   </div>
 </header>
 
-<section class="hero clean-home" id="inicio">
-  <div class="clean-home-inner">
-    <div class="clean-home-copy">
-      <span class="clean-kicker">IMÓVEIS EM SÃO PAULO</span>
+<section class="hero" id="inicio">
+  <div class="container">
+    <div class="eyebrow">✦ SEU MATCH IMOBILIÁRIO</div>
 
-      <h1>Encontre seu imóvel</h1>
+    <h1>
+      Seu próximo imóvel não é uma busca.
+      É um <span>MATCH.</span>
+    </h1>
 
-      <p>Novos e usados em uma única busca, de forma simples e inteligente.</p>
+    <p>
+      Novos e usados. Em uma única busca inteligente.
+    </p>
 
-      <button class="clean-primary" id="startHero" type="button">
-        Encontrar meu imóvel
-        <span aria-hidden="true">→</span>
-      </button>
+    <div class="hero-actions">
+<button class="primary" id="startHero">EXPLORAR IMÓVEIS</button>
 
-      <button class="clean-link" id="exploreHero" type="button">
-        Prefiro explorar os imóveis
-      </button>
-    </div>
+<button class="hero-ai-btn" id="heroAiButton" type="button">
+  <span class="hero-ai-robot" aria-hidden="true">🤖</span>
+  <span>FALAR COM A IA</span>
+</button>
 
-    <div class="clean-home-visual" aria-hidden="true">
-      <div class="clean-photo-frame">
-        <div class="clean-photo" id="cleanHeroPhoto"></div>
-        <div class="clean-photo-caption">
-          <span>São Paulo</span>
-          <strong>Seu próximo endereço começa aqui.</strong>
-        </div>
-      </div>
-    </div>
+</div>
   </div>
 </section>
-
 
 <main>
 
 
-<section class="wizard-wrap clean-filter-shell" id="match">
-  <div class="clean-filter-page">
 
-    <div class="clean-filter-top">
-      <button class="clean-filter-close back" id="back" type="button" aria-label="Fechar filtro">←</button>
 
-      <div>
-        <span class="clean-filter-kicker">BUSCA PERSONALIZADA</span>
-        <h2>Encontre seu imóvel</h2>
-        <p>Role a tela, escolha o que importa e busque quando estiver pronto.</p>
-      </div>
-
-      <button class="clean-filter-clear clear-match" id="clearMatch" type="button">Limpar</button>
-    </div>
-
-    <div class="clean-filter-content">
-
-      <section class="clean-filter-block step" data-step="0">
-        <div class="clean-block-number">01</div>
-        <div class="clean-block-head">
-          <h3>Onde você procura?</h3>
-          <p>Escolha a região de São Paulo.</p>
-        </div>
-
-        <div class="options clean-region-grid">
-          <button class="option clean-choice-card" data-key="region" data-value="oeste">
-            <span class="choice-icon">⌂</span>
-            <span class="choice-copy"><strong>Zona Oeste</strong><small>Perdizes, Pompéia, Pinheiros e região</small></span>
-            <span class="choice-check">✓</span>
-          </button>
-
-          <button class="option clean-choice-card" data-key="region" data-value="sul">
-            <span class="choice-icon">⌂</span>
-            <span class="choice-copy"><strong>Zona Sul</strong><small>Moema, Brooklin, Vila Mariana e região</small></span>
-            <span class="choice-check">✓</span>
-          </button>
-
-          <button class="option clean-choice-card" data-key="region" data-value="leste">
-            <span class="choice-icon">⌂</span>
-            <span class="choice-copy"><strong>Zona Leste</strong><small>Tatuapé, Mooca, Anália Franco e região</small></span>
-            <span class="choice-check">✓</span>
-          </button>
-
-          <button class="option clean-choice-card" data-key="region" data-value="norte">
-            <span class="choice-icon">⌂</span>
-            <span class="choice-copy"><strong>Zona Norte</strong><small>Santana, Tucuruvi e região</small></span>
-            <span class="choice-check">✓</span>
-          </button>
-        </div>
-      </section>
-
-      <div class="clean-divider"></div>
-
-      <section class="clean-filter-block step" data-step="1">
-        <div class="clean-block-number">02</div>
-        <div class="clean-block-head">
-          <h3>O que você procura?</h3>
-          <p>Defina o perfil do imóvel sem preencher formulário.</p>
-        </div>
-
-        <div class="clean-field-group">
-          <span class="clean-field-label">Finalidade</span>
-          <div class="options clean-pill-row">
-            <button class="option" data-key="purpose" data-value="morar">Morar</button>
-            <button class="option" data-key="purpose" data-value="investir">Investir</button>
-          </div>
-        </div>
-
-        <div class="clean-field-group">
-          <span class="clean-field-label">Tipo de imóvel</span>
-          <div class="options clean-type-grid">
-            <button class="option multi" data-key="types" data-value="apartamento">Apartamento</button>
-            <button class="option multi" data-key="types" data-value="casa">Casa</button>
-            <button class="option multi" data-key="types" data-value="studio">Studio</button>
-            <button class="option multi" data-key="types" data-value="cobertura">Cobertura</button>
-            <button class="option multi" data-key="types" data-value="sobrado">Sobrado</button>
-          </div>
-        </div>
-
-        <div class="clean-field-group">
-          <span class="clean-field-label">Dormitórios</span>
-          <div class="options clean-number-row">
-            <button class="option" data-key="bedrooms" data-value="1">1+</button>
-            <button class="option" data-key="bedrooms" data-value="2">2+</button>
-            <button class="option" data-key="bedrooms" data-value="3">3+</button>
-            <button class="option" data-key="bedrooms" data-value="4">4+</button>
-          </div>
-        </div>
-      </section>
-
-      <div class="clean-divider"></div>
-
-      <section class="clean-filter-block step" data-step="2">
-        <div class="clean-block-number">03</div>
-        <div class="clean-block-head">
-          <h3>Quanto pretende investir?</h3>
-          <p>Escolha uma faixa. Os filtros abaixo são opcionais.</p>
-        </div>
-
-        <div class="clean-field-group">
-          <span class="clean-field-label">Faixa de preço</span>
-          <div class="options clean-budget-grid">
-            <button class="option" data-key="budget" data-value="400000" data-budget-min="1" data-budget-max="400000" data-budget-label="Até R$ 400 mil">Até R$ 400 mil</button>
-            <button class="option" data-key="budget" data-value="600000" data-budget-min="400001" data-budget-max="600000" data-budget-label="R$ 401 mil a R$ 600 mil">R$ 401–600 mil</button>
-            <button class="option" data-key="budget" data-value="800000" data-budget-min="600001" data-budget-max="800000" data-budget-label="R$ 601 mil a R$ 800 mil">R$ 601–800 mil</button>
-            <button class="option" data-key="budget" data-value="1000000" data-budget-min="800001" data-budget-max="1000000" data-budget-label="R$ 801 mil a R$ 1 milhão">R$ 801 mil–1 mi</button>
-            <button class="option" data-key="budget" data-value="1500000" data-budget-min="1000001" data-budget-max="1500000" data-budget-label="R$ 1,01 milhão a R$ 1,5 milhão">R$ 1–1,5 mi</button>
-            <button class="option" data-key="budget" data-value="1500001" data-budget-min="1500001" data-budget-max="0" data-budget-label="Acima de R$ 1,5 milhão">Acima de R$ 1,5 mi</button>
-          </div>
-        </div>
-
-        <div class="clean-field-group">
-          <span class="clean-field-label">Preferências <small>opcional</small></span>
-          <div class="options clean-toggle-list">
-            <button class="option multi" data-key="feature" data-value="area50"><span>Área maior</span><i></i></button>
-            <button class="option multi" data-key="feature" data-value="suite"><span>Suíte</span><i></i></button>
-            <button class="option multi" data-key="feature" data-value="parking"><span>Vaga</span><i></i></button>
-            <button class="option multi" data-key="feature" data-value="balcony"><span>Varanda</span><i></i></button>
-            <button class="option multi" data-key="feature" data-value="pool"><span>Lazer completo</span><i></i></button>
-            <button class="option multi" data-key="feature" data-value="metro"><span>Metrô próximo</span><i></i></button>
-            <button class="option multi" data-key="feature" data-value="lowcondo"><span>Condomínio baixo</span><i></i></button>
-          </div>
-        </div>
-      </section>
-
-      <div class="clean-filter-submit">
-        <div>
-          <strong>Pronto para ver os imóveis?</strong>
-          <span>Você pode buscar mesmo sem preencher todos os filtros.</span>
-        </div>
-        <button class="next" id="next" type="button">
-          Buscar imóveis
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
-
-    </div>
-
-    <div class="progress" aria-hidden="true"><span id="progress"></span></div>
-    <div class="step-count" aria-hidden="true"><strong id="stepCount">03 de 03</strong></div>
-  </div>
+<section class="wizard-wrap" id="match" hidden aria-hidden="true" style="display:none!important">
+  <span id="progress"></span>
+  <strong id="stepCount">01 de 01</strong>
+  <button id="back" type="button"></button>
+  <button id="clearMatch" type="button"></button>
+  <button id="next" type="button"></button>
 </section>
 
 <section
@@ -5144,52 +3405,14 @@ body.match-mode .clean-header{display:none!important}
 
   <div class="container">
 
-    <div class="section-head">
-
-      <h2>
-        Prefere procurar sozinho?
-      </h2>
-
-      <p>
-        Explore a base disponível e use os filtros
-        para encontrar uma oportunidade.
-      </p>
-
-    </div>
+    
 
     <div class="unified-search-panel" id="unifiedSearchPanel" aria-label="Busca de imóveis">
       <!-- Mantidos ocultos para preservar a lógica atual de São Paulo/SP no backend -->
       <input id="catalogCity" type="hidden" value="São Paulo">
       <input id="catalogState" type="hidden" value="SP">
 
-      <div class="unified-search-main">
-        <label class="unified-field">
-          <span>Região</span>
-          <select id="catalogRegionSelect" class="field" aria-label="Região">
-            <option value="">Todas as regiões</option>
-            <option value="oeste">Zona Oeste</option>
-            <option value="sul">Zona Sul</option>
-            <option value="norte">Zona Norte</option>
-            <option value="leste">Zona Leste</option>
-          </select>
-        </label>
-
-        <label class="unified-field">
-          <span>Bairro</span>
-          <select id="catalogNeighborhood" class="field" aria-label="Bairro">
-            <option value="">Todos os bairros</option>
-          </select>
-        </label>
-
-        <label class="unified-field unified-search-name">
-          <span>Empreendimento / condomínio</span>
-          <input
-            id="catalogSearch"
-            class="field"
-            placeholder="Digite o nome do empreendimento ou condomínio"
-            autocomplete="off">
-        </label>
-      </div>
+      
 
       <div class="unified-search-separator">
         <span>Filtros de compra</span>
@@ -5200,7 +3423,32 @@ body.match-mode .clean-header{display:none!important}
         <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true" style="display:none"></div>
         <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros" style="display:none">×</button>
 
-        <div class="filter-grid unified-filter-grid">
+        
+        <div class="fast-inventory-status" id="fastInventoryStatus">
+          Estoque carregando em segundo plano…
+        </div>
+
+<div class="filter-grid unified-filter-grid">
+          <label class="unified-field">
+            <span>Região</span>
+            <select id="catalogRegion" class="field" aria-label="Região">
+              <option value="">Todas as regiões</option>
+              <option value="oeste">Zona Oeste</option>
+              <option value="sul">Zona Sul</option>
+              <option value="leste">Zona Leste</option>
+              <option value="norte">Zona Norte</option>
+              <option value="centro">Centro</option>
+              <option value="outras">Outras regiões</option>
+            </select>
+          </label>
+
+          <label class="unified-field">
+            <span>Bairro</span>
+            <select id="catalogNeighborhood" class="field" aria-label="Bairro">
+              <option value="">Todos os bairros</option>
+            </select>
+          </label>
+
           <label class="unified-field">
             <span>Estoque</span>
             <select id="catalogSource" class="field" aria-label="Tipo de estoque">
@@ -5287,7 +3535,7 @@ body.match-mode .clean-header{display:none!important}
           </button>
 
           <button id="catalogSearchBtn" class="catalog-search-btn" type="button">
-            BUSCAR IMÓVEIS
+            BUSCAR
           </button>
 
           <!-- Mantido para compatibilidade com listeners existentes -->
@@ -5377,8 +3625,6 @@ body.match-mode .clean-header{display:none!important}
 <footer>
   Ynteligencia · Inteligência imobiliária
 </footer>
-
-<!-- Navegação inferior removida no mobile: Descobrir / Explorar / Salvos / Perfil. -->
 
 
 <div class="menu-backdrop" id="menuBackdrop" aria-hidden="true"></div>
@@ -5883,7 +4129,8 @@ async function supabaseCreateLead(lead){
           notes:
             `Interesse gerado na Ynteligencia | ` +
             `Código: ${lead.property_id || ""} | ` +
-            `Imóvel: ${lead.property_name || ""}`,
+            `Imóvel: ${lead.property_name || ""}` +
+            (lead.ai_summary ? ` | Match IA: ${lead.ai_summary}` : ""),
 
           session_id:
             YNTELIGENCIA_SESSION_ID,
@@ -5930,6 +4177,13 @@ async function supabaseCreateLead(lead){
 
             profile:{
               ...profile
+            },
+
+            ai:{
+              summary:lead.ai_summary || "",
+              history:Array.isArray(lead.ai_history) ? lead.ai_history : [],
+              history_text:lead.ai_history_text || "",
+              conversation_length:Array.isArray(lead.ai_history) ? lead.ai_history.length : 0
             }
 
           }
@@ -6821,42 +5075,105 @@ function deduplicate(items){
 ========================================================= */
 
 function setStep(n,fromHistory=false){
-  // A nova interface usa um único scroll. Os três blocos permanecem
-  // visíveis o tempo todo e não bloqueiam a navegação.
-  step=0;
 
-  const wizard=document.querySelector(".wizard, .clean-filter-page");
+  const previousStep=step;
+
+  step=
+    Math.max(
+      0,
+      Math.min(
+        3,
+        n
+      )
+    );
+
+
+  const wizard=document.querySelector(".wizard");
   if(wizard){
-    wizard.dataset.currentStep="all";
+    wizard.dataset.direction=step>=previousStep ? "forward" : "back";
+    wizard.dataset.currentStep=String(step);
   }
 
-  steps.forEach((s)=>{
-    s.hidden=false;
-    s.classList.add("active");
+  steps.forEach((s,i)=>{
+    s.hidden=i!==step;
+    s.classList.toggle("active",i===step);
   });
 
-  const progress=$("progress");
-  if(progress) progress.style.width="100%";
+
+  $("progress").style.width=
+    `${((step+1)/5)*100}%`;
 
   const stepCount=$("stepCount");
-  if(stepCount) stepCount.textContent="03 de 03";
+  if(stepCount){
+    stepCount.textContent=`${String(step+1).padStart(2,"0")} de 04`;
+  }
 
-  const next=$("next");
-  if(next){
-    next.textContent="Buscar imóveis";
-    next.disabled=false;
+
+  $("back").style.visibility=
+    step===0
+      ? "hidden"
+      : "visible";
+
+
+  $("next").textContent=
+    step===3
+      ? "Encontrar meus MATCHs"
+      : "Continuar";
+
+
+  updateNext();
+
+  if(document.body.classList.contains("match-mode") && !fromHistory && step!==previousStep){
+    history.pushState({ynteligenciaMatch:true,step},"");
+  }
+
+
+  if(document.body.classList.contains("match-mode")){
+    document.getElementById("match").scrollTop=0;
   }
 }
 
+
 function currentValid(){
-  // O filtro nunca bloqueia a busca. Quanto mais o usuário preencher,
-  // mais precisa fica a ordenação do MATCH.
-  return true;
+
+  if(step===0){
+
+    return(
+      profile.types.length>0
+    );
+  }
+
+
+  if(step===2){
+
+    return(
+      Number(profile.budgetMin)>0 || Number(profile.budgetMax)>0
+    );
+  }
+
+
+  const key=
+    [
+      "types",
+      "region",
+      "budget",
+      "bedrooms",
+      "feature"
+    ][step];
+
+
+  return(
+    profile[key]!=="" &&
+    profile[key]!==null &&
+    profile[key]!==undefined
+  );
 }
 
+
 function updateNext(){
-  const next=$("next");
-  if(next) next.disabled=false;
+
+  $("next").disabled=
+    !currentValid();
 }
 
 
@@ -6897,6 +5214,7 @@ document
 
               btn.classList.add("selected");
               updateNext();
+              window.setTimeout(()=>setStep(step+1),140);
               return;
             }
 
@@ -6955,10 +5273,20 @@ document
                 "selected"
               );
 
-            // No wizard em 3 etapas nenhuma escolha avança sozinha.
-            // O usuário confirma cada etapa pelo CTA Continuar / Buscar imóveis.
-            if(["region","budget","bedrooms"].includes(key)){
+            // Perguntas de escolha única avançam automaticamente.
+            if(["region","budget"].includes(key)){
               updateNext();
+              window.setTimeout(()=>setStep(step+1),140);
+              return;
+            }
+
+            // Dormitórios é a última pergunta obrigatória: dispara o motor do MATCH.
+            if(key==="bedrooms"){
+              updateNext();
+              window.setTimeout(()=>{
+                trackProfileCompleted();
+                showMatchProcessing();
+              },140);
               return;
             }
           }
@@ -7060,10 +5388,8 @@ function enterMatchMode(){
   document.body.classList.remove("home-mode","match-results-mode","ad-match-mode");
   document.body.classList.add("match-mode");
 
-  // Nova busca em página única, sem bloqueio por etapas.
+  // Sempre entra no Wizard pela primeira etapa.
   setStep(0,true);
-  updateNext();
-  document.getElementById("match")?.scrollTo?.({top:0,behavior:"instant"});
   history.pushState({ynteligenciaMatch:true,step:0},"");
 }
 
@@ -7102,22 +5428,44 @@ window.addEventListener("popstate",event=>{
 
 
 $("next")?.addEventListener(
-  "click",
-  ()=>{
-    trackProfileCompleted();
-    showMatchProcessing();
-  }
-);
+    "click",
+    ()=>{
+
+      if(
+        !currentValid()
+      )return;
+
+
+      if(step<3){
+
+        setStep(
+          step+1
+        );
+
+      }else{
+
+        trackProfileCompleted();
+
+        showMatchProcessing();
+      }
+    }
+  );
 
 
 $("back")?.addEventListener(
-  "click",
-  ()=>{
-    leaveMatchMode();
-    document.body.classList.add("home-mode");
-    document.getElementById("inicio")?.scrollIntoView({behavior:"smooth"});
-  }
-);
+    "click",
+    ()=>{
+
+      if(step>0){
+        setStep(step-1);
+        history.replaceState({ynteligenciaMatch:true,step},"");
+      }else{
+        leaveMatchMode();
+        document.body.classList.add("home-mode");
+        document.getElementById("inicio")?.scrollIntoView({behavior:"smooth"});
+      }
+    }
+  );
 
 
 function resetMatchProfile(){
@@ -8596,6 +6944,7 @@ function openPropertySpecialist(p){
 ========================================================= */
 let aiAssistantProperty=null;
 let aiAssistantHistory=[];
+let aiLeadConversation=[];
 let aiAssistantSending=false;
 let aiAssistantTriggerTimer=null;
 
@@ -8665,17 +7014,17 @@ function ensureAiAssistantShell(){
     <div class="ai-assistant-card" role="dialog" aria-modal="true" aria-label="Assistente de compra">
       <div class="ai-assistant-head">
         <div class="ai-assistant-brand">
-          <span class="ai-orb" aria-hidden="true">🤖</span>
-          <span><strong>Assistente YN</strong><small>Seu assistente deste imóvel</small></span>
+          <span class="ai-orb">✦</span>
+          <span><strong>Match IA</strong><small>Assistente de compra Ynteligencia</small></span>
         </div>
         <button class="ai-assistant-close" type="button" aria-label="Fechar">×</button>
       </div>
       <div>
         <div class="ai-assistant-messages" id="aiAssistantMessages"></div>
-        <button class="ai-human-handoff visible" id="aiHumanHandoff" type="button">👤 Quero falar com uma pessoa</button>
+        <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Falar com Rafael no WhatsApp</button>
       </div>
       <form class="ai-assistant-input" id="aiAssistantForm">
-        <textarea id="aiAssistantInput" rows="1" placeholder="Digite sua mensagem..."></textarea>
+        <textarea id="aiAssistantInput" rows="1" placeholder="Digite sua dúvida sobre este imóvel..."></textarea>
         <button class="ai-assistant-send" id="aiAssistantSend" type="submit" aria-label="Enviar">➜</button>
       </form>
     </div>`;
@@ -8697,11 +7046,25 @@ function ensureAiAssistantShell(){
     const aiShell=document.getElementById("aiAssistantShell");
 
     aiShell?.classList.remove("open");
-    aiShell?.remove();
     document.body.style.overflow="hidden";
 
     setTimeout(()=>{
-      openPropertySpecialist(property);
+      if(property.generic_search){
+        openLeadCapture(
+          {
+            id:"match-ia-general",
+            name:"Busca assistida pela Match IA",
+            neighborhood:"",
+            value:0,
+            source:"match_ia"
+          },
+          {
+            source:"match_ia_general"
+          }
+        );
+      }else{
+        openPropertySpecialist(property);
+      }
     },120);
   });
 
@@ -8718,6 +7081,18 @@ function appendAiMessage(role,text){
   div.textContent=text;
   box.appendChild(div);
   box.scrollTop=box.scrollHeight;
+
+  if(role==="user" || role==="assistant"){
+    const last=aiLeadConversation[aiLeadConversation.length-1];
+    if(!last || last.role!==role || last.content!==String(text||"")){
+      aiLeadConversation.push({
+        role,
+        content:String(text||""),
+        at:new Date().toISOString()
+      });
+      aiLeadConversation=aiLeadConversation.slice(-80);
+    }
+  }
 }
 
 function extractBrazilianPhone(text){
@@ -8773,37 +7148,91 @@ function openAiLeadCaptureFromPhone(phone){
   document.body.style.overflow="hidden";
 
   setTimeout(()=>{
-    openLeadCapture(property,{
-      phone:formattedPhone,
-      source:"match_ia_phone"
-    });
+    openLeadCapture(
+      property.generic_search
+        ? {
+            id:"match-ia-general",
+            name:"Busca assistida pela Match IA",
+            neighborhood:"",
+            value:0,
+            source:"match_ia"
+          }
+        : property,
+      {
+        phone:formattedPhone,
+        source:property.generic_search ? "match_ia_general_phone" : "match_ia_phone"
+      }
+    );
   },160);
 }
 
 function openAiAssistant(p){
-  if(!p)return;
-  aiAssistantProperty=p;
+  const genericMode=!p;
+
+  aiAssistantProperty=genericMode
+    ? {
+        id:"__search__",
+        name:"Busca de imóveis",
+        neighborhood:"",
+        source:"search",
+        generic_search:true
+      }
+    : p;
+
   aiAssistantHistory=[];
+  aiLeadConversation=[];
+
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
+  const input=shell.querySelector("#aiAssistantInput");
+  const handoff=shell.querySelector("#aiHumanHandoff");
+
   if(box)box.innerHTML="";
-  
+  if(handoff)handoff.classList.remove("visible");
+
+  if(input){
+    input.placeholder=genericMode
+      ? "Digite o que você procura..."
+      : "Digite sua dúvida sobre este imóvel...";
+  }
+
   shell.classList.add("open");
   document.body.style.overflow="hidden";
 
-  const sourceLabel=String(p.source||"").toLowerCase()==="novos" ? "lançamento" : "imóvel";
-  const stockKnown=Number(p.stock)>0;
-  const openingQuestion=stockKnown
-    ? `Oi! 👋 Estou aqui para te ajudar com ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Quer saber quantas unidades ainda estão disponíveis neste prédio?`
-    : `Oi! 👋 Estou aqui para te ajudar com ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Pode me perguntar sobre preço, características, localização, condições ou disponibilidade.`;
-  appendAiMessage("assistant",openingQuestion);
+  if(genericMode){
+    appendAiMessage(
+      "assistant",
+      "Oi! 👋 Eu posso te ajudar a encontrar um imóvel. Me diga o que você procura — por exemplo bairro, faixa de preço, dormitórios ou se prefere novo ou usado."
+    );
+
+    try{
+      gtag("event","ai_assistant_open",{mode:"search"});
+    }catch(error){}
+
+    supabaseTrack("ai_assistant_open",{mode:"search"});
+    return;
+  }
+
+  appendAiMessage(
+    "assistant",
+    `Oi! Vi que você está olhando ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Pode me perguntar o que quiser sobre este imóvel — e também posso buscar outras unidades e opções do nosso estoque para comparar com você.`
+  );
 
   try{
     gtag("event","ai_assistant_open",{
-      property_id:String(p.id||""),property_name:p.name||"",neighborhood:p.neighborhood||""
+      mode:"property",
+      property_id:String(p.id||""),
+      property_name:p.name||"",
+      neighborhood:p.neighborhood||""
     });
   }catch(error){}
-  supabaseTrack("ai_assistant_open",{property_id:String(p.id||""),property_name:p.name||"",neighborhood:p.neighborhood||""});
+
+  supabaseTrack("ai_assistant_open",{
+    mode:"property",
+    property_id:String(p.id||""),
+    property_name:p.name||"",
+    neighborhood:p.neighborhood||""
+  });
 }
 
 function closeAiAssistant(){
@@ -8812,6 +7241,256 @@ function closeAiAssistant(){
   if(document.getElementById("photoModal"))document.body.style.overflow="hidden";
   else document.body.style.overflow="";
 }
+
+
+/* =========================================================
+   MATCH IA · BUSCA REAL NO INVENTÁRIO CARREGADO
+========================================================= */
+
+function aiParseMoneyPhrase(text){
+  const raw=norm(text||"");
+  const parseOne=(num,unit)=>{
+    let value=Number(String(num).replace(",","."));
+    if(!Number.isFinite(value))return 0;
+    if(unit && /milhao|milhoes|mi\b/.test(unit))value*=1000000;
+    else if(unit && /mil|k\b/.test(unit))value*=1000;
+    else if(value<10000)value*=1000;
+    return Math.round(value);
+  };
+
+  let max=0,min=0;
+
+  let match=raw.match(/(?:ate|maximo|max|no maximo)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/i);
+  if(match)max=parseOne(match[1],match[2]||"");
+
+  match=raw.match(/(?:a partir de|minimo|min|acima de|mais de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/i);
+  if(match)min=parseOne(match[1],match[2]||"");
+
+  match=raw.match(/(?:entre|de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?\s*(?:a|e|-)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/i);
+  if(match){
+    min=parseOne(match[1],match[2]||"");
+    max=parseOne(match[3],match[4]||match[2]||"");
+  }
+
+  return {min,max};
+}
+
+
+async function ensureAiInventoryReady(message=""){
+  const q=norm(message||"");
+  const asksUsed=/\b(usado|usados|seminovo|seminovos)\b/.test(q);
+
+  try{
+    if((!Array.isArray(properties) || properties.length===0) && typeof fetchNewCatalogPage==="function"){
+      await fetchNewCatalogPage({reset:true});
+      properties=deduplicate([...newPropertiesCache]);
+      inventoryReady=properties.length>0;
+      inventoryLoading=false;
+    }
+
+    if(asksUsed && !usedInventoryLoaded && typeof loadUsedInventory==="function"){
+      await loadUsedInventory();
+      properties=deduplicate([...newPropertiesCache,...usedPropertiesCache]);
+    }
+  }catch(error){
+    console.warn("AI_INVENTORY_QUERY_ERROR",error);
+  }
+
+  return Array.isArray(properties) && properties.length>0;
+}
+
+function aiInventoryContext(message){
+  const recentUsers=aiLeadConversation
+    .filter(item=>item.role==="user")
+    .slice(-6)
+    .map(item=>item.content);
+
+  const combined=norm([...recentUsers,message].join(" "));
+  const inventory=Array.isArray(properties) ? properties : [];
+
+  const bedroomsMatch=combined.match(/(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/);
+  const bedrooms=bedroomsMatch ? Number(bedroomsMatch[1]) : 0;
+
+  const money=aiParseMoneyPhrase(combined);
+
+  const wantsNew=/\b(novo|novos|lancamento|lancamentos|na planta)\b/.test(combined);
+  const wantsUsed=/\b(usado|usados|seminovo|seminovos)\b/.test(combined);
+
+  let exactName="";
+  let neighborhood="";
+
+  // Longest matching property name wins (e.g. "Upper Brooklin").
+  const names=[...new Set(inventory.map(p=>clean(p?.name||"")).filter(v=>v.length>=4))]
+    .sort((a,b)=>b.length-a.length);
+
+  for(const name of names){
+    const key=norm(name);
+    if(key && combined.includes(key)){
+      exactName=name;
+      break;
+    }
+  }
+
+  // Detect a neighborhood from the real inventory.
+  const neighborhoods=[...new Set(inventory.map(p=>clean(p?.neighborhood||"")).filter(v=>v.length>=3))]
+    .sort((a,b)=>b.length-a.length);
+
+  for(const item of neighborhoods){
+    const key=norm(item);
+    if(key && combined.includes(key)){
+      neighborhood=item;
+      break;
+    }
+  }
+
+  let filtered=inventory.filter(p=>{
+    if(!p)return false;
+
+    if(exactName && !norm(p.name||"").includes(norm(exactName)))return false;
+
+    if(neighborhood){
+      const hay=norm(`${p.neighborhood||""} ${p.address||""} ${p.name||""}`);
+      if(!hay.includes(norm(neighborhood)))return false;
+    }
+
+    if(bedrooms && Number(p.bedrooms||0)!==bedrooms)return false;
+
+    if(money.min && Number(p.value||0)<money.min)return false;
+    if(money.max && Number(p.value||0)>money.max)return false;
+
+    if(wantsNew && !wantsUsed){
+      if(norm(p.source||"")!=="novos")return false;
+    }
+    if(wantsUsed && !wantsNew){
+      if(norm(p.source||"")==="novos")return false;
+    }
+
+    return true;
+  });
+
+  // If no structured filters were recognized, attempt text relevance instead.
+  const recognized=Boolean(exactName || neighborhood || bedrooms || money.min || money.max || wantsNew || wantsUsed);
+
+  if(!recognized){
+    const tokens=combined
+      .split(/\s+/)
+      .filter(t=>t.length>=4)
+      .filter(t=>!["imovel","imoveis","apartamento","apartamentos","quero","procuro","voce","voces","tem","tenho"].includes(t));
+
+    if(tokens.length){
+      filtered=inventory
+        .map(p=>{
+          const hay=norm(`${p.name||""} ${p.neighborhood||""} ${p.address||""} ${p.description||""}`);
+          const score=tokens.reduce((sum,t)=>sum+(hay.includes(t)?1:0),0);
+          return {p,score};
+        })
+        .filter(x=>x.score>0)
+        .sort((a,b)=>b.score-a.score)
+        .map(x=>x.p);
+    }else{
+      filtered=[];
+    }
+  }
+
+  const matches=filtered.slice(0,8).map(p=>({
+    id:String(p.id||""),
+    name:p.name||"",
+    neighborhood:p.neighborhood||"",
+    city:p.city||activeCity||"São Paulo",
+    value:Number(p.value)||0,
+    area:Number(p.area)||0,
+    bedrooms:Number(p.bedrooms)||0,
+    suites:Number(p.suites)||0,
+    parking:Number(p.parking)||0,
+    source:p.source||"",
+    status:p.status||"",
+    url:`${location.origin}${location.pathname}?imovel=${encodeURIComponent(String(p.id||""))}`
+  }));
+
+  return {
+    inventory_ready:Boolean(inventory.length>0),
+    inventory_partial:Boolean(
+      inventory.length>0 &&
+      typeof usedInventoryLoaded!=="undefined" &&
+      !usedInventoryLoaded
+    ),
+    inventory_count:inventory.length,
+    recognized_filters:recognized,
+    query:{
+      exact_name:exactName,
+      neighborhood,
+      bedrooms,
+      min_price:money.min,
+      max_price:money.max,
+      source:wantsNew&&!wantsUsed ? "novos" : (wantsUsed&&!wantsNew ? "usados" : "todos")
+    },
+    total:filtered.length,
+    matches
+  };
+}
+
+function aiConversationPlainText(){
+  return aiLeadConversation
+    .map(item=>`${item.role==="user"?"Cliente":"Match IA"}: ${String(item.content||"")}`)
+    .join("\n");
+}
+
+async function generateAiLeadSummary(){
+  if(!aiLeadConversation.length)return "";
+
+  try{
+    if(aiAssistantProperty?.generic_search){
+      await ensureAiInventoryReady(text);
+    }
+
+    const response=await fetch("/api/assistant",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        mode:"lead_summary",
+        history:aiLeadConversation.map(({role,content})=>({role,content})),
+        page_url:window.location.href
+      })
+    });
+
+    const data=await response.json().catch(()=>({}));
+    if(response.ok && data.success===true){
+      return clean(data.reply||"");
+    }
+  }catch(error){
+    console.warn("AI_LEAD_SUMMARY_ERROR",error);
+  }
+
+  // Safe local fallback if the summary endpoint fails.
+  const userMessages=aiLeadConversation
+    .filter(item=>item.role==="user")
+    .map(item=>item.content)
+    .slice(-6);
+
+  return userMessages.length
+    ? `Interesses informados pelo cliente: ${userMessages.join(" | ")}`
+    : "";
+}
+
+async function buildAiLeadContext(){
+  if(!aiLeadConversation.length){
+    return {summary:"",history:[],text:""};
+  }
+
+  const summary=await generateAiLeadSummary();
+  const history=aiLeadConversation.map(item=>({
+    role:item.role,
+    content:item.content,
+    at:item.at||""
+  }));
+
+  return {
+    summary,
+    history,
+    text:aiConversationPlainText()
+  };
+}
+
 
 async function sendAiAssistantMessage(text){
   text=clean(text);
@@ -8855,7 +7534,9 @@ async function sendAiAssistantMessage(text){
       body:JSON.stringify({
         message:text,
         history:aiAssistantHistory.slice(0,-1),
-        property:aiPropertyContext(aiAssistantProperty),
+        property:aiAssistantProperty?.generic_search ? {} : aiPropertyContext(aiAssistantProperty),
+        mode:aiAssistantProperty?.generic_search ? "search" : "property",
+        inventory:aiAssistantProperty?.generic_search ? aiInventoryContext(text) : null,
         page_url:window.location.href
       })
     });
@@ -8863,7 +7544,11 @@ async function sendAiAssistantMessage(text){
     thinking.remove();
     if(!response.ok || data.success!==true)throw new Error(data.error||"Não foi possível falar com a assistente agora.");
 
-    const reply=clean(data.reply||"")||"Posso continuar te ajudando com este imóvel.";
+    const reply=clean(data.reply||"")||(
+      aiAssistantProperty?.generic_search
+        ? "Posso continuar te ajudando a encontrar uma opção."
+        : "Posso continuar te ajudando com este imóvel."
+    );
     appendAiMessage("assistant",reply);
     aiAssistantHistory.push({role:"assistant",content:reply});
     aiAssistantHistory=aiAssistantHistory.slice(-10);
@@ -8900,8 +7585,7 @@ function scheduleAiAssistantForProperty(p,modal){
     trigger.id="aiAssistantTrigger";
     trigger.type="button";
     trigger.className="ai-assistant-trigger";
-    trigger.setAttribute("aria-label","Conversar com o assistente sobre este imóvel");
-    trigger.innerHTML=`<span class="ai-orb" aria-hidden="true">🤖</span><span><strong>Oi! Posso te ajudar com este imóvel?</strong><small>Me pergunte sobre preço, disponibilidade, condições ou localização.</small></span>`;
+    trigger.innerHTML=`<span class="ai-orb">✦</span><span>IA + Humano<small>Tire dúvidas ou fale com o Rafael</small></span>`;
     trigger.addEventListener("click",()=>{
       trigger.remove();
       openAiAssistant(p);
@@ -9651,7 +8335,18 @@ async function showPhotoModal(id){
           <h3>${esc(p.neighborhood || "São Paulo")}</h3>
           <p>${esc(fullAddress)}</p>
         </section>` : "")}
-<section class="detail-similar" id="detailSimilarSection">
+
+      <section class="detail-specialist">
+        <img src="/PERFIL.jfif" alt="Especialista Ynteligencia">
+        <div class="detail-specialist-copy">
+          <small>Atendimento personalizado</small>
+          <strong>Quer entender melhor este imóvel?</strong>
+          <p>A IA pode responder sobre preço, condições, localização e comparar opções. Se precisar, ela chama o atendimento humano.</p>
+        </div>
+        <button class="detail-specialist-btn" type="button">Conversar com a IA</button>
+      </section>
+
+      <section class="detail-similar" id="detailSimilarSection">
         <h3>Imóveis semelhantes</h3>
         <p>Outras opções próximas da sua busca.</p>
         <div class="detail-similar-grid" id="detailSimilarGrid"></div>
@@ -9659,12 +8354,8 @@ async function showPhotoModal(id){
     </main>
 
     <div class="detail-sticky-cta">
-      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path fill="currentColor" d="M16 3a12.8 12.8 0 0 0-11 19.36L3.3 28.7l6.5-1.7A12.9 12.9 0 1 0 16 3Zm0 23.5c-2 0-3.9-.55-5.55-1.6l-.4-.24-3.85 1 1.03-3.75-.26-.4A10.6 10.6 0 1 1 16 26.5Zm5.83-7.95c-.32-.16-1.9-.94-2.2-1.05-.3-.11-.51-.16-.73.16-.21.32-.83 1.05-1.02 1.26-.19.21-.38.24-.7.08-.32-.16-1.35-.5-2.57-1.6-.95-.84-1.59-1.88-1.77-2.2-.19-.32-.02-.49.14-.65.14-.14.32-.38.48-.57.16-.19.21-.32.32-.54.11-.21.05-.4-.03-.57-.08-.16-.73-1.75-1-2.4-.26-.63-.53-.55-.73-.56h-.62c-.21 0-.56.08-.86.4-.3.32-1.13 1.1-1.13 2.69 0 1.59 1.16 3.12 1.32 3.34.16.21 2.28 3.48 5.52 4.88.77.33 1.37.53 1.84.68.77.24 1.47.21 2.03.13.62-.09 1.9-.78 2.17-1.53.27-.76.27-1.42.19-1.55-.08-.13-.3-.21-.62-.37Z"/>
-        </svg>
-        <span>Compartilhar no WhatsApp</span>
-      </button>
+      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">Compartilhar</button>
+      <button class="detail-interest-btn" type="button">✨ Perguntar à IA</button>
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
@@ -9685,10 +8376,9 @@ async function showPhotoModal(id){
     ].filter(Boolean).join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
   });
+  modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openAiAssistant(p));
+  modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
   document.body.appendChild(modal);
-
-  // Depois de 3 segundos na ficha, o robô aparece convidando o cliente
-  // para conversar. O chat só abre se o cliente tocar no convite.
   scheduleAiAssistantForProperty(p,modal);
 
   modal.querySelector(".detail-gallery-all-btn")?.addEventListener("click",()=>{
@@ -10700,18 +9390,54 @@ $("catalogState")?.addEventListener(
 
 
 async function executeCatalogSearch(){
-  $("catalog").classList.add("visible");
-  activeCity=clean($("catalogCity")?.value || activeCity) || activeCity;
-  activeState=String($("catalogState")?.value || activeState).trim().toUpperCase() || activeState;
-  if($("catalogStatus")) $("catalogStatus").textContent="Carregando imóveis...";
-  if($("catalogLoadMore")) $("catalogLoadMore").style.display="none";
-  await fetchNewCatalogPage({reset:true});
-  inventoryReady=true;
-  inventoryLoading=false;
-  inventoryLoadError=false;
-  renderCatalog();
-  updateCatalogUrl();
-  $("catalog").scrollIntoView({behavior:"smooth",block:"start"});
+  const source=$("catalogSource")?.value || "todos";
+
+  $("catalog")?.classList.add("visible");
+
+  if($("catalogStatus")){
+    $("catalogStatus").textContent="Buscando imóveis...";
+  }
+
+  try{
+    inventoryLoading=true;
+    inventoryLoadError=false;
+
+    if(source==="usados"){
+      await loadUsedInventory();
+      properties=deduplicate([...usedPropertiesCache]);
+    }else{
+      await fetchNewCatalogPage({reset:true});
+      properties=deduplicate([...newPropertiesCache]);
+    }
+
+    inventoryReady=properties.length>0;
+    inventoryLoading=false;
+
+    renderCatalog();
+    updateCatalogUrl();
+
+    // For "todos", enrich with used properties only AFTER results are already visible.
+    if(source==="todos" && !usedInventoryLoaded && !usedInventoryLoading){
+      setTimeout(()=>{
+        loadUsedInventory()
+          .then(()=>{
+            properties=deduplicate([...newPropertiesCache,...usedPropertiesCache]);
+            fillCatalogNeighborhoods();
+            renderCatalog();
+          })
+          .catch(()=>{});
+      },250);
+    }
+
+    $("catalog")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(error){
+    console.error("CATALOG_SEARCH_ERROR",error);
+    inventoryLoading=false;
+    inventoryLoadError=true;
+    if($("catalogStatus")){
+      $("catalogStatus").textContent="Não foi possível atualizar o estoque agora.";
+    }
+  }
 }
 
 $("catalogSearchBtn").addEventListener("click", executeCatalogSearch);
@@ -11234,8 +9960,17 @@ function openLeadCapture(p,prefill={}){
 
           created_at:
             new Date()
-              .toISOString()
+              .toISOString(),
+
+          ai_summary:"",
+          ai_history:[],
+          ai_history_text:""
         };
+
+        const aiLeadContext=await buildAiLeadContext();
+        lead.ai_summary=aiLeadContext.summary || "";
+        lead.ai_history=aiLeadContext.history || [];
+        lead.ai_history_text=aiLeadContext.text || "";
 
 
         submitButton.disabled=
@@ -11276,7 +10011,7 @@ function openLeadCapture(p,prefill={}){
                     lead.email,
 
                   origem:
-                    prefill.source==="match_ia_phone" ? "ynteligencia_match_ia" : "ynteligencia",
+                    String(prefill.source||"").startsWith("match_ia") ? "ynteligencia_match_ia" : "ynteligencia",
 
                   pagina:
                     window.location.href,
@@ -11310,7 +10045,7 @@ function openLeadCapture(p,prefill={}){
 
                   mensagem:
 
-                    `${prefill.source==="match_ia_phone" ? "NOVO LEAD MATCH IA" : "NOVO LEAD YNTELIGENCIA"} | ` +
+                    `${String(prefill.source||"").startsWith("match_ia") ? "NOVO LEAD MATCH IA" : "NOVO LEAD YNTELIGENCIA"} | ` +
 
                     `Código do imóvel: ${lead.property_id} | ` +
 
@@ -11328,7 +10063,15 @@ function openLeadCapture(p,prefill={}){
 
                     `Dormitórios: ${profile.bedrooms ?? ""} | ` +
 
-                    `Momento de compra: ${profile.timing||""}`
+                    `Momento de compra: ${profile.timing||""}` +
+
+                    (lead.ai_summary
+                      ? ` | RESUMO MATCH IA: ${lead.ai_summary}`
+                      : "") +
+
+                    (lead.ai_history_text
+                      ? ` | HISTÓRICO MATCH IA:\n${lead.ai_history_text}`
+                      : "")
 
                 })
 
@@ -11462,7 +10205,13 @@ function openLeadCapture(p,prefill={}){
                   lead.match_score,
 
                 crm:
-                  "praedium"
+                  "praedium",
+
+                ai_summary:
+                  lead.ai_summary || "",
+
+                ai_conversation_length:
+                  Array.isArray(lead.ai_history) ? lead.ai_history.length : 0
               },
 
               profile:{
@@ -12034,13 +10783,11 @@ async function loadInventory(){
     fillCatalogNeighborhoods();
     if($("catalog")?.classList.contains("visible"))renderCatalog();
 
-    const loadUsedLater=()=>loadUsedInventory().catch(()=>{});
-
-    if("requestIdleCallback" in window){
-      window.requestIdleCallback(loadUsedLater,{timeout:1400});
-    }else{
-      setTimeout(loadUsedLater,450);
-    }
+    /*
+      PERFORMANCE V2:
+      não baixar o CSV de usados automaticamente.
+      Ele entra somente quando a busca/IA realmente precisar.
+    */
 
   }catch(error){
     console.error("Falha ao carregar inventário:",error);
@@ -12080,969 +10827,105 @@ if($("catalogState")){
 }
 
 
-loadInventory()
-.then(
-  ()=>{
 
-    /*
-      PERFORMANCE:
-      o app fica utilizável assim que o inventário essencial termina.
-      photos.json é carregado depois do primeiro paint e não bloqueia
-      mais a abertura da interface.
-    */
-    const loadPhotosInBackground=()=>{
-      loadPhotoManifest()
-        .then(()=>{
-          applyHeroInventoryPhoto();
+(function startYnteligenciaFast(){
+  const params=new URLSearchParams(window.location.search);
 
-          if($("results")?.classList.contains("visible")){
-            showMatches();
-          }
+  const needsInventoryImmediately=Boolean(
+    params.get("imovel") ||
+    params.get("modo")==="explorar" ||
+    params.get("bairro") ||
+    params.get("neighborhood") ||
+    params.get("dormitorios") ||
+    params.get("bedrooms") ||
+    params.get("valor_min") ||
+    params.get("min_price") ||
+    params.get("valor_max") ||
+    params.get("max_price")
+  );
 
-          if($("catalog")?.classList.contains("visible")){
-            renderCatalog();
-          }
-        })
-        .catch(()=>{});
-    };
+  async function finishStartupAfterInventory(){
+    try{
+      const loadPhotosInBackground=()=>{
+        loadPhotoManifest()
+          .then(()=>{
+            applyHeroInventoryPhoto();
 
-    if("requestIdleCallback" in window){
-      window.requestIdleCallback(
-        loadPhotosInBackground,
-        {timeout:1800}
-      );
-    }else{
-      setTimeout(loadPhotosInBackground,700);
-    }
+            if($("results")?.classList.contains("visible")){
+              showMatches();
+            }
 
-    /* Link compartilhado abre diretamente a ficha técnica do imóvel. */
-    const sharedPropertyId=new URLSearchParams(window.location.search).get("imovel");
-    if(sharedPropertyId){
-      const sharedProperty=properties.find(item=>String(item.id)===String(sharedPropertyId));
-      if(sharedProperty){
-        document.body.classList.remove("home-mode");
-        showPhotoModal(String(sharedProperty.id));
+            if($("catalog")?.classList.contains("visible")){
+              renderCatalog();
+            }
+          })
+          .catch(()=>{});
+      };
+
+      if("requestIdleCallback" in window){
+        window.requestIdleCallback(loadPhotosInBackground,{timeout:2200});
       }else{
-        showToast("Este imóvel não está disponível no estoque atual.");
+        setTimeout(loadPhotosInBackground,1200);
       }
-    }
 
-    /*
-      URL gerada pelo Explorar:
-      abre o catálogo com a mesma busca salva na URL.
-    */
-    const openedCatalogFromUrl=
-      !sharedPropertyId &&
-      loadCatalogFromUrl();
+      const sharedPropertyId=
+        new URLSearchParams(window.location.search).get("imovel");
 
-    if(openedCatalogFromUrl){
-      document.body.classList.add("campaign-catalog-mode");
-    }
+      if(sharedPropertyId){
+        const sharedProperty=
+          properties.find(item=>String(item.id)===String(sharedPropertyId));
 
-    /* Se o clique veio de um anúncio com intenção conhecida, entrega
-       os imóveis imediatamente. A home e o wizard continuam intactos
-       para acessos normais ao domínio.
-       Esse fluxo só roda quando NÃO for uma URL modo=explorar. */
-    if(
-      !openedCatalogFromUrl &&
-      adIntent.active &&
-      !sharedPropertyId
-    ){
-      updateAdMatchUI();
-      document.body.classList.remove("home-mode");
-      if(adIntentHasPrice()){
-        showMatches();
-      }else{
-        openAdBudgetQuestion();
-      }
-    }
-
-    /*
-      Sem wizard:
-      acesso direto ao domínio abre a exploração.
-      Campanhas continuam abrindo o filtro pronto pela URL.
-    */
-    if(
-      !openedCatalogFromUrl &&
-      !sharedPropertyId &&
-      !adIntent.active
-    ){
-      openGeneralCatalog(false);
-    }
-
-    console.log(
-      `Ynteligencia pronta: ${properties.length} imóveis · fotos em carregamento progressivo`
-    );
-  }
-);
-
-</script>
-
-<script>
-(function(){
-  const menu=document.getElementById('appMenu');
-  const backdrop=document.getElementById('menuBackdrop');
-  const openTop=document.getElementById('openAppMenu');
-  const openDock=document.getElementById('openAppMenuDock');
-  const closeBtn=document.getElementById('closeAppMenu');
-  const installCard=document.getElementById('installAppButton');
-  const installModal=document.getElementById('installModal');
-  const installNow=document.getElementById('installNowButton');
-  const installClose=document.getElementById('closeInstallModal');
-  const fallback=document.getElementById('installFallback');
-  let deferredInstallPrompt=null;
-
-  function openMenu(){
-    menu.classList.add('open');
-    backdrop.classList.add('open');
-    menu.setAttribute('aria-hidden','false');
-    openTop?.setAttribute('aria-expanded','true');
-    document.body.style.overflow='hidden';
-  }
-  function closeMenu(){
-    menu.classList.remove('open');
-    backdrop.classList.remove('open');
-    menu.setAttribute('aria-hidden','true');
-    openTop?.setAttribute('aria-expanded','false');
-    document.body.style.overflow='';
-  }
-  function openInstall(){
-    closeMenu();
-    installModal.classList.add('open');
-    installModal.setAttribute('aria-hidden','false');
-    document.body.style.overflow='hidden';
-    if(!deferredInstallPrompt) fallback.hidden=false;
-  }
-  function closeInstall(){
-    installModal.classList.remove('open');
-    installModal.setAttribute('aria-hidden','true');
-    document.body.style.overflow='';
-  }
-
-  openTop?.addEventListener('click',openMenu);
-  openDock?.addEventListener('click',openMenu);
-  closeBtn?.addEventListener('click',closeMenu);
-  backdrop?.addEventListener('click',closeMenu);
-  installCard?.addEventListener('click',openInstall);
-  installClose?.addEventListener('click',closeInstall);
-  installModal?.addEventListener('click',e=>{if(e.target===installModal) closeInstall();});
-
-  document.querySelectorAll('[data-scroll-target]').forEach(el=>{
-    el.addEventListener('click',()=>{
-      const id=el.getAttribute('data-scroll-target');
-      closeMenu();
-      setTimeout(()=>{
-        if(id==='match') enterMatchMode();
-        else if(id==='explore') openGeneralCatalog();
-        else{
-          if(id==='inicio'){goHome();return;}
-          document.body.classList.toggle('home-mode',id==='inicio');
-          document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
+        if(sharedProperty){
+          document.body.classList.remove("home-mode");
+          showPhotoModal(String(sharedProperty.id));
         }
-      },80);
-    });
-  });
-
-  window.addEventListener('beforeinstallprompt',event=>{
-    event.preventDefault();
-    deferredInstallPrompt=event;
-    fallback.hidden=true;
-  });
-
-  installNow?.addEventListener('click',async()=>{
-    if(!deferredInstallPrompt){
-      fallback.hidden=false;
-      return;
-    }
-    deferredInstallPrompt.prompt();
-    try{await deferredInstallPrompt.userChoice;}catch(e){}
-    deferredInstallPrompt=null;
-    closeInstall();
-  });
-
-  window.addEventListener('appinstalled',()=>{
-    deferredInstallPrompt=null;
-    if(installCard) installCard.style.display='none';
-    closeInstall();
-  });
-
-  if(window.matchMedia('(display-mode: standalone)').matches){
-    if(installCard) installCard.style.display='none';
-  }
-})();
-</script>
-
-
-<!-- =========================================================
-     COMPARAÇÃO CONTEXTUAL ENTRE BAIRROS · ZONA OESTE
-
-     NÍVEL 1 · PREMIUM
-     Pinheiros → Vila Madalena → Perdizes → Pompéia → Pinheiros
-
-     NÍVEL 2 · MÉDIO / MÉDIO-ALTO
-     Vila Romana → Lapa → Água Branca → Barra Funda → Vila Romana
-
-     Preserva dormitórios, faixa de valor, UTMs, GCLID/GBRAID/WBRAID
-     e demais parâmetros da campanha. Troca somente o bairro.
-========================================================== -->
-<style>
-  .neighborhood-compare-fab{
-    position:fixed;
-    left:14px;
-    bottom:88px;
-    z-index:940;
-    display:none;
-    align-items:center;
-    gap:10px;
-    width:min(300px,calc(100vw - 28px));
-    padding:11px 13px;
-    border:1px solid rgba(198,167,107,.52);
-    border-radius:16px;
-    background:rgba(252,250,246,.96);
-    color:#4A443C;
-    box-shadow:0 14px 34px rgba(32,28,23,.14);
-    text-decoration:none;
-    -webkit-backdrop-filter:blur(14px);
-    backdrop-filter:blur(14px);
-    opacity:0;
-    transform:translateY(12px);
-    pointer-events:none;
-    transition:opacity .22s ease,transform .22s ease,box-shadow .22s ease;
-  }
-  .neighborhood-compare-fab.is-ready{display:flex}
-  .neighborhood-compare-fab.is-visible{opacity:1;transform:translateY(0);pointer-events:auto}
-  .neighborhood-compare-fab:hover{box-shadow:0 18px 42px rgba(32,28,23,.19);transform:translateY(-2px)}
-
-  .neighborhood-compare-icon{
-    width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;
-    border-radius:50%;background:#F0ECE3;border:1px solid #DED8CD;color:#6A635A;font-size:15px;
-  }
-  .neighborhood-compare-copy{min-width:0;display:flex;flex-direction:column;gap:1px}
-  .neighborhood-compare-kicker{font-size:9px;line-height:1.2;letter-spacing:.11em;font-weight:800;color:#7D776E;text-transform:uppercase}
-  .neighborhood-compare-title{font-size:13px;line-height:1.25;font-weight:800;color:#4A443C}
-  .neighborhood-compare-subtitle{margin-top:1px;font-size:10px;line-height:1.25;color:#7D776E}
-  .neighborhood-compare-arrow{margin-left:auto;flex:0 0 auto;font-size:18px;line-height:1;color:#9A7D46}
-
-  /* Refinar MATCH minimizado no desktop. */
-  @media(min-width:769px){
-    .refine-match-fab{
-      display:flex!important;
-      left:auto!important;
-      right:18px!important;
-      bottom:18px!important;
-      transform:none!important;
-      min-height:36px!important;
-      height:36px!important;
-      width:auto!important;
-      padding:0 13px!important;
-      border:1px solid rgba(198,167,107,.42)!important;
-      border-radius:999px!important;
-      background:rgba(24,24,22,.92)!important;
-      color:#F7F4ED!important;
-      box-shadow:0 10px 26px rgba(0,0,0,.18)!important;
-      font-size:11px!important;
-      font-weight:800!important;
-      opacity:.88;
-      white-space:nowrap;
-      -webkit-backdrop-filter:blur(12px);
-      backdrop-filter:blur(12px);
-    }
-    .refine-match-fab:hover{opacity:1}
-    .refine-match-shell{bottom:62px!important}
-    body.match-results-mode{padding-bottom:78px!important}
-  }
-
-  @media(max-width:768px){
-    .neighborhood-compare-fab{left:10px;bottom:82px;width:min(262px,calc(100vw - 20px));padding:9px 11px;border-radius:14px}
-    .neighborhood-compare-icon{width:30px;height:30px;flex-basis:30px;font-size:13px}
-    .neighborhood-compare-title{font-size:12px}
-    .neighborhood-compare-subtitle{font-size:9px}
-  }
-</style>
-
-<a id="neighborhoodCompareFab" class="neighborhood-compare-fab" href="#" aria-label="Comparar imóveis em outro bairro">
-  <span class="neighborhood-compare-icon" aria-hidden="true">↔</span>
-  <span class="neighborhood-compare-copy">
-    <span class="neighborhood-compare-kicker" id="neighborhoodCompareKicker">COMPARE A REGIÃO</span>
-    <strong class="neighborhood-compare-title" id="neighborhoodCompareTitle"></strong>
-    <span class="neighborhood-compare-subtitle" id="neighborhoodCompareSubtitle"></span>
-  </span>
-  <span class="neighborhood-compare-arrow" aria-hidden="true">›</span>
-</a>
-
-<script>
-(() => {
-  const fab = document.getElementById("neighborhoodCompareFab");
-  const kicker = document.getElementById("neighborhoodCompareKicker");
-  const title = document.getElementById("neighborhoodCompareTitle");
-  const subtitle = document.getElementById("neighborhoodCompareSubtitle");
-  if(!fab || !kicker || !title || !subtitle) return;
-
-  const normalizeNeighborhood = value => String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const circuit = {
-    "pinheiros": {zone:"oeste",next:"Vila Madalena",tier:"premium",label:"Ver imóveis na Vila Madalena",reason:"Continue comparando no circuito premium"},
-    "vila madalena": {zone:"oeste",next:"Perdizes",tier:"premium",label:"Ver imóveis em Perdizes",reason:"Continue comparando no circuito premium"},
-    "perdizes": {zone:"oeste",next:"Pompéia",tier:"premium",label:"Ver imóveis na Pompéia",reason:"Compare opções próximas na Zona Oeste"},
-    "pompeia": {zone:"oeste",next:"Pinheiros",tier:"premium",label:"Ver imóveis em Pinheiros",reason:"Continue comparando no circuito premium"},
-    "vila romana": {zone:"oeste",next:"Lapa",tier:"medio",label:"Ver imóveis na Lapa",reason:"Compare alternativas na mesma faixa regional"},
-    "lapa": {zone:"oeste",next:"Água Branca",tier:"medio",label:"Ver imóveis na Água Branca",reason:"Compare alternativas na mesma faixa regional"},
-    "agua branca": {zone:"oeste",next:"Barra Funda",tier:"medio",label:"Ver imóveis na Barra Funda",reason:"Compare mobilidade, metragem e valor"},
-    "barra funda": {zone:"oeste",next:"Vila Romana",tier:"medio",label:"Ver imóveis na Vila Romana",reason:"Compare alternativas na mesma faixa regional"},
-    "moema": {zone:"sul",next:"Campo Belo",tier:"premium",label:"Ver imóveis no Campo Belo",reason:"Compare outra opção premium da Zona Sul"},
-    "campo belo": {zone:"sul",next:"Brooklin",tier:"premium",label:"Ver imóveis no Brooklin",reason:"Compare localização, metragem e mobilidade"},
-    "brooklin": {zone:"sul",next:"Vila Olímpia",tier:"premium",label:"Ver imóveis na Vila Olímpia",reason:"Continue comparando no eixo premium"},
-    "vila olimpia": {zone:"sul",next:"Moema",tier:"premium",label:"Ver imóveis em Moema",reason:"Compare outra referência premium da Zona Sul"},
-    "vila mariana": {zone:"sul",next:"Vila Clementino",tier:"medio",label:"Ver imóveis na Vila Clementino",reason:"Compare bairros próximos com perfil semelhante"},
-    "vila clementino": {zone:"sul",next:"Saúde",tier:"medio",label:"Ver imóveis na Saúde",reason:"Compare metragem, mobilidade e valor"},
-    "saude": {zone:"sul",next:"Chácara Santo Antônio",tier:"medio",label:"Ver imóveis na Chácara Santo Antônio",reason:"Compare alternativas no eixo da Zona Sul"},
-    "chacara santo antonio": {zone:"sul",next:"Santo Amaro",tier:"medio",label:"Ver imóveis em Santo Amaro",reason:"Compare mobilidade, estoque e faixa de valor"},
-    "santo amaro": {zone:"sul",next:"Vila Mariana",tier:"medio",label:"Ver imóveis na Vila Mariana",reason:"Volte ao circuito de comparação da Zona Sul"}
-  };
-
-  const satelliteMap = {
-    "sumarezinho": {zone:"oeste",next:"Vila Madalena",tier:"resgate"},
-    "alto da lapa": {zone:"oeste",next:"Vila Romana",tier:"resgate"},
-    "vila ipojuca": {zone:"oeste",next:"Vila Romana",tier:"resgate"},
-    "jaguare": {zone:"oeste",next:"Vila Leopoldina",tier:"resgate"},
-    "vila leopoldina": {zone:"oeste",next:"Lapa",tier:"resgate"},
-    "butanta": {zone:"oeste",next:"Pinheiros",tier:"resgate"},
-    "rio pequeno": {zone:"oeste",next:"Butantã",tier:"resgate"},
-    "morumbi": {zone:"sul",next:"Brooklin",tier:"resgate"},
-    "planalto paulista": {zone:"sul",next:"Saúde",tier:"resgate"},
-    "mirandopolis": {zone:"sul",next:"Vila Mariana",tier:"resgate"},
-    "jabaquara": {zone:"sul",next:"Saúde",tier:"resgate"},
-    "ibirapuera": {zone:"sul",next:"Moema",tier:"resgate"},
-    "itaim bibi": {zone:"sul",next:"Vila Olímpia",tier:"resgate"}
-  };
-
-  const zoneNeighborhoods = {
-    oeste: ["Pinheiros","Vila Madalena","Perdizes","Pompéia","Vila Romana","Lapa","Água Branca","Barra Funda","Vila Leopoldina","Butantã","Sumarezinho","Alto da Lapa","Vila Ipojuca","Jaguaré"],
-    sul: ["Moema","Campo Belo","Brooklin","Vila Olímpia","Vila Mariana","Vila Clementino","Saúde","Chácara Santo Antônio","Santo Amaro","Morumbi","Planalto Paulista","Mirandópolis","Jabaquara","Ibirapuera","Itaim Bibi"]
-  };
-
-  const anchorPriority = [
-    "Pinheiros","Perdizes","Vila Madalena","Pompéia","Vila Romana","Lapa",
-    "Moema","Brooklin","Campo Belo","Vila Olímpia","Vila Mariana","Saúde","Santo Amaro"
-  ];
-
-  function getAvailableNeighborhoods(){
-    const select = document.getElementById("refineNeighborhood");
-    if(!select) return [];
-    return [...select.options]
-      .map(option => String(option.value || "").trim())
-      .filter(Boolean)
-      .filter((value,index,array) => array.findIndex(v => normalizeNeighborhood(v) === normalizeNeighborhood(value)) === index);
-  }
-
-  function findAvailable(name, available){
-    const key = normalizeNeighborhood(name);
-    return available.find(item => normalizeNeighborhood(item) === key) || null;
-  }
-
-  function inferZone(current){
-    const key = normalizeNeighborhood(current);
-    for(const [zone,names] of Object.entries(zoneNeighborhoods)){
-      if(names.some(name => normalizeNeighborhood(name) === key)) return zone;
-    }
-    return null;
-  }
-
-  function firstAvailable(candidates, available, current){
-    const currentKey = normalizeNeighborhood(current);
-    for(const candidate of candidates){
-      const found = findAvailable(candidate, available);
-      if(found && normalizeNeighborhood(found) !== currentKey) return found;
-    }
-    return null;
-  }
-
-  function getActiveZone(currentRaw){
-    const url = new URL(window.location.href);
-
-    // 1) Região explícita na URL tem prioridade.
-    const regionRaw = normalizeNeighborhood(
-      url.searchParams.get("region") ||
-      url.searchParams.get("regiao") ||
-      url.searchParams.get("zona") ||
-      ""
-    );
-
-    if(regionRaw){
-      if(regionRaw.includes("oeste")) return "oeste";
-      if(regionRaw.includes("sul")) return "sul";
-    }
-
-    // 2) Se a URL já está em um bairro conhecido, a zona desse bairro vale.
-    const neighborhoodZone = inferZone(currentRaw);
-    if(neighborhoodZone) return neighborhoodZone;
-
-    // 3) Preserva a intenção regional escolhida na sessão.
-    try{
-      const stored = sessionStorage.getItem("ynteligencia_active_zone");
-      if(stored === "oeste" || stored === "sul") return stored;
-    }catch(e){}
-
-    return null;
-  }
-
-  function rememberActiveZone(zone){
-    if(zone !== "oeste" && zone !== "sul") return;
-    try{
-      sessionStorage.setItem("ynteligencia_active_zone", zone);
-    }catch(e){}
-  }
-
-  function getCompassRoute(currentRaw){
-    const currentKey = normalizeNeighborhood(currentRaw);
-    const available = getAvailableNeighborhoods();
-    if(!available.length) return null;
-
-    // A zona ativa é uma trava. Enquanto existir contexto regional,
-    // a Bússola nunca recomenda bairro de outra zona.
-    const activeZone = getActiveZone(currentRaw);
-    if(activeZone) rememberActiveZone(activeZone);
-
-    const zoneCandidates = activeZone
-      ? (zoneNeighborhoods[activeZone] || [])
-      : [];
-
-    const direct = circuit[currentKey];
-
-    // 1. Circuito conhecido, respeitando obrigatoriamente a zona ativa.
-    if(direct){
-      const lockedZone = activeZone || direct.zone;
-      rememberActiveZone(lockedZone);
-
-      // Só aceita o próximo bairro se ele também pertencer à zona travada.
-      const nextZone = inferZone(direct.next);
-      const exact = nextZone === lockedZone
-        ? findAvailable(direct.next, available)
-        : null;
-
-      if(exact){
-        return {...direct,zone:lockedZone,next:exact,mode:"circuit"};
       }
 
-      const sameZone = firstAvailable(
-        zoneNeighborhoods[lockedZone] || [],
-        available,
-        currentRaw
-      );
+      const openedCatalogFromUrl=
+        !sharedPropertyId &&
+        typeof loadCatalogFromUrl==="function" &&
+        loadCatalogFromUrl();
 
-      if(sameZone){
-        return {
-          zone:lockedZone,
-          next:sameZone,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${sameZone}`,
-          reason:"A Bússola encontrou outra opção disponível na mesma região"
-        };
+      if(openedCatalogFromUrl){
+        document.body.classList.add("campaign-catalog-mode");
       }
 
-      // Não cruza de zona automaticamente.
-      return null;
-    }
-
-    // 2. Bairro satélite: também permanece preso à zona ativa.
-    const satellite = satelliteMap[currentKey];
-    if(satellite){
-      const lockedZone = activeZone || satellite.zone;
-      rememberActiveZone(lockedZone);
-
-      const targetZone = inferZone(satellite.next);
-      const exact = targetZone === lockedZone
-        ? findAvailable(satellite.next, available)
-        : null;
-
-      const fallback = exact || firstAvailable(
-        zoneNeighborhoods[lockedZone] || [],
-        available,
-        currentRaw
-      );
-
-      if(fallback){
-        return {
-          zone:lockedZone,
-          next:fallback,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${fallback}`,
-          reason:"A Bússola encontrou um bairro próximo para continuar sua busca"
-        };
+      if(
+        !sharedPropertyId &&
+        !openedCatalogFromUrl &&
+        typeof adIntent!=="undefined" &&
+        adIntent.active
+      ){
+        try{
+          document.body.classList.add("ad-match-mode");
+          document.body.classList.remove("home-mode");
+          showMatches();
+        }catch(e){}
       }
-
-      return null;
+    }catch(error){
+      console.warn("FAST_STARTUP_POST_INVENTORY",error);
     }
-
-    // 3. Região selecionada sem bairro atual:
-    // recomenda SOMENTE bairros daquela região.
-    if(activeZone){
-      const fallback = firstAvailable(
-        zoneCandidates,
-        available,
-        currentRaw
-      );
-
-      if(fallback){
-        return {
-          zone:activeZone,
-          next:fallback,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${fallback}`,
-          reason:"Continue explorando imóveis na região selecionada"
-        };
-      }
-
-      // Se não houver opção naquela zona, não manda para outra zona.
-      return null;
-    }
-
-    // 4. Sem qualquer intenção regional:
-    // mantém o comportamento aberto da Bússola.
-    const globalFallback =
-      firstAvailable(anchorPriority, available, currentRaw) ||
-      available.find(item => normalizeNeighborhood(item) !== currentKey);
-
-    if(globalFallback){
-      const fallbackZone = inferZone(globalFallback);
-      if(fallbackZone) rememberActiveZone(fallbackZone);
-
-      return {
-        zone:fallbackZone || "explorar",
-        next:globalFallback,
-        tier:"resgate",
-        mode:"rescue",
-        label:`Explorar ${globalFallback}`,
-        reason:"A Bússola encontrou uma nova região para você comparar"
-      };
-    }
-
-    return null;
-  }
-
-  let activeRoute = null;
-  let activeCurrent = "";
-
-  function renderCompass(){
-    const url = new URL(window.location.href);
-    const currentRaw = url.searchParams.get("bairro") || url.searchParams.get("neighborhood") || "";
-    const route = getCompassRoute(currentRaw);
-
-    activeRoute = route;
-    activeCurrent = currentRaw;
-
-    if(!route){
-      fab.classList.remove("is-ready","is-visible");
-      return;
-    }
-
-    const bedrooms = url.searchParams.get("dormitorios") || url.searchParams.get("bedrooms") || "";
-    url.searchParams.delete("bairro");
-    url.searchParams.delete("neighborhood");
-    url.searchParams.delete("region");
-    url.searchParams.set("bairro", route.next);
-
-    fab.href = url.pathname + url.search + url.hash;
-    fab.dataset.fromNeighborhood = currentRaw;
-    fab.dataset.toNeighborhood = route.next;
-    fab.dataset.tier = route.tier;
-
-    if(route.mode === "circuit"){
-      const zoneLabel = route.zone === "sul" ? "ZONA SUL" : "ZONA OESTE";
-      kicker.textContent = route.tier === "premium" ? `COMPARE · ${zoneLabel} PREMIUM` : `COMPARE · ${zoneLabel}`;
-    }else{
-      kicker.textContent = "BÚSSOLA · CONTINUE EXPLORANDO";
-    }
-
-    title.textContent = route.label || `Ver imóveis em ${route.next}`;
-    subtitle.textContent = bedrooms ? `${route.reason} · ${bedrooms}+ dormitórios` : route.reason;
-    fab.classList.add("is-ready");
-    fab.classList.toggle("is-visible", window.scrollY > 420);
-  }
-
-  window.addEventListener("scroll", () => {
-    if(activeRoute) fab.classList.toggle("is-visible", window.scrollY > 420);
-  }, {passive:true});
-
-  window.addEventListener("popstate", () => setTimeout(renderCompass, 50));
-
-  // O MATCH atualiza a URL sem necessariamente recarregar a página.
-  // Esta checagem leve mantém a Bússola sincronizada após Aplicar.
-  let lastSearch = window.location.search;
-  setInterval(() => {
-    if(window.location.search !== lastSearch){
-      lastSearch = window.location.search;
-      renderCompass();
-    }
-  }, 400);
-
-  fab.addEventListener("click", event => {
-    event.preventDefault();
-    const route = activeRoute;
-    const currentRaw = activeCurrent;
-    if(!route) return;
-
-    // Se a Bússola for acionada dentro da ficha do imóvel,
-    // fecha a ficha antes de abrir o Refinar MATCH.
-    const propertyDetail = document.getElementById("photoModal");
-    if(propertyDetail){
-      propertyDetail.remove();
-    }
-
-    try{
-      if(typeof updateAdMatchUI === "function") updateAdMatchUI();
-      const neighborhoodSelect = document.getElementById("refineNeighborhood");
-      const nextOption = neighborhoodSelect
-        ? [...neighborhoodSelect.options].find(option => normalizeNeighborhood(option.value) === normalizeNeighborhood(route.next))
-        : null;
-
-      if(!nextOption){
-        renderCompass();
-        if(typeof showToast === "function") showToast("Atualizamos as opções disponíveis. Escolha outra região.");
-        return;
-      }
-
-      neighborhoodSelect.value = nextOption.value;
-      window.__pendingNeighborhoodComparison = {
-        from_neighborhood: currentRaw,
-        to_neighborhood: route.next,
-        circuit_tier: route.tier,
-        circuit_zone: route.zone,
-        compass_mode: route.mode
-      };
-
-      if(typeof setRefineMatchOpen === "function") setRefineMatchOpen(true);
-    }catch(e){
-      console.warn("Falha ao abrir a Bússola:", e);
-      window.location.href = fab.href;
-      return;
-    }
-
-    try{
-      if(typeof gtag === "function"){
-        gtag("event", route.mode === "circuit" ? "neighborhood_compare_open" : "neighborhood_compass_open", {
-          from_neighborhood: currentRaw,
-          to_neighborhood: route.next,
-          circuit_tier: route.tier,
-          circuit_zone: route.zone,
-          compass_mode: route.mode,
-          page_location: window.location.href
-        });
-      }
-    }catch(e){}
-
-    try{
-      if(typeof supabaseTrack === "function"){
-        supabaseTrack(route.mode === "circuit" ? "neighborhood_compare_open" : "neighborhood_compass_open", {
-          from_neighborhood: currentRaw,
-          to_neighborhood: route.next,
-          circuit_tier: route.tier,
-          circuit_zone: route.zone,
-          compass_mode: route.mode,
-          pathname: window.location.pathname,
-          search: window.location.search
-        });
-      }
-    }catch(e){}
-  });
-
-  // Espera o catálogo preencher o select antes da primeira decisão.
-  setTimeout(renderCompass, 250);
-  setTimeout(renderCompass, 1200);
-})();
-</script>
-
-
-<script>
-/* PWA: registra o Service Worker sem alterar interface, MATCH ou tracking. */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(error => {
-      console.warn("Service Worker não registrado:", error);
-    });
-  });
-}
-</script>
-
-
-
-<!-- =========================================================
-     UX MOBILE · REFINAR MATCH MINIMIZADO
-     O circuito de bairros permanece como ação principal.
-     Refinar MATCH vira um botão circular e abre somente ao toque.
-========================================================== -->
-<style>
-@media(max-width:768px){
-
-  /* Reserva menos espaço no feed: o painel não fica mais aberto. */
-  body.match-results-mode{
-    padding-bottom:92px !important;
-  }
-
-  /* Botão secundário, compacto, no canto direito. */
-  body.match-results-mode .refine-match-fab{
-    display:grid !important;
-    place-items:center !important;
-    position:fixed !important;
-    z-index:955 !important;
-    left:auto !important;
-    right:10px !important;
-    bottom:max(82px,calc(74px + env(safe-area-inset-bottom))) !important;
-    transform:none !important;
-
-    width:44px !important;
-    min-width:44px !important;
-    max-width:44px !important;
-    height:44px !important;
-    min-height:44px !important;
-
-    padding:0 !important;
-    margin:0 !important;
-
-    border:1px solid rgba(198,167,107,.55) !important;
-    border-radius:50% !important;
-
-    background:rgba(24,24,22,.94) !important;
-    color:#F7F4ED !important;
-
-    box-shadow:0 10px 26px rgba(0,0,0,.22) !important;
-
-    font-size:0 !important;
-    line-height:1 !important;
-    opacity:.94 !important;
-
-    -webkit-backdrop-filter:blur(12px) !important;
-    backdrop-filter:blur(12px) !important;
-  }
-
-  body.match-results-mode .refine-match-fab::before{
-    content:"✦";
-    display:block;
-    font-size:18px;
-    line-height:1;
-    color:#E4D0A3;
-  }
-
-  body.match-results-mode .refine-match-fab:active{
-    transform:scale(.96) !important;
   }
 
   /*
-     Reserva espaço para o botão circular do MATCH.
-     Assim o super botão de comparação continua sendo o protagonista
-     sem sobreposição mesmo em celulares estreitos.
+    Normal home visit:
+    do NOT fetch inventory, CSV or photos.
+    This keeps first paint instant.
   */
-  .neighborhood-compare-fab{
-    width:min(262px,calc(100vw - 78px)) !important;
+  if(!needsInventoryImmediately){
+    inventoryLoading=false;
+    inventoryReady=false;
+    inventoryLoadError=false;
+    return;
   }
 
-  /* Painel fechado por padrão. */
-  body.match-results-mode .refine-match-shell{
-    display:grid !important;
-    place-items:end center !important;
-
-    position:fixed !important;
-    z-index:1200 !important;
-    inset:0 !important;
-
-    width:100% !important;
-    height:100% !important;
-    max-height:none !important;
-
-    padding:0 8px max(76px,calc(68px + env(safe-area-inset-bottom))) !important;
-    margin:0 !important;
-
-    background:rgba(5,6,5,.58) !important;
-    -webkit-backdrop-filter:blur(6px) !important;
-    backdrop-filter:blur(6px) !important;
-
-    border:0 !important;
-    border-radius:0 !important;
-
-    opacity:0 !important;
-    visibility:hidden !important;
-    pointer-events:none !important;
-
-    transform:none !important;
-    transition:opacity .18s ease,visibility .18s ease !important;
-  }
-
-  /* Só abre quando o JS adiciona .open. */
-  body.match-results-mode .refine-match-shell.open{
-    opacity:1 !important;
-    visibility:visible !important;
-    pointer-events:auto !important;
-  }
-
-  body.match-results-mode .refine-match-shell .refine-match-card{
-    width:100% !important;
-    max-width:520px !important;
-    max-height:calc(100svh - 110px) !important;
-    overflow-y:auto !important;
-
-    padding:12px !important;
-    margin:0 !important;
-
-    border:1px solid #B5AD9F !important;
-    border-radius:18px !important;
-
-    background:rgba(255,255,255,.985) !important;
-    color:#242424 !important;
-
-    box-shadow:0 18px 50px rgba(0,0,0,.28) !important;
-    pointer-events:auto !important;
-  }
-
-  /* Cabeçalho do bottom-sheet. */
-  body.match-results-mode .refine-match-head{
-    display:flex !important;
-    align-items:flex-start !important;
-    justify-content:space-between !important;
-    gap:10px !important;
-    margin:0 0 10px !important;
-  }
-
-  body.match-results-mode .refine-match-head h2{
-    margin:0 !important;
-    font-size:16px !important;
-    line-height:1.15 !important;
-    color:#242424 !important;
-  }
-
-  body.match-results-mode .refine-match-head p{
-    display:block !important;
-    margin:3px 0 0 !important;
-    font-size:11px !important;
-    line-height:1.3 !important;
-    color:#747474 !important;
-  }
-
-  body.match-results-mode .refine-match-close{
-    display:grid !important;
-    place-items:center !important;
-    flex:0 0 34px !important;
-    width:34px !important;
-    height:34px !important;
-    min-height:34px !important;
-    padding:0 !important;
-    border:1px solid #DED8CD !important;
-    border-radius:50% !important;
-    background:#F5F3EE !important;
-    color:#4A443C !important;
-    font-size:20px !important;
-    line-height:1 !important;
-  }
-
-  body.match-results-mode .refine-match-known{
-    display:flex !important;
-    flex-wrap:wrap !important;
-    gap:5px !important;
-    max-height:none !important;
-    margin:0 0 9px !important;
-    overflow:visible !important;
-  }
-
-  body.match-results-mode .refine-price-grid{
-    display:grid !important;
-    grid-template-columns:1fr 1fr !important;
-    gap:8px !important;
-    margin:0 !important;
-  }
-
-  body.match-results-mode .refine-price-grid label{
-    display:grid !important;
-    grid-template-rows:auto 42px !important;
-    gap:4px !important;
-    min-width:0 !important;
-    color:#654E28 !important;
-    font-size:10px !important;
-    line-height:1.1 !important;
-    font-weight:850 !important;
-    letter-spacing:.03em !important;
-    text-transform:uppercase !important;
-  }
-
-  body.match-results-mode .refine-price-grid label:last-child{
-    grid-column:1/-1 !important;
-  }
-
-  body.match-results-mode .refine-price-grid select,
-  body.match-results-mode .refine-price-grid input{
-    width:100% !important;
-    min-width:0 !important;
-    min-height:42px !important;
-    height:42px !important;
-    padding:0 9px !important;
-    border:1px solid #B5AD9F !important;
-    border-radius:10px !important;
-    background:#F7F4ED !important;
-    color:#242424 !important;
-    font-size:16px !important;
-  }
-
-  body.match-results-mode .apply-refine-match,
-  body.match-results-mode .clear-refine-match{
-    min-height:44px !important;
-    height:44px !important;
-    margin-top:9px !important;
-    border-radius:10px !important;
-    font-size:12px !important;
-    font-weight:900 !important;
-  }
-
-  body.match-results-mode .apply-refine-match{
-    width:calc(68% - 4px) !important;
-    margin-right:5px !important;
-  }
-
-  body.match-results-mode .clear-refine-match{
-    display:inline-block !important;
-    width:calc(32% - 5px) !important;
-  }
-}
-</style>
-
-
-<script id="unified-search-behavior-v1">
-/* Região agora é um select dentro da janela única de busca. */
-(() => {
-  const regionSelect=document.getElementById("catalogRegionSelect");
-  if(regionSelect){
-    regionSelect.addEventListener("change",()=>{
-      if(typeof setCatalogRegion==="function"){
-        setCatalogRegion(regionSelect.value || "");
-      }
-    });
-
-    /* Sincroniza também quando a busca veio de URL/campanha. */
-    const syncRegion=()=>{
-      try{
-        regionSelect.value=(typeof catalogRegion!=="undefined" ? catalogRegion : "") || "";
-      }catch(error){}
-    };
-    syncRegion();
-    setTimeout(syncRegion,250);
-    setTimeout(syncRegion,1200);
-  }
-
-  document.getElementById("resetCatalogFilters")?.addEventListener("click",()=>{
-    if(regionSelect) regionSelect.value="";
-  });
+  loadInventory()
+    .then(finishStartupAfterInventory)
+    .catch(()=>{});
 })();
 </script>
 
-
-
-<style id="final-ai-mobile-refine-fix">
+<style id="final-ai-mobile-css-fix">
 /* =========================================================
    FINAL FIX · IA MOBILE + REMOVE REFINAR MATCH
    2026-09-29
@@ -13218,28 +11101,408 @@ body.ad-match-mode .refine-match-shell{
 </script>
 
 
-<script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script id="region-neighborhood-filter">
 (function(){
-  function applyCleanHeroPhoto(){
+
+  const REGION_MAP_FILTER = {
+    oeste:[
+      "Perdizes","Pompéia","Pinheiros","Vila Madalena","Lapa",
+      "Alto da Lapa","Barra Funda","Butantã","Jaguaré",
+      "Sumaré","Vila Leopoldina","Alto de Pinheiros","Rio Pequeno",
+      "Vila Sônia","Morumbi"
+    ],
+    sul:[
+      "Moema","Vila Mariana","Chácara Klabin","Brooklin","Campo Belo",
+      "Saúde","Ipiranga","Paraíso","Aclimação","Jardins",
+      "Jardim Paulista","Itaim Bibi","Vila Nova Conceição",
+      "Santo Amaro","Campo Grande","Vila Clementino",
+      "Planalto Paulista","Mirandópolis"
+    ],
+    leste:[
+      "Tatuapé","Mooca","Anália Franco","Vila Prudente","Penha",
+      "Carrão","Belém","Brás","Água Rasa","Vila Formosa",
+      "Vila Matilde","Itaquera","Aricanduva","Sapopemba","São Mateus"
+    ],
+    norte:[
+      "Santana","Tucuruvi","Casa Verde","Mandaqui","Vila Guilherme",
+      "Vila Maria","Parada Inglesa","Jardim São Paulo",
+      "Lauzane Paulista","Limão","Freguesia do Ó","Tremembé","Jaçanã"
+    ],
+    centro:[
+      "Bela Vista","Consolação","Higienópolis","República",
+      "Santa Cecília","Sé","Liberdade","Cambuci","Bom Retiro",
+      "Campos Elíseos"
+    ],
+    outras:[]
+  };
+
+  function normalizeText(v){
+    return String(v||"")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .toLowerCase()
+      .trim();
+  }
+
+  function regionForNeighborhood(name){
+    const n=normalizeText(name);
+
+    for(const [region,bairros] of Object.entries(REGION_MAP_FILTER)){
+      if(
+        bairros.some(item=>{
+          const b=normalizeText(item);
+          return n===b || n.includes(b) || b.includes(n);
+        })
+      ){
+        return region;
+      }
+    }
+
+    return "outras";
+  }
+
+  function currentInventoryNeighborhoods(){
     try{
-      if(typeof properties==="undefined" || !Array.isArray(properties)) return;
-      for(const p of properties){
-        let photos=[];
-        try{ photos=typeof photoList==="function" ? photoList(p) : []; }catch(e){}
-        if(Array.isArray(photos) && photos[0]){
-          document.getElementById("cleanHeroPhoto")?.style.setProperty(
-            "background-image",
-            `linear-gradient(180deg,rgba(16,14,12,.02),rgba(16,14,12,.16)),url("${photos[0]}")`
-          );
-          break;
-        }
+      if(typeof properties==="undefined" || !Array.isArray(properties)){
+        return [];
+      }
+
+      return [...new Set(
+        properties
+          .map(p=>String(p?.neighborhood||"").trim())
+          .filter(Boolean)
+      )];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function neighborhoodsForRegion(region){
+    const base = region
+      ? [...(REGION_MAP_FILTER[region] || [])]
+      : Object.values(REGION_MAP_FILTER).flat();
+
+    const live = currentInventoryNeighborhoods().filter(item=>{
+      return !region || regionForNeighborhood(item)===region;
+    });
+
+    return [...new Set([...base,...live])]
+      .filter(Boolean)
+      .sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  }
+
+  function populateNeighborhoods(){
+    const region=document.getElementById("catalogRegion");
+    const neighborhood=document.getElementById("catalogNeighborhood");
+
+    if(!region || !neighborhood)return;
+
+    const selected=neighborhood.value;
+    const list=neighborhoodsForRegion(region.value);
+
+    neighborhood.innerHTML='<option value="">Todos os bairros</option>';
+
+    list.forEach(item=>{
+      const option=document.createElement("option");
+      option.value=item;
+      option.textContent=item;
+      neighborhood.appendChild(option);
+    });
+
+    if([...neighborhood.options].some(o=>o.value===selected)){
+      neighborhood.value=selected;
+    }
+  }
+
+  function applyRegionFilter(){
+    populateNeighborhoods();
+
+    const neighborhood=document.getElementById("catalogNeighborhood");
+    if(neighborhood) neighborhood.value="";
+
+    try{
+      if(typeof updateCatalogUrl==="function") updateCatalogUrl();
+    }catch(e){}
+  }
+
+  document.getElementById("catalogRegion")
+    ?.addEventListener("change",applyRegionFilter);
+
+  document.getElementById("catalogNeighborhood")
+    ?.addEventListener("change",()=>{
+      try{
+        if(typeof updateCatalogUrl==="function") updateCatalogUrl();
+      }catch(e){}
+    });
+
+  /* Imediato: sem esperar inventário */
+  populateNeighborhoods();
+
+  /* Depois apenas incorpora bairros reais adicionais */
+  window.addEventListener("load",()=>{
+    setTimeout(populateNeighborhoods,900);
+    setTimeout(populateNeighborhoods,2600);
+  });
+
+  window.populateCatalogNeighborhoodsByRegion=populateNeighborhoods;
+
+})();
+</script>
+
+
+
+<script id="fast-inventory-status-script">
+(function(){
+  function updateInventoryStatus(){
+    const el=document.getElementById("fastInventoryStatus");
+    if(!el)return;
+
+    try{
+      const count=typeof properties!=="undefined" && Array.isArray(properties)
+        ? properties.length
+        : 0;
+
+      const usedReady=
+        typeof usedInventoryLoaded!=="undefined"
+          ? usedInventoryLoaded
+          : false;
+
+      if(count>0 && usedReady){
+        el.textContent=`${count} imóveis disponíveis`;
+        el.classList.add("ready");
+      }else if(count>0){
+        el.textContent=`${count} imóveis disponíveis · completando estoque…`;
+      }else{
+        el.textContent="Estoque carregando em segundo plano…";
       }
     }catch(e){}
   }
 
-  window.addEventListener("load",()=>{
-    setTimeout(applyCleanHeroPhoto,700);
-    setTimeout(applyCleanHeroPhoto,1800);
+  updateInventoryStatus();
+  setInterval(updateInventoryStatus,700);
+})();
+</script>
+
+
+<script id="whatsapp-home-direct-fix">
+(function(){
+  const PHONE="5511992976368";
+
+  function bindDirectWhatsApp(){
+    const old=document.getElementById("specialistFloat");
+    if(!old)return;
+
+    const button=old.cloneNode(true);
+    old.replaceWith(button);
+
+    button.setAttribute("aria-label","Falar com Rafael no WhatsApp");
+    button.type="button";
+
+    button.addEventListener("click",function(event){
+      event.preventDefault();
+      event.stopPropagation();
+
+      const message=[
+        "Olá, Rafael.",
+        "Vim pela Ynteligencia e gostaria de ajuda para encontrar um imóvel."
+      ].join(" ");
+
+      const url=`https://wa.me/${PHONE}?text=${encodeURIComponent(message)}`;
+
+      try{
+        if(window.matchMedia("(max-width:768px)").matches){
+          window.location.href=url;
+        }else{
+          window.open(url,"_blank","noopener,noreferrer");
+        }
+      }catch(error){
+        window.location.href=url;
+      }
+
+      try{
+        gtag("event","whatsapp_home_click",{
+          source:"specialist_float_home"
+        });
+      }catch(e){}
+
+      try{
+        if(typeof supabaseTrack==="function"){
+          supabaseTrack("whatsapp_home_click",{
+            source:"specialist_float_home"
+          });
+        }
+      }catch(e){}
+    });
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",bindDirectWhatsApp,{once:true});
+  }else{
+    bindDirectWhatsApp();
+  }
+})();
+</script>
+
+
+<script id="ynt-clean-navigation-v1">
+(function(){
+  const $id=id=>document.getElementById(id);
+
+  function showFullFilter(){
+    document.body.classList.remove(
+      "home-mode",
+      "match-mode",
+      "match-results-mode",
+      "ad-match-mode",
+      "campaign-catalog-mode"
+    );
+    document.body.classList.add("filter-direct-mode");
+
+    const explore=$id("explore");
+    const panel=$id("unifiedSearchPanel");
+    const filters=$id("catalogFilters");
+
+    if(explore){
+      explore.hidden=false;
+      explore.style.cssText += ";display:block!important;visibility:visible!important;opacity:1!important;";
+    }
+    if(panel){
+      panel.hidden=false;
+      panel.style.cssText += ";display:block!important;visibility:visible!important;opacity:1!important;";
+    }
+    if(filters){
+      filters.hidden=false;
+      filters.classList.add("open");
+      filters.style.cssText += ";display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;";
+    }
+
+    try{
+      if(typeof window.populateCatalogNeighborhoodsByRegion==="function"){
+        window.populateCatalogNeighborhoodsByRegion();
+      }
+    }catch(e){}
+
+    // Scroll to the start of the filter. No inventory request here.
+    requestAnimationFrame(()=>{
+      (panel || explore)?.scrollIntoView({behavior:"auto",block:"start"});
+    });
+  }
+
+  function openGeneralAI(){
+    if(typeof window.openAiAssistant==="function"){
+      window.openAiAssistant(null);
+    }
+  }
+
+  function replaceButton(id,handler){
+    const old=$id(id);
+    if(!old)return;
+    const fresh=old.cloneNode(true);
+    old.replaceWith(fresh);
+    fresh.addEventListener("click",function(e){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      handler();
+    },{capture:true});
+  }
+
+  replaceButton("startHero",showFullFilter);
+  replaceButton("heroAiButton",openGeneralAI);
+
+  window.yntShowFullFilter=showFullFilter;
+})();
+</script>
+
+
+<script id="final-functional-bindings">
+(function(){
+  function bindFresh(id,handler){
+    const old=document.getElementById(id);
+    if(!old)return;
+    const fresh=old.cloneNode(true);
+    old.replaceWith(fresh);
+    fresh.addEventListener("click",function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      handler(fresh);
+    });
+  }
+
+  bindFresh("heroAiButton",()=>{
+    if(typeof openAiAssistant==="function"){
+      openAiAssistant(null);
+    }else{
+      console.error("openAiAssistant indisponível");
+    }
+  });
+
+  bindFresh("startHero",()=>{
+    if(typeof window.yntShowFullFilter==="function"){
+      window.yntShowFullFilter();
+      return;
+    }
+
+    document.body.classList.remove("home-mode");
+    document.body.classList.add("filter-direct-mode");
+
+    const explore=document.getElementById("explore");
+    const panel=document.getElementById("unifiedSearchPanel");
+    const filters=document.getElementById("catalogFilters");
+
+    explore?.style.setProperty("display","block","important");
+    panel?.style.setProperty("display","block","important");
+
+    if(filters){
+      filters.classList.add("open");
+      filters.style.setProperty("display","block","important");
+      filters.style.setProperty("visibility","visible","important");
+      filters.style.setProperty("opacity","1","important");
+    }
+  });
+
+  bindFresh("catalogSearchBtn",async(button)=>{
+    if(typeof executeCatalogSearch!=="function"){
+      console.error("executeCatalogSearch indisponível");
+      return;
+    }
+
+    const original=button.textContent;
+    button.disabled=true;
+    button.textContent="BUSCANDO...";
+
+    try{
+      await executeCatalogSearch();
+
+      document.body.classList.remove("filter-direct-mode");
+
+      const filters=document.getElementById("catalogFilters");
+      filters?.classList.remove("open");
+
+      if(window.matchMedia("(max-width:700px)").matches){
+        document.body.style.overflow="";
+      }
+    }catch(error){
+      console.error("BUSCA_FILTRO_ERROR",error);
+    }finally{
+      button.disabled=false;
+      button.textContent=original || "BUSCAR";
+    }
   });
 })();
 </script>
