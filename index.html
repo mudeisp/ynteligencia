@@ -3065,10 +3065,20 @@ body.match-results-mode #results{
 
   .unified-filter-actions{
     grid-template-columns:1fr!important;
-    position:sticky!important;
-    bottom:0!important;
+    position:static!important;
+    bottom:auto!important;
     background:#FCFAF6!important;
-    padding-top:10px!important;
+    padding:14px 0 8px!important;
+    margin-top:18px!important;
+  }
+
+  /*
+    Garante espaço real depois do último campo no mobile.
+    Os botões deixam de cobrir Dormitórios / Preço / Área.
+  */
+  #catalogFilters.open{
+    padding-bottom:calc(34px + env(safe-area-inset-bottom))!important;
+    scroll-padding-bottom:34px!important;
   }
 }
 </style>
@@ -7239,6 +7249,151 @@ function registerAiFoundProperty(p){
   return normalized;
 }
 
+
+function aiIsGreetingOnly(message){
+  const t=norm(message||"")
+    .replace(/[!?.,;:]+/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+  return Boolean(
+    /^(oi|ola|olá|bom dia|boa tarde|boa noite|e ai|e aí|opa|hello|hey|tudo bem|oi tudo bem|ola tudo bem|olá tudo bem|bom dia tudo bem|boa tarde tudo bem|boa noite tudo bem)$/.test(t)
+  );
+}
+
+function aiGreetingReply(){
+  const generic=
+    Boolean(
+      aiAssistantProperty?.generic_search
+    );
+
+  if(generic){
+    return "Olá! 👋 Como posso ajudar? Você pode me dizer um bairro, faixa de preço, dormitórios ou o nome de um empreendimento.";
+  }
+
+  const name=
+    aiAssistantProperty?.name ||
+    "este imóvel";
+
+  return `Olá! 👋 Pode perguntar o que quiser sobre ${name} — e, se preferir, também posso buscar outras opções para comparar.`;
+}
+
+function aiIsMapRequest(message){
+  const t=norm(message||"");
+
+  return Boolean(
+    /\b(mapa|google maps|maps|localizacao no mapa|localização no mapa|como chegar|rota|abrir mapa)\b/.test(t)
+  );
+}
+
+function aiPropertyMapsUrl(property){
+  if(!property)return "";
+
+  const raw=
+    property?.rawData &&
+    typeof property.rawData==="object"
+      ? property.rawData
+      : (
+          property?.raw_data &&
+          typeof property.raw_data==="object"
+            ? property.raw_data
+            : {}
+        );
+
+  const building=
+    raw?.building &&
+    typeof raw.building==="object"
+      ? raw.building
+      : {};
+
+  const addressData=
+    building?.address &&
+    typeof building.address==="object"
+      ? building.address
+      : (
+          property?.address &&
+          typeof property.address==="object"
+            ? property.address
+            : {}
+        );
+
+  let query="";
+
+  try{
+    query=
+      typeof propertyMapQuery==="function"
+        ? propertyMapQuery(
+            property,
+            addressData
+          )
+        : "";
+  }catch(error){}
+
+  if(!query){
+    query=[
+      typeof property.address==="string"
+        ? property.address
+        : "",
+      property.neighborhood||"",
+      property.city||"São Paulo"
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  if(!query)return "";
+
+  return (
+    "https://www.google.com/maps/search/?api=1&query=" +
+    encodeURIComponent(query)
+  );
+}
+
+function appendAiGoogleMapsButton(property){
+  const url=
+    aiPropertyMapsUrl(property);
+
+  if(!url)return;
+
+  const shell=
+    ensureAiAssistantShell();
+
+  const box=
+    shell.querySelector(
+      "#aiAssistantMessages"
+    );
+
+  if(!box)return;
+
+  const wrap=
+    document.createElement("div");
+
+  wrap.className=
+    "ai-quick-actions";
+
+  const button=
+    document.createElement("button");
+
+  button.type="button";
+  button.textContent=
+    "Abrir no Google Maps";
+
+  button.addEventListener(
+    "click",
+    ()=>{
+      window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    }
+  );
+
+  wrap.appendChild(button);
+  box.appendChild(wrap);
+  box.scrollTop=box.scrollHeight;
+}
+
 function appendAiInternalDetailsButton(property){
   if(!property?.id)return;
 
@@ -8596,6 +8751,80 @@ async function sendAiAssistantMessage(text){
     return;
   }
 
+  /*
+    Saudação isolada não é busca imobiliária.
+    Evita "boa noite" virar "Alto da Boa Vista".
+  */
+  if(aiIsGreetingOnly(text)){
+    const greeting=
+      aiGreetingReply();
+
+    appendAiMessage(
+      "assistant",
+      greeting
+    );
+
+    aiAssistantHistory.push({
+      role:"assistant",
+      content:greeting
+    });
+
+    aiAssistantHistory=
+      aiAssistantHistory.slice(-12);
+
+    aiAssistantSending=false;
+
+    if(send)send.disabled=false;
+
+    return;
+  }
+
+  /*
+    Em contexto de imóvel, "tem mapa?", "como chegar?" etc.
+    usa os dados já cadastrados e oferece Google Maps,
+    sem expor coordenadas ou URL externa da Órulo.
+  */
+  if(
+    aiAssistantProperty &&
+    aiAssistantProperty.generic_search===false &&
+    aiIsMapRequest(text)
+  ){
+    const property=
+      aiAssistantProperty;
+
+    const name=
+      property.name ||
+      "este imóvel";
+
+    const reply=
+      property.address
+        ? `Claro. Posso abrir a localização do ${name} diretamente no Google Maps.`
+        : `Claro. Posso abrir a localização disponível do ${name} diretamente no Google Maps.`;
+
+    appendAiMessage(
+      "assistant",
+      reply
+    );
+
+    appendAiGoogleMapsButton(
+      property
+    );
+
+    aiAssistantHistory.push({
+      role:"assistant",
+      content:reply
+    });
+
+    aiAssistantHistory=
+      aiAssistantHistory.slice(-12);
+
+    aiAssistantSending=false;
+
+    if(send)send.disabled=false;
+
+    return;
+  }
+
   const thinking=
     document.createElement("div");
 
@@ -8832,11 +9061,17 @@ async function sendAiAssistantMessage(text){
           : "Posso continuar te ajudando com este imóvel."
       );
 
+    /*
+      URL da Órulo é infraestrutura, não interface do cliente.
+    */
+    reply=
+      stripExternalProviderLinks(
+        reply
+      );
+
     if(genericMode){
       reply=
-        stripExternalProviderLinks(
-          reply
-        )
+        reply
           .replace(
             /^\s*INVENT[ÁA]RIO CONSULTADO\s*[—\-:]*\s*/i,
             ""
@@ -13509,8 +13744,14 @@ body.ad-match-mode .refine-match-shell{
     overflow-y:auto !important;
     -webkit-overflow-scrolling:touch !important;
     overscroll-behavior:contain !important;
-    padding:14px 12px 12px !important;
+    padding:12px 10px 10px !important;
     scroll-padding-bottom:16px !important;
+  }
+
+  .ai-msg{
+    max-width:92% !important;
+    font-size:16px !important;
+    line-height:1.5 !important;
   }
 
   .ai-human-handoff{
