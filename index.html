@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -3121,6 +3122,39 @@ body.match-mode .wizard-explore-only-inner{
 }
 </style>
 
+
+<style id="final-cleanup-explorar-only">
+/* Remover filtros rápidos visíveis antes do fluxo principal */
+#explore .explore-box,
+#explore .unified-search-panel,
+#explore .catalog-region-buttons,
+#explore .unified-search-main,
+#explore .section-head{
+  display:none!important;
+}
+
+/* Sem rodapé / dock */
+.app-dock,
+.mobile-bottom-nav,
+.mobile-dock,
+.bottom-nav,
+#mobileDock{
+  display:none!important;
+}
+
+/* O wizard permanece somente com o botão EXPLORAR IMÓVEIS */
+body.match-mode .wizard-explore-only-content{
+  display:block!important;
+}
+
+#wizardExploreOnly{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -3254,34 +3288,7 @@ body.match-mode .wizard-explore-only-inner{
       <input id="catalogCity" type="hidden" value="São Paulo">
       <input id="catalogState" type="hidden" value="SP">
 
-      <div class="unified-search-main">
-        <label class="unified-field">
-          <span>Região</span>
-          <select id="catalogRegionSelect" class="field" aria-label="Região">
-            <option value="">Todas as regiões</option>
-            <option value="oeste">Zona Oeste</option>
-            <option value="sul">Zona Sul</option>
-            <option value="norte">Zona Norte</option>
-            <option value="leste">Zona Leste</option>
-          </select>
-        </label>
-
-        <label class="unified-field">
-          <span>Bairro</span>
-          <select id="catalogNeighborhood" class="field" aria-label="Bairro">
-            <option value="">Todos os bairros</option>
-          </select>
-        </label>
-
-        <label class="unified-field unified-search-name">
-          <span>Empreendimento / condomínio</span>
-          <input
-            id="catalogSearch"
-            class="field"
-            placeholder="Digite o nome do empreendimento ou condomínio"
-            autocomplete="off">
-        </label>
-      </div>
+      
 
       <div class="unified-search-separator">
         <span>Filtros de compra</span>
@@ -3469,15 +3476,6 @@ body.match-mode .wizard-explore-only-inner{
 <footer>
   Ynteligencia · Inteligência imobiliária
 </footer>
-
-<nav class="app-dock" aria-label="Navegação principal">
-  <button type="button" onclick="enterMatchMode()">
-    <b>✦</b><span>DESCOBRIR</span>
-  </button>
-  <button type="button" id="openAppMenuDock">
-    <b>○</b><span>PERFIL</span>
-  </button>
-</nav>
 
 
 <div class="menu-backdrop" id="menuBackdrop" aria-hidden="true"></div>
