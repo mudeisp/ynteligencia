@@ -2889,6 +2889,225 @@ body.ad-match-mode{
 }
 </style>
 
+
+<style id="wizard-explore-only-design">
+/* =========================================================
+   WIZARD SIMPLES → FILTRO COMPLETO
+========================================================= */
+
+body.match-mode{
+  overflow:hidden!important;
+}
+
+body.match-mode header,
+body.match-mode .app-dock{
+  display:none!important;
+}
+
+body.match-mode .wizard-wrap{
+  position:fixed!important;
+  inset:0!important;
+  z-index:280!important;
+  display:grid!important;
+  place-items:center!important;
+  min-height:100dvh!important;
+  margin:0!important;
+  padding:24px!important;
+  background:#F7F4ED!important;
+  overflow:hidden!important;
+}
+
+body.match-mode .wizard-wrap>.container{
+  width:100%!important;
+  max-width:520px!important;
+  margin:0 auto!important;
+}
+
+body.match-mode .wizard-explore-only{
+  width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+
+body.match-mode .wizard-explore-only-inner{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  padding:0!important;
+  background:transparent!important;
+  overflow:visible!important;
+}
+
+.wizard-explore-only-content{
+  width:100%!important;
+}
+
+.wizard-explore-only-btn{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  min-height:62px!important;
+  padding:0 20px!important;
+  border:0!important;
+  border-radius:16px!important;
+  background:#171513!important;
+  color:#FFFFFF!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  letter-spacing:.035em!important;
+  box-shadow:none!important;
+  cursor:pointer!important;
+}
+
+.wizard-explore-only-btn:active{
+  transform:scale(.985)!important;
+}
+
+/* =========================================================
+   FILTRO COMPLETO
+========================================================= */
+
+.unified-search-panel{
+  background:#FCFAF6!important;
+  border:1px solid #DED8CD!important;
+  box-shadow:none!important;
+}
+
+.unified-search-main{
+  align-items:end!important;
+}
+
+.unified-field>span{
+  color:#6D675F!important;
+  font-weight:800!important;
+}
+
+.unified-search-panel .field{
+  background:#FFFFFF!important;
+  color:#242424!important;
+  border:1px solid #D8D0C4!important;
+  box-shadow:none!important;
+}
+
+.unified-search-separator{
+  color:#6D675F!important;
+}
+
+.catalog-filters{
+  background:#FFFFFF!important;
+  color:#242424!important;
+}
+
+.unified-filter-actions{
+  margin-top:18px!important;
+}
+
+#catalogSearchBtn.catalog-search-btn{
+  width:100%!important;
+  min-height:56px!important;
+  border:0!important;
+  border-radius:14px!important;
+  background:#171513!important;
+  color:#FFFFFF!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  letter-spacing:.03em!important;
+  box-shadow:none!important;
+}
+
+/* Mobile: full filter opens as a clean scrollable sheet */
+@media(max-width:700px){
+  .catalog-filters{
+    position:fixed!important;
+    z-index:315!important;
+    inset:0!important;
+    left:0!important;
+    right:0!important;
+    top:0!important;
+    bottom:0!important;
+    width:100%!important;
+    max-width:none!important;
+    max-height:none!important;
+    height:100dvh!important;
+    margin:0!important;
+    padding:22px 16px calc(28px + env(safe-area-inset-bottom))!important;
+    border:0!important;
+    border-radius:0!important;
+    background:#FCFAF6!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    transform:translateY(105%)!important;
+    transition:transform .24s ease!important;
+  }
+
+  .catalog-filters.open{
+    transform:translateY(0)!important;
+  }
+
+  .filters-backdrop{
+    display:none!important;
+  }
+
+  .filters-close{
+    position:sticky!important;
+    top:0!important;
+    z-index:4!important;
+    margin-left:auto!important;
+    display:grid!important;
+    place-items:center!important;
+    width:42px!important;
+    height:42px!important;
+    border:1px solid #DED8CD!important;
+    border-radius:50%!important;
+    background:#FFFFFF!important;
+    color:#242424!important;
+    font-size:24px!important;
+  }
+
+  .unified-filter-grid{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+    margin-top:10px!important;
+  }
+
+  .unified-filter-grid .field{
+    width:100%!important;
+    min-height:54px!important;
+    font-size:16px!important;
+    border-radius:13px!important;
+  }
+
+  .unified-filter-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    margin-top:24px!important;
+    padding-bottom:6px!important;
+  }
+
+  #catalogSearchBtn.catalog-search-btn{
+    grid-row:1!important;
+    min-height:58px!important;
+  }
+
+  #resetCatalogFilters{
+    grid-row:2!important;
+    min-height:48px!important;
+    border:0!important;
+    background:transparent!important;
+    color:#77736B!important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -2940,348 +3159,38 @@ body.ad-match-mode{
 
 <main>
 
+
 <section class="wizard-wrap" id="match">
   <div class="container">
+    <div class="wizard wizard-explore-only">
 
-    <div class="wizard">
-
-      <div class="progress">
+      <!-- Compatibilidade com o JS legado -->
+      <div class="progress" aria-hidden="true" style="display:none">
         <span id="progress"></span>
       </div>
 
-      <div class="wizard-inner">
+      <div class="wizard-inner wizard-explore-only-inner">
 
-        <div class="search-mode-switch" aria-label="Modo de busca">
-          <button type="button" class="search-mode-btn active" id="wizardMatchMode">✦ Encontrar meu MATCH</button>
-          <button type="button" class="search-mode-btn" id="wizardExploreMode">⌕ Explorar imóveis</button>
+        <div class="step-count" aria-hidden="true" style="display:none">
+          <strong id="stepCount">01 de 01</strong>
         </div>
 
-        <!-- A origem do inventário permanece interna.
-             O usuário faz um único MATCH; sourceMode continua no JS para a futura Órulo. -->
-
-        <div class="step-count" aria-live="polite">
-          <strong id="stepCount">01 de 04</strong>
-        </div>
-
-        <div class="step" data-step="0">
-
-          <div class="step-label">
-            01 · TIPO DE IMÓVEL
-          </div>
-
-          <h2>Que tipo de imóvel faz sentido?</h2>
-
-          <p>
-            Escolha o tipo de imóvel. Ao selecionar, seguimos automaticamente.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="apartamento">
-              Apartamento
-            </button>
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="casa">
-              Casa
-            </button>
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="studio">
-              Studio
-            </button>
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="cobertura">
-              Cobertura
-            </button>
-
-            <button
-              class="option multi"
-              data-key="types"
-              data-value="sobrado">
-              Sobrado
-            </button>
-
-          </div>
-        </div>
-
-        <div class="step" data-step="1" hidden>
-
-          <div class="step-label">
-            02 · REGIÃO
-          </div>
-
-          <h2>Onde você quer estar?</h2>
-
-          <p>
-            Escolha uma região prioritária.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option"
-              data-key="region"
-              data-value="oeste">
-              Zona Oeste
-              <small>Perdizes, Pinheiros, Pompéia e região</small>
-            </button>
-
-            <button
-              class="option"
-              data-key="region"
-              data-value="sul">
-              Zona Sul
-              <small>Moema, Vila Mariana, Brooklin e região</small>
-            </button>
-
-            <button
-              class="option"
-              data-key="region"
-              data-value="norte">
-              Zona Norte
-              <small>Santana, Tucuruvi e região</small>
-            </button>
-
-            <button
-              class="option"
-              data-key="region"
-              data-value="leste">
-              Zona Leste
-              <small>Tatuapé, Mooca, Anália Franco e região</small>
-            </button>
-
-          </div>
-        </div>
-
-        <div class="step" data-step="2" hidden>
-
-          <div class="step-label">
-            03 · ORÇAMENTO
-          </div>
-
-          <h2>
-            Qual é o seu limite de investimento?
-          </h2>
-
-          <p>
-            Usaremos esse valor como referência, mas o MATCH
-            também encontra oportunidades próximas.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="400000"
-              data-budget-min="1"
-              data-budget-max="400000"
-              data-budget-label="Até R$ 400 mil">
-              Até R$ 400 mil
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="600000"
-              data-budget-min="400001"
-              data-budget-max="600000"
-              data-budget-label="R$ 401 mil a R$ 600 mil">
-              R$ 401 mil a R$ 600 mil
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="800000"
-              data-budget-min="600001"
-              data-budget-max="800000"
-              data-budget-label="R$ 601 mil a R$ 800 mil">
-              R$ 601 mil a R$ 800 mil
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="1000000"
-              data-budget-min="800001"
-              data-budget-max="1000000"
-              data-budget-label="R$ 801 mil a R$ 1 milhão">
-              R$ 801 mil a R$ 1 milhão
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="1500000"
-              data-budget-min="1000001"
-              data-budget-max="1500000"
-              data-budget-label="R$ 1,01 milhão a R$ 1,5 milhão">
-              R$ 1,01 milhão a R$ 1,5 milhão
-            </button>
-
-            <button
-              class="option"
-              data-key="budget"
-              data-value="1500001"
-              data-budget-min="1500001"
-              data-budget-max="0"
-              data-budget-label="Acima de R$ 1,5 milhão">
-              Acima de R$ 1,5 milhão
-            </button>
-
-          </div>
-        </div>
-
-        <div class="step" data-step="3" hidden>
-
-          <div class="step-label">
-            04 · TAMANHO
-          </div>
-
-          <h2>
-            Quantos dormitórios você precisa, no mínimo?
-          </h2>
-
-          <p>
-            Vamos considerar essa quantidade ou mais.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option"
-              data-key="bedrooms"
-              data-value="1">
-              1 ou mais
-            </button>
-
-            <button
-              class="option"
-              data-key="bedrooms"
-              data-value="2">
-              2 ou mais
-            </button>
-
-            <button
-              class="option"
-              data-key="bedrooms"
-              data-value="3">
-              3 ou mais
-            </button>
-
-            <button
-              class="option"
-              data-key="bedrooms"
-              data-value="4">
-              4 ou mais
-            </button>
-
-          </div>
-        </div>
-
-        <div class="step" data-step="4" hidden aria-hidden="true" style="display:none!important">
-
-          <div class="step-label">
-            05 · O QUE É INDISPENSÁVEL?
-          </div>
-
-          <h2>Escolha suas prioridades.</h2>
-
-          <p>
-            Esses critérios terão peso maior no seu MATCH.
-          </p>
-
-          <div class="options">
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="area50">
-              Área maior
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="suite">
-              Suíte
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="parking">
-              Vaga
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="balcony">
-              Varanda
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="pool">
-              Piscina
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="metro">
-              Metrô próximo
-            </button>
-
-            <button
-              class="option multi"
-              data-key="feature"
-              data-value="lowcondo">
-              Condomínio baixo
-            </button>
-
-          </div>
-        </div>
-
-        <div class="wizard-actions">
-
+        <div class="wizard-explore-only-content">
           <button
-            class="back"
-            id="back"
+            class="wizard-explore-only-btn"
+            id="wizardExploreOnly"
             type="button">
-            Voltar
+            EXPLORAR IMÓVEIS
           </button>
-
-          <button
-            class="clear-match"
-            id="clearMatch"
-            type="button">
-            Limpar
-          </button>
-
-          <button
-            class="next"
-            id="next"
-            type="button"
-            disabled>
-            Continuar
-          </button>
-
         </div>
+
+        <!-- Mantidos apenas para não quebrar listeners antigos -->
+        <div class="wizard-actions" aria-hidden="true" style="display:none!important">
+          <button class="back" id="back" type="button" tabindex="-1">Voltar</button>
+          <button class="clear-match" id="clearMatch" type="button" tabindex="-1">Limpar</button>
+          <button class="next" id="next" type="button" tabindex="-1">Continuar</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -3468,7 +3377,7 @@ body.ad-match-mode{
           </button>
 
           <button id="catalogSearchBtn" class="catalog-search-btn" type="button">
-            BUSCAR IMÓVEIS
+            BUSCAR
           </button>
 
           <!-- Mantido para compatibilidade com listeners existentes -->
@@ -11503,6 +11412,39 @@ body.ad-match-mode .refine-match-shell{
       setTimeout(updateAiMobileViewport,120);
     }
   });
+})();
+</script>
+
+
+<script id="wizard-explore-only-flow">
+(function(){
+  function openCompleteFilter(){
+    try{
+      if(typeof gtag === "function"){
+        gtag("event","explore_filter_opened",{source:"wizard_explore_only"});
+      }
+    }catch(e){}
+
+    try{
+      if(typeof supabaseTrack === "function"){
+        supabaseTrack("explore_filter_opened",{source:"wizard_explore_only"});
+      }
+    }catch(e){}
+
+    if(typeof openGeneralCatalog === "function"){
+      openGeneralCatalog(true);
+      return;
+    }
+
+    // Fallback visual, caso a função principal ainda não esteja disponível.
+    document.body.classList.remove("match-mode","home-mode");
+    document.getElementById("explore")?.scrollIntoView({behavior:"smooth",block:"start"});
+    document.getElementById("catalogFilters")?.classList.add("open");
+  }
+
+  document
+    .getElementById("wizardExploreOnly")
+    ?.addEventListener("click",openCompleteFilter);
 })();
 </script>
 
