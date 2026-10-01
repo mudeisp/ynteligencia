@@ -8134,24 +8134,65 @@ async function searchPropertiesForAi(message){
       ? newPropertiesCache
       : [];
 
-  const state=
-    typeof aiUpdateSearchState==="function"
-      ? aiUpdateSearchState(message,inventoryForParsing)
-      : {
-          neighborhood:"",
-          exactName:"",
-          bedrooms:0,
-          minPrice:0,
-          maxPrice:0
-        };
+  /*
+    Quando a mensagem veio de PROPERTY → SEARCH
+    ("outras opções no Brooklin", por exemplo), usamos um
+    payload estruturado de uma única execução.
+
+    Isso evita enviar a frase inteira como query textual junto
+    com o bairro e evita que o empreendimento atual volte.
+  */
+  const override=
+    aiPendingSearchOverride &&
+    typeof aiPendingSearchOverride==="object"
+      ? {...aiPendingSearchOverride}
+      : null;
+
+  aiPendingSearchOverride=null;
+
+  let state;
+
+  if(override){
+    state={
+      neighborhood:override.neighborhood||"",
+      exactName:"",
+      bedrooms:Number(override.bedrooms)||0,
+      minPrice:Number(override.min_price)||0,
+      maxPrice:Number(override.max_price)||0
+    };
+
+    if(typeof aiSearchState==="object" && aiSearchState){
+      aiSearchState.neighborhood=state.neighborhood;
+      aiSearchState.exactName="";
+      aiSearchState.bedrooms=state.bedrooms;
+      aiSearchState.minPrice=state.minPrice;
+      aiSearchState.maxPrice=state.maxPrice;
+    }
+  }else{
+    state=
+      typeof aiUpdateSearchState==="function"
+        ? aiUpdateSearchState(message,inventoryForParsing)
+        : {
+            neighborhood:"",
+            exactName:"",
+            bedrooms:0,
+            minPrice:0,
+            maxPrice:0
+          };
+  }
 
   const payload={
     /*
-      query sempre leva a frase original.
-      Isso permite que "Upper Brooklin" seja encontrado mesmo que
-      o frontend ainda não conheça o nome do empreendimento.
+      Busca normal:
+        query recebe a frase original.
+
+      Busca de alternativas:
+        query fica vazia e usamos bairro/preço/dormitórios
+        como filtros estruturados.
     */
-    query:String(message||"").trim(),
+    query:override
+      ? String(override.query||"").trim()
+      : String(message||"").trim(),
 
     neighborhood:state.neighborhood||"",
     project:state.exactName||"",
@@ -8163,7 +8204,15 @@ async function searchPropertiesForAi(message){
     limit:12
   };
 
-  console.log("MATCH_IA_SEARCH_API_REQUEST",payload);
+  console.log(
+    "MATCH_IA_SEARCH_API_REQUEST",
+    {
+      ...payload,
+      exclude_id:override?.exclude_id||"",
+      exclude_building_id:override?.exclude_building_id||"",
+      exclude_name:override?.exclude_name||""
+    }
+  );
 
   const response=await fetch("/api/search-properties",{
     method:"POST",
@@ -8184,14 +8233,75 @@ async function searchPropertiesForAi(message){
     );
   }
 
-  const matches=
+  const rawMatches=
     Array.isArray(data.matches)
       ? data.matches
       : [];
 
+  const excludeId=
+    String(override?.exclude_id||"");
+
+  const excludeBuildingId=
+    String(override?.exclude_building_id||"");
+
+  const excludeName=
+    norm(override?.exclude_name||"");
+
+  const matches=
+    rawMatches.filter(item=>{
+      if(!item)return false;
+
+      const itemId=String(item.id||"");
+      const itemBuildingId=String(item.building_id||"");
+      const itemName=norm(item.name||"");
+
+      if(excludeId && itemId===excludeId){
+        return false;
+      }
+
+      if(
+        excludeBuildingId &&
+        itemBuildingId &&
+        itemBuildingId===excludeBuildingId
+      ){
+        return false;
+      }
+
+      /*
+        Alguns registros/tipologias do mesmo empreendimento
+        podem ter IDs diferentes. O nome impede que o próprio
+        empreendimento volte como "outra opção".
+      */
+      if(
+        excludeName &&
+        itemName &&
+        itemName===excludeName
+      ){
+        return false;
+      }
+
+      return true;
+    });
+
+  const removedCount=
+    Math.max(
+      0,
+      rawMatches.length-matches.length
+    );
+
+  const backendTotal=
+    Number(data.total)||0;
+
+  const adjustedTotal=
+    Math.max(
+      0,
+      backendTotal-removedCount
+    );
+
   const inventoryContext={
     inventory_ready:true,
     inventory_count:Number(data.inventory_count)||0,
+
     recognized_filters:Boolean(
       payload.query ||
       payload.neighborhood ||
@@ -8200,6 +8310,7 @@ async function searchPropertiesForAi(message){
       payload.min_price ||
       payload.max_price
     ),
+
     query:{
       text:payload.query,
       exact_name:payload.project,
@@ -8209,7 +8320,8 @@ async function searchPropertiesForAi(message){
       max_price:payload.max_price,
       source:"novos"
     },
-    total:Number(data.total)||0,
+
+    total:adjustedTotal,
     matches:matches.slice(0,12)
   };
 
@@ -8223,10 +8335,12 @@ async function searchPropertiesForAi(message){
   return inventoryContext;
 }
 
-
 /* =========================================================
    MATCH IA · ROTEADOR SEARCH ↔ PROPERTY
 ========================================================= */
+
+let aiPendingSearchOverride = null;
+
 
 function aiIsRequestForAlternatives(message){
   const t=norm(message||"");
@@ -8252,8 +8366,8 @@ function aiExtractSearchHintFromMessage(message){
     Não reaproveita bairro/preço/dormitórios antigos silenciosamente.
   */
   const knownNeighborhoods=[
-    "brooklin",
     "brooklin paulista",
+    "brooklin",
     "perdizes",
     "pompeia",
     "pompéia",
@@ -8305,45 +8419,120 @@ function aiExtractSearchHintFromMessage(message){
 }
 
 function aiSwitchToSearchMode(message){
-  const hint=aiExtractSearchHintFromMessage(message);
+  const hint=
+    aiExtractSearchHintFromMessage(
+      message
+    );
 
   /*
-    Limpamos o imóvel atual e o estado antigo.
-    O novo pedido deve ser interpretado como uma nova busca.
+    Guardamos o imóvel atual ANTES de sair de PROPERTY.
+    Ele será excluído da nova busca de alternativas.
   */
+  const previousProperty=
+    aiAssistantProperty &&
+    aiAssistantProperty.generic_search===false
+      ? {...aiAssistantProperty}
+      : null;
+
+  /*
+    Se o usuário disser apenas:
+      "tem outra opção?"
+      "me mostra outro"
+
+    usamos o bairro do imóvel atual como contexto.
+
+    Se ele disser:
+      "mais opções no Brooklin"
+
+    o bairro explícito da nova frase vence.
+  */
+  const targetNeighborhood=
+    hint.neighborhood ||
+    previousProperty?.neighborhood ||
+    "";
+
+  if(typeof resetAiSearchState==="function"){
+    resetAiSearchState();
+  }
+
+  if(typeof aiSearchState==="object" && aiSearchState){
+    aiSearchState.neighborhood=
+      targetNeighborhood;
+
+    aiSearchState.bedrooms=
+      hint.bedrooms||0;
+
+    aiSearchState.minPrice=
+      hint.min_price||0;
+
+    aiSearchState.maxPrice=
+      hint.max_price||0;
+
+    aiSearchState.exactName="";
+  }
+
+  /*
+    Override de uma única busca.
+
+    query fica vazia de propósito:
+      NÃO enviamos "tem outras opções no Brooklin"
+      como termo textual para /api/search-properties.
+
+    Em vez disso:
+      neighborhood = Brooklin
+      bedrooms/preço = somente se explicitados
+      empreendimento atual = excluído no frontend
+  */
+  aiPendingSearchOverride={
+    query:"",
+    neighborhood:targetNeighborhood,
+    bedrooms:hint.bedrooms||0,
+    min_price:hint.min_price||0,
+    max_price:hint.max_price||0,
+
+    exclude_id:
+      previousProperty?.id||"",
+
+    exclude_building_id:
+      previousProperty?.building_id||"",
+
+    exclude_name:
+      previousProperty?.name||""
+  };
+
   aiAssistantProperty={
     generic_search:true
   };
 
   aiLastSelectedProperty=null;
 
-  if(typeof resetAiSearchState==="function"){
-    resetAiSearchState();
-  }
-
-  /*
-    Só injeta filtros explicitamente mencionados na nova frase.
-  */
-  if(typeof aiSearchState==="object" && aiSearchState){
-    aiSearchState.neighborhood=hint.neighborhood||"";
-    aiSearchState.bedrooms=hint.bedrooms||0;
-    aiSearchState.minPrice=hint.min_price||0;
-    aiSearchState.maxPrice=hint.max_price||0;
-    aiSearchState.exactName="";
-  }
-
   console.log(
     "MATCH_IA_SWITCH_TO_SEARCH",
     {
       message,
-      hint
+      previous_property:{
+        id:previousProperty?.id||"",
+        building_id:previousProperty?.building_id||"",
+        name:previousProperty?.name||"",
+        neighborhood:previousProperty?.neighborhood||""
+      },
+      search_override:{
+        ...aiPendingSearchOverride
+      }
     }
   );
 
-  const aiInput=document.getElementById("aiAssistantInput");
+  const aiInput=
+    document
+      .getElementById(
+        "aiAssistantInput"
+      );
+
   if(aiInput){
     aiInput.placeholder=
-      "Digite bairro, preço, dormitórios ou empreendimento...";
+      targetNeighborhood
+        ? `Buscando outras opções em ${targetNeighborhood}...`
+        : "Digite bairro, preço, dormitórios ou empreendimento...";
   }
 }
 
