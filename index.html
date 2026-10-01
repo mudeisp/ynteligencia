@@ -2890,223 +2890,7 @@ body.ad-match-mode{
 </style>
 
 
-<style id="wizard-explore-only-design">
-/* =========================================================
-   WIZARD SIMPLES → FILTRO COMPLETO
-========================================================= */
 
-body.match-mode{
-  overflow:hidden!important;
-}
-
-body.match-mode header,
-body.match-mode .app-dock{
-  display:none!important;
-}
-
-body.match-mode .wizard-wrap{
-  position:fixed!important;
-  inset:0!important;
-  z-index:280!important;
-  display:grid!important;
-  place-items:center!important;
-  min-height:100dvh!important;
-  margin:0!important;
-  padding:24px!important;
-  background:#F7F4ED!important;
-  overflow:hidden!important;
-}
-
-body.match-mode .wizard-wrap>.container{
-  width:100%!important;
-  max-width:520px!important;
-  margin:0 auto!important;
-}
-
-body.match-mode .wizard-explore-only{
-  width:100%!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  border-radius:0!important;
-  background:transparent!important;
-  box-shadow:none!important;
-  overflow:visible!important;
-}
-
-body.match-mode .wizard-explore-only-inner{
-  display:block!important;
-  width:100%!important;
-  height:auto!important;
-  min-height:0!important;
-  padding:0!important;
-  background:transparent!important;
-  overflow:visible!important;
-}
-
-.wizard-explore-only-content{
-  width:100%!important;
-}
-
-.wizard-explore-only-btn{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  width:100%!important;
-  min-height:62px!important;
-  padding:0 20px!important;
-  border:0!important;
-  border-radius:16px!important;
-  background:#171513!important;
-  color:#FFFFFF!important;
-  font-size:15px!important;
-  font-weight:900!important;
-  letter-spacing:.035em!important;
-  box-shadow:none!important;
-  cursor:pointer!important;
-}
-
-.wizard-explore-only-btn:active{
-  transform:scale(.985)!important;
-}
-
-/* =========================================================
-   FILTRO COMPLETO
-========================================================= */
-
-.unified-search-panel{
-  background:#FCFAF6!important;
-  border:1px solid #DED8CD!important;
-  box-shadow:none!important;
-}
-
-.unified-search-main{
-  align-items:end!important;
-}
-
-.unified-field>span{
-  color:#6D675F!important;
-  font-weight:800!important;
-}
-
-.unified-search-panel .field{
-  background:#FFFFFF!important;
-  color:#242424!important;
-  border:1px solid #D8D0C4!important;
-  box-shadow:none!important;
-}
-
-.unified-search-separator{
-  color:#6D675F!important;
-}
-
-.catalog-filters{
-  background:#FFFFFF!important;
-  color:#242424!important;
-}
-
-.unified-filter-actions{
-  margin-top:18px!important;
-}
-
-#catalogSearchBtn.catalog-search-btn{
-  width:100%!important;
-  min-height:56px!important;
-  border:0!important;
-  border-radius:14px!important;
-  background:#171513!important;
-  color:#FFFFFF!important;
-  font-size:15px!important;
-  font-weight:900!important;
-  letter-spacing:.03em!important;
-  box-shadow:none!important;
-}
-
-/* Mobile: full filter opens as a clean scrollable sheet */
-@media(max-width:700px){
-  .catalog-filters{
-    position:fixed!important;
-    z-index:315!important;
-    inset:0!important;
-    left:0!important;
-    right:0!important;
-    top:0!important;
-    bottom:0!important;
-    width:100%!important;
-    max-width:none!important;
-    max-height:none!important;
-    height:100dvh!important;
-    margin:0!important;
-    padding:22px 16px calc(28px + env(safe-area-inset-bottom))!important;
-    border:0!important;
-    border-radius:0!important;
-    background:#FCFAF6!important;
-    overflow-y:auto!important;
-    overscroll-behavior:contain!important;
-    transform:translateY(105%)!important;
-    transition:transform .24s ease!important;
-  }
-
-  .catalog-filters.open{
-    transform:translateY(0)!important;
-  }
-
-  .filters-backdrop{
-    display:none!important;
-  }
-
-  .filters-close{
-    position:sticky!important;
-    top:0!important;
-    z-index:4!important;
-    margin-left:auto!important;
-    display:grid!important;
-    place-items:center!important;
-    width:42px!important;
-    height:42px!important;
-    border:1px solid #DED8CD!important;
-    border-radius:50%!important;
-    background:#FFFFFF!important;
-    color:#242424!important;
-    font-size:24px!important;
-  }
-
-  .unified-filter-grid{
-    display:grid!important;
-    grid-template-columns:1fr!important;
-    gap:12px!important;
-    margin-top:10px!important;
-  }
-
-  .unified-filter-grid .field{
-    width:100%!important;
-    min-height:54px!important;
-    font-size:16px!important;
-    border-radius:13px!important;
-  }
-
-  .unified-filter-actions{
-    display:grid!important;
-    grid-template-columns:1fr!important;
-    gap:10px!important;
-    margin-top:24px!important;
-    padding-bottom:6px!important;
-  }
-
-  #catalogSearchBtn.catalog-search-btn{
-    grid-row:1!important;
-    min-height:58px!important;
-  }
-
-  #resetCatalogFilters{
-    grid-row:2!important;
-    min-height:48px!important;
-    border:0!important;
-    background:transparent!important;
-    color:#77736B!important;
-  }
-}
-</style>
 
 
 <style id="dock-cleanup-final">
@@ -3123,37 +2907,7 @@ body.match-mode .wizard-explore-only-inner{
 </style>
 
 
-<style id="final-cleanup-explorar-only">
-/* Remover filtros rápidos visíveis antes do fluxo principal */
-#explore .explore-box,
-#explore .unified-search-panel,
-#explore .catalog-region-buttons,
-#explore .unified-search-main,
-#explore .section-head{
-  display:none!important;
-}
 
-/* Sem rodapé / dock */
-.app-dock,
-.mobile-bottom-nav,
-.mobile-dock,
-.bottom-nav,
-#mobileDock{
-  display:none!important;
-}
-
-/* O wizard permanece somente com o botão EXPLORAR IMÓVEIS */
-body.match-mode .wizard-explore-only-content{
-  display:block!important;
-}
-
-#wizardExploreOnly{
-  display:flex!important;
-  visibility:visible!important;
-  opacity:1!important;
-  pointer-events:auto!important;
-}
-</style>
 
 
 <style id="home-clean-final-fix">
@@ -3358,189 +3112,7 @@ body.home-mode .floating-contact{
 </style>
 
 
-<style id="wizard-minimal-final-design">
 
-/* ===========================
-   WIZARD MINIMAL
-=========================== */
-body.match-mode{
-  overflow:hidden!important;
-}
-
-body.match-mode header,
-body.match-mode .app-dock{
-  display:none!important;
-}
-
-body.match-mode .wizard-wrap{
-  position:fixed!important;
-  inset:0!important;
-  z-index:300!important;
-  display:grid!important;
-  place-items:center!important;
-  padding:28px!important;
-  margin:0!important;
-  background:#F7F4ED!important;
-  overflow:hidden!important;
-}
-
-.wizard-minimal-shell{
-  width:min(430px,100%)!important;
-  display:grid!important;
-  gap:14px!important;
-  margin:auto!important;
-}
-
-/* Animated Explore button */
-.wizard-explore-motion{
-  position:relative!important;
-  width:100%!important;
-  min-height:66px!important;
-  padding:0 20px!important;
-  border:0!important;
-  border-radius:20px!important;
-  background:#E4D0A3!important;
-  color:#171513!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:16px!important;
-  font-size:17px!important;
-  font-weight:950!important;
-  letter-spacing:.02em!important;
-  box-shadow:0 0 0 0 rgba(198,167,107,.38)!important;
-  cursor:pointer!important;
-  animation:yntExplorePulse 1.7s ease-in-out infinite!important;
-  overflow:hidden!important;
-}
-
-.wizard-explore-motion::after{
-  content:""!important;
-  position:absolute!important;
-  inset:-40% auto -40% -35%!important;
-  width:28%!important;
-  transform:skewX(-18deg)!important;
-  background:linear-gradient(
-    90deg,
-    transparent,
-    rgba(255,255,255,.55),
-    transparent
-  )!important;
-  animation:yntExploreShine 2.4s ease-in-out infinite!important;
-}
-
-.wizard-explore-motion span,
-.wizard-explore-motion b{
-  position:relative!important;
-  z-index:2!important;
-}
-
-.wizard-explore-motion b{
-  font-size:21px!important;
-  font-weight:500!important;
-  animation:yntArrowMove 1.2s ease-in-out infinite!important;
-}
-
-@keyframes yntExplorePulse{
-  0%,100%{
-    transform:scale(1);
-    box-shadow:0 0 0 0 rgba(198,167,107,.28);
-  }
-  50%{
-    transform:scale(1.018);
-    box-shadow:0 0 0 9px rgba(198,167,107,0);
-  }
-}
-
-@keyframes yntExploreShine{
-  0%,25%{left:-40%}
-  70%,100%{left:125%}
-}
-
-@keyframes yntArrowMove{
-  0%,100%{transform:translateX(0)}
-  50%{transform:translateX(5px)}
-}
-
-/* AI button */
-.wizard-ai-button{
-  width:100%!important;
-  min-height:72px!important;
-  padding:10px 14px!important;
-  border:1px solid #DED8CD!important;
-  border-radius:20px!important;
-  background:#FFFFFF!important;
-  color:#171513!important;
-  display:grid!important;
-  grid-template-columns:52px 1fr!important;
-  gap:12px!important;
-  align-items:center!important;
-  text-align:left!important;
-  box-shadow:none!important;
-  cursor:pointer!important;
-}
-
-.wizard-ai-robot{
-  width:52px!important;
-  height:52px!important;
-  display:grid!important;
-  place-items:center!important;
-  border-radius:16px!important;
-  background:#EEF4FF!important;
-  font-size:28px!important;
-}
-
-.wizard-ai-copy{
-  display:block!important;
-  min-width:0!important;
-}
-
-.wizard-ai-copy strong{
-  display:block!important;
-  margin:0 0 4px!important;
-  color:#171513!important;
-  font-size:14px!important;
-  font-weight:900!important;
-}
-
-.wizard-ai-copy small{
-  display:block!important;
-  color:#77736B!important;
-  font-size:10px!important;
-  line-height:1.35!important;
-  font-weight:600!important;
-}
-
-/* Home CTA text and styling */
-#startHero{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  visibility:visible!important;
-  opacity:1!important;
-  pointer-events:auto!important;
-}
-
-@media(max-width:768px){
-  body.match-mode .wizard-wrap{
-    padding:22px!important;
-  }
-
-  .wizard-minimal-shell{
-    width:100%!important;
-    max-width:390px!important;
-  }
-
-  .wizard-explore-motion{
-    min-height:64px!important;
-    font-size:16px!important;
-  }
-
-  .wizard-ai-button{
-    min-height:70px!important;
-  }
-}
-</style>
 
 
 <style id="hero-two-buttons-design">
@@ -3604,78 +3176,132 @@ body.match-mode .wizard-wrap{
 </style>
 
 
-<style id="home-direct-filter-ai-css">
-/* Never show intermediate wizard from home */
-#match[data-home-bypass="true"]{
-  display:none!important;
+
+
+
+
+
+
+<style id="region-neighborhood-filter-design">
+.unified-filter-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
 }
 
-/* AI must always sit above the app */
-.ai-assistant-shell{
-  z-index:700!important;
-}
-.ai-assistant-shell.open{
-  display:flex!important;
-}
-.ai-assistant-card{
-  z-index:701!important;
+@media(max-width:1100px){
+  .unified-filter-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
 }
 
-/* Full filter visible when opened */
-#catalogFilters.open,
-.catalog-filters.open,
-.unified-catalog-filters.open{
-  visibility:visible!important;
-  opacity:1!important;
-}
+@media(max-width:700px){
+  .unified-filter-grid{
+    grid-template-columns:1fr!important;
+  }
 
-@media(min-width:701px){
-  #catalogFilters.open,
-  .catalog-filters.open,
-  .unified-catalog-filters.open{
-    display:block!important;
+  #catalogRegion,
+  #catalogNeighborhood{
+    min-height:54px!important;
   }
 }
 </style>
 
 
-<style id="ynt-stability-css-20261001">
-/* Fechar precisa ficar sempre acessível no filtro mobile */
-@media(max-width:700px){
-  #catalogFilters.catalog-filters{
-    padding-top:max(16px,env(safe-area-inset-top))!important;
-  }
 
-  #closeFilters.filters-close{
-    display:grid!important;
-    position:sticky!important;
-    top:0!important;
-    z-index:999!important;
-    width:44px!important;
-    height:44px!important;
-    margin:0 0 14px auto!important;
-    padding:0!important;
-    place-items:center!important;
-    border:1px solid #DED8CD!important;
-    border-radius:50%!important;
-    background:#FFFFFF!important;
-    color:#171513!important;
-    font-size:26px!important;
-    line-height:1!important;
-    cursor:pointer!important;
-    pointer-events:auto!important;
-  }
-}
 
-/* IA sempre acima de filtros e detalhes */
-#aiAssistantShell.ai-assistant-shell{
-  z-index:1200!important;
-}
-#aiAssistantShell.ai-assistant-shell.open{
+
+<style id="instant-home-whatsapp-css">
+/* WhatsApp funcional e clicável na home */
+body.home-mode #specialistFloat,
+body.home-mode .specialist-float{
   display:flex!important;
   visibility:visible!important;
   opacity:1!important;
   pointer-events:auto!important;
+  z-index:500!important;
+}
+
+/* Home does not wait for inventory */
+body.home-mode #fastInventoryStatus{
+  display:none!important;
+}
+
+/* Filter opens immediately; no inventory gate */
+body.filter-direct-mode #explore,
+body.filter-direct-mode #unifiedSearchPanel,
+body.filter-direct-mode #catalogFilters{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+/* Loading status appears only after user actually searches */
+body.filter-direct-mode .fast-inventory-status{
+  display:none!important;
+}
+</style>
+
+
+<style id="ynt-clean-flow-v1">
+#match{display:none!important}
+
+/* Normal home */
+body.home-mode #explore,
+body.home-mode #catalog,
+body.home-mode #results{
+  display:none!important;
+}
+
+/* Direct full-filter mode */
+body.filter-direct-mode #explore{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  min-height:100dvh!important;
+  padding-top:90px!important;
+}
+
+body.filter-direct-mode #unifiedSearchPanel{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  max-width:1100px!important;
+  margin:0 auto!important;
+}
+
+body.filter-direct-mode #catalogFilters{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
+/* No obsolete loading message before pressing BUSCAR */
+body.filter-direct-mode #fastInventoryStatus{
+  display:none!important;
+}
+
+@media(max-width:700px){
+  body.filter-direct-mode #explore{
+    padding-top:0!important;
+  }
+
+  body.filter-direct-mode #catalogFilters{
+    position:fixed!important;
+    inset:0!important;
+    z-index:650!important;
+    width:100%!important;
+    height:100dvh!important;
+    max-height:none!important;
+    padding:22px 16px calc(28px + env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;
+    background:#FCFAF6!important;
+    transform:none!important;
+    border-radius:0!important;
+  }
+
+  body.filter-direct-mode #closeFilters{
+    display:grid!important;
+  }
 }
 </style>
 
@@ -3732,39 +3358,13 @@ body.match-mode .wizard-wrap{
 
 
 
-<section class="wizard-wrap" id="match">
-  <div class="wizard-minimal-shell">
 
-    <button
-      class="wizard-explore-motion"
-      id="wizardExploreOnly"
-      type="button">
-      <span>EXPLORAR IMÓVEIS</span>
-      <b aria-hidden="true">→</b>
-    </button>
-
-    <button
-      class="wizard-ai-button"
-      id="wizardAiButton"
-      type="button"
-      aria-label="Falar com a inteligência artificial">
-      <span class="wizard-ai-robot" aria-hidden="true">🤖</span>
-      <span class="wizard-ai-copy">
-        <strong>Falar com a IA</strong>
-        <small>Posso te ajudar a encontrar o imóvel ideal</small>
-      </span>
-    </button>
-
-    <!-- Compatibilidade com listeners antigos -->
-    <div style="display:none!important" aria-hidden="true">
-      <span id="progress"></span>
-      <strong id="stepCount">01 de 01</strong>
-      <button id="back" type="button"></button>
-      <button id="clearMatch" type="button"></button>
-      <button id="next" type="button"></button>
-    </div>
-
-  </div>
+<section class="wizard-wrap" id="match" hidden aria-hidden="true" style="display:none!important">
+  <span id="progress"></span>
+  <strong id="stepCount">01 de 01</strong>
+  <button id="back" type="button"></button>
+  <button id="clearMatch" type="button"></button>
+  <button id="next" type="button"></button>
 </section>
 
 <section
@@ -3823,7 +3423,32 @@ body.match-mode .wizard-wrap{
         <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true" style="display:none"></div>
         <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros" style="display:none">×</button>
 
-        <div class="filter-grid unified-filter-grid">
+        
+        <div class="fast-inventory-status" id="fastInventoryStatus">
+          Estoque carregando em segundo plano…
+        </div>
+
+<div class="filter-grid unified-filter-grid">
+          <label class="unified-field">
+            <span>Região</span>
+            <select id="catalogRegion" class="field" aria-label="Região">
+              <option value="">Todas as regiões</option>
+              <option value="oeste">Zona Oeste</option>
+              <option value="sul">Zona Sul</option>
+              <option value="leste">Zona Leste</option>
+              <option value="norte">Zona Norte</option>
+              <option value="centro">Centro</option>
+              <option value="outras">Outras regiões</option>
+            </select>
+          </label>
+
+          <label class="unified-field">
+            <span>Bairro</span>
+            <select id="catalogNeighborhood" class="field" aria-label="Bairro">
+              <option value="">Todos os bairros</option>
+            </select>
+          </label>
+
           <label class="unified-field">
             <span>Estoque</span>
             <select id="catalogSource" class="field" aria-label="Tipo de estoque">
@@ -7650,6 +7275,30 @@ function aiParseMoneyPhrase(text){
   return {min,max};
 }
 
+
+async function ensureAiInventoryReady(message=""){
+  const q=norm(message||"");
+  const asksUsed=/\b(usado|usados|seminovo|seminovos)\b/.test(q);
+
+  try{
+    if((!Array.isArray(properties) || properties.length===0) && typeof fetchNewCatalogPage==="function"){
+      await fetchNewCatalogPage({reset:true});
+      properties=deduplicate([...newPropertiesCache]);
+      inventoryReady=properties.length>0;
+      inventoryLoading=false;
+    }
+
+    if(asksUsed && !usedInventoryLoaded && typeof loadUsedInventory==="function"){
+      await loadUsedInventory();
+      properties=deduplicate([...newPropertiesCache,...usedPropertiesCache]);
+    }
+  }catch(error){
+    console.warn("AI_INVENTORY_QUERY_ERROR",error);
+  }
+
+  return Array.isArray(properties) && properties.length>0;
+}
+
 function aiInventoryContext(message){
   const recentUsers=aiLeadConversation
     .filter(item=>item.role==="user")
@@ -7759,7 +7408,12 @@ function aiInventoryContext(message){
   }));
 
   return {
-    inventory_ready:Boolean(inventoryReady),
+    inventory_ready:Boolean(inventory.length>0),
+    inventory_partial:Boolean(
+      inventory.length>0 &&
+      typeof usedInventoryLoaded!=="undefined" &&
+      !usedInventoryLoaded
+    ),
     inventory_count:inventory.length,
     recognized_filters:recognized,
     query:{
@@ -7785,6 +7439,10 @@ async function generateAiLeadSummary(){
   if(!aiLeadConversation.length)return "";
 
   try{
+    if(aiAssistantProperty?.generic_search){
+      await ensureAiInventoryReady(text);
+    }
+
     const response=await fetch("/api/assistant",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -9732,18 +9390,54 @@ $("catalogState")?.addEventListener(
 
 
 async function executeCatalogSearch(){
-  $("catalog").classList.add("visible");
-  activeCity=clean($("catalogCity")?.value || activeCity) || activeCity;
-  activeState=String($("catalogState")?.value || activeState).trim().toUpperCase() || activeState;
-  if($("catalogStatus")) $("catalogStatus").textContent="Carregando imóveis...";
-  if($("catalogLoadMore")) $("catalogLoadMore").style.display="none";
-  await fetchNewCatalogPage({reset:true});
-  inventoryReady=true;
-  inventoryLoading=false;
-  inventoryLoadError=false;
-  renderCatalog();
-  updateCatalogUrl();
-  $("catalog").scrollIntoView({behavior:"smooth",block:"start"});
+  const source=$("catalogSource")?.value || "todos";
+
+  $("catalog")?.classList.add("visible");
+
+  if($("catalogStatus")){
+    $("catalogStatus").textContent="Buscando imóveis...";
+  }
+
+  try{
+    inventoryLoading=true;
+    inventoryLoadError=false;
+
+    if(source==="usados"){
+      await loadUsedInventory();
+      properties=deduplicate([...usedPropertiesCache]);
+    }else{
+      await fetchNewCatalogPage({reset:true});
+      properties=deduplicate([...newPropertiesCache]);
+    }
+
+    inventoryReady=properties.length>0;
+    inventoryLoading=false;
+
+    renderCatalog();
+    updateCatalogUrl();
+
+    // For "todos", enrich with used properties only AFTER results are already visible.
+    if(source==="todos" && !usedInventoryLoaded && !usedInventoryLoading){
+      setTimeout(()=>{
+        loadUsedInventory()
+          .then(()=>{
+            properties=deduplicate([...newPropertiesCache,...usedPropertiesCache]);
+            fillCatalogNeighborhoods();
+            renderCatalog();
+          })
+          .catch(()=>{});
+      },250);
+    }
+
+    $("catalog")?.scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(error){
+    console.error("CATALOG_SEARCH_ERROR",error);
+    inventoryLoading=false;
+    inventoryLoadError=true;
+    if($("catalogStatus")){
+      $("catalogStatus").textContent="Não foi possível atualizar o estoque agora.";
+    }
+  }
 }
 
 $("catalogSearchBtn").addEventListener("click", executeCatalogSearch);
@@ -11089,13 +10783,11 @@ async function loadInventory(){
     fillCatalogNeighborhoods();
     if($("catalog")?.classList.contains("visible"))renderCatalog();
 
-    const loadUsedLater=()=>loadUsedInventory().catch(()=>{});
-
-    if("requestIdleCallback" in window){
-      window.requestIdleCallback(loadUsedLater,{timeout:1400});
-    }else{
-      setTimeout(loadUsedLater,450);
-    }
+    /*
+      PERFORMANCE V2:
+      não baixar o CSV de usados automaticamente.
+      Ele entra somente quando a busca/IA realmente precisar.
+    */
 
   }catch(error){
     console.error("Falha ao carregar inventário:",error);
@@ -11135,969 +10827,102 @@ if($("catalogState")){
 }
 
 
-loadInventory()
-.then(
-  ()=>{
 
-    /*
-      PERFORMANCE:
-      o app fica utilizável assim que o inventário essencial termina.
-      photos.json é carregado depois do primeiro paint e não bloqueia
-      mais a abertura da interface.
-    */
-    const loadPhotosInBackground=()=>{
-      loadPhotoManifest()
-        .then(()=>{
-          applyHeroInventoryPhoto();
+(function startYnteligenciaFast(){
+  const params=new URLSearchParams(window.location.search);
 
-          if($("results")?.classList.contains("visible")){
-            showMatches();
-          }
+  const needsInventoryImmediately=Boolean(
+    params.get("imovel") ||
+    params.get("modo")==="explorar" ||
+    params.get("bairro") ||
+    params.get("neighborhood") ||
+    params.get("dormitorios") ||
+    params.get("bedrooms") ||
+    params.get("valor_min") ||
+    params.get("min_price") ||
+    params.get("valor_max") ||
+    params.get("max_price")
+  );
 
-          if($("catalog")?.classList.contains("visible")){
-            renderCatalog();
-          }
-        })
-        .catch(()=>{});
-    };
+  async function finishStartupAfterInventory(){
+    try{
+      const loadPhotosInBackground=()=>{
+        loadPhotoManifest()
+          .then(()=>{
+            applyHeroInventoryPhoto();
 
-    if("requestIdleCallback" in window){
-      window.requestIdleCallback(
-        loadPhotosInBackground,
-        {timeout:1800}
-      );
-    }else{
-      setTimeout(loadPhotosInBackground,700);
-    }
+            if($("results")?.classList.contains("visible")){
+              showMatches();
+            }
 
-    /* Link compartilhado abre diretamente a ficha técnica do imóvel. */
-    const sharedPropertyId=new URLSearchParams(window.location.search).get("imovel");
-    if(sharedPropertyId){
-      const sharedProperty=properties.find(item=>String(item.id)===String(sharedPropertyId));
-      if(sharedProperty){
-        document.body.classList.remove("home-mode");
-        showPhotoModal(String(sharedProperty.id));
+            if($("catalog")?.classList.contains("visible")){
+              renderCatalog();
+            }
+          })
+          .catch(()=>{});
+      };
+
+      if("requestIdleCallback" in window){
+        window.requestIdleCallback(loadPhotosInBackground,{timeout:2200});
       }else{
-        showToast("Este imóvel não está disponível no estoque atual.");
+        setTimeout(loadPhotosInBackground,1200);
       }
-    }
 
-    /*
-      URL gerada pelo Explorar:
-      abre o catálogo com a mesma busca salva na URL.
-    */
-    const openedCatalogFromUrl=
-      !sharedPropertyId &&
-      loadCatalogFromUrl();
+      const sharedPropertyId=
+        new URLSearchParams(window.location.search).get("imovel");
 
-    if(openedCatalogFromUrl){
-      document.body.classList.add("campaign-catalog-mode");
-    }
+      if(sharedPropertyId){
+        const sharedProperty=
+          properties.find(item=>String(item.id)===String(sharedPropertyId));
 
-    /* Se o clique veio de um anúncio com intenção conhecida, entrega
-       os imóveis imediatamente. A home e o wizard continuam intactos
-       para acessos normais ao domínio.
-       Esse fluxo só roda quando NÃO for uma URL modo=explorar. */
-    if(
-      !openedCatalogFromUrl &&
-      adIntent.active &&
-      !sharedPropertyId
-    ){
-      updateAdMatchUI();
-      document.body.classList.remove("home-mode");
-      if(adIntentHasPrice()){
-        showMatches();
-      }else{
-        openAdBudgetQuestion();
-      }
-    }
-
-    /*
-      Sem wizard:
-      acesso direto ao domínio abre a exploração.
-      Campanhas continuam abrindo o filtro pronto pela URL.
-    */
-    if(
-      !openedCatalogFromUrl &&
-      !sharedPropertyId &&
-      !adIntent.active
-    ){
-      openGeneralCatalog(false);
-    }
-
-    console.log(
-      `Ynteligencia pronta: ${properties.length} imóveis · fotos em carregamento progressivo`
-    );
-  }
-);
-
-</script>
-
-<script>
-(function(){
-  const menu=document.getElementById('appMenu');
-  const backdrop=document.getElementById('menuBackdrop');
-  const openTop=document.getElementById('openAppMenu');
-  const openDock=document.getElementById('openAppMenuDock');
-  const closeBtn=document.getElementById('closeAppMenu');
-  const installCard=document.getElementById('installAppButton');
-  const installModal=document.getElementById('installModal');
-  const installNow=document.getElementById('installNowButton');
-  const installClose=document.getElementById('closeInstallModal');
-  const fallback=document.getElementById('installFallback');
-  let deferredInstallPrompt=null;
-
-  function openMenu(){
-    menu.classList.add('open');
-    backdrop.classList.add('open');
-    menu.setAttribute('aria-hidden','false');
-    openTop?.setAttribute('aria-expanded','true');
-    document.body.style.overflow='hidden';
-  }
-  function closeMenu(){
-    menu.classList.remove('open');
-    backdrop.classList.remove('open');
-    menu.setAttribute('aria-hidden','true');
-    openTop?.setAttribute('aria-expanded','false');
-    document.body.style.overflow='';
-  }
-  function openInstall(){
-    closeMenu();
-    installModal.classList.add('open');
-    installModal.setAttribute('aria-hidden','false');
-    document.body.style.overflow='hidden';
-    if(!deferredInstallPrompt) fallback.hidden=false;
-  }
-  function closeInstall(){
-    installModal.classList.remove('open');
-    installModal.setAttribute('aria-hidden','true');
-    document.body.style.overflow='';
-  }
-
-  openTop?.addEventListener('click',openMenu);
-  openDock?.addEventListener('click',openMenu);
-  closeBtn?.addEventListener('click',closeMenu);
-  backdrop?.addEventListener('click',closeMenu);
-  installCard?.addEventListener('click',openInstall);
-  installClose?.addEventListener('click',closeInstall);
-  installModal?.addEventListener('click',e=>{if(e.target===installModal) closeInstall();});
-
-  document.querySelectorAll('[data-scroll-target]').forEach(el=>{
-    el.addEventListener('click',()=>{
-      const id=el.getAttribute('data-scroll-target');
-      closeMenu();
-      setTimeout(()=>{
-        if(id==='match') enterMatchMode();
-        else if(id==='explore') openGeneralCatalog();
-        else{
-          if(id==='inicio'){goHome();return;}
-          document.body.classList.toggle('home-mode',id==='inicio');
-          document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
+        if(sharedProperty){
+          document.body.classList.remove("home-mode");
+          showPhotoModal(String(sharedProperty.id));
         }
-      },80);
-    });
-  });
-
-  window.addEventListener('beforeinstallprompt',event=>{
-    event.preventDefault();
-    deferredInstallPrompt=event;
-    fallback.hidden=true;
-  });
-
-  installNow?.addEventListener('click',async()=>{
-    if(!deferredInstallPrompt){
-      fallback.hidden=false;
-      return;
-    }
-    deferredInstallPrompt.prompt();
-    try{await deferredInstallPrompt.userChoice;}catch(e){}
-    deferredInstallPrompt=null;
-    closeInstall();
-  });
-
-  window.addEventListener('appinstalled',()=>{
-    deferredInstallPrompt=null;
-    if(installCard) installCard.style.display='none';
-    closeInstall();
-  });
-
-  if(window.matchMedia('(display-mode: standalone)').matches){
-    if(installCard) installCard.style.display='none';
-  }
-})();
-</script>
-
-
-<!-- =========================================================
-     COMPARAÇÃO CONTEXTUAL ENTRE BAIRROS · ZONA OESTE
-
-     NÍVEL 1 · PREMIUM
-     Pinheiros → Vila Madalena → Perdizes → Pompéia → Pinheiros
-
-     NÍVEL 2 · MÉDIO / MÉDIO-ALTO
-     Vila Romana → Lapa → Água Branca → Barra Funda → Vila Romana
-
-     Preserva dormitórios, faixa de valor, UTMs, GCLID/GBRAID/WBRAID
-     e demais parâmetros da campanha. Troca somente o bairro.
-========================================================== -->
-<style>
-  .neighborhood-compare-fab{
-    position:fixed;
-    left:14px;
-    bottom:88px;
-    z-index:940;
-    display:none;
-    align-items:center;
-    gap:10px;
-    width:min(300px,calc(100vw - 28px));
-    padding:11px 13px;
-    border:1px solid rgba(198,167,107,.52);
-    border-radius:16px;
-    background:rgba(252,250,246,.96);
-    color:#4A443C;
-    box-shadow:0 14px 34px rgba(32,28,23,.14);
-    text-decoration:none;
-    -webkit-backdrop-filter:blur(14px);
-    backdrop-filter:blur(14px);
-    opacity:0;
-    transform:translateY(12px);
-    pointer-events:none;
-    transition:opacity .22s ease,transform .22s ease,box-shadow .22s ease;
-  }
-  .neighborhood-compare-fab.is-ready{display:flex}
-  .neighborhood-compare-fab.is-visible{opacity:1;transform:translateY(0);pointer-events:auto}
-  .neighborhood-compare-fab:hover{box-shadow:0 18px 42px rgba(32,28,23,.19);transform:translateY(-2px)}
-
-  .neighborhood-compare-icon{
-    width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;
-    border-radius:50%;background:#F0ECE3;border:1px solid #DED8CD;color:#6A635A;font-size:15px;
-  }
-  .neighborhood-compare-copy{min-width:0;display:flex;flex-direction:column;gap:1px}
-  .neighborhood-compare-kicker{font-size:9px;line-height:1.2;letter-spacing:.11em;font-weight:800;color:#7D776E;text-transform:uppercase}
-  .neighborhood-compare-title{font-size:13px;line-height:1.25;font-weight:800;color:#4A443C}
-  .neighborhood-compare-subtitle{margin-top:1px;font-size:10px;line-height:1.25;color:#7D776E}
-  .neighborhood-compare-arrow{margin-left:auto;flex:0 0 auto;font-size:18px;line-height:1;color:#9A7D46}
-
-  /* Refinar MATCH minimizado no desktop. */
-  @media(min-width:769px){
-    .refine-match-fab{
-      display:flex!important;
-      left:auto!important;
-      right:18px!important;
-      bottom:18px!important;
-      transform:none!important;
-      min-height:36px!important;
-      height:36px!important;
-      width:auto!important;
-      padding:0 13px!important;
-      border:1px solid rgba(198,167,107,.42)!important;
-      border-radius:999px!important;
-      background:rgba(24,24,22,.92)!important;
-      color:#F7F4ED!important;
-      box-shadow:0 10px 26px rgba(0,0,0,.18)!important;
-      font-size:11px!important;
-      font-weight:800!important;
-      opacity:.88;
-      white-space:nowrap;
-      -webkit-backdrop-filter:blur(12px);
-      backdrop-filter:blur(12px);
-    }
-    .refine-match-fab:hover{opacity:1}
-    .refine-match-shell{bottom:62px!important}
-    body.match-results-mode{padding-bottom:78px!important}
-  }
-
-  @media(max-width:768px){
-    .neighborhood-compare-fab{left:10px;bottom:82px;width:min(262px,calc(100vw - 20px));padding:9px 11px;border-radius:14px}
-    .neighborhood-compare-icon{width:30px;height:30px;flex-basis:30px;font-size:13px}
-    .neighborhood-compare-title{font-size:12px}
-    .neighborhood-compare-subtitle{font-size:9px}
-  }
-</style>
-
-<a id="neighborhoodCompareFab" class="neighborhood-compare-fab" href="#" aria-label="Comparar imóveis em outro bairro">
-  <span class="neighborhood-compare-icon" aria-hidden="true">↔</span>
-  <span class="neighborhood-compare-copy">
-    <span class="neighborhood-compare-kicker" id="neighborhoodCompareKicker">COMPARE A REGIÃO</span>
-    <strong class="neighborhood-compare-title" id="neighborhoodCompareTitle"></strong>
-    <span class="neighborhood-compare-subtitle" id="neighborhoodCompareSubtitle"></span>
-  </span>
-  <span class="neighborhood-compare-arrow" aria-hidden="true">›</span>
-</a>
-
-<script>
-(() => {
-  const fab = document.getElementById("neighborhoodCompareFab");
-  const kicker = document.getElementById("neighborhoodCompareKicker");
-  const title = document.getElementById("neighborhoodCompareTitle");
-  const subtitle = document.getElementById("neighborhoodCompareSubtitle");
-  if(!fab || !kicker || !title || !subtitle) return;
-
-  const normalizeNeighborhood = value => String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const circuit = {
-    "pinheiros": {zone:"oeste",next:"Vila Madalena",tier:"premium",label:"Ver imóveis na Vila Madalena",reason:"Continue comparando no circuito premium"},
-    "vila madalena": {zone:"oeste",next:"Perdizes",tier:"premium",label:"Ver imóveis em Perdizes",reason:"Continue comparando no circuito premium"},
-    "perdizes": {zone:"oeste",next:"Pompéia",tier:"premium",label:"Ver imóveis na Pompéia",reason:"Compare opções próximas na Zona Oeste"},
-    "pompeia": {zone:"oeste",next:"Pinheiros",tier:"premium",label:"Ver imóveis em Pinheiros",reason:"Continue comparando no circuito premium"},
-    "vila romana": {zone:"oeste",next:"Lapa",tier:"medio",label:"Ver imóveis na Lapa",reason:"Compare alternativas na mesma faixa regional"},
-    "lapa": {zone:"oeste",next:"Água Branca",tier:"medio",label:"Ver imóveis na Água Branca",reason:"Compare alternativas na mesma faixa regional"},
-    "agua branca": {zone:"oeste",next:"Barra Funda",tier:"medio",label:"Ver imóveis na Barra Funda",reason:"Compare mobilidade, metragem e valor"},
-    "barra funda": {zone:"oeste",next:"Vila Romana",tier:"medio",label:"Ver imóveis na Vila Romana",reason:"Compare alternativas na mesma faixa regional"},
-    "moema": {zone:"sul",next:"Campo Belo",tier:"premium",label:"Ver imóveis no Campo Belo",reason:"Compare outra opção premium da Zona Sul"},
-    "campo belo": {zone:"sul",next:"Brooklin",tier:"premium",label:"Ver imóveis no Brooklin",reason:"Compare localização, metragem e mobilidade"},
-    "brooklin": {zone:"sul",next:"Vila Olímpia",tier:"premium",label:"Ver imóveis na Vila Olímpia",reason:"Continue comparando no eixo premium"},
-    "vila olimpia": {zone:"sul",next:"Moema",tier:"premium",label:"Ver imóveis em Moema",reason:"Compare outra referência premium da Zona Sul"},
-    "vila mariana": {zone:"sul",next:"Vila Clementino",tier:"medio",label:"Ver imóveis na Vila Clementino",reason:"Compare bairros próximos com perfil semelhante"},
-    "vila clementino": {zone:"sul",next:"Saúde",tier:"medio",label:"Ver imóveis na Saúde",reason:"Compare metragem, mobilidade e valor"},
-    "saude": {zone:"sul",next:"Chácara Santo Antônio",tier:"medio",label:"Ver imóveis na Chácara Santo Antônio",reason:"Compare alternativas no eixo da Zona Sul"},
-    "chacara santo antonio": {zone:"sul",next:"Santo Amaro",tier:"medio",label:"Ver imóveis em Santo Amaro",reason:"Compare mobilidade, estoque e faixa de valor"},
-    "santo amaro": {zone:"sul",next:"Vila Mariana",tier:"medio",label:"Ver imóveis na Vila Mariana",reason:"Volte ao circuito de comparação da Zona Sul"}
-  };
-
-  const satelliteMap = {
-    "sumarezinho": {zone:"oeste",next:"Vila Madalena",tier:"resgate"},
-    "alto da lapa": {zone:"oeste",next:"Vila Romana",tier:"resgate"},
-    "vila ipojuca": {zone:"oeste",next:"Vila Romana",tier:"resgate"},
-    "jaguare": {zone:"oeste",next:"Vila Leopoldina",tier:"resgate"},
-    "vila leopoldina": {zone:"oeste",next:"Lapa",tier:"resgate"},
-    "butanta": {zone:"oeste",next:"Pinheiros",tier:"resgate"},
-    "rio pequeno": {zone:"oeste",next:"Butantã",tier:"resgate"},
-    "morumbi": {zone:"sul",next:"Brooklin",tier:"resgate"},
-    "planalto paulista": {zone:"sul",next:"Saúde",tier:"resgate"},
-    "mirandopolis": {zone:"sul",next:"Vila Mariana",tier:"resgate"},
-    "jabaquara": {zone:"sul",next:"Saúde",tier:"resgate"},
-    "ibirapuera": {zone:"sul",next:"Moema",tier:"resgate"},
-    "itaim bibi": {zone:"sul",next:"Vila Olímpia",tier:"resgate"}
-  };
-
-  const zoneNeighborhoods = {
-    oeste: ["Pinheiros","Vila Madalena","Perdizes","Pompéia","Vila Romana","Lapa","Água Branca","Barra Funda","Vila Leopoldina","Butantã","Sumarezinho","Alto da Lapa","Vila Ipojuca","Jaguaré"],
-    sul: ["Moema","Campo Belo","Brooklin","Vila Olímpia","Vila Mariana","Vila Clementino","Saúde","Chácara Santo Antônio","Santo Amaro","Morumbi","Planalto Paulista","Mirandópolis","Jabaquara","Ibirapuera","Itaim Bibi"]
-  };
-
-  const anchorPriority = [
-    "Pinheiros","Perdizes","Vila Madalena","Pompéia","Vila Romana","Lapa",
-    "Moema","Brooklin","Campo Belo","Vila Olímpia","Vila Mariana","Saúde","Santo Amaro"
-  ];
-
-  function getAvailableNeighborhoods(){
-    const select = document.getElementById("refineNeighborhood");
-    if(!select) return [];
-    return [...select.options]
-      .map(option => String(option.value || "").trim())
-      .filter(Boolean)
-      .filter((value,index,array) => array.findIndex(v => normalizeNeighborhood(v) === normalizeNeighborhood(value)) === index);
-  }
-
-  function findAvailable(name, available){
-    const key = normalizeNeighborhood(name);
-    return available.find(item => normalizeNeighborhood(item) === key) || null;
-  }
-
-  function inferZone(current){
-    const key = normalizeNeighborhood(current);
-    for(const [zone,names] of Object.entries(zoneNeighborhoods)){
-      if(names.some(name => normalizeNeighborhood(name) === key)) return zone;
-    }
-    return null;
-  }
-
-  function firstAvailable(candidates, available, current){
-    const currentKey = normalizeNeighborhood(current);
-    for(const candidate of candidates){
-      const found = findAvailable(candidate, available);
-      if(found && normalizeNeighborhood(found) !== currentKey) return found;
-    }
-    return null;
-  }
-
-  function getActiveZone(currentRaw){
-    const url = new URL(window.location.href);
-
-    // 1) Região explícita na URL tem prioridade.
-    const regionRaw = normalizeNeighborhood(
-      url.searchParams.get("region") ||
-      url.searchParams.get("regiao") ||
-      url.searchParams.get("zona") ||
-      ""
-    );
-
-    if(regionRaw){
-      if(regionRaw.includes("oeste")) return "oeste";
-      if(regionRaw.includes("sul")) return "sul";
-    }
-
-    // 2) Se a URL já está em um bairro conhecido, a zona desse bairro vale.
-    const neighborhoodZone = inferZone(currentRaw);
-    if(neighborhoodZone) return neighborhoodZone;
-
-    // 3) Preserva a intenção regional escolhida na sessão.
-    try{
-      const stored = sessionStorage.getItem("ynteligencia_active_zone");
-      if(stored === "oeste" || stored === "sul") return stored;
-    }catch(e){}
-
-    return null;
-  }
-
-  function rememberActiveZone(zone){
-    if(zone !== "oeste" && zone !== "sul") return;
-    try{
-      sessionStorage.setItem("ynteligencia_active_zone", zone);
-    }catch(e){}
-  }
-
-  function getCompassRoute(currentRaw){
-    const currentKey = normalizeNeighborhood(currentRaw);
-    const available = getAvailableNeighborhoods();
-    if(!available.length) return null;
-
-    // A zona ativa é uma trava. Enquanto existir contexto regional,
-    // a Bússola nunca recomenda bairro de outra zona.
-    const activeZone = getActiveZone(currentRaw);
-    if(activeZone) rememberActiveZone(activeZone);
-
-    const zoneCandidates = activeZone
-      ? (zoneNeighborhoods[activeZone] || [])
-      : [];
-
-    const direct = circuit[currentKey];
-
-    // 1. Circuito conhecido, respeitando obrigatoriamente a zona ativa.
-    if(direct){
-      const lockedZone = activeZone || direct.zone;
-      rememberActiveZone(lockedZone);
-
-      // Só aceita o próximo bairro se ele também pertencer à zona travada.
-      const nextZone = inferZone(direct.next);
-      const exact = nextZone === lockedZone
-        ? findAvailable(direct.next, available)
-        : null;
-
-      if(exact){
-        return {...direct,zone:lockedZone,next:exact,mode:"circuit"};
       }
 
-      const sameZone = firstAvailable(
-        zoneNeighborhoods[lockedZone] || [],
-        available,
-        currentRaw
-      );
+      const openedCatalogFromUrl=
+        !sharedPropertyId &&
+        typeof loadCatalogFromUrl==="function" &&
+        loadCatalogFromUrl();
 
-      if(sameZone){
-        return {
-          zone:lockedZone,
-          next:sameZone,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${sameZone}`,
-          reason:"A Bússola encontrou outra opção disponível na mesma região"
-        };
+      if(openedCatalogFromUrl){
+        document.body.classList.add("campaign-catalog-mode");
       }
 
-      // Não cruza de zona automaticamente.
-      return null;
-    }
-
-    // 2. Bairro satélite: também permanece preso à zona ativa.
-    const satellite = satelliteMap[currentKey];
-    if(satellite){
-      const lockedZone = activeZone || satellite.zone;
-      rememberActiveZone(lockedZone);
-
-      const targetZone = inferZone(satellite.next);
-      const exact = targetZone === lockedZone
-        ? findAvailable(satellite.next, available)
-        : null;
-
-      const fallback = exact || firstAvailable(
-        zoneNeighborhoods[lockedZone] || [],
-        available,
-        currentRaw
-      );
-
-      if(fallback){
-        return {
-          zone:lockedZone,
-          next:fallback,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${fallback}`,
-          reason:"A Bússola encontrou um bairro próximo para continuar sua busca"
-        };
+      if(
+        !sharedPropertyId &&
+        !openedCatalogFromUrl &&
+        typeof adIntent!=="undefined" &&
+        adIntent.active
+      ){
+        try{
+          document.body.classList.add("ad-match-mode");
+          document.body.classList.remove("home-mode");
+          showMatches();
+        }catch(e){}
       }
-
-      return null;
+    }catch(error){
+      console.warn("FAST_STARTUP_POST_INVENTORY",error);
     }
-
-    // 3. Região selecionada sem bairro atual:
-    // recomenda SOMENTE bairros daquela região.
-    if(activeZone){
-      const fallback = firstAvailable(
-        zoneCandidates,
-        available,
-        currentRaw
-      );
-
-      if(fallback){
-        return {
-          zone:activeZone,
-          next:fallback,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${fallback}`,
-          reason:"Continue explorando imóveis na região selecionada"
-        };
-      }
-
-      // Se não houver opção naquela zona, não manda para outra zona.
-      return null;
-    }
-
-    // 4. Sem qualquer intenção regional:
-    // mantém o comportamento aberto da Bússola.
-    const globalFallback =
-      firstAvailable(anchorPriority, available, currentRaw) ||
-      available.find(item => normalizeNeighborhood(item) !== currentKey);
-
-    if(globalFallback){
-      const fallbackZone = inferZone(globalFallback);
-      if(fallbackZone) rememberActiveZone(fallbackZone);
-
-      return {
-        zone:fallbackZone || "explorar",
-        next:globalFallback,
-        tier:"resgate",
-        mode:"rescue",
-        label:`Explorar ${globalFallback}`,
-        reason:"A Bússola encontrou uma nova região para você comparar"
-      };
-    }
-
-    return null;
-  }
-
-  let activeRoute = null;
-  let activeCurrent = "";
-
-  function renderCompass(){
-    const url = new URL(window.location.href);
-    const currentRaw = url.searchParams.get("bairro") || url.searchParams.get("neighborhood") || "";
-    const route = getCompassRoute(currentRaw);
-
-    activeRoute = route;
-    activeCurrent = currentRaw;
-
-    if(!route){
-      fab.classList.remove("is-ready","is-visible");
-      return;
-    }
-
-    const bedrooms = url.searchParams.get("dormitorios") || url.searchParams.get("bedrooms") || "";
-    url.searchParams.delete("bairro");
-    url.searchParams.delete("neighborhood");
-    url.searchParams.delete("region");
-    url.searchParams.set("bairro", route.next);
-
-    fab.href = url.pathname + url.search + url.hash;
-    fab.dataset.fromNeighborhood = currentRaw;
-    fab.dataset.toNeighborhood = route.next;
-    fab.dataset.tier = route.tier;
-
-    if(route.mode === "circuit"){
-      const zoneLabel = route.zone === "sul" ? "ZONA SUL" : "ZONA OESTE";
-      kicker.textContent = route.tier === "premium" ? `COMPARE · ${zoneLabel} PREMIUM` : `COMPARE · ${zoneLabel}`;
-    }else{
-      kicker.textContent = "BÚSSOLA · CONTINUE EXPLORANDO";
-    }
-
-    title.textContent = route.label || `Ver imóveis em ${route.next}`;
-    subtitle.textContent = bedrooms ? `${route.reason} · ${bedrooms}+ dormitórios` : route.reason;
-    fab.classList.add("is-ready");
-    fab.classList.toggle("is-visible", window.scrollY > 420);
-  }
-
-  window.addEventListener("scroll", () => {
-    if(activeRoute) fab.classList.toggle("is-visible", window.scrollY > 420);
-  }, {passive:true});
-
-  window.addEventListener("popstate", () => setTimeout(renderCompass, 50));
-
-  // O MATCH atualiza a URL sem necessariamente recarregar a página.
-  // Esta checagem leve mantém a Bússola sincronizada após Aplicar.
-  let lastSearch = window.location.search;
-  setInterval(() => {
-    if(window.location.search !== lastSearch){
-      lastSearch = window.location.search;
-      renderCompass();
-    }
-  }, 400);
-
-  fab.addEventListener("click", event => {
-    event.preventDefault();
-    const route = activeRoute;
-    const currentRaw = activeCurrent;
-    if(!route) return;
-
-    // Se a Bússola for acionada dentro da ficha do imóvel,
-    // fecha a ficha antes de abrir o Refinar MATCH.
-    const propertyDetail = document.getElementById("photoModal");
-    if(propertyDetail){
-      propertyDetail.remove();
-    }
-
-    try{
-      if(typeof updateAdMatchUI === "function") updateAdMatchUI();
-      const neighborhoodSelect = document.getElementById("refineNeighborhood");
-      const nextOption = neighborhoodSelect
-        ? [...neighborhoodSelect.options].find(option => normalizeNeighborhood(option.value) === normalizeNeighborhood(route.next))
-        : null;
-
-      if(!nextOption){
-        renderCompass();
-        if(typeof showToast === "function") showToast("Atualizamos as opções disponíveis. Escolha outra região.");
-        return;
-      }
-
-      neighborhoodSelect.value = nextOption.value;
-      window.__pendingNeighborhoodComparison = {
-        from_neighborhood: currentRaw,
-        to_neighborhood: route.next,
-        circuit_tier: route.tier,
-        circuit_zone: route.zone,
-        compass_mode: route.mode
-      };
-
-      if(typeof setRefineMatchOpen === "function") setRefineMatchOpen(true);
-    }catch(e){
-      console.warn("Falha ao abrir a Bússola:", e);
-      window.location.href = fab.href;
-      return;
-    }
-
-    try{
-      if(typeof gtag === "function"){
-        gtag("event", route.mode === "circuit" ? "neighborhood_compare_open" : "neighborhood_compass_open", {
-          from_neighborhood: currentRaw,
-          to_neighborhood: route.next,
-          circuit_tier: route.tier,
-          circuit_zone: route.zone,
-          compass_mode: route.mode,
-          page_location: window.location.href
-        });
-      }
-    }catch(e){}
-
-    try{
-      if(typeof supabaseTrack === "function"){
-        supabaseTrack(route.mode === "circuit" ? "neighborhood_compare_open" : "neighborhood_compass_open", {
-          from_neighborhood: currentRaw,
-          to_neighborhood: route.next,
-          circuit_tier: route.tier,
-          circuit_zone: route.zone,
-          compass_mode: route.mode,
-          pathname: window.location.pathname,
-          search: window.location.search
-        });
-      }
-    }catch(e){}
-  });
-
-  // Espera o catálogo preencher o select antes da primeira decisão.
-  setTimeout(renderCompass, 250);
-  setTimeout(renderCompass, 1200);
-})();
-</script>
-
-
-<script>
-/* PWA: registra o Service Worker sem alterar interface, MATCH ou tracking. */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(error => {
-      console.warn("Service Worker não registrado:", error);
-    });
-  });
-}
-</script>
-
-
-
-<!-- =========================================================
-     UX MOBILE · REFINAR MATCH MINIMIZADO
-     O circuito de bairros permanece como ação principal.
-     Refinar MATCH vira um botão circular e abre somente ao toque.
-========================================================== -->
-<style>
-@media(max-width:768px){
-
-  /* Reserva menos espaço no feed: o painel não fica mais aberto. */
-  body.match-results-mode{
-    padding-bottom:92px !important;
-  }
-
-  /* Botão secundário, compacto, no canto direito. */
-  body.match-results-mode .refine-match-fab{
-    display:grid !important;
-    place-items:center !important;
-    position:fixed !important;
-    z-index:955 !important;
-    left:auto !important;
-    right:10px !important;
-    bottom:max(82px,calc(74px + env(safe-area-inset-bottom))) !important;
-    transform:none !important;
-
-    width:44px !important;
-    min-width:44px !important;
-    max-width:44px !important;
-    height:44px !important;
-    min-height:44px !important;
-
-    padding:0 !important;
-    margin:0 !important;
-
-    border:1px solid rgba(198,167,107,.55) !important;
-    border-radius:50% !important;
-
-    background:rgba(24,24,22,.94) !important;
-    color:#F7F4ED !important;
-
-    box-shadow:0 10px 26px rgba(0,0,0,.22) !important;
-
-    font-size:0 !important;
-    line-height:1 !important;
-    opacity:.94 !important;
-
-    -webkit-backdrop-filter:blur(12px) !important;
-    backdrop-filter:blur(12px) !important;
-  }
-
-  body.match-results-mode .refine-match-fab::before{
-    content:"✦";
-    display:block;
-    font-size:18px;
-    line-height:1;
-    color:#E4D0A3;
-  }
-
-  body.match-results-mode .refine-match-fab:active{
-    transform:scale(.96) !important;
   }
 
   /*
-     Reserva espaço para o botão circular do MATCH.
-     Assim o super botão de comparação continua sendo o protagonista
-     sem sobreposição mesmo em celulares estreitos.
+    Normal home visit:
+    do NOT fetch inventory, CSV or photos.
+    This keeps first paint instant.
   */
-  .neighborhood-compare-fab{
-    width:min(262px,calc(100vw - 78px)) !important;
+  if(!needsInventoryImmediately){
+    inventoryLoading=false;
+    inventoryReady=false;
+    inventoryLoadError=false;
+    return;
   }
 
-  /* Painel fechado por padrão. */
-  body.match-results-mode .refine-match-shell{
-    display:grid !important;
-    place-items:end center !important;
-
-    position:fixed !important;
-    z-index:1200 !important;
-    inset:0 !important;
-
-    width:100% !important;
-    height:100% !important;
-    max-height:none !important;
-
-    padding:0 8px max(76px,calc(68px + env(safe-area-inset-bottom))) !important;
-    margin:0 !important;
-
-    background:rgba(5,6,5,.58) !important;
-    -webkit-backdrop-filter:blur(6px) !important;
-    backdrop-filter:blur(6px) !important;
-
-    border:0 !important;
-    border-radius:0 !important;
-
-    opacity:0 !important;
-    visibility:hidden !important;
-    pointer-events:none !important;
-
-    transform:none !important;
-    transition:opacity .18s ease,visibility .18s ease !important;
-  }
-
-  /* Só abre quando o JS adiciona .open. */
-  body.match-results-mode .refine-match-shell.open{
-    opacity:1 !important;
-    visibility:visible !important;
-    pointer-events:auto !important;
-  }
-
-  body.match-results-mode .refine-match-shell .refine-match-card{
-    width:100% !important;
-    max-width:520px !important;
-    max-height:calc(100svh - 110px) !important;
-    overflow-y:auto !important;
-
-    padding:12px !important;
-    margin:0 !important;
-
-    border:1px solid #B5AD9F !important;
-    border-radius:18px !important;
-
-    background:rgba(255,255,255,.985) !important;
-    color:#242424 !important;
-
-    box-shadow:0 18px 50px rgba(0,0,0,.28) !important;
-    pointer-events:auto !important;
-  }
-
-  /* Cabeçalho do bottom-sheet. */
-  body.match-results-mode .refine-match-head{
-    display:flex !important;
-    align-items:flex-start !important;
-    justify-content:space-between !important;
-    gap:10px !important;
-    margin:0 0 10px !important;
-  }
-
-  body.match-results-mode .refine-match-head h2{
-    margin:0 !important;
-    font-size:16px !important;
-    line-height:1.15 !important;
-    color:#242424 !important;
-  }
-
-  body.match-results-mode .refine-match-head p{
-    display:block !important;
-    margin:3px 0 0 !important;
-    font-size:11px !important;
-    line-height:1.3 !important;
-    color:#747474 !important;
-  }
-
-  body.match-results-mode .refine-match-close{
-    display:grid !important;
-    place-items:center !important;
-    flex:0 0 34px !important;
-    width:34px !important;
-    height:34px !important;
-    min-height:34px !important;
-    padding:0 !important;
-    border:1px solid #DED8CD !important;
-    border-radius:50% !important;
-    background:#F5F3EE !important;
-    color:#4A443C !important;
-    font-size:20px !important;
-    line-height:1 !important;
-  }
-
-  body.match-results-mode .refine-match-known{
-    display:flex !important;
-    flex-wrap:wrap !important;
-    gap:5px !important;
-    max-height:none !important;
-    margin:0 0 9px !important;
-    overflow:visible !important;
-  }
-
-  body.match-results-mode .refine-price-grid{
-    display:grid !important;
-    grid-template-columns:1fr 1fr !important;
-    gap:8px !important;
-    margin:0 !important;
-  }
-
-  body.match-results-mode .refine-price-grid label{
-    display:grid !important;
-    grid-template-rows:auto 42px !important;
-    gap:4px !important;
-    min-width:0 !important;
-    color:#654E28 !important;
-    font-size:10px !important;
-    line-height:1.1 !important;
-    font-weight:850 !important;
-    letter-spacing:.03em !important;
-    text-transform:uppercase !important;
-  }
-
-  body.match-results-mode .refine-price-grid label:last-child{
-    grid-column:1/-1 !important;
-  }
-
-  body.match-results-mode .refine-price-grid select,
-  body.match-results-mode .refine-price-grid input{
-    width:100% !important;
-    min-width:0 !important;
-    min-height:42px !important;
-    height:42px !important;
-    padding:0 9px !important;
-    border:1px solid #B5AD9F !important;
-    border-radius:10px !important;
-    background:#F7F4ED !important;
-    color:#242424 !important;
-    font-size:16px !important;
-  }
-
-  body.match-results-mode .apply-refine-match,
-  body.match-results-mode .clear-refine-match{
-    min-height:44px !important;
-    height:44px !important;
-    margin-top:9px !important;
-    border-radius:10px !important;
-    font-size:12px !important;
-    font-weight:900 !important;
-  }
-
-  body.match-results-mode .apply-refine-match{
-    width:calc(68% - 4px) !important;
-    margin-right:5px !important;
-  }
-
-  body.match-results-mode .clear-refine-match{
-    display:inline-block !important;
-    width:calc(32% - 5px) !important;
-  }
-}
-</style>
-
-
-<script id="unified-search-behavior-v1">
-/* Região agora é um select dentro da janela única de busca. */
-(() => {
-  const regionSelect=document.getElementById("catalogRegionSelect");
-  if(regionSelect){
-    regionSelect.addEventListener("change",()=>{
-      if(typeof setCatalogRegion==="function"){
-        setCatalogRegion(regionSelect.value || "");
-      }
-    });
-
-    /* Sincroniza também quando a busca veio de URL/campanha. */
-    const syncRegion=()=>{
-      try{
-        regionSelect.value=(typeof catalogRegion!=="undefined" ? catalogRegion : "") || "";
-      }catch(error){}
-    };
-    syncRegion();
-    setTimeout(syncRegion,250);
-    setTimeout(syncRegion,1200);
-  }
-
-  document.getElementById("resetCatalogFilters")?.addEventListener("click",()=>{
-    if(regionSelect) regionSelect.value="";
-  });
+  loadInventory()
+    .then(finishStartupAfterInventory)
+    .catch(()=>{});
 })();
-</script>
-
-
-
-<style id="final-ai-mobile-refine-fix">
 /* =========================================================
    FINAL FIX · IA MOBILE + REMOVE REFINAR MATCH
    2026-09-29
@@ -12273,154 +11098,270 @@ body.ad-match-mode .refine-match-shell{
 </script>
 
 
-<script id="wizard-explore-only-flow">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script id="region-neighborhood-filter">
 (function(){
-  function openCompleteFilter(){
-    try{
-      if(typeof gtag === "function"){
-        gtag("event","explore_filter_opened",{source:"wizard_explore_only"});
-      }
-    }catch(e){}
 
-    try{
-      if(typeof supabaseTrack === "function"){
-        supabaseTrack("explore_filter_opened",{source:"wizard_explore_only"});
-      }
-    }catch(e){}
+  const REGION_MAP_FILTER = {
+    oeste:[
+      "Perdizes","Pompéia","Pinheiros","Vila Madalena","Lapa",
+      "Alto da Lapa","Barra Funda","Butantã","Jaguaré",
+      "Sumaré","Vila Leopoldina","Alto de Pinheiros","Rio Pequeno",
+      "Vila Sônia","Morumbi"
+    ],
+    sul:[
+      "Moema","Vila Mariana","Chácara Klabin","Brooklin","Campo Belo",
+      "Saúde","Ipiranga","Paraíso","Aclimação","Jardins",
+      "Jardim Paulista","Itaim Bibi","Vila Nova Conceição",
+      "Santo Amaro","Campo Grande","Vila Clementino",
+      "Planalto Paulista","Mirandópolis"
+    ],
+    leste:[
+      "Tatuapé","Mooca","Anália Franco","Vila Prudente","Penha",
+      "Carrão","Belém","Brás","Água Rasa","Vila Formosa",
+      "Vila Matilde","Itaquera","Aricanduva","Sapopemba","São Mateus"
+    ],
+    norte:[
+      "Santana","Tucuruvi","Casa Verde","Mandaqui","Vila Guilherme",
+      "Vila Maria","Parada Inglesa","Jardim São Paulo",
+      "Lauzane Paulista","Limão","Freguesia do Ó","Tremembé","Jaçanã"
+    ],
+    centro:[
+      "Bela Vista","Consolação","Higienópolis","República",
+      "Santa Cecília","Sé","Liberdade","Cambuci","Bom Retiro",
+      "Campos Elíseos"
+    ],
+    outras:[]
+  };
 
-    if(typeof openGeneralCatalog === "function"){
-      openGeneralCatalog(true);
-      return;
-    }
-
-    // Fallback visual, caso a função principal ainda não esteja disponível.
-    document.body.classList.remove("match-mode","home-mode");
-    document.getElementById("explore")?.scrollIntoView({behavior:"smooth",block:"start"});
-    document.getElementById("catalogFilters")?.classList.add("open");
+  function normalizeText(v){
+    return String(v||"")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .toLowerCase()
+      .trim();
   }
 
-  document
-    .getElementById("wizardExploreOnly")
-    ?.addEventListener("click",openCompleteFilter);
+  function regionForNeighborhood(name){
+    const n=normalizeText(name);
+
+    for(const [region,bairros] of Object.entries(REGION_MAP_FILTER)){
+      if(
+        bairros.some(item=>{
+          const b=normalizeText(item);
+          return n===b || n.includes(b) || b.includes(n);
+        })
+      ){
+        return region;
+      }
+    }
+
+    return "outras";
+  }
+
+  function currentInventoryNeighborhoods(){
+    try{
+      if(typeof properties==="undefined" || !Array.isArray(properties)){
+        return [];
+      }
+
+      return [...new Set(
+        properties
+          .map(p=>String(p?.neighborhood||"").trim())
+          .filter(Boolean)
+      )];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function neighborhoodsForRegion(region){
+    const base = region
+      ? [...(REGION_MAP_FILTER[region] || [])]
+      : Object.values(REGION_MAP_FILTER).flat();
+
+    const live = currentInventoryNeighborhoods().filter(item=>{
+      return !region || regionForNeighborhood(item)===region;
+    });
+
+    return [...new Set([...base,...live])]
+      .filter(Boolean)
+      .sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  }
+
+  function populateNeighborhoods(){
+    const region=document.getElementById("catalogRegion");
+    const neighborhood=document.getElementById("catalogNeighborhood");
+
+    if(!region || !neighborhood)return;
+
+    const selected=neighborhood.value;
+    const list=neighborhoodsForRegion(region.value);
+
+    neighborhood.innerHTML='<option value="">Todos os bairros</option>';
+
+    list.forEach(item=>{
+      const option=document.createElement("option");
+      option.value=item;
+      option.textContent=item;
+      neighborhood.appendChild(option);
+    });
+
+    if([...neighborhood.options].some(o=>o.value===selected)){
+      neighborhood.value=selected;
+    }
+  }
+
+  function applyRegionFilter(){
+    populateNeighborhoods();
+
+    const neighborhood=document.getElementById("catalogNeighborhood");
+    if(neighborhood) neighborhood.value="";
+
+    try{
+      if(typeof updateCatalogUrl==="function") updateCatalogUrl();
+    }catch(e){}
+  }
+
+  document.getElementById("catalogRegion")
+    ?.addEventListener("change",applyRegionFilter);
+
+  document.getElementById("catalogNeighborhood")
+    ?.addEventListener("change",()=>{
+      try{
+        if(typeof updateCatalogUrl==="function") updateCatalogUrl();
+      }catch(e){}
+    });
+
+  /* Imediato: sem esperar inventário */
+  populateNeighborhoods();
+
+  /* Depois apenas incorpora bairros reais adicionais */
+  window.addEventListener("load",()=>{
+    setTimeout(populateNeighborhoods,900);
+    setTimeout(populateNeighborhoods,2600);
+  });
+
+  window.populateCatalogNeighborhoodsByRegion=populateNeighborhoods;
+
 })();
 </script>
 
 
-<script id="final-working-buttons">
+
+<script id="fast-inventory-status-script">
 (function(){
+  function updateInventoryStatus(){
+    const el=document.getElementById("fastInventoryStatus");
+    if(!el)return;
 
-  function openWizardOnly(){
     try{
-      document.body.classList.remove(
-        "catalog-mode",
-        "campaign-catalog-mode",
-        "ad-match-mode",
-        "match-results-mode"
-      );
-      document.body.classList.add("match-mode");
-      document.body.classList.remove("home-mode");
+      const count=typeof properties!=="undefined" && Array.isArray(properties)
+        ? properties.length
+        : 0;
 
-      const match=document.getElementById("match");
-      if(match){
-        match.style.display="";
-        match.scrollTop=0;
-      }
+      const usedReady=
+        typeof usedInventoryLoaded!=="undefined"
+          ? usedInventoryLoaded
+          : false;
 
-      const intro=document.querySelector(".wizard-explore-only");
-      if(intro){
-        intro.style.display="";
-      }
-    }catch(e){
-      console.error("Falha ao abrir wizard:",e);
-    }
-  }
-
-  function openFullExplorer(){
-    try{
-      document.body.classList.remove("match-mode","home-mode");
-
-      /* Prefer the app's own catalog function when present */
-      if(typeof window.openGeneralCatalog==="function"){
-        window.openGeneralCatalog(true);
+      if(count>0 && usedReady){
+        el.textContent=`${count} imóveis disponíveis`;
+        el.classList.add("ready");
+      }else if(count>0){
+        el.textContent=`${count} imóveis disponíveis · completando estoque…`;
       }else{
-        const explore=document.getElementById("explore");
-        const catalog=document.getElementById("catalog");
-
-        if(explore){
-          explore.style.display="block";
-          explore.scrollIntoView({behavior:"smooth",block:"start"});
-        }
-
-        if(catalog){
-          catalog.classList.add("visible");
-          catalog.style.display="block";
-        }
+        el.textContent="Estoque carregando em segundo plano…";
       }
-
-      /* Open the full filter on mobile */
-      const filters=document.getElementById("catalogFilters")
-        || document.querySelector(".catalog-filters");
-
-      if(filters){
-        filters.classList.add("open");
-        filters.style.display="";
-      }
-
-      document.querySelector(".filters-backdrop")?.classList.add("open");
-    }catch(e){
-      console.error("Falha ao abrir filtro completo:",e);
-    }
+    }catch(e){}
   }
 
-  /* Main home CTA */
-  const homeBtn=document.getElementById("startHero");
-  if(homeBtn){
-    const clone=homeBtn.cloneNode(true);
-    homeBtn.replaceWith(clone);
-    clone.addEventListener("click",function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      openWizardOnly();
-    });
-  }
-
-  /* Wizard single CTA */
-  const wizardBtn=document.getElementById("wizardExploreOnly");
-  if(wizardBtn){
-    const clone=wizardBtn.cloneNode(true);
-    wizardBtn.replaceWith(clone);
-    clone.addEventListener("click",function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      openFullExplorer();
-    });
-  }
-
-  /* Final catalog search button */
-  const searchBtn=document.getElementById("catalogSearchBtn");
-  if(searchBtn){
-    searchBtn.addEventListener("click",function(){
-      const filters=document.getElementById("catalogFilters")
-        || document.querySelector(".catalog-filters");
-      filters?.classList.remove("open");
-      document.querySelector(".filters-backdrop")?.classList.remove("open");
-    });
-  }
-
+  updateInventoryStatus();
+  setInterval(updateInventoryStatus,700);
 })();
 </script>
 
 
-
-
-
-
-
-
-<script id="home-direct-filter-ai-final">
+<script id="whatsapp-home-direct-fix">
 (function(){
+  const PHONE="5511992976368";
 
-  function openFilterDirect(){
+  function bindDirectWhatsApp(){
+    const old=document.getElementById("specialistFloat");
+    if(!old)return;
+
+    const button=old.cloneNode(true);
+    old.replaceWith(button);
+
+    button.setAttribute("aria-label","Falar com Rafael no WhatsApp");
+    button.type="button";
+
+    button.addEventListener("click",function(event){
+      event.preventDefault();
+      event.stopPropagation();
+
+      const message=[
+        "Olá, Rafael.",
+        "Vim pela Ynteligencia e gostaria de ajuda para encontrar um imóvel."
+      ].join(" ");
+
+      const url=`https://wa.me/${PHONE}?text=${encodeURIComponent(message)}`;
+
+      try{
+        if(window.matchMedia("(max-width:768px)").matches){
+          window.location.href=url;
+        }else{
+          window.open(url,"_blank","noopener,noreferrer");
+        }
+      }catch(error){
+        window.location.href=url;
+      }
+
+      try{
+        gtag("event","whatsapp_home_click",{
+          source:"specialist_float_home"
+        });
+      }catch(e){}
+
+      try{
+        if(typeof supabaseTrack==="function"){
+          supabaseTrack("whatsapp_home_click",{
+            source:"specialist_float_home"
+          });
+        }
+      }catch(e){}
+    });
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",bindDirectWhatsApp,{once:true});
+  }else{
+    bindDirectWhatsApp();
+  }
+})();
+</script>
+
+
+<script id="ynt-clean-navigation-v1">
+(function(){
+  const $id=id=>document.getElementById(id);
+
+  function showFullFilter(){
     document.body.classList.remove(
       "home-mode",
       "match-mode",
@@ -12428,297 +11369,60 @@ body.ad-match-mode .refine-match-shell{
       "ad-match-mode",
       "campaign-catalog-mode"
     );
+    document.body.classList.add("filter-direct-mode");
 
-    try{
-      if(typeof openGeneralCatalog==="function"){
-        openGeneralCatalog(true);
-      }else{
-        document.getElementById("catalog")?.classList.add("visible");
-      }
-    }catch(error){
-      console.error("OPEN_CATALOG_ERROR",error);
+    const explore=$id("explore");
+    const panel=$id("unifiedSearchPanel");
+    const filters=$id("catalogFilters");
+
+    if(explore){
+      explore.hidden=false;
+      explore.style.cssText += ";display:block!important;visibility:visible!important;opacity:1!important;";
+    }
+    if(panel){
+      panel.hidden=false;
+      panel.style.cssText += ";display:block!important;visibility:visible!important;opacity:1!important;";
+    }
+    if(filters){
+      filters.hidden=false;
+      filters.classList.add("open");
+      filters.style.cssText += ";display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;";
     }
 
+    try{
+      if(typeof window.populateCatalogNeighborhoodsByRegion==="function"){
+        window.populateCatalogNeighborhoodsByRegion();
+      }
+    }catch(e){}
+
+    // Scroll to the start of the filter. No inventory request here.
     requestAnimationFrame(()=>{
-      requestAnimationFrame(()=>{
-        const filters =
-          document.getElementById("catalogFilters")
-          || document.querySelector(".catalog-filters")
-          || document.querySelector(".unified-catalog-filters");
-
-        if(filters){
-          filters.classList.add("open");
-          filters.style.display="";
-        }
-
-        const backdrop =
-          document.getElementById("filtersBackdrop")
-          || document.querySelector(".filters-backdrop");
-
-        backdrop?.classList.add("open");
-
-        if(typeof setFiltersOpen==="function"){
-          try{ setFiltersOpen(true); }catch(e){}
-        }
-      });
+      (panel || explore)?.scrollIntoView({behavior:"auto",block:"start"});
     });
   }
 
   function openGeneralAI(){
-    if(typeof openAiAssistant==="function"){
-      openAiAssistant(null);
+    if(typeof window.openAiAssistant==="function"){
+      window.openAiAssistant(null);
     }
   }
 
-  const explore=document.getElementById("startHero");
-  if(explore){
-    const fresh=explore.cloneNode(true);
-    explore.replaceWith(fresh);
-    fresh.textContent="EXPLORAR IMÓVEIS";
-    fresh.addEventListener("click",e=>{
+  function replaceButton(id,handler){
+    const old=$id(id);
+    if(!old)return;
+    const fresh=old.cloneNode(true);
+    old.replaceWith(fresh);
+    fresh.addEventListener("click",function(e){
       e.preventDefault();
-      e.stopPropagation();
-      openFilterDirect();
-    });
+      e.stopImmediatePropagation();
+      handler();
+    },{capture:true});
   }
 
-  const ai=document.getElementById("heroAiButton");
-  if(ai){
-    const fresh=ai.cloneNode(true);
-    ai.replaceWith(fresh);
-    fresh.addEventListener("click",e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      openGeneralAI();
-    });
-  }
+  replaceButton("startHero",showFullFilter);
+  replaceButton("heroAiButton",openGeneralAI);
 
-  /* Intermediate wizard is no longer part of home navigation */
-  const wizard=document.getElementById("match");
-  if(wizard){
-    wizard.setAttribute("data-home-bypass","true");
-  }
-
-})();
-</script>
-
-
-<script id="ynt-stability-fix-20261001">
-(function(){
-
-  const sleep = ms => new Promise(resolve=>setTimeout(resolve,ms));
-
-  async function ensureUsedInventoryStable(){
-    if(window.usedInventoryLoaded || (typeof usedInventoryLoaded!=="undefined" && usedInventoryLoaded)){
-      return true;
-    }
-
-    try{
-      if(typeof loadUsedInventory==="function"){
-        loadUsedInventory();
-      }
-    }catch(e){}
-
-    // loadUsedInventory may already be running in the background.
-    for(let i=0;i<80;i++){
-      if(typeof usedInventoryLoaded!=="undefined" && usedInventoryLoaded){
-        return true;
-      }
-      if(typeof usedInventoryLoading!=="undefined" && !usedInventoryLoading && i>2){
-        break;
-      }
-      await sleep(100);
-    }
-
-    return typeof usedInventoryLoaded!=="undefined" ? usedInventoryLoaded : false;
-  }
-
-  async function stableCatalogSearch(){
-    const catalog=document.getElementById("catalog");
-    const status=document.getElementById("catalogStatus");
-    const source=document.getElementById("catalogSource")?.value || "todos";
-
-    catalog?.classList.add("visible");
-    if(status)status.textContent="Buscando imóveis...";
-
-    try{
-      /*
-        NOVOS: consulta Supabase.
-        USADOS: aguarda o CSV.
-        TODOS: espera os dois antes de renderizar.
-      */
-      const jobs=[];
-
-      if(source!=="usados" && typeof fetchNewCatalogPage==="function"){
-        jobs.push(fetchNewCatalogPage({reset:true}));
-      }
-
-      if(source!=="novos"){
-        jobs.push(ensureUsedInventoryStable());
-      }
-
-      await Promise.allSettled(jobs);
-
-      if(typeof properties!=="undefined"){
-        if(source==="novos"){
-          properties=typeof deduplicate==="function"
-            ? deduplicate([...(newPropertiesCache||[])])
-            : [...(newPropertiesCache||[])];
-        }else if(source==="usados"){
-          properties=typeof deduplicate==="function"
-            ? deduplicate([...(usedPropertiesCache||[])])
-            : [...(usedPropertiesCache||[])];
-        }else{
-          properties=typeof deduplicate==="function"
-            ? deduplicate([...(usedPropertiesCache||[]),...(newPropertiesCache||[])])
-            : [...(usedPropertiesCache||[]),...(newPropertiesCache||[])];
-        }
-      }
-
-      if(typeof inventoryReady!=="undefined")inventoryReady=true;
-      if(typeof inventoryLoading!=="undefined")inventoryLoading=false;
-      if(typeof inventoryLoadError!=="undefined")inventoryLoadError=false;
-
-      if(typeof renderCatalog==="function")renderCatalog();
-      if(typeof updateCatalogUrl==="function")updateCatalogUrl();
-
-      stableCloseFilters();
-
-      requestAnimationFrame(()=>{
-        catalog?.scrollIntoView({behavior:"smooth",block:"start"});
-      });
-
-    }catch(error){
-      console.error("STABLE_CATALOG_SEARCH_ERROR",error);
-      if(status)status.textContent="Não foi possível concluir a busca.";
-      if(typeof showToast==="function"){
-        showToast("Não foi possível concluir a busca agora.");
-      }
-    }
-  }
-
-  function stableCloseFilters(){
-    const sheet=document.getElementById("catalogFilters");
-    const backdrop=document.getElementById("filtersBackdrop");
-
-    sheet?.classList.remove("open");
-    backdrop?.classList.remove("open");
-
-    if(sheet && window.matchMedia("(max-width:700px)").matches){
-      sheet.style.transform="translateY(105%)";
-    }
-
-    document.body.style.overflow="";
-  }
-
-  function stableOpenFilters(){
-    const sheet=document.getElementById("catalogFilters");
-    const backdrop=document.getElementById("filtersBackdrop");
-
-    if(!sheet)return;
-
-    sheet.style.display="";
-    sheet.classList.add("open");
-    backdrop?.classList.add("open");
-
-    if(window.matchMedia("(max-width:700px)").matches){
-      sheet.style.transform="translateY(0)";
-      document.body.style.overflow="hidden";
-    }
-  }
-
-  function stableOpenHomeAI(){
-    try{
-      if(typeof openAiAssistant==="function"){
-        openAiAssistant(null);
-      }
-    }catch(error){
-      console.error("STABLE_HOME_AI_ERROR",error);
-    }
-  }
-
-  // Replace BUSCAR node so stale listeners from previous versions disappear.
-  const oldSearch=document.getElementById("catalogSearchBtn");
-  if(oldSearch){
-    const fresh=oldSearch.cloneNode(true);
-    oldSearch.replaceWith(fresh);
-    fresh.addEventListener("click",async e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      await stableCatalogSearch();
-    });
-  }
-
-  // Replace close node for the same reason.
-  const oldClose=document.getElementById("closeFilters");
-  if(oldClose){
-    const fresh=oldClose.cloneNode(true);
-    oldClose.replaceWith(fresh);
-    fresh.style.display="";
-    fresh.addEventListener("click",e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      stableCloseFilters();
-    });
-  }
-
-  // Keep backdrop close working if present.
-  document.getElementById("filtersBackdrop")?.addEventListener("click",stableCloseFilters);
-
-  // Home IA: remove any stale click chain.
-  const oldAi=document.getElementById("heroAiButton");
-  if(oldAi){
-    const fresh=oldAi.cloneNode(true);
-    oldAi.replaceWith(fresh);
-    fresh.addEventListener("click",e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      stableOpenHomeAI();
-    });
-  }
-
-  // Home Explore: open filter directly, without wizard.
-  const oldExplore=document.getElementById("startHero");
-  if(oldExplore){
-    const fresh=oldExplore.cloneNode(true);
-    oldExplore.replaceWith(fresh);
-    fresh.textContent="EXPLORAR IMÓVEIS";
-    fresh.addEventListener("click",e=>{
-      e.preventDefault();
-      e.stopPropagation();
-
-      try{
-        if(typeof openGeneralCatalog==="function"){
-          openGeneralCatalog(false);
-        }else{
-          document.body.classList.remove("home-mode","match-mode");
-          document.getElementById("catalog")?.classList.add("visible");
-          if(typeof renderCatalog==="function")renderCatalog();
-        }
-      }catch(error){
-        console.error("STABLE_OPEN_CATALOG_ERROR",error);
-      }
-
-      requestAnimationFrame(stableOpenFilters);
-    });
-  }
-
-  /*
-    Local-file warning: useful while developing.
-    APIs such as /api/assistant only exist when served by Vercel/dev server.
-  */
-  if(location.protocol==="file:"){
-    console.warn(
-      "Ynteligencia: execução via file://. /api/assistant, rotas Vercel e alguns fetches relativos não funcionam neste modo."
-    );
-  }
-
-  window.YNT_STABLE={
-    openFilters:stableOpenFilters,
-    closeFilters:stableCloseFilters,
-    search:stableCatalogSearch
-  };
-
+  window.yntShowFullFilter=showFullFilter;
 })();
 </script>
 
