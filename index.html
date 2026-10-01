@@ -7256,7 +7256,17 @@ function appendAiInternalDetailsButton(property){
 
   button.addEventListener("click",()=>{
     const p=registerAiFoundProperty(property);
-    showPhotoModal(String(p.id));
+
+    /*
+      A Match IA usa z-index maior que o modal de detalhes.
+      Fechamos a conversa antes de abrir o detalhe para evitar
+      que o modal fique renderizado por baixo da IA.
+    */
+    closeAiAssistant();
+
+    window.setTimeout(()=>{
+      showPhotoModal(String(p.id));
+    },60);
   });
 
   wrap.appendChild(button);
