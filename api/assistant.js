@@ -1,1368 +1,318 @@
-const SUPABASE_URL =
-  "https://wzaegidwtdjuhqchpdpd.supabase.co";
-
-
-// =========================================================
-// SUPABASE
-// =========================================================
-
-function supabaseHeaders() {
-  const key =
-    process.env.SUPABASE_SECRET_KEY;
-
-  if (!key) {
-    throw new Error(
-      "SUPABASE_SECRET_KEY_MISSING"
-    );
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    "Content-Type": "application/json"
-  };
-}
-
-
-// =========================================================
-// NORMALIZA RESULTADOS DO ESTOQUE
-// =========================================================
-
-function normalizeInventoryRow(row) {
-  const raw =
-    row?.raw_data &&
-    typeof row.raw_data === "object"
-      ? row.raw_data
-      : {};
-
-  const building =
-    raw?.building &&
-    typeof raw.building === "object"
-      ? raw.building
-      : {};
-
-  const typology =
-    raw?.typology &&
-    typeof raw.typology === "object"
-      ? raw.typology
-      : {};
-
-  return {
-    id:
-      row.external_id ||
-      row.id ||
-      "",
-
-    building_id:
-      raw.building_id ||
-      building.id ||
-      "",
-
-    empreendimento:
-      row.development_name ||
-      building.name ||
-      row.title ||
-      "",
-
-    titulo:
-      row.title ||
-      "",
-
-    bairro:
-      row.neighborhood ||
-      building?.address?.area ||
-      "",
-
-    cidade:
-      row.city ||
-      building?.address?.city ||
-      "",
-
-    preco:
-      Number(row.price) ||
-      Number(typology.discount_price) ||
-      Number(typology.original_price) ||
-      0,
-
-    preco_original:
-      Number(typology.original_price) ||
-      0,
-
-    preco_promocional:
-      Number(typology.discount_price) ||
-      0,
-
-    area:
-      Number(row.area) ||
-      Number(typology.private_area) ||
-      0,
-
-    dormitorios:
-      Number(row.bedrooms) ||
-      Number(typology.bedrooms) ||
-      0,
-
-    suites:
-      Number(typology.suites) ||
-      0,
-
-    banheiros:
-      Number(row.bathrooms) ||
-      Number(typology.bathrooms) ||
-      0,
-
-    vagas:
-      Number(row.parking_spaces) ||
-      Number(typology.parking) ||
-      0,
-
-    estoque_tipologia:
-      Number(typology.stock) ||
-      0,
-
-    estoque_empreendimento:
-      Number(building.stock) ||
-      0,
-
-    status:
-      building.stage ||
-      building.status ||
-      "",
-
-    endereco:
-      building.address ||
-      null,
-
-    atualizado_em:
-      building.last_updated_pricetable_at ||
-      typology.updated_at ||
-      building.updated_at ||
-      "",
-
-    source:
-      row.source ||
-      ""
-  };
-}
-
-
-// =========================================================
-// CONSULTA ESTOQUE
-// =========================================================
-
-async function searchInventory(
-  args,
-  currentProperty
-) {
-  const relation =
-    String(
-      args?.relation ||
-      "similar"
-    );
-
-  const currentBuildingId =
-    String(
-      currentProperty?.building_id ||
-      ""
-    ).trim();
-
-  const currentNeighborhood =
-    String(
-      currentProperty?.neighborhood ||
-      ""
-    ).trim();
-
-  const currentId =
-    String(
-      currentProperty?.id ||
-      ""
-    ).trim();
-
-
-  const params =
-    new URLSearchParams();
-
-  params.set(
-    "select",
-    [
-      "external_id",
-      "development_name",
-      "title",
-      "neighborhood",
-      "city",
-      "state",
-      "price",
-      "bedrooms",
-      "bathrooms",
-      "parking_spaces",
-      "area",
-      "source",
-      "active",
-      "raw_data"
-    ].join(",")
-  );
-
-  params.set(
-    "source",
-    "eq.novos"
-  );
-
-  params.set(
-    "active",
-    "eq.true"
-  );
-
-
-  // =======================================================
-  // MESMO EMPREENDIMENTO / MESMO ENDEREÇO
-  // =======================================================
-
-  if (
-    (
-      relation === "same_building" ||
-      relation === "same_address"
-    ) &&
-    currentBuildingId
-  ) {
-    params.set(
-      "raw_data->>building_id",
-      `eq.${currentBuildingId}`
-    );
-  }
-
-
-  // =======================================================
-  // MESMO BAIRRO
-  // =======================================================
-
-  else if (
-    (
-      relation === "same_neighborhood" ||
-      relation === "similar"
-    ) &&
-    currentNeighborhood
-  ) {
-    params.set(
-      "neighborhood",
-      `eq.${currentNeighborhood}`
-    );
-  }
-
-
-  // =======================================================
-  // BAIRRO EXPLICITAMENTE PEDIDO
-  // =======================================================
-
-  if (
-    args?.neighborhood
-  ) {
-    params.set(
-      "neighborhood",
-      `eq.${String(
-        args.neighborhood
-      ).trim()}`
-    );
-  }
-
-
-  // =======================================================
-  // DORMITÓRIOS
-  // =======================================================
-
-  const bedrooms =
-    Number(
-      args?.bedrooms
-    );
-
-  if (
-    Number.isFinite(bedrooms) &&
-    bedrooms > 0
-  ) {
-    params.set(
-      "bedrooms",
-      `eq.${bedrooms}`
-    );
-  }
-
-
-  // =======================================================
-  // PREÇO
-  // =======================================================
-
-  const minPrice =
-    Number(
-      args?.min_price
-    );
-
-  const maxPrice =
-    Number(
-      args?.max_price
-    );
-
-  if (
-    Number.isFinite(minPrice) &&
-    minPrice > 0
-  ) {
-    params.set(
-      "price",
-      `gte.${minPrice}`
-    );
-  }
-
-  if (
-    Number.isFinite(maxPrice) &&
-    maxPrice > 0
-  ) {
-    /*
-      PostgREST não permite duas chaves iguais em URLSearchParams
-      com set(). Por isso usamos append para o segundo filtro.
-    */
-    if (
-      params.has("price")
-    ) {
-      params.append(
-        "price",
-        `lte.${maxPrice}`
-      );
-    } else {
-      params.set(
-        "price",
-        `lte.${maxPrice}`
-      );
-    }
-  }
-
-
-  // =======================================================
-  // ÁREA
-  // =======================================================
-
-  const minArea =
-    Number(
-      args?.min_area
-    );
-
-  const maxArea =
-    Number(
-      args?.max_area
-    );
-
-  if (
-    Number.isFinite(minArea) &&
-    minArea > 0
-  ) {
-    params.set(
-      "area",
-      `gte.${minArea}`
-    );
-  }
-
-  if (
-    Number.isFinite(maxArea) &&
-    maxArea > 0
-  ) {
-    if (
-      params.has("area")
-    ) {
-      params.append(
-        "area",
-        `lte.${maxArea}`
-      );
-    } else {
-      params.set(
-        "area",
-        `lte.${maxArea}`
-      );
-    }
-  }
-
-
-  // =======================================================
-  // ORDENAÇÃO
-  // =======================================================
-
-  const sort =
-    String(
-      args?.sort ||
-      ""
-    );
-
-  if (
-    sort === "cheapest"
-  ) {
-    params.set(
-      "order",
-      "price.asc.nullslast"
-    );
-  }
-
-  else if (
-    sort === "most_expensive"
-  ) {
-    params.set(
-      "order",
-      "price.desc.nullslast"
-    );
-  }
-
-  else if (
-    sort === "largest"
-  ) {
-    params.set(
-      "order",
-      "area.desc.nullslast"
-    );
-  }
-
-  else {
-    params.set(
-      "order",
-      "price.asc.nullslast"
-    );
-  }
-
-
-  params.set(
-    "limit",
-    "15"
-  );
-
-
-  const response =
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/properties?${params.toString()}`,
-      {
-        method: "GET",
-        headers:
-          supabaseHeaders()
-      }
-    );
-
-
-  const text =
-    await response.text();
-
-
-  if (!response.ok) {
-    console.error(
-      "MATCH_IA_INVENTORY_ERROR",
-      response.status,
-      text
-    );
-
-    throw new Error(
-      `INVENTORY_HTTP_${response.status}`
-    );
-  }
-
-
-  let rows = [];
+  res.setHeader("Cache-Control", "no-store");
 
   try {
-    rows =
-      JSON.parse(text);
-  } catch {
-    rows = [];
-  }
-
-
-  if (
-    !Array.isArray(rows)
-  ) {
-    rows = [];
-  }
-
-
-  let normalized =
-    rows.map(
-      normalizeInventoryRow
-    );
-
-
-  // Remove da busca o imóvel atual,
-  // quando houver outras opções.
-  const withoutCurrent =
-    normalized.filter(
-      item =>
-        String(item.id) !==
-        currentId
-    );
-
-
-  if (
-    withoutCurrent.length
-  ) {
-    normalized =
-      withoutCurrent;
-  }
-
-
-  return {
-    search_type:
-      relation,
-
-    current_property_id:
-      currentId,
-
-    current_building_id:
-      currentBuildingId,
-
-    total_found:
-      normalized.length,
-
-    properties:
-      normalized.slice(0, 12)
-  };
-}
-
-
-// =========================================================
-// EXTRAÇÃO DA RESPOSTA
-// =========================================================
-
-function extractOutputText(data) {
-  if (
-    typeof data?.output_text ===
-    "string"
-  ) {
-    return data.output_text.trim();
-  }
-
-  let text = "";
-
-  if (
-    Array.isArray(
-      data?.output
-    )
-  ) {
-    for (
-      const item of
-      data.output
-    ) {
-      if (
-        !Array.isArray(
-          item?.content
-        )
-      ) {
-        continue;
-      }
-
-      for (
-        const part of
-        item.content
-      ) {
-        if (
-          typeof part?.text ===
-          "string"
-        ) {
-          text +=
-            part.text;
-        }
-      }
-    }
-  }
-
-  return text.trim();
-}
-
-
-// =========================================================
-// HANDLER
-// =========================================================
-
-export default async function handler(
-  req,
-  res
-) {
-  res.setHeader(
-    "Cache-Control",
-    "no-store"
-  );
-
-
-  // =======================================================
-  // HEALTH CHECK
-  // =======================================================
-
-  if (
-    req.method === "GET"
-  ) {
-    return res
-      .status(200)
-      .json({
-        ok: true,
-
-        service:
-          "Match IA",
-
-        openai_key_configured:
-          Boolean(
-            process.env
-              .OPENAI_API_KEY
-          ),
-
-        supabase_configured:
-          Boolean(
-            process.env
-              .SUPABASE_SECRET_KEY
-          ),
-
-        inventory_search:
-          true
-      });
-  }
-
-
-  if (
-    req.method !== "POST"
-  ) {
-    return res
-      .status(405)
-      .json({
-        success: false,
-        error:
-          "Method not allowed"
-      });
-  }
-
-
-  try {
-    // =====================================================
-    // CONFIG
-    // =====================================================
-
-    const apiKey =
-      process.env
-        .OPENAI_API_KEY;
-
-
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-
-          error:
-            "OPENAI_API_KEY não configurada"
-        });
+      return res.status(500).json({
+        success: false,
+        error: "OPENAI_API_KEY não configurada na Vercel"
+      });
     }
 
-
-    if (
-      !process.env
-        .SUPABASE_SECRET_KEY
-    ) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-
-          error:
-            "SUPABASE_SECRET_KEY não configurada"
-        });
-    }
-
-
-    // =====================================================
-    // INPUT
-    // =====================================================
-
-    const body =
-      req.body || {};
-
-
-    const message =
-      String(
-        body.message ||
-        ""
-      ).trim();
-
-
+    const body = req.body || {};
+    const message = String(body.message || "").trim();
+    const history = Array.isArray(body.history) ? body.history.slice(-40) : [];
     const property =
-      body.property &&
-      typeof body.property ===
-        "object"
+      body.property && typeof body.property === "object"
         ? body.property
         : {};
 
+    const mode =
+      body.mode === "lead_summary"
+        ? "lead_summary"
+        : body.mode === "search"
+        ? "search"
+        : "property";
 
-    const history =
-      Array.isArray(
-        body.history
-      )
-        ? body.history
-            .slice(-12)
-        : [];
+    const inventory =
+      body.inventory && typeof body.inventory === "object"
+        ? body.inventory
+        : null;
 
-
-    if (!message) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error:
-            "Mensagem vazia"
-        });
+    if (!message && mode !== "lead_summary") {
+      return res.status(400).json({
+        success: false,
+        error: "Mensagem vazia"
+      });
     }
 
-
-    // =====================================================
-    // CONTEXTO
-    // =====================================================
+    const safeHistory = history
+      .filter(
+        item =>
+          item &&
+          ["user", "assistant"].includes(item.role)
+      )
+      .map(item => ({
+        role: item.role,
+        content: String(item.content || "").slice(0, 1800)
+      }));
 
     const propertyContext =
-      JSON.stringify(
-        property,
-        null,
-        2
-      ).slice(
-        0,
-        18000
-      );
+      JSON.stringify(property, null, 2).slice(0, 12000);
 
+    const instructions =
+      mode === "lead_summary"
+        ? `
+Você resume uma conversa imobiliária para um corretor humano.
 
-    const instructions = `
-Você é a Match IA, assistente imobiliária do Ynteligencia.
+Use SOMENTE o histórico recebido.
 
-Você conversa com uma pessoa que está olhando um imóvel específico.
+Escreva em português do Brasil.
 
-Você não é apenas uma assistente que lê uma ficha.
+Produza um resumo comercial curto, com no máximo 6 linhas, contendo apenas o que estiver explícito:
 
-Você também consegue pesquisar o estoque imobiliário da Ynteligencia usando a ferramenta search_inventory.
+- região/bairro ou empreendimento;
+- faixa de preço;
+- dormitórios/tipo;
+- novo/usado;
+- objetivo morar/investir;
+- sinais de intenção: disponibilidade, visita, negociação, urgência.
 
-CONVERSA
+Não invente dados.
+Não faça recomendações.
+Não use introdução.
+Entregue somente o resumo.
+`.trim()
 
-Converse naturalmente, como uma excelente consultora imobiliária.
+        : mode === "search"
+        ? `
+Você é a Match IA, concierge imobiliária da Ynteligencia.
 
-Responda primeiro ao que foi perguntado.
+Converse em português do Brasil, de forma curta, clara, útil e humana.
 
-Não force roteiros.
+Nesta modalidade, o cliente procura imóveis no inventário real do app.
 
-Não faça interrogatório.
+A aplicação executou uma busca no estoque ANTES de chamar você.
 
-Não diga que é ChatGPT.
+REGRAS IMPORTANTES:
 
-Não mencione OpenAI.
+- Use SOMENTE "INVENTÁRIO CONSULTADO" como fato sobre imóveis disponíveis.
 
-Seu nome é Match IA.
+- Nunca invente empreendimento, preço, quantidade, metragem ou disponibilidade.
 
-Normalmente responda em 1 a 5 frases.
+- Se inventory_ready=false, diga que o estoque ainda está carregando e peça para tentar novamente em instantes.
 
-BUSCA NO ESTOQUE
+- Se recognized_filters=true e total=0, diga que não encontrou correspondência EXATA no inventário atualmente carregado.
 
-Sempre use search_inventory quando a pergunta exigir saber se existem OUTROS imóveis ou unidades.
+- Não diga que o imóvel não existe no mercado.
 
-Exemplos:
+- Se total>0, diga quantas opções foram encontradas.
 
-- "Tem outras unidades nesse endereço?"
-- "Tem outra planta?"
-- "Tem uma unidade maior?"
-- "Tem uma mais barata?"
-- "Tem 2 dormitórios nesse prédio?"
-- "Tem outra unidade nesse empreendimento?"
-- "O que mais tem nesse condomínio?"
-- "Tem outras opções no bairro?"
-- "Tem algo parecido?"
-- "Tem até 700 mil?"
-- "Tem outro apartamento com mais metragem?"
+- Mencione no máximo 3 opções do array matches.
 
-Para perguntas sobre:
+- Para cada imóvel, use somente informações realmente presentes:
+  nome,
+  bairro,
+  preço,
+  dormitórios,
+  área.
 
-"mesmo endereço",
-"mesmo prédio",
-"mesmo condomínio",
-"mesmo empreendimento",
-"outras unidades"
+- Se o cliente perguntar por um empreendimento específico e ele estiver em matches, confirme que ele aparece no inventário.
 
-prefira relation = "same_building".
+- Se recognized_filters=false, faça UMA pergunta curta para entender bairro/região, preço ou dormitórios.
 
-Se o cliente pedir outras opções no bairro:
-relation = "same_neighborhood".
+- Faça apenas UMA pergunta por resposta.
 
-Se pedir opções parecidas:
-relation = "similar".
+- Não diga que é ChatGPT.
 
-A ferramenta devolve dados REAIS cadastrados no estoque.
+- Não mencione OpenAI.
 
-Nunca diga que não existem outras unidades antes de consultar a ferramenta quando a pergunta for sobre estoque.
+- Você é "Match IA".
 
-DEPOIS DA BUSCA
-
-Explique os resultados de forma humana.
-
-Não despeje JSON.
-
-Exemplo:
-
-"Sim. Encontrei outras 3 opções nesse empreendimento. A mais barata tem 31 m² e 1 dormitório por R$ 620 mil; também há uma de 48 m² com 2 dormitórios por R$ 810 mil."
-
-Depois você pode fazer uma pergunta útil, como:
-
-"Quer que eu compare essas opções com a unidade que você está vendo?"
-
-Não invente unidades que não vieram da ferramenta.
-
-DISPONIBILIDADE
-
-Estoque cadastrado não é garantia de disponibilidade neste exato minuto.
-
-Quando houver stock, diga que é o estoque informado na última atualização.
-
-Se o cliente quiser confirmação comercial em tempo real, visita, reserva ou negociação, finalize com:
+- Se o usuário pedir pessoa humana, visita, negociação ou confirmação comercial, termine com:
 
 [[HANDOFF]]
 
-IMÓVEL ATUAL
+INVENTÁRIO CONSULTADO:
+
+${JSON.stringify(inventory || {}, null, 2)}
+`.trim()
+
+        : `
+Você é a Match IA, concierge imobiliária da Ynteligencia.
+
+Converse em português do Brasil, de forma curta, clara, útil e humana.
+
+Seu contexto é UM imóvel que o cliente está vendo agora no app.
+
+Use somente os dados fornecidos abaixo como fatos sobre esse imóvel.
+
+Não invente:
+- disponibilidade;
+- desconto;
+- condição comercial;
+- financiamento;
+- prazo;
+- metragem;
+- endereço;
+- estoque.
+
+Se a disponibilidade ou condição de hoje não estiver explicitamente confirmada nos dados, diga que precisa ser confirmada com o atendimento humano.
+
+OBJETIVOS:
+
+1. Responder dúvidas sobre o imóvel atual.
+
+2. Entender o que importa para o comprador:
+- orçamento;
+- dormitórios;
+- região;
+- novo/usado;
+- morar/investir.
+
+3. Ajudar a comparar e organizar a decisão.
+
+4. Quando houver intenção concreta de:
+- confirmar disponibilidade;
+- negociar;
+- visitar;
+- falar com alguém;
+
+ofereça encaminhar para o Rafael.
+
+REGRAS DE CONVERSA:
+
+- Faça no máximo uma pergunta por resposta.
+
+- Prefira respostas de 2 a 5 frases.
+
+- Não pressione o usuário a deixar contato.
+
+- Não diga que é ChatGPT.
+
+- Não mencione OpenAI.
+
+- Você é "Match IA".
+
+- Se o usuário pedir pessoa humana, visita, negociação, reserva, disponibilidade atual ou confirmação comercial, termine sua resposta com o marcador exato:
+
+[[HANDOFF]]
+
+- Só use [[HANDOFF]] quando fizer sentido real encaminhar.
+
+DADOS DO IMÓVEL ATUAL:
 
 ${propertyContext}
 `.trim();
 
-
-    const safeHistory =
-      history
-        .filter(
-          item =>
-            item &&
-            [
-              "user",
-              "assistant"
-            ].includes(
-              item.role
-            )
-        )
-        .map(
-          item => ({
-            role:
-              item.role,
-
-            content:
-              String(
-                item.content ||
-                ""
-              ).slice(
-                0,
-                2000
-              )
-          })
-        );
-
-
-    const initialInput = [
-      ...safeHistory,
-
-      {
-        role:
-          "user",
-
-        content:
-          message
-      }
-    ];
-
-
-    // =====================================================
-    // TOOL
-    // =====================================================
-
-    const tools = [
-      {
-        type:
-          "function",
-
-        name:
-          "search_inventory",
-
-        description:
-          "Pesquisa o estoque real da Ynteligencia no Supabase. Use para encontrar outras unidades do mesmo empreendimento/endereço, imóveis do mesmo bairro, unidades mais baratas/maiores, opções por dormitórios ou imóveis semelhantes.",
-
-        strict:
-          true,
-
-        parameters: {
-          type:
-            "object",
-
-          properties: {
-            relation: {
-              type:
-                "string",
-
-              enum: [
-                "same_building",
-                "same_address",
-                "same_neighborhood",
-                "similar"
-              ],
-
-              description:
-                "Relação dos imóveis procurados com o imóvel que o usuário está vendo."
-            },
-
-            neighborhood: {
-              type: [
-                "string",
-                "null"
-              ]
-            },
-
-            bedrooms: {
-              type: [
-                "integer",
-                "null"
-              ]
-            },
-
-            min_price: {
-              type: [
-                "number",
-                "null"
-              ]
-            },
-
-            max_price: {
-              type: [
-                "number",
-                "null"
-              ]
-            },
-
-            min_area: {
-              type: [
-                "number",
-                "null"
-              ]
-            },
-
-            max_area: {
-              type: [
-                "number",
-                "null"
-              ]
-            },
-
-            sort: {
-              type:
-                "string",
-
-              enum: [
-                "relevance",
-                "cheapest",
-                "most_expensive",
-                "largest"
-              ]
+    const input =
+      mode === "lead_summary"
+        ? safeHistory
+        : [
+            ...safeHistory,
+            {
+              role: "user",
+              content: message
             }
+          ];
+
+    const response = await fetch(
+      "https://api.openai.com/v1/responses",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          Authorization: `Bearer ${apiKey}`
+        },
+
+        body: JSON.stringify({
+          model: "gpt-5-mini",
+
+          instructions,
+
+          input,
+
+          max_output_tokens: 350,
+
+          reasoning: {
+            effort: "low"
           },
 
-          required: [
-            "relation",
-            "neighborhood",
-            "bedrooms",
-            "min_price",
-            "max_price",
-            "min_area",
-            "max_area",
-            "sort"
-          ],
-
-          additionalProperties:
-            false
-        }
+          text: {
+            verbosity: "low"
+          }
+        })
       }
-    ];
+    );
 
-
-    // =====================================================
-    // PRIMEIRA CHAMADA
-    // =====================================================
-
-    const firstResponse =
-      await fetch(
-        "https://api.openai.com/v1/responses",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            Authorization:
-              `Bearer ${apiKey}`
-          },
-
-          body:
-            JSON.stringify({
-              model:
-                "gpt-5.6-luna",
-
-              instructions,
-
-              input:
-                initialInput,
-
-              tools,
-
-              tool_choice:
-                "auto",
-
-              reasoning: {
-                effort:
-                  "none"
-              },
-
-              text: {
-                verbosity:
-                  "low"
-              },
-
-              max_output_tokens:
-                900
-            })
-        }
-      );
-
-
-    const firstData =
-      await firstResponse
+    const data =
+      await response
         .json()
-        .catch(
-          () => ({})
-        );
+        .catch(() => ({}));
 
-
-    if (
-      !firstResponse.ok
-    ) {
+    if (!response.ok) {
       console.error(
         "OPENAI_ASSISTANT_ERROR",
-        firstResponse.status,
-        JSON.stringify(
-          firstData
-        )
+        response.status,
+        data
       );
 
-      return res
-        .status(502)
-        .json({
-          success:
-            false,
+      return res.status(502).json({
+        success: false,
 
-          error:
-            firstData
-              ?.error
-              ?.message ||
-            `OpenAI HTTP ${firstResponse.status}`
-        });
-    }
-
-
-    // =====================================================
-    // PROCURA FUNCTION CALLS
-    // =====================================================
-
-    const functionCalls =
-      Array.isArray(
-        firstData.output
-      )
-        ? firstData.output.filter(
-            item =>
-              item?.type ===
-                "function_call" &&
-              item?.name ===
-                "search_inventory"
-          )
-        : [];
-
-
-    // =====================================================
-    // SEM TOOL = RESPOSTA DIRETA
-    // =====================================================
-
-    if (
-      !functionCalls.length
-    ) {
-      let reply =
-        extractOutputText(
-          firstData
-        );
-
-
-      const handoff =
-        reply.includes(
-          "[[HANDOFF]]"
-        );
-
-
-      reply =
-        reply
-          .replace(
-            /\[\[HANDOFF\]\]/g,
-            ""
-          )
-          .trim();
-
-
-      if (!reply) {
-        return res
-          .status(502)
-          .json({
-            success:
-              false,
-
-            error:
-              "A IA não retornou texto"
-          });
-      }
-
-
-      return res
-        .status(200)
-        .json({
-          success:
-            true,
-
-          reply,
-
-          handoff,
-
-          inventory_search:
-            false
-        });
-    }
-
-
-    // =====================================================
-    // EXECUTA AS BUSCAS
-    // =====================================================
-
-    const toolOutputs = [];
-
-
-    for (
-      const call
-      of functionCalls
-    ) {
-      let args = {};
-
-      try {
-        args =
-          JSON.parse(
-            call.arguments ||
-            "{}"
-          );
-      } catch {
-        args = {
-          relation:
-            "similar"
-        };
-      }
-
-
-      let result;
-
-      try {
-        result =
-          await searchInventory(
-            args,
-            property
-          );
-      } catch (error) {
-        console.error(
-          "MATCH_IA_TOOL_ERROR",
-          error
-        );
-
-        result = {
-          error:
-            "Não foi possível consultar o estoque agora.",
-
-          properties:
-            [],
-
-          total_found:
-            0
-        };
-      }
-
-
-      toolOutputs.push({
-        type:
-          "function_call_output",
-
-        call_id:
-          call.call_id,
-
-        output:
-          JSON.stringify(
-            result
-          )
+        error:
+          data?.error?.message ||
+          "Falha ao consultar a IA"
       });
     }
 
+    let reply = "";
 
-    // =====================================================
-    // SEGUNDA CHAMADA COM RESULTADO DO ESTOQUE
-    // =====================================================
+    if (typeof data.output_text === "string") {
+      reply = data.output_text;
+    } else if (Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (!Array.isArray(item?.content)) continue;
 
-    const secondInput = [
-      ...initialInput,
-      ...firstData.output,
-      ...toolOutputs
-    ];
-
-
-    const secondResponse =
-      await fetch(
-        "https://api.openai.com/v1/responses",
-        {
-          method:
-            "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            Authorization:
-              `Bearer ${apiKey}`
-          },
-
-          body:
-            JSON.stringify({
-              model:
-                "gpt-5.6-luna",
-
-              instructions,
-
-              input:
-                secondInput,
-
-              tools,
-
-              tool_choice:
-                "none",
-
-              reasoning: {
-                effort:
-                  "none"
-              },
-
-              text: {
-                verbosity:
-                  "low"
-              },
-
-              max_output_tokens:
-                1100
-            })
+        for (const part of item.content) {
+          if (typeof part?.text === "string") {
+            reply += part.text;
+          }
         }
-      );
-
-
-    const secondData =
-      await secondResponse
-        .json()
-        .catch(
-          () => ({})
-        );
-
-
-    if (
-      !secondResponse.ok
-    ) {
-      console.error(
-        "OPENAI_ASSISTANT_SECOND_ERROR",
-        secondResponse.status,
-        JSON.stringify(
-          secondData
-        )
-      );
-
-      return res
-        .status(502)
-        .json({
-          success:
-            false,
-
-          error:
-            secondData
-              ?.error
-              ?.message ||
-            `OpenAI HTTP ${secondResponse.status}`
-        });
+      }
     }
 
-
-    let reply =
-      extractOutputText(
-        secondData
-      );
-
+    reply =
+      String(reply || "").trim();
 
     const handoff =
-      reply.includes(
-        "[[HANDOFF]]"
-      );
-
+      reply.includes("[[HANDOFF]]");
 
     reply =
       reply
-        .replace(
-          /\[\[HANDOFF\]\]/g,
-          ""
-        )
+        .replace(/\[\[HANDOFF\]\]/g, "")
         .trim();
 
-
     if (!reply) {
-      console.error(
-        "MATCH_IA_EMPTY_SECOND_REPLY",
-        JSON.stringify(
-          secondData
-        )
-      );
-
-      return res
-        .status(502)
-        .json({
-          success:
-            false,
-
-          error:
-            "A IA não retornou texto após consultar o estoque"
-        });
+      reply =
+        mode === "lead_summary"
+          ? "Conversa iniciada pela Match IA, sem preferências suficientes para resumir."
+          : mode === "search"
+          ? "Posso te ajudar a montar sua busca. Qual região ou bairro você prefere?"
+          : "Posso te ajudar a entender melhor este imóvel ou organizar uma comparação com outras opções.";
     }
 
-
-    return res
-      .status(200)
-      .json({
-        success:
-          true,
-
-        reply,
-
-        handoff,
-
-        inventory_search:
-          true
-      });
-
-
+    return res.status(200).json({
+      success: true,
+      reply,
+      handoff
+    });
   } catch (error) {
     console.error(
       "ASSISTANT_FATAL",
       error
     );
 
-
-    return res
-      .status(500)
-      .json({
-        success:
-          false,
-
-        error:
-          error?.message ||
-          "Erro interno na assistente"
-      });
+    return res.status(500).json({
+      success: false,
+      error: "Erro interno na assistente"
+    });
   }
 }
