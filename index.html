@@ -5159,6 +5159,188 @@ body.explore-filter-mode .unified-search-main{
 }
 </style>
 
+
+<style id="filter-complete-x-fix">
+/* Remove artefatos visuais antigos */
+#explore .section-head,
+#explore .unified-search-separator > span:first-child::before,
+#explore .unified-search-separator > span:first-child::after{
+  content:none!important;
+}
+
+/* Filtro */
+#catalogFilters{
+  position:relative!important;
+  overflow:visible!important;
+}
+
+#closeFilters{
+  position:absolute!important;
+  top:16px!important;
+  right:16px!important;
+  z-index:50!important;
+  display:grid!important;
+  place-items:center!important;
+  width:44px!important;
+  height:44px!important;
+  padding:0!important;
+  border:1px solid #DED8CD!important;
+  border-radius:50%!important;
+  background:#FFFFFF!important;
+  color:#171513!important;
+  font-size:28px!important;
+  line-height:1!important;
+  font-weight:400!important;
+}
+
+.unified-filter-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:14px!important;
+  padding-top:48px!important;
+}
+
+.unified-field{
+  display:grid!important;
+  gap:7px!important;
+  min-width:0!important;
+}
+
+.unified-field-wide{
+  grid-column:span 1!important;
+}
+
+.unified-field > span{
+  color:#756E64!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase!important;
+}
+
+.unified-field .field{
+  width:100%!important;
+  min-height:54px!important;
+  background:#FFF!important;
+  color:#171513!important;
+  border:1px solid #DED8CD!important;
+  border-radius:14px!important;
+  padding:0 14px!important;
+}
+
+.unified-filter-actions{
+  display:grid!important;
+  grid-template-columns:1fr 1.5fr!important;
+  gap:10px!important;
+  margin-top:18px!important;
+}
+
+#catalogSearchBtn{
+  min-height:56px!important;
+  border:0!important;
+  border-radius:14px!important;
+  background:#171513!important;
+  color:#fff!important;
+  font-weight:900!important;
+}
+
+/* Desktop */
+@media(min-width:701px){
+  body.explore-filter-mode #catalogFilters{
+    width:min(1100px,calc(100vw - 48px))!important;
+    max-height:calc(100vh - 90px)!important;
+    margin:0 auto!important;
+    padding:24px!important;
+    border:1px solid #DED8CD!important;
+    border-radius:24px!important;
+    background:#FCFAF6!important;
+    overflow-y:auto!important;
+    box-shadow:0 20px 60px rgba(20,18,15,.10)!important;
+  }
+}
+
+/* Mobile */
+@media(max-width:700px){
+  body.explore-filter-mode #catalogFilters{
+    position:fixed!important;
+    inset:0!important;
+    z-index:700!important;
+    width:100%!important;
+    height:100dvh!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:18px 16px calc(28px + env(safe-area-inset-bottom))!important;
+    border:0!important;
+    border-radius:0!important;
+    background:#FCFAF6!important;
+    overflow-y:auto!important;
+    transform:none!important;
+  }
+
+  .unified-filter-grid{
+    grid-template-columns:1fr!important;
+    padding-top:52px!important;
+  }
+
+  .unified-filter-actions{
+    grid-template-columns:1fr!important;
+    position:sticky!important;
+    bottom:0!important;
+    padding-top:10px!important;
+    padding-bottom:max(8px,env(safe-area-inset-bottom))!important;
+    background:#FCFAF6!important;
+  }
+}
+</style>
+
+
+<style id="remove-gray-placeholder-and-filter-preamble">
+/* Remove bloco visual vazio/cinza que aparecia antes do título */
+.hero .hero-media,
+.hero .hero-image,
+.hero .hero-visual,
+.hero .hero-photo,
+.hero .clean-hero-media,
+.hero .clean-hero-image,
+.hero [class*="placeholder"],
+.hero [class*="skeleton"]{
+  display:none!important;
+}
+
+/* Se o layout usa pseudo-elemento como imagem/placeholder, remova */
+.hero::before,
+.hero .container::before{
+  content:none!important;
+  display:none!important;
+}
+
+/* Remove texto/artefato antes do filtro */
+#explore .section-head,
+#explore > .container > p,
+#explore > .container > div:first-child:not(#unifiedSearchPanel){
+  display:none!important;
+}
+
+/* Não mostrar qualquer marcador "?" gerado visualmente */
+#explore::before,
+#unifiedSearchPanel::before,
+#catalogFilters::before{
+  content:none!important;
+  display:none!important;
+}
+
+/* Reaproxima o conteúdo depois de remover o bloco cinza */
+.hero{
+  min-height:auto!important;
+}
+
+@media(max-width:700px){
+  .hero{
+    padding-top:28px!important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -5192,9 +5374,7 @@ body.explore-filter-mode .unified-search-main{
       </button>
     </div>
 
-    <div class="clean-home-visual" aria-hidden="true">
-      <div class="clean-photo-frame">
-        <div class="clean-photo" id="cleanHeroPhoto"></div>
+    
         <div class="clean-photo-caption">
           <span>São Paulo</span>
           <strong>Seu próximo endereço começa aqui.</strong>
@@ -5397,9 +5577,7 @@ body.explore-filter-mode .unified-search-main{
 
     <div class="section-head">
 
-      <h2>
-        ?
-      </h2>
+      <h2></h2>
 
       <p>
         Explore a base disponível e use os filtros
@@ -5543,7 +5721,19 @@ body.explore-filter-mode .unified-search-main{
             <span>IPTU máximo</span>
             <input id="maxIptu" class="field" type="number" min="0" step="50" placeholder="R$ máximo">
           </label>
-        </div>
+        
+      <label class="unified-field">
+        <span>Bairro</span>
+        <select id="catalogNeighborhood" class="field">
+          <option value="">Todos os bairros</option>
+        </select>
+      </label>
+
+      <label class="unified-field unified-field-wide">
+        <span>Empreendimento / condomínio</span>
+        <input id="catalogSearch" class="field" type="search" placeholder="Digite o nome do empreendimento ou condomínio">
+      </label>
+</div>
 
         <div class="filter-actions unified-filter-actions">
           <button class="filter-reset" id="resetCatalogFilters" type="button">
@@ -13604,6 +13794,34 @@ body.ad-match-mode .refine-match-shell{
     if(property && typeof openAiAssistant==="function"){
       openAiAssistant(property);
     }
+  });
+})();
+</script>
+
+
+<script id="filter-close-robust">
+(function(){
+  const close=document.getElementById("closeFilters");
+  if(!close)return;
+
+  const fresh=close.cloneNode(true);
+  close.replaceWith(fresh);
+
+  fresh.addEventListener("click",function(e){
+    e.preventDefault();
+    e.stopPropagation();
+
+    try{
+      if(typeof setFiltersOpen==="function"){
+        setFiltersOpen(false);
+      }
+    }catch(err){}
+
+    const filters=document.getElementById("catalogFilters");
+    filters?.classList.remove("open");
+
+    document.body.classList.remove("explore-filter-mode");
+    document.body.style.overflow="";
   });
 })();
 </script>
