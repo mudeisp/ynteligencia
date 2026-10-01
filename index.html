@@ -14266,5 +14266,59 @@ body.ad-match-mode .refine-match-shell{
   },{capture:true});
 })();
 </script>
+
+<script id="mobile-search-close-filter-fix">
+(function(){
+  const old=document.getElementById("catalogSearchBtn");
+  if(!old)return;
+
+  const btn=old.cloneNode(true);
+  old.replaceWith(btn);
+
+  btn.addEventListener("click",async function(event){
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const original=btn.textContent;
+    btn.disabled=true;
+    btn.textContent="BUSCANDO...";
+
+    try{
+      if(typeof executeCatalogSearch==="function"){
+        await executeCatalogSearch();
+      }
+
+      try{
+        if(typeof setFiltersOpen==="function"){
+          setFiltersOpen(false);
+        }
+      }catch(e){}
+
+      const filters=document.getElementById("catalogFilters");
+      filters?.classList.remove("open");
+
+      document.body.classList.remove("explore-filter-mode");
+      document.body.style.overflow="";
+
+      const catalog=document.getElementById("catalog");
+      catalog?.classList.add("visible");
+
+      requestAnimationFrame(()=>{
+        catalog?.scrollIntoView({
+          behavior:"smooth",
+          block:"start"
+        });
+      });
+
+    }catch(error){
+      console.error("MOBILE_SEARCH_FIX_ERROR",error);
+    }finally{
+      btn.disabled=false;
+      btn.textContent=original || "BUSCAR IMÓVEIS";
+    }
+  },{capture:true});
+})();
+</script>
+
 </body>
 </html>
