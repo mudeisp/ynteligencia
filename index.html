@@ -7985,6 +7985,7 @@ function aiMessageClearlyStartsNewSearch(message){
   const t = norm(message || "");
 
   return Boolean(
+    aiIsRequestForAlternatives(message) ||
     /\b(agora quero|nova busca|outra busca|outro bairro|outro empreendimento|procure|buscar|busca por|tem lancamento|tem lancamentos|tem imovel|tem imoveis|em perdizes|em pinheiros|em brooklin|em pompeia|em vila|em moema|em jardins|em tatuape|em santana)\b/.test(t)
   );
 }
@@ -8222,6 +8223,130 @@ async function searchPropertiesForAi(message){
   return inventoryContext;
 }
 
+
+/* =========================================================
+   MATCH IA · ROTEADOR SEARCH ↔ PROPERTY
+========================================================= */
+
+function aiIsRequestForAlternatives(message){
+  const t=norm(message||"");
+
+  return Boolean(
+    /\b(outra opcao|outra opção|outras opcoes|outras opções|mais opcoes|mais opções|outro imovel|outro imóvel|outros imoveis|outros imóveis|outro empreendimento|outros empreendimentos|me mostra outro|mostra outro|ver outro|quero outro|mais imoveis|mais imóveis|tem outro|tem mais|algo parecido|outra alternativa|outras alternativas)\b/.test(t)
+  );
+}
+
+function aiExtractSearchHintFromMessage(message){
+  const t=norm(message||"");
+
+  const hint={
+    query:String(message||"").trim(),
+    neighborhood:"",
+    bedrooms:0,
+    min_price:0,
+    max_price:0
+  };
+
+  /*
+    Aproveita apenas o que o usuário explicitou na NOVA frase.
+    Não reaproveita bairro/preço/dormitórios antigos silenciosamente.
+  */
+  const knownNeighborhoods=[
+    "brooklin",
+    "brooklin paulista",
+    "perdizes",
+    "pompeia",
+    "pompéia",
+    "pinheiros",
+    "moema",
+    "vila mariana",
+    "vila madalena",
+    "campo belo",
+    "itaim bibi",
+    "jardins",
+    "paraiso",
+    "paraíso",
+    "santana",
+    "tatuape",
+    "tatuapé"
+  ];
+
+  for(const bairro of knownNeighborhoods){
+    if(t.includes(norm(bairro))){
+      hint.neighborhood=bairro;
+      break;
+    }
+  }
+
+  const dormMatch=t.match(/\b([1-5])\s*(?:dorm|dorms|dormitorio|dormitório|dormitorios|dormitórios|quarto|quartos)\b/);
+  if(dormMatch){
+    hint.bedrooms=Number(dormMatch[1])||0;
+  }
+
+  const maxMatch=t.match(/\b(?:ate|até|maximo|max|no maximo|no máximo)\s*r?\$?\s*([\d.,]+)\s*(mil|mi|milhao|milhão)?\b/);
+  if(maxMatch){
+    let v=Number(String(maxMatch[1]).replace(/\./g,"").replace(",","."));
+    const unit=maxMatch[2]||"";
+    if(/milhao|milhão|mi/.test(unit))v*=1000000;
+    else if(/mil/.test(unit))v*=1000;
+    if(Number.isFinite(v))hint.max_price=v;
+  }
+
+  const minMatch=t.match(/\b(?:acima de|a partir de|minimo|mínimo|min)\s*r?\$?\s*([\d.,]+)\s*(mil|mi|milhao|milhão)?\b/);
+  if(minMatch){
+    let v=Number(String(minMatch[1]).replace(/\./g,"").replace(",","."));
+    const unit=minMatch[2]||"";
+    if(/milhao|milhão|mi/.test(unit))v*=1000000;
+    else if(/mil/.test(unit))v*=1000;
+    if(Number.isFinite(v))hint.min_price=v;
+  }
+
+  return hint;
+}
+
+function aiSwitchToSearchMode(message){
+  const hint=aiExtractSearchHintFromMessage(message);
+
+  /*
+    Limpamos o imóvel atual e o estado antigo.
+    O novo pedido deve ser interpretado como uma nova busca.
+  */
+  aiAssistantProperty={
+    generic_search:true
+  };
+
+  aiLastSelectedProperty=null;
+
+  if(typeof resetAiSearchState==="function"){
+    resetAiSearchState();
+  }
+
+  /*
+    Só injeta filtros explicitamente mencionados na nova frase.
+  */
+  if(typeof aiSearchState==="object" && aiSearchState){
+    aiSearchState.neighborhood=hint.neighborhood||"";
+    aiSearchState.bedrooms=hint.bedrooms||0;
+    aiSearchState.minPrice=hint.min_price||0;
+    aiSearchState.maxPrice=hint.max_price||0;
+    aiSearchState.exactName="";
+  }
+
+  console.log(
+    "MATCH_IA_SWITCH_TO_SEARCH",
+    {
+      message,
+      hint
+    }
+  );
+
+  const aiInput=document.getElementById("aiAssistantInput");
+  if(aiInput){
+    aiInput.placeholder=
+      "Digite bairro, preço, dormitórios ou empreendimento...";
+  }
+}
+
 async function sendAiAssistantMessage(text){
   text=clean(text);
   if(!text || aiAssistantSending || !aiAssistantProperty)return;
@@ -8242,6 +8367,23 @@ async function sendAiAssistantMessage(text){
 
   aiAssistantHistory=
     aiAssistantHistory.slice(-12);
+
+  /*
+    Se estamos dentro de um imóvel e o usuário pede alternativas,
+    mudamos para SEARCH antes de processar a mensagem.
+  */
+  const wasPropertyMode=
+    Boolean(
+      aiAssistantProperty &&
+      aiAssistantProperty.generic_search === false
+    );
+
+  if(
+    wasPropertyMode &&
+    aiIsRequestForAlternatives(text)
+  ){
+    aiSwitchToSearchMode(text);
+  }
 
   const detectedPhone=
     extractBrazilianPhone(text);
