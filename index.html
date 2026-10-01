@@ -3357,6 +3357,287 @@ body.home-mode .floating-contact{
 }
 </style>
 
+
+<style id="wizard-minimal-final-design">
+
+/* ===========================
+   WIZARD MINIMAL
+=========================== */
+body.match-mode{
+  overflow:hidden!important;
+}
+
+body.match-mode header,
+body.match-mode .app-dock{
+  display:none!important;
+}
+
+body.match-mode .wizard-wrap{
+  position:fixed!important;
+  inset:0!important;
+  z-index:300!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:28px!important;
+  margin:0!important;
+  background:#F7F4ED!important;
+  overflow:hidden!important;
+}
+
+.wizard-minimal-shell{
+  width:min(430px,100%)!important;
+  display:grid!important;
+  gap:14px!important;
+  margin:auto!important;
+}
+
+/* Animated Explore button */
+.wizard-explore-motion{
+  position:relative!important;
+  width:100%!important;
+  min-height:66px!important;
+  padding:0 20px!important;
+  border:0!important;
+  border-radius:20px!important;
+  background:#E4D0A3!important;
+  color:#171513!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:16px!important;
+  font-size:17px!important;
+  font-weight:950!important;
+  letter-spacing:.02em!important;
+  box-shadow:0 0 0 0 rgba(198,167,107,.38)!important;
+  cursor:pointer!important;
+  animation:yntExplorePulse 1.7s ease-in-out infinite!important;
+  overflow:hidden!important;
+}
+
+.wizard-explore-motion::after{
+  content:""!important;
+  position:absolute!important;
+  inset:-40% auto -40% -35%!important;
+  width:28%!important;
+  transform:skewX(-18deg)!important;
+  background:linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,.55),
+    transparent
+  )!important;
+  animation:yntExploreShine 2.4s ease-in-out infinite!important;
+}
+
+.wizard-explore-motion span,
+.wizard-explore-motion b{
+  position:relative!important;
+  z-index:2!important;
+}
+
+.wizard-explore-motion b{
+  font-size:21px!important;
+  font-weight:500!important;
+  animation:yntArrowMove 1.2s ease-in-out infinite!important;
+}
+
+@keyframes yntExplorePulse{
+  0%,100%{
+    transform:scale(1);
+    box-shadow:0 0 0 0 rgba(198,167,107,.28);
+  }
+  50%{
+    transform:scale(1.018);
+    box-shadow:0 0 0 9px rgba(198,167,107,0);
+  }
+}
+
+@keyframes yntExploreShine{
+  0%,25%{left:-40%}
+  70%,100%{left:125%}
+}
+
+@keyframes yntArrowMove{
+  0%,100%{transform:translateX(0)}
+  50%{transform:translateX(5px)}
+}
+
+/* AI button */
+.wizard-ai-button{
+  width:100%!important;
+  min-height:72px!important;
+  padding:10px 14px!important;
+  border:1px solid #DED8CD!important;
+  border-radius:20px!important;
+  background:#FFFFFF!important;
+  color:#171513!important;
+  display:grid!important;
+  grid-template-columns:52px 1fr!important;
+  gap:12px!important;
+  align-items:center!important;
+  text-align:left!important;
+  box-shadow:none!important;
+  cursor:pointer!important;
+}
+
+.wizard-ai-robot{
+  width:52px!important;
+  height:52px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:16px!important;
+  background:#EEF4FF!important;
+  font-size:28px!important;
+}
+
+.wizard-ai-copy{
+  display:block!important;
+  min-width:0!important;
+}
+
+.wizard-ai-copy strong{
+  display:block!important;
+  margin:0 0 4px!important;
+  color:#171513!important;
+  font-size:14px!important;
+  font-weight:900!important;
+}
+
+.wizard-ai-copy small{
+  display:block!important;
+  color:#77736B!important;
+  font-size:10px!important;
+  line-height:1.35!important;
+  font-weight:600!important;
+}
+
+/* Home CTA text and styling */
+#startHero{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
+@media(max-width:768px){
+  body.match-mode .wizard-wrap{
+    padding:22px!important;
+  }
+
+  .wizard-minimal-shell{
+    width:100%!important;
+    max-width:390px!important;
+  }
+
+  .wizard-explore-motion{
+    min-height:64px!important;
+    font-size:16px!important;
+  }
+
+  .wizard-ai-button{
+    min-height:70px!important;
+  }
+}
+</style>
+
+
+<style id="hero-two-buttons-design">
+/* HOME: somente EXPLORAR + IA */
+.hero-actions{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:12px!important;
+  max-width:560px!important;
+  margin:28px auto 0!important;
+}
+
+#startHero,
+.hero-ai-btn{
+  width:100%!important;
+  min-height:60px!important;
+  border-radius:16px!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  box-shadow:none!important;
+}
+
+#startHero{
+  border:0!important;
+  background:#E4D0A3!important;
+  color:#171513!important;
+}
+
+.hero-ai-btn{
+  border:1px solid rgba(228,208,163,.55)!important;
+  background:#171717!important;
+  color:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:10px!important;
+}
+
+.hero-ai-robot{
+  width:32px!important;
+  height:32px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:10px!important;
+  background:#EEF4FF!important;
+  font-size:19px!important;
+}
+
+@media(max-width:768px){
+  .hero-actions{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+    max-width:none!important;
+  }
+
+  #startHero,
+  .hero-ai-btn{
+    min-height:58px!important;
+  }
+}
+</style>
+
+
+<style id="home-direct-filter-ai-css">
+/* Never show intermediate wizard from home */
+#match[data-home-bypass="true"]{
+  display:none!important;
+}
+
+/* AI must always sit above the app */
+.ai-assistant-shell{
+  z-index:700!important;
+}
+.ai-assistant-shell.open{
+  display:flex!important;
+}
+.ai-assistant-card{
+  z-index:701!important;
+}
+
+/* Full filter visible when opened */
+#catalogFilters.open,
+.catalog-filters.open,
+.unified-catalog-filters.open{
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+@media(min-width:701px){
+  #catalogFilters.open,
+  .catalog-filters.open,
+  .unified-catalog-filters.open{
+    display:block!important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -3395,53 +3676,53 @@ body.home-mode .floating-contact{
     </p>
 
     <div class="hero-actions">
-      <button class="primary" id="startHero">
-        Encontrar meu MATCH
-      </button>
+<button class="primary" id="startHero">EXPLORAR IMÓVEIS</button>
 
-      <button class="secondary" id="exploreHero">
-        Explorar imóveis
-      </button>
-    </div>
+<button class="hero-ai-btn" id="heroAiButton" type="button">
+  <span class="hero-ai-robot" aria-hidden="true">🤖</span>
+  <span>FALAR COM A IA</span>
+</button>
+
+</div>
   </div>
 </section>
 
 <main>
 
 
+
 <section class="wizard-wrap" id="match">
-  <div class="container">
-    <div class="wizard wizard-explore-only">
+  <div class="wizard-minimal-shell">
 
-      <!-- Compatibilidade com o JS legado -->
-      <div class="progress" aria-hidden="true" style="display:none">
-        <span id="progress"></span>
-      </div>
+    <button
+      class="wizard-explore-motion"
+      id="wizardExploreOnly"
+      type="button">
+      <span>EXPLORAR IMÓVEIS</span>
+      <b aria-hidden="true">→</b>
+    </button>
 
-      <div class="wizard-inner wizard-explore-only-inner">
+    <button
+      class="wizard-ai-button"
+      id="wizardAiButton"
+      type="button"
+      aria-label="Falar com a inteligência artificial">
+      <span class="wizard-ai-robot" aria-hidden="true">🤖</span>
+      <span class="wizard-ai-copy">
+        <strong>Falar com a IA</strong>
+        <small>Posso te ajudar a encontrar o imóvel ideal</small>
+      </span>
+    </button>
 
-        <div class="step-count" aria-hidden="true" style="display:none">
-          <strong id="stepCount">01 de 01</strong>
-        </div>
-
-        <div class="wizard-explore-only-content">
-          <button
-            class="wizard-explore-only-btn"
-            id="wizardExploreOnly"
-            type="button">
-            EXPLORAR IMÓVEIS
-          </button>
-        </div>
-
-        <!-- Mantidos apenas para não quebrar listeners antigos -->
-        <div class="wizard-actions" aria-hidden="true" style="display:none!important">
-          <button class="back" id="back" type="button" tabindex="-1">Voltar</button>
-          <button class="clear-match" id="clearMatch" type="button" tabindex="-1">Limpar</button>
-          <button class="next" id="next" type="button" tabindex="-1">Continuar</button>
-        </div>
-
-      </div>
+    <!-- Compatibilidade com listeners antigos -->
+    <div style="display:none!important" aria-hidden="true">
+      <span id="progress"></span>
+      <strong id="stepCount">01 de 01</strong>
+      <button id="back" type="button"></button>
+      <button id="clearMatch" type="button"></button>
+      <button id="next" type="button"></button>
     </div>
+
   </div>
 </section>
 
@@ -7174,25 +7455,71 @@ function openAiLeadCaptureFromPhone(phone){
 }
 
 function openAiAssistant(p){
-  if(!p)return;
-  aiAssistantProperty=p;
+  const genericMode=!p;
+
+  aiAssistantProperty=genericMode
+    ? {
+        id:"__search__",
+        name:"Busca de imóveis",
+        neighborhood:"",
+        source:"search",
+        generic_search:true
+      }
+    : p;
+
   aiAssistantHistory=[];
+
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
+  const input=shell.querySelector("#aiAssistantInput");
+  const handoff=shell.querySelector("#aiHumanHandoff");
+
   if(box)box.innerHTML="";
-  
+  if(handoff)handoff.classList.remove("visible");
+
+  if(input){
+    input.placeholder=genericMode
+      ? "Digite o que você procura..."
+      : "Digite sua dúvida sobre este imóvel...";
+  }
+
   shell.classList.add("open");
   document.body.style.overflow="hidden";
 
-  const sourceLabel=String(p.source||"").toLowerCase()==="novos" ? "lançamento" : "imóvel";
-  appendAiMessage("assistant",`Oi! Vi que você está olhando ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Pode me perguntar o que quiser sobre este imóvel — e também posso buscar outras unidades e opções do nosso estoque para comparar com você.`);
+  if(genericMode){
+    appendAiMessage(
+      "assistant",
+      "Oi! 👋 Eu posso te ajudar a encontrar um imóvel. Me diga o que você procura — por exemplo bairro, faixa de preço, dormitórios ou se prefere novo ou usado."
+    );
+
+    try{
+      gtag("event","ai_assistant_open",{mode:"search"});
+    }catch(error){}
+
+    supabaseTrack("ai_assistant_open",{mode:"search"});
+    return;
+  }
+
+  appendAiMessage(
+    "assistant",
+    `Oi! Vi que você está olhando ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Pode me perguntar o que quiser sobre este imóvel — e também posso buscar outras unidades e opções do nosso estoque para comparar com você.`
+  );
 
   try{
     gtag("event","ai_assistant_open",{
-      property_id:String(p.id||""),property_name:p.name||"",neighborhood:p.neighborhood||""
+      mode:"property",
+      property_id:String(p.id||""),
+      property_name:p.name||"",
+      neighborhood:p.neighborhood||""
     });
   }catch(error){}
-  supabaseTrack("ai_assistant_open",{property_id:String(p.id||""),property_name:p.name||"",neighborhood:p.neighborhood||""});
+
+  supabaseTrack("ai_assistant_open",{
+    mode:"property",
+    property_id:String(p.id||""),
+    property_name:p.name||"",
+    neighborhood:p.neighborhood||""
+  });
 }
 
 function closeAiAssistant(){
@@ -7215,7 +7542,7 @@ async function sendAiAssistantMessage(text){
   aiAssistantHistory=aiAssistantHistory.slice(-10);
 
   const detectedPhone=extractBrazilianPhone(text);
-  if(detectedPhone){
+  if(detectedPhone && !aiAssistantProperty?.generic_search){
     appendAiMessage(
       "assistant",
       "Perfeito. Vou abrir o atendimento para registrar seu WhatsApp corretamente. Seu número já vai preenchido — falta só confirmar seus dados."
@@ -7244,7 +7571,8 @@ async function sendAiAssistantMessage(text){
       body:JSON.stringify({
         message:text,
         history:aiAssistantHistory.slice(0,-1),
-        property:aiPropertyContext(aiAssistantProperty),
+        property:aiAssistantProperty?.generic_search ? {} : aiPropertyContext(aiAssistantProperty),
+        mode:aiAssistantProperty?.generic_search ? "search" : "property",
         page_url:window.location.href
       })
     });
@@ -7252,7 +7580,11 @@ async function sendAiAssistantMessage(text){
     thinking.remove();
     if(!response.ok || data.success!==true)throw new Error(data.error||"Não foi possível falar com a assistente agora.");
 
-    const reply=clean(data.reply||"")||"Posso continuar te ajudando com este imóvel.";
+    const reply=clean(data.reply||"")||(
+      aiAssistantProperty?.generic_search
+        ? "Posso continuar te ajudando a encontrar uma opção."
+        : "Posso continuar te ajudando com este imóvel."
+    );
     appendAiMessage("assistant",reply);
     aiAssistantHistory.push({role:"assistant",content:reply});
     aiAssistantHistory=aiAssistantHistory.slice(-10);
@@ -11744,6 +12076,98 @@ body.ad-match-mode .refine-match-shell{
       filters?.classList.remove("open");
       document.querySelector(".filters-backdrop")?.classList.remove("open");
     });
+  }
+
+})();
+</script>
+
+
+
+
+
+
+
+
+<script id="home-direct-filter-ai-final">
+(function(){
+
+  function openFilterDirect(){
+    document.body.classList.remove(
+      "home-mode",
+      "match-mode",
+      "match-results-mode",
+      "ad-match-mode",
+      "campaign-catalog-mode"
+    );
+
+    try{
+      if(typeof openGeneralCatalog==="function"){
+        openGeneralCatalog(true);
+      }else{
+        document.getElementById("catalog")?.classList.add("visible");
+      }
+    }catch(error){
+      console.error("OPEN_CATALOG_ERROR",error);
+    }
+
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        const filters =
+          document.getElementById("catalogFilters")
+          || document.querySelector(".catalog-filters")
+          || document.querySelector(".unified-catalog-filters");
+
+        if(filters){
+          filters.classList.add("open");
+          filters.style.display="";
+        }
+
+        const backdrop =
+          document.getElementById("filtersBackdrop")
+          || document.querySelector(".filters-backdrop");
+
+        backdrop?.classList.add("open");
+
+        if(typeof setFiltersOpen==="function"){
+          try{ setFiltersOpen(true); }catch(e){}
+        }
+      });
+    });
+  }
+
+  function openGeneralAI(){
+    if(typeof openAiAssistant==="function"){
+      openAiAssistant(null);
+    }
+  }
+
+  const explore=document.getElementById("startHero");
+  if(explore){
+    const fresh=explore.cloneNode(true);
+    explore.replaceWith(fresh);
+    fresh.textContent="EXPLORAR IMÓVEIS";
+    fresh.addEventListener("click",e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openFilterDirect();
+    });
+  }
+
+  const ai=document.getElementById("heroAiButton");
+  if(ai){
+    const fresh=ai.cloneNode(true);
+    ai.replaceWith(fresh);
+    fresh.addEventListener("click",e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openGeneralAI();
+    });
+  }
+
+  /* Intermediate wizard is no longer part of home navigation */
+  const wizard=document.getElementById("match");
+  if(wizard){
+    wizard.setAttribute("data-home-bypass","true");
   }
 
 })();
