@@ -4463,7 +4463,8 @@ async function supabaseCreateLead(lead){
           notes:
             `Interesse gerado na Ynteligencia | ` +
             `Código: ${lead.property_id || ""} | ` +
-            `Imóvel: ${lead.property_name || ""}`,
+            `Imóvel: ${lead.property_name || ""}` +
+            (lead.ai_summary ? ` | Match IA: ${lead.ai_summary}` : ""),
 
           session_id:
             YNTELIGENCIA_SESSION_ID,
@@ -4510,6 +4511,13 @@ async function supabaseCreateLead(lead){
 
             profile:{
               ...profile
+            },
+
+            ai:{
+              summary:lead.ai_summary || "",
+              history:Array.isArray(lead.ai_history) ? lead.ai_history : [],
+              history_text:lead.ai_history_text || "",
+              conversation_length:Array.isArray(lead.ai_history) ? lead.ai_history.length : 0
             }
 
           }
@@ -7270,6 +7278,7 @@ function openPropertySpecialist(p){
 ========================================================= */
 let aiAssistantProperty=null;
 let aiAssistantHistory=[];
+let aiLeadConversation=[];
 let aiAssistantSending=false;
 let aiAssistantTriggerTimer=null;
 
@@ -7371,11 +7380,25 @@ function ensureAiAssistantShell(){
     const aiShell=document.getElementById("aiAssistantShell");
 
     aiShell?.classList.remove("open");
-    aiShell?.remove();
     document.body.style.overflow="hidden";
 
     setTimeout(()=>{
-      openPropertySpecialist(property);
+      if(property.generic_search){
+        openLeadCapture(
+          {
+            id:"match-ia-general",
+            name:"Busca assistida pela Match IA",
+            neighborhood:"",
+            value:0,
+            source:"match_ia"
+          },
+          {
+            source:"match_ia_general"
+          }
+        );
+      }else{
+        openPropertySpecialist(property);
+      }
     },120);
   });
 
@@ -7392,6 +7415,18 @@ function appendAiMessage(role,text){
   div.textContent=text;
   box.appendChild(div);
   box.scrollTop=box.scrollHeight;
+
+  if(role==="user" || role==="assistant"){
+    const last=aiLeadConversation[aiLeadConversation.length-1];
+    if(!last || last.role!==role || last.content!==String(text||"")){
+      aiLeadConversation.push({
+        role,
+        content:String(text||""),
+        at:new Date().toISOString()
+      });
+      aiLeadConversation=aiLeadConversation.slice(-80);
+    }
+  }
 }
 
 function extractBrazilianPhone(text){
@@ -7447,10 +7482,21 @@ function openAiLeadCaptureFromPhone(phone){
   document.body.style.overflow="hidden";
 
   setTimeout(()=>{
-    openLeadCapture(property,{
-      phone:formattedPhone,
-      source:"match_ia_phone"
-    });
+    openLeadCapture(
+      property.generic_search
+        ? {
+            id:"match-ia-general",
+            name:"Busca assistida pela Match IA",
+            neighborhood:"",
+            value:0,
+            source:"match_ia"
+          }
+        : property,
+      {
+        phone:formattedPhone,
+        source:property.generic_search ? "match_ia_general_phone" : "match_ia_phone"
+      }
+    );
   },160);
 }
 
@@ -7468,6 +7514,7 @@ function openAiAssistant(p){
     : p;
 
   aiAssistantHistory=[];
+  aiLeadConversation=[];
 
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
@@ -7529,6 +7576,223 @@ function closeAiAssistant(){
   else document.body.style.overflow="";
 }
 
+
+/* =========================================================
+   MATCH IA · BUSCA REAL NO INVENTÁRIO CARREGADO
+========================================================= */
+
+function aiParseMoneyPhrase(text){
+  const raw=norm(text||"");
+  const parseOne=(num,unit)=>{
+    let value=Number(String(num).replace(",","."));
+    if(!Number.isFinite(value))return 0;
+    if(unit && /milhao|milhoes|mi\b/.test(unit))value*=1000000;
+    else if(unit && /mil|k\b/.test(unit))value*=1000;
+    else if(value<10000)value*=1000;
+    return Math.round(value);
+  };
+
+  let max=0,min=0;
+
+  let match=raw.match(/(?:ate|maximo|max|no maximo)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/i);
+  if(match)max=parseOne(match[1],match[2]||"");
+
+  match=raw.match(/(?:a partir de|minimo|min|acima de|mais de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/i);
+  if(match)min=parseOne(match[1],match[2]||"");
+
+  match=raw.match(/(?:entre|de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?\s*(?:a|e|-)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/i);
+  if(match){
+    min=parseOne(match[1],match[2]||"");
+    max=parseOne(match[3],match[4]||match[2]||"");
+  }
+
+  return {min,max};
+}
+
+function aiInventoryContext(message){
+  const recentUsers=aiLeadConversation
+    .filter(item=>item.role==="user")
+    .slice(-6)
+    .map(item=>item.content);
+
+  const combined=norm([...recentUsers,message].join(" "));
+  const inventory=Array.isArray(properties) ? properties : [];
+
+  const bedroomsMatch=combined.match(/(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/);
+  const bedrooms=bedroomsMatch ? Number(bedroomsMatch[1]) : 0;
+
+  const money=aiParseMoneyPhrase(combined);
+
+  const wantsNew=/\b(novo|novos|lancamento|lancamentos|na planta)\b/.test(combined);
+  const wantsUsed=/\b(usado|usados|seminovo|seminovos)\b/.test(combined);
+
+  let exactName="";
+  let neighborhood="";
+
+  // Longest matching property name wins (e.g. "Upper Brooklin").
+  const names=[...new Set(inventory.map(p=>clean(p?.name||"")).filter(v=>v.length>=4))]
+    .sort((a,b)=>b.length-a.length);
+
+  for(const name of names){
+    const key=norm(name);
+    if(key && combined.includes(key)){
+      exactName=name;
+      break;
+    }
+  }
+
+  // Detect a neighborhood from the real inventory.
+  const neighborhoods=[...new Set(inventory.map(p=>clean(p?.neighborhood||"")).filter(v=>v.length>=3))]
+    .sort((a,b)=>b.length-a.length);
+
+  for(const item of neighborhoods){
+    const key=norm(item);
+    if(key && combined.includes(key)){
+      neighborhood=item;
+      break;
+    }
+  }
+
+  let filtered=inventory.filter(p=>{
+    if(!p)return false;
+
+    if(exactName && !norm(p.name||"").includes(norm(exactName)))return false;
+
+    if(neighborhood){
+      const hay=norm(`${p.neighborhood||""} ${p.address||""} ${p.name||""}`);
+      if(!hay.includes(norm(neighborhood)))return false;
+    }
+
+    if(bedrooms && Number(p.bedrooms||0)!==bedrooms)return false;
+
+    if(money.min && Number(p.value||0)<money.min)return false;
+    if(money.max && Number(p.value||0)>money.max)return false;
+
+    if(wantsNew && !wantsUsed){
+      if(norm(p.source||"")!=="novos")return false;
+    }
+    if(wantsUsed && !wantsNew){
+      if(norm(p.source||"")==="novos")return false;
+    }
+
+    return true;
+  });
+
+  // If no structured filters were recognized, attempt text relevance instead.
+  const recognized=Boolean(exactName || neighborhood || bedrooms || money.min || money.max || wantsNew || wantsUsed);
+
+  if(!recognized){
+    const tokens=combined
+      .split(/\s+/)
+      .filter(t=>t.length>=4)
+      .filter(t=>!["imovel","imoveis","apartamento","apartamentos","quero","procuro","voce","voces","tem","tenho"].includes(t));
+
+    if(tokens.length){
+      filtered=inventory
+        .map(p=>{
+          const hay=norm(`${p.name||""} ${p.neighborhood||""} ${p.address||""} ${p.description||""}`);
+          const score=tokens.reduce((sum,t)=>sum+(hay.includes(t)?1:0),0);
+          return {p,score};
+        })
+        .filter(x=>x.score>0)
+        .sort((a,b)=>b.score-a.score)
+        .map(x=>x.p);
+    }else{
+      filtered=[];
+    }
+  }
+
+  const matches=filtered.slice(0,8).map(p=>({
+    id:String(p.id||""),
+    name:p.name||"",
+    neighborhood:p.neighborhood||"",
+    city:p.city||activeCity||"São Paulo",
+    value:Number(p.value)||0,
+    area:Number(p.area)||0,
+    bedrooms:Number(p.bedrooms)||0,
+    suites:Number(p.suites)||0,
+    parking:Number(p.parking)||0,
+    source:p.source||"",
+    status:p.status||"",
+    url:`${location.origin}${location.pathname}?imovel=${encodeURIComponent(String(p.id||""))}`
+  }));
+
+  return {
+    inventory_ready:Boolean(inventoryReady),
+    inventory_count:inventory.length,
+    recognized_filters:recognized,
+    query:{
+      exact_name:exactName,
+      neighborhood,
+      bedrooms,
+      min_price:money.min,
+      max_price:money.max,
+      source:wantsNew&&!wantsUsed ? "novos" : (wantsUsed&&!wantsNew ? "usados" : "todos")
+    },
+    total:filtered.length,
+    matches
+  };
+}
+
+function aiConversationPlainText(){
+  return aiLeadConversation
+    .map(item=>`${item.role==="user"?"Cliente":"Match IA"}: ${String(item.content||"")}`)
+    .join("\n");
+}
+
+async function generateAiLeadSummary(){
+  if(!aiLeadConversation.length)return "";
+
+  try{
+    const response=await fetch("/api/assistant",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        mode:"lead_summary",
+        history:aiLeadConversation.map(({role,content})=>({role,content})),
+        page_url:window.location.href
+      })
+    });
+
+    const data=await response.json().catch(()=>({}));
+    if(response.ok && data.success===true){
+      return clean(data.reply||"");
+    }
+  }catch(error){
+    console.warn("AI_LEAD_SUMMARY_ERROR",error);
+  }
+
+  // Safe local fallback if the summary endpoint fails.
+  const userMessages=aiLeadConversation
+    .filter(item=>item.role==="user")
+    .map(item=>item.content)
+    .slice(-6);
+
+  return userMessages.length
+    ? `Interesses informados pelo cliente: ${userMessages.join(" | ")}`
+    : "";
+}
+
+async function buildAiLeadContext(){
+  if(!aiLeadConversation.length){
+    return {summary:"",history:[],text:""};
+  }
+
+  const summary=await generateAiLeadSummary();
+  const history=aiLeadConversation.map(item=>({
+    role:item.role,
+    content:item.content,
+    at:item.at||""
+  }));
+
+  return {
+    summary,
+    history,
+    text:aiConversationPlainText()
+  };
+}
+
+
 async function sendAiAssistantMessage(text){
   text=clean(text);
   if(!text || aiAssistantSending || !aiAssistantProperty)return;
@@ -7542,7 +7806,7 @@ async function sendAiAssistantMessage(text){
   aiAssistantHistory=aiAssistantHistory.slice(-10);
 
   const detectedPhone=extractBrazilianPhone(text);
-  if(detectedPhone && !aiAssistantProperty?.generic_search){
+  if(detectedPhone){
     appendAiMessage(
       "assistant",
       "Perfeito. Vou abrir o atendimento para registrar seu WhatsApp corretamente. Seu número já vai preenchido — falta só confirmar seus dados."
@@ -7573,6 +7837,7 @@ async function sendAiAssistantMessage(text){
         history:aiAssistantHistory.slice(0,-1),
         property:aiAssistantProperty?.generic_search ? {} : aiPropertyContext(aiAssistantProperty),
         mode:aiAssistantProperty?.generic_search ? "search" : "property",
+        inventory:aiAssistantProperty?.generic_search ? aiInventoryContext(text) : null,
         page_url:window.location.href
       })
     });
@@ -9960,8 +10225,17 @@ function openLeadCapture(p,prefill={}){
 
           created_at:
             new Date()
-              .toISOString()
+              .toISOString(),
+
+          ai_summary:"",
+          ai_history:[],
+          ai_history_text:""
         };
+
+        const aiLeadContext=await buildAiLeadContext();
+        lead.ai_summary=aiLeadContext.summary || "";
+        lead.ai_history=aiLeadContext.history || [];
+        lead.ai_history_text=aiLeadContext.text || "";
 
 
         submitButton.disabled=
@@ -10002,7 +10276,7 @@ function openLeadCapture(p,prefill={}){
                     lead.email,
 
                   origem:
-                    prefill.source==="match_ia_phone" ? "ynteligencia_match_ia" : "ynteligencia",
+                    String(prefill.source||"").startsWith("match_ia") ? "ynteligencia_match_ia" : "ynteligencia",
 
                   pagina:
                     window.location.href,
@@ -10036,7 +10310,7 @@ function openLeadCapture(p,prefill={}){
 
                   mensagem:
 
-                    `${prefill.source==="match_ia_phone" ? "NOVO LEAD MATCH IA" : "NOVO LEAD YNTELIGENCIA"} | ` +
+                    `${String(prefill.source||"").startsWith("match_ia") ? "NOVO LEAD MATCH IA" : "NOVO LEAD YNTELIGENCIA"} | ` +
 
                     `Código do imóvel: ${lead.property_id} | ` +
 
@@ -10054,7 +10328,15 @@ function openLeadCapture(p,prefill={}){
 
                     `Dormitórios: ${profile.bedrooms ?? ""} | ` +
 
-                    `Momento de compra: ${profile.timing||""}`
+                    `Momento de compra: ${profile.timing||""}` +
+
+                    (lead.ai_summary
+                      ? ` | RESUMO MATCH IA: ${lead.ai_summary}`
+                      : "") +
+
+                    (lead.ai_history_text
+                      ? ` | HISTÓRICO MATCH IA:\n${lead.ai_history_text}`
+                      : "")
 
                 })
 
@@ -10188,7 +10470,13 @@ function openLeadCapture(p,prefill={}){
                   lead.match_score,
 
                 crm:
-                  "praedium"
+                  "praedium",
+
+                ai_summary:
+                  lead.ai_summary || "",
+
+                ai_conversation_length:
+                  Array.isArray(lead.ai_history) ? lead.ai_history.length : 0
               },
 
               profile:{
