@@ -7495,24 +7495,39 @@ function aiGetPropertyDisplayName(p){
   );
 }
 
-function aiOruloContext(message){
-  const inventory=Array.isArray(newPropertiesCache)?newPropertiesCache:[];
-  const historyText=(Array.isArray(aiAssistantHistory)?aiAssistantHistory:[])
-    .filter(item=>item?.role==="user")
-    .slice(-8)
-    .map(item=>item.content||"");
 
-  const rawCombined=[...historyText,message].join(" ");
-  const combined=norm(rawCombined);
-  const money=aiOruloParseMoney(rawCombined);
+/* =========================================================
+   MATCH IA · ESTADO ESTRUTURADO DA BUSCA
+========================================================= */
 
-  const bedroomsMatch=combined.match(
-    /(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/
+let aiSearchState={
+  neighborhood:"",
+  exactName:"",
+  bedrooms:0,
+  minPrice:0,
+  maxPrice:0
+};
+
+function resetAiSearchState(){
+  aiSearchState={
+    neighborhood:"",
+    exactName:"",
+    bedrooms:0,
+    minPrice:0,
+    maxPrice:0
+  };
+}
+
+function aiMessageStartsNewSearch(text){
+  const t=norm(text||"");
+
+  return Boolean(
+    /\b(nova busca|outra busca|outro bairro|outro empreendimento|agora quero|agora procure|agora busca|tem lancamentos|tem lancamento|voces tem|voce tem)\b/.test(t)
   );
-  const bedrooms=bedroomsMatch?Number(bedroomsMatch[1]):0;
+}
 
-  let neighborhood="";
-  let exactName="";
+function aiExtractExplicitNeighborhood(message,inventory){
+  const t=norm(message||"");
 
   const neighborhoods=[...new Set(
     inventory
@@ -7529,7 +7544,43 @@ function aiOruloContext(message){
       .filter(Boolean)
   )].sort((a,b)=>b.length-a.length);
 
-  const names=[...new Set(
+  for(const value of neighborhoods){
+    const key=norm(value);
+    if(!key)continue;
+
+    if(t.includes(key)){
+      return value;
+    }
+
+    const keyTokens=key.split(/\s+/).filter(Boolean);
+    const msgTokens=t.split(/\s+/).filter(Boolean);
+
+    if(msgTokens.some(mt=>keyTokens.includes(mt) || key.includes(mt))){
+      return value;
+    }
+  }
+
+  /*
+    fallback controlado: só considera token de localidade quando
+    a frase tem estrutura de bairro/região.
+  */
+  const m=t.match(
+    /(?:no|na|em|bairro|regiao|zona)\s+([a-záàâãéèêíïóôõöúçñ][a-záàâãéèêíïóôõöúçñ\s-]{2,40})/
+  );
+
+  if(m){
+    return clean(m[1])
+      .replace(/\b(?:ate|com|de|por|r\$|dorm|dorms|dormitorios?)\b.*$/i,"")
+      .trim();
+  }
+
+  return "";
+}
+
+function aiExtractExplicitProject(message,inventory){
+  const t=norm(message||"");
+
+  const candidates=[...new Set(
     inventory
       .flatMap(p=>{
         const raw=aiGetRawProperty(p);
@@ -7551,52 +7602,87 @@ function aiOruloContext(message){
       .filter(v=>v && v.length>=4)
   )].sort((a,b)=>b.length-a.length);
 
+  for(const value of candidates){
+    const key=norm(value);
+    if(key && t.includes(key)){
+      return value;
+    }
+  }
+
+  return "";
+}
+
+function aiUpdateSearchState(message,inventory){
+  const t=norm(message||"");
+  const isNew=aiMessageStartsNewSearch(t);
+
+  if(isNew){
+    resetAiSearchState();
+  }
+
+  const explicitProject=aiExtractExplicitProject(message,inventory);
+  const explicitNeighborhood=aiExtractExplicitNeighborhood(message,inventory);
+
+  const bedroomsMatch=t.match(
+    /(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/
+  );
+
+  const money=aiOruloParseMoney(message);
+
   /*
-    Nome do empreendimento:
-    procura em múltiplos campos do Órulo, não só em p.name.
+    Se há empreendimento explícito, ele substitui empreendimento anterior.
+    Bairro só entra se vier explicitamente ou se não houver empreendimento.
   */
-  for(const value of names){
-    const key=norm(value);
-    if(key && combined.includes(key)){
-      exactName=value;
-      break;
-    }
+  if(explicitProject){
+    aiSearchState.exactName=explicitProject;
+  }else if(isNew){
+    aiSearchState.exactName="";
   }
 
-  const stop=new Set([
-    "apartamento","apartamentos","imovel","imoveis","novo","novos",
-    "lancamento","lancamentos","ate","maximo","minimo","quero",
-    "procuro","dorm","dorms","dormitorio","dormitorios","quarto",
-    "quartos","mil","milhao","milhoes","reais","com","para","por",
-    "uma","um","dois","tres","quatro","voces","voce","tem","tenho"
-  ]);
-
-  const userTokens=combined
-    .split(/\s+/)
-    .map(x=>x.trim())
-    .filter(x=>x.length>=4 && !stop.has(x) && !/^\d/.test(x));
-
-  for(const value of neighborhoods){
-    const key=norm(value);
-
-    if(combined.includes(key)){
-      neighborhood=value;
-      break;
-    }
-
-    const keyTokens=key.split(/\s+/).filter(Boolean);
-    if(userTokens.some(t=>keyTokens.includes(t) || key.includes(t))){
-      neighborhood=value;
-      break;
-    }
+  if(explicitNeighborhood){
+    aiSearchState.neighborhood=explicitNeighborhood;
+  }else if(isNew){
+    aiSearchState.neighborhood="";
   }
 
-  let neighborhoodIntent="";
-  if(!neighborhood && !exactName && userTokens.length){
-    neighborhoodIntent=userTokens[0];
+  if(bedroomsMatch){
+    aiSearchState.bedrooms=Number(bedroomsMatch[1])||0;
+  }else if(isNew){
+    aiSearchState.bedrooms=0;
   }
 
-  const searchNeighborhood=neighborhood || neighborhoodIntent;
+  if(money.min || money.max){
+    aiSearchState.minPrice=money.min||0;
+    aiSearchState.maxPrice=money.max||0;
+  }else if(isNew){
+    aiSearchState.minPrice=0;
+    aiSearchState.maxPrice=0;
+  }
+
+  /*
+    Complementos curtos:
+    "2 dorms" mantém bairro/empreendimento anterior.
+    "até 900 mil" mantém bairro/dormitórios anteriores.
+  */
+
+  console.log("MATCH_IA_SEARCH_STATE",{
+    isNew,
+    message,
+    state:{...aiSearchState}
+  });
+
+  return {...aiSearchState};
+}
+
+function aiOruloContext(message){
+  const inventory=Array.isArray(newPropertiesCache)?newPropertiesCache:[];
+  const state=aiUpdateSearchState(message,inventory);
+
+  const exactName=state.exactName||"";
+  const neighborhood=state.neighborhood||"";
+  const bedrooms=Number(state.bedrooms)||0;
+  const minPrice=Number(state.minPrice)||0;
+  const maxPrice=Number(state.maxPrice)||0;
 
   const filtered=inventory.filter(p=>{
     if(!p)return false;
@@ -7608,38 +7694,34 @@ function aiOruloContext(message){
       if(!exactTokens.every(t=>searchText.includes(t)))return false;
     }
 
-    if(searchNeighborhood){
-      const tokens=norm(searchNeighborhood)
-        .split(/\s+/)
-        .filter(Boolean);
-
+    if(neighborhood){
+      const tokens=norm(neighborhood).split(/\s+/).filter(Boolean);
       if(!tokens.every(t=>searchText.includes(t)))return false;
     }
 
     if(bedrooms){
-      const pBedrooms=Number(p.bedrooms||p?.rawData?.typology?.bedrooms||0);
+      const pBedrooms=Number(
+        p.bedrooms ||
+        p?.rawData?.typology?.bedrooms ||
+        0
+      );
       if(pBedrooms!==bedrooms)return false;
     }
 
-    if(money.min && Number(p.value||0)<money.min)return false;
-    if(money.max && Number(p.value||0)>money.max)return false;
+    if(minPrice && Number(p.value||0)<minPrice)return false;
+    if(maxPrice && Number(p.value||0)>maxPrice)return false;
 
     return true;
   });
 
   const recognized=Boolean(
     exactName ||
-    searchNeighborhood ||
+    neighborhood ||
     bedrooms ||
-    money.min ||
-    money.max
+    minPrice ||
+    maxPrice
   );
 
-  /*
-    Alternativas próximas:
-    só usa critérios que o cliente realmente informou.
-    Não inventa dormitórios, preço ou região.
-  */
   let alternatives=[];
 
   if(recognized && filtered.length===0){
@@ -7647,8 +7729,8 @@ function aiOruloContext(message){
       .filter(p=>{
         const text=aiGetPropertySearchText(p);
 
-        if(searchNeighborhood){
-          const tokens=norm(searchNeighborhood).split(/\s+/).filter(Boolean);
+        if(neighborhood){
+          const tokens=norm(neighborhood).split(/\s+/).filter(Boolean);
           if(!tokens.every(t=>text.includes(t)))return false;
         }
 
@@ -7668,10 +7750,10 @@ function aiOruloContext(message){
     recognized_filters:recognized,
     query:{
       exact_name:exactName,
-      neighborhood:searchNeighborhood,
+      neighborhood,
       bedrooms,
-      min_price:money.min,
-      max_price:money.max,
+      min_price:minPrice,
+      max_price:maxPrice,
       source:"novos"
     },
     total:filtered.length,
@@ -7700,6 +7782,8 @@ function aiOruloContext(message){
 }
 
 function openHomeAiSearch(){
+  resetAiSearchState();
+
   aiAssistantProperty={
     id:"__orulo_search__",
     name:"Busca de lançamentos",
@@ -7724,10 +7808,10 @@ function openHomeAiSearch(){
 
   appendAiMessage(
     "assistant",
-    "Oi! 👋 Eu sou a Match IA. Posso procurar lançamentos na base do Órulo. Me diga o que você procura — bairro, faixa de preço, dormitórios ou nome do empreendimento."
+    "Oi! 👋 Eu sou a Match IA. Posso pesquisar os lançamentos disponíveis na nossa base. Me diga um bairro, faixa de preço, dormitórios ou o nome de um empreendimento."
   );
 
-  ensureAiOruloInventory().catch(()=>{});
+  /* Busca real acontece sob demanda via /api/search-properties */
 
   try{
     gtag("event","ai_assistant_open",{mode:"search_orulo"});
@@ -7763,6 +7847,104 @@ function closeAiAssistant(){
   shell?.classList.remove("open");
   if(document.getElementById("photoModal"))document.body.style.overflow="hidden";
   else document.body.style.overflow="";
+}
+
+
+/* =========================================================
+   MATCH IA · BUSCA REAL VIA /api/search-properties
+========================================================= */
+
+async function searchPropertiesForAi(message){
+  const inventoryForParsing=
+    Array.isArray(newPropertiesCache)
+      ? newPropertiesCache
+      : [];
+
+  const state=
+    typeof aiUpdateSearchState==="function"
+      ? aiUpdateSearchState(message,inventoryForParsing)
+      : {
+          neighborhood:"",
+          exactName:"",
+          bedrooms:0,
+          minPrice:0,
+          maxPrice:0
+        };
+
+  const payload={
+    /*
+      query sempre leva a frase original.
+      Isso permite que "Upper Brooklin" seja encontrado mesmo que
+      o frontend ainda não conheça o nome do empreendimento.
+    */
+    query:String(message||"").trim(),
+
+    neighborhood:state.neighborhood||"",
+    project:state.exactName||"",
+    bedrooms:Number(state.bedrooms)||0,
+    min_price:Number(state.minPrice)||0,
+    max_price:Number(state.maxPrice)||0,
+
+    source:"novos",
+    limit:12
+  };
+
+  console.log("MATCH_IA_SEARCH_API_REQUEST",payload);
+
+  const response=await fetch("/api/search-properties",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify(payload)
+  });
+
+  const data=await response
+    .json()
+    .catch(()=>({}));
+
+  if(!response.ok || data?.success!==true){
+    throw new Error(
+      data?.error ||
+      "Não foi possível consultar o estoque agora."
+    );
+  }
+
+  const matches=
+    Array.isArray(data.matches)
+      ? data.matches
+      : [];
+
+  const inventoryContext={
+    inventory_ready:true,
+    inventory_count:Number(data.inventory_count)||0,
+    recognized_filters:Boolean(
+      payload.query ||
+      payload.neighborhood ||
+      payload.project ||
+      payload.bedrooms ||
+      payload.min_price ||
+      payload.max_price
+    ),
+    query:{
+      text:payload.query,
+      exact_name:payload.project,
+      neighborhood:payload.neighborhood,
+      bedrooms:payload.bedrooms,
+      min_price:payload.min_price,
+      max_price:payload.max_price,
+      source:"novos"
+    },
+    total:Number(data.total)||0,
+    matches:matches.slice(0,12)
+  };
+
+  console.log(
+    "MATCH_IA_SEARCH_API_RESPONSE",
+    inventoryContext
+  );
+
+  return inventoryContext;
 }
 
 async function sendAiAssistantMessage(text){
@@ -7801,9 +7983,12 @@ async function sendAiAssistantMessage(text){
   shell.querySelector("#aiAssistantMessages")?.appendChild(thinking);
 
   try{
+    let inventoryContext=null;
+
     if(aiAssistantProperty?.generic_search){
-      thinking.textContent="Consultando lançamentos...";
-      await ensureAiOruloInventory();
+      thinking.textContent="Consultando imóveis...";
+      inventoryContext=
+        await searchPropertiesForAi(text);
     }
 
     const response=await fetch("/api/assistant",{
@@ -7819,11 +8004,7 @@ async function sendAiAssistantMessage(text){
           ? "search"
           : "property",
         inventory:aiAssistantProperty?.generic_search
-          ? (() => {
-              const ctx=aiOruloContext(text);
-              console.log("MATCH_IA_ORULO_CONTEXT",ctx);
-              return ctx;
-            })()
+          ? inventoryContext
           : null,
         page_url:window.location.href
       })
@@ -7844,7 +8025,12 @@ async function sendAiAssistantMessage(text){
         .replace(/\s{2,}/g," ")
         .trim();
 
-      const ctx=aiOruloContext(text);
+      const ctx=inventoryContext || {
+        recognized_filters:false,
+        total:0,
+        query:{},
+        matches:[]
+      };
 
       if(ctx.recognized_filters && ctx.total===0){
         const q=ctx.query||{};
@@ -7880,7 +8066,10 @@ async function sendAiAssistantMessage(text){
     supabaseTrack("ai_assistant_message",{property_id:String(aiAssistantProperty.id||""),message_length:text.length,handoff:Boolean(data.handoff)});
   }catch(error){
     thinking.remove();
-    appendAiMessage("assistant","Tive uma falha rápida aqui. Você pode tentar novamente ou falar com o Rafael para confirmar disponibilidade e condições.");
+    appendAiMessage(
+      "assistant",
+      "Não consegui consultar o estoque agora. Tente novamente em alguns instantes ou fale com o Rafael para confirmar a disponibilidade."
+    );
     shell.querySelector("#aiHumanHandoff")?.classList.add("visible");
     console.error("MATCH_IA_ERROR",error);
   }finally{
