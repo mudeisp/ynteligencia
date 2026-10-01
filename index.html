@@ -5341,6 +5341,109 @@ body.explore-filter-mode .unified-search-main{
 }
 </style>
 
+
+<style id="home-explore-ai-buttons">
+.clean-home-actions{
+  display:flex!important;
+  align-items:stretch!important;
+  gap:12px!important;
+  margin-top:24px!important;
+  width:min(620px,100%)!important;
+}
+
+.clean-home-actions #startHero,
+.clean-home-actions #homeAiButton{
+  flex:1 1 0!important;
+  min-height:58px!important;
+  margin:0!important;
+  border-radius:16px!important;
+  font-weight:900!important;
+}
+
+.clean-ai-primary{
+  border:1px solid #C6A76B!important;
+  background:#171513!important;
+  color:#FFFFFF!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:9px!important;
+  padding:0 18px!important;
+}
+
+.clean-ai-icon{
+  width:32px!important;
+  height:32px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:9px!important;
+  background:#F0E7D7!important;
+  font-size:17px!important;
+}
+
+@media(max-width:700px){
+  .clean-home-actions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:10px!important;
+  }
+
+  .clean-home-actions #startHero,
+  .clean-home-actions #homeAiButton{
+    min-height:58px!important;
+    padding:0 10px!important;
+    font-size:13px!important;
+  }
+
+  .clean-ai-icon{
+    width:28px!important;
+    height:28px!important;
+    font-size:15px!important;
+  }
+}
+
+@media(max-width:430px){
+  .clean-home-actions{
+    grid-template-columns:1fr!important;
+  }
+}
+</style>
+
+
+<style id="home-hide-explore-filter-until-click">
+/* HOME LIMPA: nada de filtro duplicado abaixo do hero */
+body.home-mode #explore,
+body.home-mode #unifiedSearchPanel,
+body.home-mode #catalogFilters{
+  display:none!important;
+}
+
+/* O filtro só aparece quando o botão EXPLORAR for acionado */
+body.explore-filter-mode #explore{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+body.explore-filter-mode #unifiedSearchPanel{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+body.explore-filter-mode #catalogFilters{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
+/* Remove qualquer legenda residual da antiga imagem/home */
+.clean-photo-caption{
+  display:none!important;
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -5368,20 +5471,21 @@ body.explore-filter-mode .unified-search-main{
 
       <p>Novos e usados em uma única busca, de forma simples e inteligente.</p>
 
+      <div class="clean-home-actions">
       <button class="clean-primary" id="startHero" type="button">
         EXPLORAR IMÓVEIS
         <span aria-hidden="true">→</span>
       </button>
+
+      <button class="clean-ai-primary" id="homeAiButton" type="button">
+        <span class="clean-ai-icon" aria-hidden="true">🤖</span>
+        <span>FALAR COM A IA</span>
+      </button>
+    </div>
     </div>
 
     
-        <div class="clean-photo-caption">
-          <span>São Paulo</span>
-          <strong>Seu próximo endereço começa aqui.</strong>
-        </div>
-      </div>
-    </div>
-  </div>
+        
 </section>
 
 
@@ -7613,7 +7717,10 @@ $("wizardExploreMode")?.addEventListener("click",()=>{
 $("startHero")?.addEventListener(
   "click",
   ()=>{
-    try{
+    
+    document.body.classList.remove("home-mode","match-mode");
+    document.body.classList.add("explore-filter-mode");
+try{
       gtag("event","explore_started",{source:"hero"});
     }catch(error){}
 
@@ -9179,7 +9286,22 @@ function ensureAiAssistantShell(){
     document.body.style.overflow="hidden";
 
     setTimeout(()=>{
-      openPropertySpecialist(property);
+      if(property.generic_search){
+        openLeadCapture(
+          {
+            id:"match-ia-general",
+            name:"Busca assistida pela Match IA",
+            neighborhood:"",
+            value:0,
+            source:"match_ia"
+          },
+          {
+            source:"match_ia_general"
+          }
+        );
+      }else{
+        openPropertySpecialist(property);
+      }
     },120);
   });
 
@@ -9258,30 +9380,295 @@ function openAiLeadCaptureFromPhone(phone){
   },160);
 }
 
+
+/* =========================================================
+   MATCH IA · INVENTÁRIO TOTAL (NOVOS + USADOS)
+========================================================= */
+
+let aiFullInventoryPromise=null;
+
+async function ensureAiFullInventory(){
+  if(aiFullInventoryPromise)return aiFullInventoryPromise;
+
+  aiFullInventoryPromise=(async()=>{
+    try{
+      /* Novos: garante primeira página */
+      if((!Array.isArray(newPropertiesCache) || newPropertiesCache.length===0) &&
+         typeof fetchNewCatalogPage==="function"){
+        await fetchNewCatalogPage({reset:true});
+      }
+
+      /* Novos: carrega TODAS as páginas do catálogo */
+      let guard=0;
+      while(
+        typeof newCatalogHasMore!=="undefined" &&
+        newCatalogHasMore &&
+        guard<80
+      ){
+        guard++;
+        await fetchNewCatalogPage({reset:false});
+      }
+
+      /* Usados: carrega o CSV completo */
+      if(typeof loadUsedInventory==="function" && !usedInventoryLoaded){
+        await loadUsedInventory();
+      }
+
+      properties=deduplicate([
+        ...(Array.isArray(usedPropertiesCache)?usedPropertiesCache:[]),
+        ...(Array.isArray(newPropertiesCache)?newPropertiesCache:[])
+      ]);
+
+      inventoryReady=properties.length>0;
+      inventoryLoading=false;
+
+      try{ fillCatalogNeighborhoods(); }catch(e){}
+
+      return properties;
+    }catch(error){
+      console.error("AI_FULL_INVENTORY_ERROR",error);
+
+      properties=deduplicate([
+        ...(Array.isArray(usedPropertiesCache)?usedPropertiesCache:[]),
+        ...(Array.isArray(newPropertiesCache)?newPropertiesCache:[]),
+        ...(Array.isArray(properties)?properties:[])
+      ]);
+
+      return properties;
+    }
+  })();
+
+  return aiFullInventoryPromise;
+}
+
+function aiParseMoney(text){
+  const t=norm(text||"");
+  const convert=(n,u)=>{
+    let v=Number(String(n).replace(",","."));
+    if(!Number.isFinite(v))return 0;
+    if(/milhao|milhoes|mi\b/.test(u||""))v*=1000000;
+    else if(/mil|k\b/.test(u||""))v*=1000;
+    else if(v<10000)v*=1000;
+    return Math.round(v);
+  };
+
+  let min=0,max=0,m;
+
+  m=t.match(/(?:ate|maximo|max|no maximo)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/);
+  if(m)max=convert(m[1],m[2]||"");
+
+  m=t.match(/(?:a partir de|minimo|min|acima de|mais de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/);
+  if(m)min=convert(m[1],m[2]||"");
+
+  m=t.match(/(?:entre|de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?\s*(?:a|e|-)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/);
+  if(m){
+    min=convert(m[1],m[2]||"");
+    max=convert(m[3],m[4]||m[2]||"");
+  }
+
+  return {min,max};
+}
+
+function aiInventoryContext(message){
+  const inventory=Array.isArray(properties)?properties:[];
+
+  const userHistory=(Array.isArray(aiAssistantHistory)?aiAssistantHistory:[])
+    .filter(x=>x?.role==="user")
+    .slice(-8)
+    .map(x=>x.content||"");
+
+  const combined=norm([...userHistory,message].join(" "));
+
+  const bedsMatch=combined.match(/(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/);
+  const bedrooms=bedsMatch?Number(bedsMatch[1]):0;
+
+  const money=aiParseMoney(combined);
+
+  const wantsNew=/\b(novo|novos|lancamento|lancamentos|na planta)\b/.test(combined);
+  const wantsUsed=/\b(usado|usados|seminovo|seminovos)\b/.test(combined);
+
+  let exactName="";
+  let neighborhood="";
+
+  const names=[...new Set(
+    inventory.map(p=>clean(p?.name||"")).filter(v=>v.length>=4)
+  )].sort((a,b)=>b.length-a.length);
+
+  for(const name of names){
+    const key=norm(name);
+    if(key && combined.includes(key)){
+      exactName=name;
+      break;
+    }
+  }
+
+  const bairros=[...new Set(
+    inventory.map(p=>clean(p?.neighborhood||"")).filter(v=>v.length>=3)
+  )].sort((a,b)=>b.length-a.length);
+
+  for(const bairro of bairros){
+    const key=norm(bairro);
+    if(key && combined.includes(key)){
+      neighborhood=bairro;
+      break;
+    }
+  }
+
+  let filtered=inventory.filter(p=>{
+    if(!p)return false;
+
+    if(exactName && !norm(p.name||"").includes(norm(exactName)))return false;
+
+    if(neighborhood){
+      const hay=norm(`${p.neighborhood||""} ${p.address||""} ${p.name||""}`);
+      if(!hay.includes(norm(neighborhood)))return false;
+    }
+
+    if(bedrooms && Number(p.bedrooms||0)!==bedrooms)return false;
+
+    if(money.min && Number(p.value||0)<money.min)return false;
+    if(money.max && Number(p.value||0)>money.max)return false;
+
+    if(wantsNew && !wantsUsed && norm(p.source||"")!=="novos")return false;
+    if(wantsUsed && !wantsNew && norm(p.source||"")==="novos")return false;
+
+    return true;
+  });
+
+  const recognized=Boolean(
+    exactName || neighborhood || bedrooms ||
+    money.min || money.max || wantsNew || wantsUsed
+  );
+
+  if(!recognized){
+    const tokens=combined
+      .split(/\s+/)
+      .filter(t=>t.length>=4)
+      .filter(t=>![
+        "imovel","imoveis","apartamento","apartamentos",
+        "quero","procuro","voce","voces","tem","tenho",
+        "casa","casas"
+      ].includes(t));
+
+    if(tokens.length){
+      filtered=inventory
+        .map(p=>{
+          const hay=norm(
+            `${p.name||""} ${p.neighborhood||""} ${p.address||""} ${p.description||""}`
+          );
+          const score=tokens.reduce((s,t)=>s+(hay.includes(t)?1:0),0);
+          return {p,score};
+        })
+        .filter(x=>x.score>0)
+        .sort((a,b)=>b.score-a.score)
+        .map(x=>x.p);
+    }else{
+      filtered=[];
+    }
+  }
+
+  return {
+    inventory_ready:inventory.length>0,
+    inventory_count:inventory.length,
+    recognized_filters:recognized,
+    query:{
+      exact_name:exactName,
+      neighborhood,
+      bedrooms,
+      min_price:money.min,
+      max_price:money.max,
+      source:wantsNew&&!wantsUsed
+        ?"novos"
+        :(wantsUsed&&!wantsNew?"usados":"todos")
+    },
+    total:filtered.length,
+    matches:filtered.slice(0,12).map(p=>({
+      id:String(p.id||""),
+      name:p.name||"",
+      neighborhood:p.neighborhood||"",
+      city:p.city||activeCity||"São Paulo",
+      value:Number(p.value)||0,
+      area:Number(p.area)||0,
+      bedrooms:Number(p.bedrooms)||0,
+      suites:Number(p.suites)||0,
+      parking:Number(p.parking)||0,
+      source:p.source||"",
+      status:p.status||""
+    }))
+  };
+}
+
 function openAiAssistant(p){
-  if(!p)return;
-  aiAssistantProperty=p;
+  const genericMode=!p;
+
+  aiAssistantProperty=genericMode
+    ? {
+        id:"__search__",
+        name:"Busca de imóveis",
+        neighborhood:"",
+        source:"search",
+        generic_search:true
+      }
+    : p;
+
   aiAssistantHistory=[];
+
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
+  const input=shell.querySelector("#aiAssistantInput");
+  const handoff=shell.querySelector("#aiHumanHandoff");
+
   if(box)box.innerHTML="";
-  
+  if(handoff)handoff.classList.add("visible");
+
+  if(input){
+    input.placeholder=genericMode
+      ?"Digite o que você procura..."
+      :"Digite sua dúvida sobre este imóvel...";
+  }
+
   shell.classList.add("open");
   document.body.style.overflow="hidden";
 
-  const sourceLabel=String(p.source||"").toLowerCase()==="novos" ? "lançamento" : "imóvel";
+  if(genericMode){
+    appendAiMessage(
+      "assistant",
+      "Oi! 👋 Eu sou a Match IA. Posso buscar em todo o estoque de imóveis novos e usados. Me diga o que você procura — bairro, faixa de preço, dormitórios ou nome do empreendimento."
+    );
+
+    /* carrega o estoque total em background enquanto o cliente escreve */
+    ensureAiFullInventory().catch(()=>{});
+
+    try{
+      gtag("event","ai_assistant_open",{mode:"search"});
+    }catch(error){}
+
+    supabaseTrack("ai_assistant_open",{mode:"search"});
+    return;
+  }
+
   const stockKnown=Number(p.stock)>0;
   const openingQuestion=stockKnown
-    ? `Oi! 👋 Estou aqui para te ajudar com ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Quer saber quantas unidades ainda estão disponíveis neste prédio?`
+    ? `Oi! 👋 Estou aqui para te ajudar com ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Quer saber mais sobre esta opção?`
     : `Oi! 👋 Estou aqui para te ajudar com ${p.name||"este imóvel"}${p.neighborhood?` em ${p.neighborhood}`:""}. Pode me perguntar sobre preço, características, localização, condições ou disponibilidade.`;
+
   appendAiMessage("assistant",openingQuestion);
 
   try{
     gtag("event","ai_assistant_open",{
-      property_id:String(p.id||""),property_name:p.name||"",neighborhood:p.neighborhood||""
+      mode:"property",
+      property_id:String(p.id||""),
+      property_name:p.name||"",
+      neighborhood:p.neighborhood||""
     });
   }catch(error){}
-  supabaseTrack("ai_assistant_open",{property_id:String(p.id||""),property_name:p.name||"",neighborhood:p.neighborhood||""});
+
+  supabaseTrack("ai_assistant_open",{
+    mode:"property",
+    property_id:String(p.id||""),
+    property_name:p.name||"",
+    neighborhood:p.neighborhood||""
+  });
 }
 
 function closeAiAssistant(){
@@ -9327,13 +9714,26 @@ async function sendAiAssistantMessage(text){
   shell.querySelector("#aiAssistantMessages")?.appendChild(thinking);
 
   try{
+    if(aiAssistantProperty?.generic_search){
+      thinking.textContent="Consultando todo o estoque...";
+      await ensureAiFullInventory();
+    }
+
     const response=await fetch("/api/assistant",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         message:text,
         history:aiAssistantHistory.slice(0,-1),
-        property:aiPropertyContext(aiAssistantProperty),
+        property:aiAssistantProperty?.generic_search
+          ? {}
+          : aiPropertyContext(aiAssistantProperty),
+        mode:aiAssistantProperty?.generic_search
+          ? "search"
+          : "property",
+        inventory:aiAssistantProperty?.generic_search
+          ? aiInventoryContext(text)
+          : null,
         page_url:window.location.href
       })
     });
@@ -9341,7 +9741,10 @@ async function sendAiAssistantMessage(text){
     thinking.remove();
     if(!response.ok || data.success!==true)throw new Error(data.error||"Não foi possível falar com a assistente agora.");
 
-    const reply=clean(data.reply||"")||"Posso continuar te ajudando com este imóvel.";
+    const reply=clean(data.reply||"")||
+      (aiAssistantProperty?.generic_search
+        ?"Posso continuar refinando sua busca. Qual bairro ou faixa de preço você prefere?"
+        :"Posso continuar te ajudando com este imóvel.");
     appendAiMessage("assistant",reply);
     aiAssistantHistory.push({role:"assistant",content:reply});
     aiAssistantHistory=aiAssistantHistory.slice(-10);
@@ -13822,6 +14225,23 @@ body.ad-match-mode .refine-match-shell{
 
     document.body.classList.remove("explore-filter-mode");
     document.body.style.overflow="";
+  });
+})();
+</script>
+
+
+<script id="home-ai-search-button">
+(function(){
+  const button=document.getElementById("homeAiButton");
+  if(!button)return;
+
+  button.addEventListener("click",function(event){
+    event.preventDefault();
+    event.stopPropagation();
+
+    if(typeof openAiAssistant==="function"){
+      openAiAssistant(null);
+    }
   });
 })();
 </script>
