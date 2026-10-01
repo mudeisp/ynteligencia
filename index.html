@@ -5444,6 +5444,36 @@ body.explore-filter-mode #catalogFilters{
 }
 </style>
 
+
+<style id="remove-old-match-wizard-completely">
+/* Remove o bloco duplicado antigo da home */
+#match,
+.wizard-wrap#match,
+.clean-filter-shell#match{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  height:0!important;
+  min-height:0!important;
+  max-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+/* O filtro válido é somente o #explore acionado pelo botão principal */
+body.home-mode #explore{
+  display:none!important;
+}
+
+body.explore-filter-mode #explore{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -14243,6 +14273,59 @@ body.ad-match-mode .refine-match-shell{
       openAiAssistant(null);
     }
   });
+})();
+</script>
+
+
+<script id="explore-only-final-binding">
+(function(){
+  const old=document.getElementById("startHero");
+  if(!old)return;
+
+  const button=old.cloneNode(true);
+  old.replaceWith(button);
+
+  button.addEventListener("click",function(event){
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    document.body.classList.remove(
+      "home-mode",
+      "match-mode",
+      "match-results-mode",
+      "ad-match-mode"
+    );
+    document.body.classList.add("explore-filter-mode");
+
+    try{
+      if(typeof openGeneralCatalog==="function"){
+        openGeneralCatalog(true);
+      }
+    }catch(error){
+      console.warn("EXPLORE_OPEN_ERROR",error);
+    }
+
+    const explore=document.getElementById("explore");
+    const panel=document.getElementById("unifiedSearchPanel");
+    const filters=document.getElementById("catalogFilters");
+
+    explore?.style.setProperty("display","block","important");
+    panel?.style.setProperty("display","block","important");
+
+    if(filters){
+      filters.classList.add("open");
+      filters.style.setProperty("display","block","important");
+      filters.style.setProperty("visibility","visible","important");
+      filters.style.setProperty("opacity","1","important");
+    }
+
+    requestAnimationFrame(()=>{
+      (panel || explore)?.scrollIntoView({
+        behavior:"smooth",
+        block:"start"
+      });
+    });
+  },{capture:true});
 })();
 </script>
 
