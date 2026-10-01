@@ -4910,6 +4910,180 @@ body.match-mode .clean-header{display:none!important}
 }
 </style>
 
+
+<style id="single-explore-ai-flow">
+/* =========================================================
+   HOME: UM ÚNICO CTA
+========================================================= */
+#exploreHero,
+.clean-link#exploreHero{
+  display:none!important;
+}
+
+#startHero.clean-primary{
+  max-width:360px!important;
+}
+
+/* O fluxo antigo de MATCH não é mais chamado pelo botão principal */
+body.explore-filter-mode #match{
+  display:none!important;
+}
+
+/* =========================================================
+   EXPLORAR: FILTRO COMPLETO
+========================================================= */
+body.explore-filter-mode #explore{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+body.explore-filter-mode #unifiedSearchPanel{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+body.explore-filter-mode #catalogFilters{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
+body.explore-filter-mode .unified-search-main{
+  display:grid!important;
+}
+
+/* Desktop: tudo fica em uma página organizada */
+@media(min-width:701px){
+  body.explore-filter-mode #explore{
+    padding-top:92px!important;
+    min-height:100vh!important;
+  }
+
+  body.explore-filter-mode #unifiedSearchPanel{
+    width:min(980px,calc(100% - 32px))!important;
+    margin:0 auto!important;
+  }
+
+  body.explore-filter-mode #catalogFilters{
+    position:static!important;
+    transform:none!important;
+    width:100%!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}
+
+/* Mobile: filtro completo em tela cheia */
+@media(max-width:700px){
+  body.explore-filter-mode #catalogFilters{
+    position:fixed!important;
+    inset:0!important;
+    z-index:620!important;
+    width:100%!important;
+    height:100dvh!important;
+    max-height:none!important;
+    padding:22px 16px calc(28px + env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;
+    background:#FFFDF9!important;
+    transform:none!important;
+    border-radius:0!important;
+  }
+
+  body.explore-filter-mode #closeFilters{
+    display:grid!important;
+  }
+}
+
+/* =========================================================
+   FICHA DO IMÓVEL: SOMENTE IA
+========================================================= */
+.detail-share-btn,
+.detail-specialist-btn,
+.detail-interest-btn{
+  display:none!important;
+}
+
+.detail-sticky-cta{
+  display:block!important;
+  grid-template-columns:1fr!important;
+}
+
+.detail-ai-main-btn{
+  width:min(730px,100%)!important;
+  min-height:58px!important;
+  margin:0 auto!important;
+  border:0!important;
+  border-radius:15px!important;
+  background:#191817!important;
+  color:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:11px!important;
+  padding:8px 18px!important;
+  cursor:pointer!important;
+}
+
+.detail-ai-main-icon{
+  width:39px!important;
+  height:39px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:12px!important;
+  background:#F0E6D5!important;
+  color:#191817!important;
+  font-size:21px!important;
+  flex:0 0 39px!important;
+}
+
+.detail-ai-main-btn>span:last-child{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  text-align:left!important;
+}
+
+.detail-ai-main-btn strong{
+  font-size:13px!important;
+  line-height:1.1!important;
+  letter-spacing:.03em!important;
+}
+
+.detail-ai-main-btn small{
+  margin-top:3px!important;
+  color:#D8D1C8!important;
+  font-size:10px!important;
+  font-weight:600!important;
+}
+
+/* Não mostrar mais convite flutuante de IA na ficha;
+   o CTA fixo já cumpre essa função. */
+.ai-assistant-trigger{
+  display:none!important;
+}
+
+/* =========================================================
+   IA: WHATSAPP COMO ESCALADA HUMANA
+========================================================= */
+#aiHumanHandoff.ai-human-handoff{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:calc(100% - 24px)!important;
+  min-height:50px!important;
+  margin:10px auto 12px!important;
+  border:1px solid #18A957!important;
+  border-radius:13px!important;
+  background:#F1FBF5!important;
+  color:#117A42!important;
+  font-size:12px!important;
+  font-weight:900!important;
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -4938,12 +5112,8 @@ body.match-mode .clean-header{display:none!important}
       <p>Novos e usados em uma única busca, de forma simples e inteligente.</p>
 
       <button class="clean-primary" id="startHero" type="button">
-        Encontrar meu imóvel
+        EXPLORAR IMÓVEIS
         <span aria-hidden="true">→</span>
-      </button>
-
-      <button class="clean-link" id="exploreHero" type="button">
-        Prefiro explorar os imóveis
       </button>
     </div>
 
@@ -7160,29 +7330,48 @@ $("wizardExploreMode")?.addEventListener("click",()=>{
 });
 
 $("startHero")?.addEventListener(
-    "click",
-    ()=>{
+  "click",
+  ()=>{
+    try{
+      gtag("event","explore_started",{source:"hero"});
+    }catch(error){}
 
-      gtag(
-        'event',
-        'profile_started',
-        {
-          source:'hero'
-        }
-      );
+    supabaseTrack("explore_started",{source:"hero"});
 
+    openGeneralCatalog(true);
 
-      supabaseTrack(
-        "profile_started",
-        {
-          source:"hero"
-        }
-      );
+    requestAnimationFrame(()=>{
+      const explore=document.getElementById("explore");
+      const filters=document.getElementById("catalogFilters");
+      const panel=document.getElementById("unifiedSearchPanel");
 
-      enterMatchMode();
-    }
-  );
+      document.body.classList.remove("home-mode","match-mode");
+      document.body.classList.add("explore-filter-mode");
 
+      if(explore){
+        explore.style.setProperty("display","block","important");
+      }
+      if(panel){
+        panel.style.setProperty("display","block","important");
+      }
+      if(filters){
+        filters.classList.add("open");
+        filters.style.setProperty("display","block","important");
+        filters.style.setProperty("visibility","visible","important");
+        filters.style.setProperty("opacity","1","important");
+      }
+
+      try{
+        setFiltersOpen(true);
+      }catch(error){}
+
+      (panel || explore)?.scrollIntoView({
+        behavior:"smooth",
+        block:"start"
+      });
+    });
+  }
+);
 
 $("navMatch")?.addEventListener(
   "click",
@@ -7190,10 +7379,7 @@ $("navMatch")?.addEventListener(
 );
 
 
-$("exploreHero")?.addEventListener(
-    "click",
-    ()=>openGeneralCatalog(true)
-  );
+
 
 
 $("navExplore")?.addEventListener(
@@ -8666,13 +8852,13 @@ function ensureAiAssistantShell(){
       <div class="ai-assistant-head">
         <div class="ai-assistant-brand">
           <span class="ai-orb" aria-hidden="true">🤖</span>
-          <span><strong>Assistente YN</strong><small>Seu assistente deste imóvel</small></span>
+          <span><strong>Assistente YN</strong><small>Dúvidas do imóvel + atendimento humano quando precisar</small></span>
         </div>
         <button class="ai-assistant-close" type="button" aria-label="Fechar">×</button>
       </div>
       <div>
         <div class="ai-assistant-messages" id="aiAssistantMessages"></div>
-        <button class="ai-human-handoff visible" id="aiHumanHandoff" type="button">👤 Quero falar com uma pessoa</button>
+        <button class="ai-human-handoff visible" id="aiHumanHandoff" type="button">🟢 Continuar atendimento pelo WhatsApp</button>
       </div>
       <form class="ai-assistant-input" id="aiAssistantForm">
         <textarea id="aiAssistantInput" rows="1" placeholder="Digite sua mensagem..."></textarea>
@@ -8696,8 +8882,19 @@ function ensureAiAssistantShell(){
     const property=aiAssistantProperty;
     const aiShell=document.getElementById("aiAssistantShell");
 
+    try{
+      gtag("event","ai_whatsapp_handoff",{
+        property_id:String(property.id||""),
+        property_name:property.name||""
+      });
+    }catch(error){}
+
+    supabaseTrack("ai_whatsapp_handoff",{
+      property_id:String(property.id||""),
+      property_name:property.name||""
+    });
+
     aiShell?.classList.remove("open");
-    aiShell?.remove();
     document.body.style.overflow="hidden";
 
     setTimeout(()=>{
@@ -9659,37 +9856,43 @@ async function showPhotoModal(id){
     </main>
 
     <div class="detail-sticky-cta">
-      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path fill="currentColor" d="M16 3a12.8 12.8 0 0 0-11 19.36L3.3 28.7l6.5-1.7A12.9 12.9 0 1 0 16 3Zm0 23.5c-2 0-3.9-.55-5.55-1.6l-.4-.24-3.85 1 1.03-3.75-.26-.4A10.6 10.6 0 1 1 16 26.5Zm5.83-7.95c-.32-.16-1.9-.94-2.2-1.05-.3-.11-.51-.16-.73.16-.21.32-.83 1.05-1.02 1.26-.19.21-.38.24-.7.08-.32-.16-1.35-.5-2.57-1.6-.95-.84-1.59-1.88-1.77-2.2-.19-.32-.02-.49.14-.65.14-.14.32-.38.48-.57.16-.19.21-.32.32-.54.11-.21.05-.4-.03-.57-.08-.16-.73-1.75-1-2.4-.26-.63-.53-.55-.73-.56h-.62c-.21 0-.56.08-.86.4-.3.32-1.13 1.1-1.13 2.69 0 1.59 1.16 3.12 1.32 3.34.16.21 2.28 3.48 5.52 4.88.77.33 1.37.53 1.84.68.77.24 1.47.21 2.03.13.62-.09 1.9-.78 2.17-1.53.27-.76.27-1.42.19-1.55-.08-.13-.3-.21-.62-.37Z"/>
-        </svg>
-        <span>Compartilhar no WhatsApp</span>
+      <button class="detail-ai-main-btn" type="button" aria-label="Conversar com a inteligência artificial sobre este imóvel">
+        <span class="detail-ai-main-icon" aria-hidden="true">🤖</span>
+        <span>
+          <strong>FALAR COM A IA</strong>
+          <small>Tire dúvidas sobre este imóvel</small>
+        </span>
       </button>
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
   track?.addEventListener("scroll",()=>window.requestAnimationFrame(updateDetailGallery),{passive:true});
-  modal.querySelector(".detail-share-btn")?.addEventListener("click",()=>{
-    const shareText=[
-      p.name || "Imóvel na Ynteligencia",
-      p.neighborhood ? `${p.neighborhood} • São Paulo` : "São Paulo",
-      Number(p.value)>0 ? money(p.value) : "",
-      p.area ? `${area(p.area)} m²` : "",
-      p.bedrooms ? `${p.bedrooms} dorms.` : "",
-      "Veja este imóvel na Ynteligencia:",
-      (()=>{
-        const shareUrl=new URL(window.location.origin + window.location.pathname);
-        shareUrl.searchParams.set("imovel",String(p.id||""));
-        return shareUrl.toString();
-      })()
-    ].filter(Boolean).join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
-  });
-  document.body.appendChild(modal);
+  
+  
+  modal.querySelector(".detail-ai-main-btn")?.addEventListener("click",()=>{
+    clearTimeout(aiAssistantTriggerTimer);
+    document.getElementById("aiAssistantTrigger")?.remove();
 
-  // Depois de 3 segundos na ficha, o robô aparece convidando o cliente
-  // para conversar. O chat só abre se o cliente tocar no convite.
-  scheduleAiAssistantForProperty(p,modal);
+    try{
+      gtag("event","property_ai_click",{
+        property_id:String(p.id||""),
+        property_name:p.name||"",
+        neighborhood:p.neighborhood||""
+      });
+    }catch(error){}
+
+    supabaseTrack("property_ai_click",{
+      property_id:String(p.id||""),
+      property_name:p.name||"",
+      neighborhood:p.neighborhood||""
+    });
+
+    openAiAssistant(p);
+  });
+
+document.body.appendChild(modal);
+
+  // Atendimento por IA agora fica disponível diretamente no CTA fixo da ficha.
 
   modal.querySelector(".detail-gallery-all-btn")?.addEventListener("click",()=>{
     const track=modal.querySelector(".detail-gallery-track");
