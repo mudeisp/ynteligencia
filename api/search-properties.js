@@ -9,12 +9,6 @@ export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
   try {
-    /*
-      ========================================================
-      CONFIGURAÇÃO
-      ========================================================
-    */
-
     const SUPABASE_URL =
       process.env.SUPABASE_URL;
 
@@ -36,12 +30,6 @@ export default async function handler(req, res) {
         error: "Chave do Supabase não configurada"
       });
     }
-
-    /*
-      ========================================================
-      ENTRADA
-      ========================================================
-    */
 
     const body = req.body || {};
 
@@ -100,12 +88,6 @@ export default async function handler(req, res) {
         50
       );
 
-    /*
-      ========================================================
-      NORMALIZAÇÃO
-      ========================================================
-    */
-
     function normalize(value) {
       return String(value || "")
         .normalize("NFD")
@@ -124,52 +106,38 @@ export default async function handler(req, res) {
         "procuro",
         "procura",
         "procurando",
-
         "imovel",
         "imoveis",
-
         "apartamento",
         "apartamentos",
-
         "lancamento",
         "lancamentos",
-
         "novo",
         "novos",
-
         "usado",
         "usados",
-
         "dorm",
         "dorms",
         "dormitorio",
         "dormitorios",
-
         "quarto",
         "quartos",
-
         "ate",
         "entre",
         "acima",
         "abaixo",
-
         "mil",
         "milhao",
         "milhoes",
-
         "reais",
-
         "com",
         "para",
         "por",
-
         "uma",
         "um",
-
         "de",
         "do",
         "da",
-
         "no",
         "na",
         "em"
@@ -186,12 +154,6 @@ export default async function handler(req, res) {
             !/^\d/.test(token)
         );
     }
-
-    /*
-      ========================================================
-      HELPERS DO ÓRULO
-      ========================================================
-    */
 
     function rawOf(property) {
       if (
@@ -212,31 +174,25 @@ export default async function handler(req, res) {
     }
 
     function buildingOf(property) {
-      const raw =
-        rawOf(property);
+      const raw = rawOf(property);
 
-      if (
+      return (
         raw?.building &&
         typeof raw.building === "object"
-      ) {
-        return raw.building;
-      }
-
-      return {};
+      )
+        ? raw.building
+        : {};
     }
 
     function typologyOf(property) {
-      const raw =
-        rawOf(property);
+      const raw = rawOf(property);
 
-      if (
+      return (
         raw?.typology &&
         typeof raw.typology === "object"
-      ) {
-        return raw.typology;
-      }
-
-      return {};
+      )
+        ? raw.typology
+        : {};
     }
 
     function propertyName(property) {
@@ -247,16 +203,13 @@ export default async function handler(req, res) {
         buildingOf(property);
 
       return (
-        property?.name ||
+        property?.development_name ||
+        property?.title ||
         building?.name ||
         building?.commercial_name ||
         building?.title ||
-        building?.development_name ||
         raw?.name ||
         raw?.title ||
-        raw?.project_name ||
-        raw?.development_name ||
-        raw?.building_name ||
         ""
       );
     }
@@ -270,6 +223,7 @@ export default async function handler(req, res) {
 
       return (
         property?.neighborhood ||
+        building?.address?.area ||
         building?.address?.neighborhood ||
         raw?.neighborhood ||
         ""
@@ -281,7 +235,7 @@ export default async function handler(req, res) {
         typologyOf(property);
 
       return (
-        Number(property?.value) ||
+        Number(property?.price) ||
         Number(typology?.discount_price) ||
         Number(typology?.original_price) ||
         0
@@ -311,10 +265,10 @@ export default async function handler(req, res) {
 
       return normalize(
         [
-          property?.name,
+          property?.title,
+          property?.development_name,
           property?.neighborhood,
-          property?.address,
-          property?.description,
+          property?.city,
 
           raw?.name,
           raw?.title,
@@ -328,6 +282,7 @@ export default async function handler(req, res) {
           building?.development_name,
           building?.description,
 
+          building?.address?.area,
           building?.address?.neighborhood,
           building?.address?.street,
           building?.address?.city,
@@ -340,12 +295,6 @@ export default async function handler(req, res) {
       );
     }
 
-    /*
-      ========================================================
-      REQUEST AO SUPABASE
-      ========================================================
-    */
-
     async function requestSupabase(params) {
       const url =
         `${SUPABASE_URL}/rest/v1/properties?${params.toString()}`;
@@ -353,14 +302,10 @@ export default async function handler(req, res) {
       const response =
         await fetch(url, {
           method: "GET",
-
           headers: {
-            apikey:
-              SUPABASE_KEY,
-
+            apikey: SUPABASE_KEY,
             Authorization:
               `Bearer ${SUPABASE_KEY}`,
-
             "Content-Type":
               "application/json"
           }
@@ -381,7 +326,6 @@ export default async function handler(req, res) {
         throw {
           status:
             response.status,
-
           data
         };
       }
@@ -390,12 +334,6 @@ export default async function handler(req, res) {
         ? data
         : [];
     }
-
-    /*
-      ========================================================
-      FILTROS BASE
-      ========================================================
-    */
 
     function createBaseParams() {
       const params =
@@ -441,26 +379,20 @@ export default async function handler(req, res) {
 
       if (minPrice) {
         params.append(
-          "value",
+          "price",
           `gte.${minPrice}`
         );
       }
 
       if (maxPrice) {
         params.append(
-          "value",
+          "price",
           `lte.${maxPrice}`
         );
       }
 
       return params;
     }
-
-    /*
-      ========================================================
-      BUSCA RÁPIDA
-      ========================================================
-    */
 
     const searchText =
       project ||
@@ -473,17 +405,11 @@ export default async function handler(req, res) {
     let candidates = [];
 
     /*
-      Caso haja texto como:
-
-      Upper Brooklin
-      Well Perdizes
-      Brooklin
-      Cyrela
-
-      usamos o primeiro termo relevante
-      para reduzir drasticamente o universo.
+      Busca rápida direto nas colunas reais:
+      development_name
+      title
+      neighborhood
     */
-
     if (
       !neighborhood &&
       tokens.length
@@ -496,16 +422,11 @@ export default async function handler(req, res) {
           .replace(/,/g, "")
           .replace(/[()]/g, "");
 
-      /*
-        SINTAXE CORRETA DO POSTGREST:
-
-        or=(campo.operador.valor,campo.operador.valor)
-      */
-
       params.set(
         "or",
         `(` +
-          `name.ilike.*${strongestToken}*,` +
+          `development_name.ilike.*${strongestToken}*,` +
+          `title.ilike.*${strongestToken}*,` +
           `neighborhood.ilike.*${strongestToken}*` +
         `)`
       );
@@ -520,11 +441,6 @@ export default async function handler(req, res) {
           params
         );
     } else {
-      /*
-        Busca estruturada:
-        bairro, dormitórios, preço etc.
-      */
-
       const params =
         createBaseParams();
 
@@ -540,30 +456,14 @@ export default async function handler(req, res) {
     }
 
     /*
-      ========================================================
-      FALLBACK PARA raw_data DO ÓRULO
-      ========================================================
-
-      Se não achamos nada em name/neighborhood,
-      pode acontecer de o nome existir somente
-      dentro do JSON do Órulo.
-
-      Nesse caso fazemos uma busca paginada,
-      mas SOMENTE como fallback.
+      Fallback:
+      se não achou nas colunas normalizadas,
+      procura no raw_data.
     */
-
     if (
       candidates.length === 0 &&
       tokens.length
     ) {
-      console.log(
-        "SEARCH_PROPERTIES_RAW_FALLBACK",
-        {
-          query,
-          tokens
-        }
-      );
-
       const PAGE_SIZE =
         1000;
 
@@ -583,7 +483,7 @@ export default async function handler(req, res) {
 
         params.set(
           "order",
-          "id.asc"
+          "external_id.asc"
         );
 
         const url =
@@ -660,10 +560,6 @@ export default async function handler(req, res) {
             );
           }
 
-          /*
-            Já temos candidatos suficientes.
-          */
-
           if (
             fallbackMatches.length >=
             Math.max(
@@ -697,12 +593,6 @@ export default async function handler(req, res) {
         fallbackMatches;
     }
 
-    /*
-      ========================================================
-      FILTRO FINO
-      ========================================================
-    */
-
     const projectTokens =
       project
         ? queryTokens(project)
@@ -734,11 +624,6 @@ export default async function handler(req, res) {
         );
     }
 
-    /*
-      Dormitórios novamente,
-      incluindo raw_data.
-    */
-
     if (bedrooms) {
       candidates =
         candidates.filter(
@@ -748,11 +633,6 @@ export default async function handler(req, res) {
             ) === bedrooms
         );
     }
-
-    /*
-      Preço novamente,
-      incluindo preço da tipologia.
-    */
 
     if (
       minPrice ||
@@ -784,12 +664,6 @@ export default async function handler(req, res) {
           }
         );
     }
-
-    /*
-      ========================================================
-      RANKING
-      ========================================================
-    */
 
     function relevanceScore(
       property
@@ -832,10 +706,6 @@ export default async function handler(req, res) {
           score += 2;
         }
       }
-
-      /*
-        Nome completo exato ganha prioridade.
-      */
 
       const normalizedSearch =
         normalize(
@@ -883,12 +753,6 @@ export default async function handler(req, res) {
       }
     );
 
-    /*
-      ========================================================
-      REMOVE DUPLICADOS
-      ========================================================
-    */
-
     const seen =
       new Set();
 
@@ -897,9 +761,7 @@ export default async function handler(req, res) {
         property => {
           const id =
             String(
-              property?.id ||
-              property
-                ?.building_id ||
+              property?.external_id ||
               ""
             );
 
@@ -921,12 +783,6 @@ export default async function handler(req, res) {
 
     const total =
       candidates.length;
-
-    /*
-      ========================================================
-      RESPOSTA
-      ========================================================
-    */
 
     const matches =
       candidates
@@ -954,7 +810,7 @@ export default async function handler(req, res) {
             return {
               id:
                 String(
-                  property?.id ||
+                  property?.external_id ||
                   ""
                 ),
 
@@ -962,8 +818,6 @@ export default async function handler(req, res) {
                 String(
                   raw?.building_id ||
                   building?.id ||
-                  property
-                    ?.building_id ||
                   ""
                 ),
 
@@ -979,9 +833,7 @@ export default async function handler(req, res) {
 
               city:
                 property?.city ||
-                building
-                  ?.address
-                  ?.city ||
+                building?.address?.city ||
                 "São Paulo",
 
               value:
@@ -992,8 +844,7 @@ export default async function handler(req, res) {
               area:
                 Number(
                   property?.area ||
-                  typology
-                    ?.private_area
+                  typology?.private_area
                 ) || 0,
 
               bedrooms:
@@ -1001,21 +852,25 @@ export default async function handler(req, res) {
                   property
                 ),
 
+              bathrooms:
+                Number(
+                  property?.bathrooms ||
+                  typology?.bathrooms
+                ) || 0,
+
               suites:
                 Number(
-                  property?.suites ||
                   typology?.suites
                 ) || 0,
 
               parking:
                 Number(
-                  property?.parking ||
+                  property?.parking_spaces ||
                   typology?.parking
                 ) || 0,
 
               stock:
                 Number(
-                  property?.stock ||
                   typology?.stock
                 ) || 0,
 
@@ -1024,7 +879,6 @@ export default async function handler(req, res) {
                 "",
 
               status:
-                property?.status ||
                 building?.stage ||
                 building?.status ||
                 "",
@@ -1034,18 +888,20 @@ export default async function handler(req, res) {
                 building?.publisher ||
                 "",
 
+              image_url:
+                property?.image_url ||
+                null,
+
+              property_url:
+                property?.property_url ||
+                null,
+
               address:
                 building?.address ||
                 null
             };
           }
         );
-
-    /*
-      ========================================================
-      LOG
-      ========================================================
-    */
 
     console.log(
       "SEARCH_PROPERTIES_RESULT",
@@ -1057,36 +913,22 @@ export default async function handler(req, res) {
         minPrice,
         maxPrice,
         source,
-
-        candidate_count:
-          candidates.length,
-
         total,
-
         returned:
           matches.length,
-
         first_matches:
           matches
             .slice(0, 5)
             .map(item => ({
               name:
                 item.name,
-
               neighborhood:
                 item.neighborhood,
-
               value:
                 item.value
             }))
       }
     );
-
-    /*
-      ========================================================
-      RETURN
-      ========================================================
-    */
 
     return res
       .status(200)
@@ -1098,13 +940,10 @@ export default async function handler(req, res) {
           project,
           neighborhood,
           bedrooms,
-
           min_price:
             minPrice,
-
           max_price:
             maxPrice,
-
           source
         },
 
@@ -1119,11 +958,6 @@ export default async function handler(req, res) {
       error
     );
 
-    /*
-      Quando requestSupabase lança
-      o objeto com status/data.
-    */
-
     if (
       error &&
       typeof error === "object" &&
@@ -1133,10 +967,8 @@ export default async function handler(req, res) {
         .status(502)
         .json({
           success: false,
-
           error:
             "Falha ao consultar inventário",
-
           details:
             error.data
         });
@@ -1146,10 +978,8 @@ export default async function handler(req, res) {
       .status(500)
       .json({
         success: false,
-
         error:
           "Erro interno na busca de imóveis",
-
         details:
           String(
             error?.message ||
