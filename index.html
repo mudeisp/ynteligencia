@@ -7307,29 +7307,133 @@ async function ensureAiOruloInventory(){
   return aiOruloInventoryPromise;
 }
 
+function aiNormalizeMoneyNumber(raw){
+  let s=String(raw||"")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g,"");
+
+  if(!s)return 0;
+
+  /*
+    pt-BR:
+      800.000,00 -> 800000
+      1.200.000   -> 1200000
+      800,000.00  -> 800000
+      800000       -> 800000
+      800          -> handled with suffix/default rule
+  */
+  if(s.includes(",") && s.includes(".")){
+    if(s.lastIndexOf(",") > s.lastIndexOf(".")){
+      s=s.replace(/\./g,"").replace(",",".");
+    }else{
+      s=s.replace(/,/g,"");
+    }
+  }else if(s.includes(",")){
+    const parts=s.split(",");
+    if(parts.length===2 && parts[1].length<=2){
+      s=parts[0].replace(/\./g,"")+"."+parts[1];
+    }else{
+      s=s.replace(/,/g,"");
+    }
+  }else if(s.includes(".")){
+    const parts=s.split(".");
+    if(parts.length>2){
+      s=s.replace(/\./g,"");
+    }else if(parts.length===2 && parts[1].length===3 && parts[0].length<=3){
+      /* 800.000 / 1.200 */
+      s=parts[0]+parts[1];
+    }
+  }
+
+  const n=Number(s);
+  return Number.isFinite(n)?n:0;
+}
+
+function aiApplyMoneyUnit(value,unit=""){
+  let v=Number(value)||0;
+  const u=norm(unit||"");
+
+  if(/\b(milhao|milhoes|milhao|mi)\b/.test(u)){
+    v*=1000000;
+  }else if(/\b(mil|k)\b/.test(u)){
+    v*=1000;
+  }else if(v>0 && v<10000){
+    /*
+      Em contexto imobiliário, "800" normalmente significa 800 mil.
+      "1.2" normalmente significa 1,2 milhão quando acompanhado de "mi/milhão";
+      sem unidade, valores curtos acima de 100 são tratados como milhares.
+    */
+    v*=1000;
+  }
+
+  return Math.round(v);
+}
+
 function aiOruloParseMoney(text){
-  const t=norm(text||"");
-  const convert=(n,u)=>{
-    let v=Number(String(n).replace(",","."));
-    if(!Number.isFinite(v))return 0;
-    if(/milhao|milhoes|mi\b/.test(u||""))v*=1000000;
-    else if(/mil|k\b/.test(u||""))v*=1000;
-    else if(v<10000)v*=1000;
-    return Math.round(v);
+  const original=String(text||"");
+  const t=norm(original);
+
+  const parse=(num,unit)=>{
+    const base=aiNormalizeMoneyNumber(num);
+    return aiApplyMoneyUnit(base,unit||"");
   };
 
-  let min=0,max=0,m;
+  let min=0;
+  let max=0;
+  let m;
 
-  m=t.match(/(?:ate|maximo|max|no maximo)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/);
-  if(m)max=convert(m[1],m[2]||"");
-
-  m=t.match(/(?:a partir de|minimo|min|acima de|mais de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/);
-  if(m)min=convert(m[1],m[2]||"");
-
-  m=t.match(/(?:entre|de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?\s*(?:a|e|-)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/);
+  /* entre 600 e 900 mil */
+  m=t.match(
+    /(?:entre|de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?\s*(?:a|e|-)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/
+  );
   if(m){
-    min=convert(m[1],m[2]||"");
-    max=convert(m[3],m[4]||m[2]||"");
+    const sharedUnit=m[4]||m[2]||"";
+    min=parse(m[1],m[2]||sharedUnit);
+    max=parse(m[3],m[4]||sharedUnit);
+    return {min,max};
+  }
+
+  /* até / no máximo */
+  m=t.match(
+    /(?:ate|maximo|max|no maximo|teto de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/
+  );
+  if(m){
+    max=parse(m[1],m[2]||"");
+  }
+
+  /* a partir de / acima de */
+  m=t.match(
+    /(?:a partir de|minimo|min|acima de|mais de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/
+  );
+  if(m){
+    min=parse(m[1],m[2]||"");
+  }
+
+  /*
+    Valor solto:
+      "Brooklin R$ 800.000,00 2 dormitórios"
+      "Brooklin 800 mil 2 dorms"
+      "Pinheiros 1.2 mi 3 quartos"
+
+    Quando não há "até/a partir", tratamos como teto de busca.
+  */
+  if(!min && !max){
+    m=t.match(
+      /(?:r\$\s*)?([\d][\d.,]*)\s*(milhoes?|milhao|mi|mil|k)?(?=\s|$)/
+    );
+
+    if(m){
+      const candidate=parse(m[1],m[2]||"");
+
+      /*
+        Evita confundir "2 dormitórios" com preço.
+        Só aceita candidato razoável para imóvel.
+      */
+      if(candidate>=100000){
+        max=candidate;
+      }
+    }
   }
 
   return {min,max};
@@ -7342,48 +7446,111 @@ function aiOruloContext(message){
     .slice(-8)
     .map(item=>item.content||"");
 
-  const combined=norm([...historyText,message].join(" "));
-  const money=aiOruloParseMoney(combined);
+  const rawCombined=[...historyText,message].join(" ");
+  const combined=norm(rawCombined);
+  const money=aiOruloParseMoney(rawCombined);
 
-  const bedroomsMatch=combined.match(/(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/);
+  const bedroomsMatch=combined.match(
+    /(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/
+  );
   const bedrooms=bedroomsMatch?Number(bedroomsMatch[1]):0;
 
   let neighborhood="";
   let exactName="";
 
   const neighborhoods=[...new Set(
-    inventory.map(p=>clean(p?.neighborhood||"")).filter(Boolean)
+    inventory
+      .map(p=>clean(p?.neighborhood||""))
+      .filter(Boolean)
   )].sort((a,b)=>b.length-a.length);
-
-  for(const value of neighborhoods){
-    if(combined.includes(norm(value))){
-      neighborhood=value;
-      break;
-    }
-  }
 
   const names=[...new Set(
-    inventory.map(p=>clean(p?.name||"")).filter(v=>v.length>=4)
+    inventory
+      .map(p=>clean(p?.name||""))
+      .filter(v=>v.length>=4)
   )].sort((a,b)=>b.length-a.length);
 
+  /*
+    1. Empreendimento: match por nome completo/parcial normalizado.
+  */
   for(const value of names){
-    if(combined.includes(norm(value))){
+    const key=norm(value);
+    if(key && combined.includes(key)){
       exactName=value;
       break;
     }
   }
 
+  /*
+    2. Bairro:
+       - aceita nome completo
+       - aceita "Brooklin" contra "Brooklin Paulista"/"Brooklin Novo"
+       - aceita tokens relevantes vindos da frase do usuário
+  */
+  const stop=new Set([
+    "apartamento","apartamentos","imovel","imoveis","novo","novos",
+    "lancamento","lancamentos","ate","maximo","minimo","quero",
+    "procuro","dorm","dorms","dormitorio","dormitorios","quarto",
+    "quartos","mil","milhao","milhoes","reais","com","para","por",
+    "uma","um","dois","tres","quatro"
+  ]);
+
+  const userTokens=combined
+    .split(/\s+/)
+    .map(x=>x.trim())
+    .filter(x=>x.length>=4 && !stop.has(x) && !/^\d/.test(x));
+
+  for(const value of neighborhoods){
+    const key=norm(value);
+
+    if(combined.includes(key)){
+      neighborhood=value;
+      break;
+    }
+
+    const keyTokens=key.split(/\s+/).filter(Boolean);
+    if(userTokens.some(t=>keyTokens.includes(t) || key.includes(t))){
+      neighborhood=value;
+      break;
+    }
+  }
+
+  /*
+    Se ainda não encontrou bairro no inventário,
+    usa o primeiro token textual plausível como intenção de bairro.
+    Isso permite "Brooklin" mesmo antes de aparecer exatamente no cache.
+  */
+  let neighborhoodIntent="";
+  if(!neighborhood && userTokens.length){
+    neighborhoodIntent=userTokens[0];
+  }
+
+  const searchNeighborhood=neighborhood || neighborhoodIntent;
+
   const filtered=inventory.filter(p=>{
     if(!p)return false;
 
-    if(exactName && !norm(p.name||"").includes(norm(exactName)))return false;
-
-    if(neighborhood){
-      const hay=norm(`${p.neighborhood||""} ${p.address||""} ${p.name||""}`);
-      if(!hay.includes(norm(neighborhood)))return false;
+    if(exactName){
+      if(!norm(p.name||"").includes(norm(exactName)))return false;
     }
 
-    if(bedrooms && Number(p.bedrooms||0)!==bedrooms)return false;
+    if(searchNeighborhood){
+      const hay=norm(
+        `${p.neighborhood||""} ${p.address||""} ${p.name||""}`
+      );
+
+      const tokens=norm(searchNeighborhood)
+        .split(/\s+/)
+        .filter(Boolean);
+
+      if(!tokens.every(t=>hay.includes(t)))return false;
+    }
+
+    if(bedrooms){
+      const pBedrooms=Number(p.bedrooms||0);
+      if(pBedrooms!==bedrooms)return false;
+    }
+
     if(money.min && Number(p.value||0)<money.min)return false;
     if(money.max && Number(p.value||0)>money.max)return false;
 
@@ -7391,7 +7558,11 @@ function aiOruloContext(message){
   });
 
   const recognized=Boolean(
-    exactName || neighborhood || bedrooms || money.min || money.max
+    exactName ||
+    searchNeighborhood ||
+    bedrooms ||
+    money.min ||
+    money.max
   );
 
   return {
@@ -7400,7 +7571,7 @@ function aiOruloContext(message){
     recognized_filters:recognized,
     query:{
       exact_name:exactName,
-      neighborhood,
+      neighborhood:searchNeighborhood,
       bedrooms,
       min_price:money.min,
       max_price:money.max,
@@ -7543,7 +7714,11 @@ async function sendAiAssistantMessage(text){
           ? "search"
           : "property",
         inventory:aiAssistantProperty?.generic_search
-          ? aiOruloContext(text)
+          ? (() => {
+              const ctx=aiOruloContext(text);
+              console.log("MATCH_IA_ORULO_CONTEXT",ctx);
+              return ctx;
+            })()
           : null,
         page_url:window.location.href
       })
