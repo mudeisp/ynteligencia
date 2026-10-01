@@ -7884,7 +7884,7 @@ function aiIsFollowUpMessage(message){
   const t = norm(message || "");
 
   return Boolean(
-    /\b(link|url|endereco|endereço|metragem|area|área|preco|preço|valor|dormitorios|dormitórios|quartos|vagas|suite|suíte|varanda|detalhes|mais sobre|fale mais|esse|essa|desse|dessa|primeiro|segundo|terceiro)\b/.test(t)
+    /\b(link|url|endereco|endereço|metragem|area|área|preco|preço|valor|dormitorios|dormitórios|quartos|vagas|suite|suíte|varanda|detalhes|mais sobre|fale mais|esse|essa|desse|dessa|primeiro|segundo|terceiro|unidade|unidades|estoque|quantas|quantos|disponibilidade|disponiveis|disponíveis)\b/.test(t)
   );
 }
 
@@ -8024,6 +8024,16 @@ function aiDirectFollowUpAnswer(message, property){
 
   if(/\b(dormitorios|dormitórios|quartos)\b/.test(t) && Number(property.bedrooms) > 0){
     return `${name}: ${Number(property.bedrooms)} dormitório${Number(property.bedrooms) > 1 ? "s" : ""}.`;
+  }
+
+  if(/\b(unidade|unidades|estoque|quantas|quantos|disponibilidade|disponiveis|disponíveis)\b/.test(t)){
+    const stock = Number(property.stock);
+
+    if(Number.isFinite(stock) && stock > 0){
+      return `${name}: o cadastro atual informa ${stock} unidade${stock > 1 ? "s" : ""} em estoque. Como o estoque pode mudar, a disponibilidade comercial deve ser confirmada no atendimento.`;
+    }
+
+    return `O ${name} está cadastrado na base, mas o número de unidades disponíveis não veio informado neste resultado. Posso te passar os detalhes do imóvel ou encaminhar para confirmação com o Rafael.`;
   }
 
   return "";
