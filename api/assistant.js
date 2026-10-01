@@ -1,24 +1,43 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ success: false, error: "Method not allowed" });
+    return res.status(405).json({
+      success: false,
+      error: "Method not allowed"
+    });
   }
 
   res.setHeader("Cache-Control", "no-store");
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey =
+      process.env.OPENAI_API_KEY;
+
     if (!apiKey) {
       return res.status(500).json({
         success: false,
-        error: "OPENAI_API_KEY não configurada na Vercel"
+        error:
+          "OPENAI_API_KEY não configurada na Vercel"
       });
     }
 
-    const body = req.body || {};
-    const message = String(body.message || "").trim();
-    const history = Array.isArray(body.history) ? body.history.slice(-40) : [];
+    const body =
+      req.body || {};
+
+    const message =
+      String(
+        body.message || ""
+      ).trim();
+
+    const history =
+      Array.isArray(
+        body.history
+      )
+        ? body.history.slice(-40)
+        : [];
+
     const property =
-      body.property && typeof body.property === "object"
+      body.property &&
+      typeof body.property === "object"
         ? body.property
         : {};
 
@@ -30,30 +49,396 @@ export default async function handler(req, res) {
         : "property";
 
     const inventory =
-      body.inventory && typeof body.inventory === "object"
+      body.inventory &&
+      typeof body.inventory === "object"
         ? body.inventory
         : null;
 
-    if (!message && mode !== "lead_summary") {
+    if (
+      !message &&
+      mode !== "lead_summary"
+    ) {
       return res.status(400).json({
         success: false,
         error: "Mensagem vazia"
       });
     }
 
-    const safeHistory = history
-      .filter(
-        item =>
-          item &&
-          ["user", "assistant"].includes(item.role)
+    /*
+      ========================================================
+      HELPERS
+      ========================================================
+    */
+
+    const safeHistory =
+      history
+        .filter(
+          item =>
+            item &&
+            [
+              "user",
+              "assistant"
+            ].includes(
+              item.role
+            )
+        )
+        .map(
+          item => ({
+            role:
+              item.role,
+
+            content:
+              String(
+                item.content ||
+                ""
+              ).slice(
+                0,
+                1800
+              )
+          })
+        );
+
+    function formatMoney(value) {
+      const n =
+        Number(value);
+
+      if (
+        !Number.isFinite(n) ||
+        n <= 0
+      ) {
+        return "";
+      }
+
+      return n.toLocaleString(
+        "pt-BR",
+        {
+          style:
+            "currency",
+
+          currency:
+            "BRL",
+
+          maximumFractionDigits:
+            0
+        }
+      );
+    }
+
+    function formatArea(value) {
+      const n =
+        Number(value);
+
+      if (
+        !Number.isFinite(n) ||
+        n <= 0
+      ) {
+        return "";
+      }
+
+      return `${n.toLocaleString(
+        "pt-BR"
+      )} m²`;
+    }
+
+    function cleanText(value) {
+      return String(
+        value || ""
+      ).trim();
+    }
+
+    /*
+      ========================================================
+      SEARCH MODE
+      RESPOSTA DETERMINÍSTICA COM DADOS REAIS
+      ========================================================
+
+      A search-properties já consultou o banco.
+
+      Se temos resultado, não precisamos pedir para a IA
+      "inventar" ou interpretar o estoque.
+
+      Ela recebe fatos estruturados.
+    */
+
+    if (
+      mode === "search" &&
+      inventory &&
+      inventory.inventory_ready !== false &&
+      Number(
+        inventory.total
+      ) > 0 &&
+      Array.isArray(
+        inventory.matches
       )
-      .map(item => ({
-        role: item.role,
-        content: String(item.content || "").slice(0, 1800)
-      }));
+    ) {
+      const total =
+        Number(
+          inventory.total
+        ) || 0;
+
+      const matches =
+        inventory.matches
+          .slice(
+            0,
+            3
+          );
+
+      const items =
+        matches.map(
+          (
+            item,
+            index
+          ) => {
+            const parts =
+              [];
+
+            const name =
+              cleanText(
+                item?.name
+              );
+
+            const neighborhood =
+              cleanText(
+                item?.neighborhood
+              );
+
+            const price =
+              formatMoney(
+                item?.value
+              );
+
+            const bedrooms =
+              Number(
+                item?.bedrooms
+              ) || 0;
+
+            const area =
+              formatArea(
+                item?.area
+              );
+
+            if (name) {
+              parts.push(
+                name
+              );
+            }
+
+            if (
+              neighborhood
+            ) {
+              parts.push(
+                `Bairro: ${neighborhood}`
+              );
+            }
+
+            if (price) {
+              parts.push(
+                `Preço: ${price}`
+              );
+            }
+
+            if (
+              bedrooms > 0
+            ) {
+              parts.push(
+                `Dormitórios: ${bedrooms}`
+              );
+            }
+
+            if (area) {
+              parts.push(
+                `Área: ${area}`
+              );
+            }
+
+            return (
+              `${index + 1}) ` +
+              parts.join(
+                " — "
+              )
+            );
+          }
+        );
+
+      let reply =
+        `Encontrei ${total} ${
+          total === 1
+            ? "opção"
+            : "opções"
+        }.`;
+
+      if (
+        items.length
+      ) {
+        reply +=
+          " " +
+          items.join(
+            " "
+          );
+      }
+
+      /*
+        Se encontrou um único imóvel,
+        não fazemos pergunta automática.
+        O frontend já consegue guardar esse match
+        para perguntas como:
+        "me manda o link"
+        "qual o preço?"
+        "qual o endereço?"
+      */
+
+      return res
+        .status(200)
+        .json({
+          success: true,
+          reply,
+          handoff: false
+        });
+    }
+
+    /*
+      ========================================================
+      SEARCH MODE
+      ZERO RESULTADOS
+      ========================================================
+    */
+
+    if (
+      mode === "search" &&
+      inventory &&
+      inventory.inventory_ready !== false &&
+      inventory.recognized_filters ===
+        true &&
+      Number(
+        inventory.total
+      ) === 0
+    ) {
+      const query =
+        inventory.query ||
+        {};
+
+      const criteria =
+        [];
+
+      if (
+        query.exact_name
+      ) {
+        criteria.push(
+          `o empreendimento ${query.exact_name}`
+        );
+      } else if (
+        query.neighborhood
+      ) {
+        criteria.push(
+          query.neighborhood
+        );
+      }
+
+      if (
+        Number(
+          query.bedrooms
+        ) > 0
+      ) {
+        criteria.push(
+          `${query.bedrooms} dormitório${
+            Number(
+              query.bedrooms
+            ) > 1
+              ? "s"
+              : ""
+          }`
+        );
+      }
+
+      if (
+        Number(
+          query.max_price
+        ) > 0
+      ) {
+        criteria.push(
+          `até ${formatMoney(
+            query.max_price
+          )}`
+        );
+      }
+
+      if (
+        Number(
+          query.min_price
+        ) > 0
+      ) {
+        criteria.push(
+          `a partir de ${formatMoney(
+            query.min_price
+          )}`
+        );
+      }
+
+      const suffix =
+        criteria.length
+          ? ` para ${criteria.join(
+              ", "
+            )}`
+          : "";
+
+      return res
+        .status(200)
+        .json({
+          success: true,
+
+          reply:
+            `Não encontrei uma correspondência exata${suffix} na base consultada. Posso ampliar a busca por bairro, preço ou características.`,
+
+          handoff: false
+        });
+    }
+
+    /*
+      ========================================================
+      SEARCH MODE
+      INVENTÁRIO INDISPONÍVEL
+      ========================================================
+    */
+
+    if (
+      mode === "search" &&
+      inventory &&
+      inventory.inventory_ready ===
+        false
+    ) {
+      return res
+        .status(200)
+        .json({
+          success: true,
+
+          reply:
+            "O estoque ainda está sendo carregado. Tente novamente em alguns instantes.",
+
+          handoff: false
+        });
+    }
+
+    /*
+      ========================================================
+      CONTEXTO PROPERTY
+      ========================================================
+    */
 
     const propertyContext =
-      JSON.stringify(property, null, 2).slice(0, 12000);
+      JSON.stringify(
+        property,
+        null,
+        2
+      ).slice(
+        0,
+        12000
+      );
+
+    /*
+      ========================================================
+      INSTRUÇÕES OPENAI
+      ========================================================
+    */
 
     const instructions =
       mode === "lead_summary"
@@ -85,52 +470,33 @@ Você é a Match IA, concierge imobiliária da Ynteligencia.
 
 Converse em português do Brasil, de forma curta, clara, útil e humana.
 
-Nesta modalidade, o cliente procura imóveis no inventário real do app.
+Nesta modalidade o cliente está procurando imóveis.
 
-A aplicação executou uma busca no estoque ANTES de chamar você.
+IMPORTANTE:
 
-REGRAS IMPORTANTES:
+- Quando o sistema tiver resultados do inventário, eles são tratados antes de você ser chamado.
+- Portanto, se você está recebendo esta conversa em modo search, normalmente ainda faltam informações suficientes para executar a busca.
+- Faça UMA pergunta curta por vez.
+- Ajude a descobrir:
+  bairro ou região;
+  faixa de preço;
+  dormitórios;
+  tipo;
+  novo/usado;
+  morar/investir.
 
-- Use SOMENTE "INVENTÁRIO CONSULTADO" como fato sobre imóveis disponíveis.
+Não invente imóveis.
+Não invente estoque.
+Não invente preço.
+Não invente disponibilidade.
 
-- Nunca invente empreendimento, preço, quantidade, metragem ou disponibilidade.
+Não diga que é ChatGPT.
+Não mencione OpenAI.
+Você é "Match IA".
 
-- Se inventory_ready=false, diga que o estoque ainda está carregando e peça para tentar novamente em instantes.
-
-- Se recognized_filters=true e total=0, diga que não encontrou correspondência EXATA no inventário atualmente carregado.
-
-- Não diga que o imóvel não existe no mercado.
-
-- Se total>0, diga quantas opções foram encontradas.
-
-- Mencione no máximo 3 opções do array matches.
-
-- Para cada imóvel, use somente informações realmente presentes:
-  nome,
-  bairro,
-  preço,
-  dormitórios,
-  área.
-
-- Se o cliente perguntar por um empreendimento específico e ele estiver em matches, confirme que ele aparece no inventário.
-
-- Se recognized_filters=false, faça UMA pergunta curta para entender bairro/região, preço ou dormitórios.
-
-- Faça apenas UMA pergunta por resposta.
-
-- Não diga que é ChatGPT.
-
-- Não mencione OpenAI.
-
-- Você é "Match IA".
-
-- Se o usuário pedir pessoa humana, visita, negociação ou confirmação comercial, termine com:
+Se o cliente pedir atendimento humano, visita ou negociação, termine com:
 
 [[HANDOFF]]
-
-INVENTÁRIO CONSULTADO:
-
-${JSON.stringify(inventory || {}, null, 2)}
 `.trim()
 
         : `
@@ -138,9 +504,9 @@ Você é a Match IA, concierge imobiliária da Ynteligencia.
 
 Converse em português do Brasil, de forma curta, clara, útil e humana.
 
-Seu contexto é UM imóvel que o cliente está vendo agora no app.
+Seu contexto é UM imóvel que o cliente está vendo ou acabou de encontrar.
 
-Use somente os dados fornecidos abaixo como fatos sobre esse imóvel.
+Use SOMENTE os dados fornecidos abaixo como fatos sobre esse imóvel.
 
 Não invente:
 - disponibilidade;
@@ -150,20 +516,22 @@ Não invente:
 - prazo;
 - metragem;
 - endereço;
-- estoque.
+- estoque;
+- link.
 
-Se a disponibilidade ou condição de hoje não estiver explicitamente confirmada nos dados, diga que precisa ser confirmada com o atendimento humano.
+Se uma informação não estiver disponível nos dados recebidos, diga apenas que ela não veio cadastrada no resultado atual.
 
 OBJETIVOS:
 
 1. Responder dúvidas sobre o imóvel atual.
 
-2. Entender o que importa para o comprador:
-- orçamento;
+2. Ajudar o cliente a entender:
+- preço;
 - dormitórios;
-- região;
-- novo/usado;
-- morar/investir.
+- área;
+- bairro;
+- endereço;
+- características presentes nos dados.
 
 3. Ajudar a comparar e organizar a decisão.
 
@@ -175,77 +543,98 @@ OBJETIVOS:
 
 ofereça encaminhar para o Rafael.
 
-REGRAS DE CONVERSA:
+REGRAS:
 
 - Faça no máximo uma pergunta por resposta.
-
 - Prefira respostas de 2 a 5 frases.
-
-- Não pressione o usuário a deixar contato.
-
+- Não pressione o cliente a deixar contato.
 - Não diga que é ChatGPT.
-
 - Não mencione OpenAI.
-
 - Você é "Match IA".
 
-- Se o usuário pedir pessoa humana, visita, negociação, reserva, disponibilidade atual ou confirmação comercial, termine sua resposta com o marcador exato:
+Se o usuário pedir pessoa humana, visita, negociação, reserva, disponibilidade atual ou confirmação comercial, termine com:
 
 [[HANDOFF]]
-
-- Só use [[HANDOFF]] quando fizer sentido real encaminhar.
 
 DADOS DO IMÓVEL ATUAL:
 
 ${propertyContext}
 `.trim();
 
+    /*
+      ========================================================
+      INPUT
+      ========================================================
+    */
+
     const input =
-      mode === "lead_summary"
+      mode ===
+      "lead_summary"
         ? safeHistory
         : [
             ...safeHistory,
+
             {
-              role: "user",
-              content: message
+              role:
+                "user",
+
+              content:
+                message
             }
           ];
 
-    const response = await fetch(
-      "https://api.openai.com/v1/responses",
-      {
-        method: "POST",
+    /*
+      ========================================================
+      OPENAI
+      ========================================================
+    */
 
-        headers: {
-          "Content-Type": "application/json",
+    const response =
+      await fetch(
+        "https://api.openai.com/v1/responses",
+        {
+          method:
+            "POST",
 
-          Authorization: `Bearer ${apiKey}`
-        },
+          headers: {
+            "Content-Type":
+              "application/json",
 
-        body: JSON.stringify({
-          model: "gpt-5-mini",
-
-          instructions,
-
-          input,
-
-          max_output_tokens: 350,
-
-          reasoning: {
-            effort: "low"
+            Authorization:
+              `Bearer ${apiKey}`
           },
 
-          text: {
-            verbosity: "low"
-          }
-        })
-      }
-    );
+          body:
+            JSON.stringify({
+              model:
+                "gpt-5-mini",
+
+              instructions,
+
+              input,
+
+              max_output_tokens:
+                350,
+
+              reasoning: {
+                effort:
+                  "low"
+              },
+
+              text: {
+                verbosity:
+                  "low"
+              }
+            })
+        }
+      );
 
     const data =
       await response
         .json()
-        .catch(() => ({}));
+        .catch(
+          () => ({})
+        );
 
     if (!response.ok) {
       console.error(
@@ -254,65 +643,133 @@ ${propertyContext}
         data
       );
 
-      return res.status(502).json({
-        success: false,
+      return res
+        .status(502)
+        .json({
+          success: false,
 
-        error:
-          data?.error?.message ||
-          "Falha ao consultar a IA"
-      });
+          error:
+            data?.error
+              ?.message ||
+            "Falha ao consultar a IA"
+        });
     }
+
+    /*
+      ========================================================
+      EXTRAI TEXTO
+      ========================================================
+    */
 
     let reply = "";
 
-    if (typeof data.output_text === "string") {
-      reply = data.output_text;
-    } else if (Array.isArray(data.output)) {
-      for (const item of data.output) {
-        if (!Array.isArray(item?.content)) continue;
+    if (
+      typeof data.output_text ===
+      "string"
+    ) {
+      reply =
+        data.output_text;
+    } else if (
+      Array.isArray(
+        data.output
+      )
+    ) {
+      for (
+        const item of
+        data.output
+      ) {
+        if (
+          !Array.isArray(
+            item?.content
+          )
+        ) {
+          continue;
+        }
 
-        for (const part of item.content) {
-          if (typeof part?.text === "string") {
-            reply += part.text;
+        for (
+          const part of
+          item.content
+        ) {
+          if (
+            typeof part?.text ===
+            "string"
+          ) {
+            reply +=
+              part.text;
           }
         }
       }
     }
 
     reply =
-      String(reply || "").trim();
+      String(
+        reply || ""
+      ).trim();
+
+    /*
+      ========================================================
+      HANDOFF
+      ========================================================
+    */
 
     const handoff =
-      reply.includes("[[HANDOFF]]");
+      reply.includes(
+        "[[HANDOFF]]"
+      );
 
     reply =
       reply
-        .replace(/\[\[HANDOFF\]\]/g, "")
+        .replace(
+          /\[\[HANDOFF\]\]/g,
+          ""
+        )
         .trim();
+
+    /*
+      ========================================================
+      FALLBACK
+      ========================================================
+    */
 
     if (!reply) {
       reply =
-        mode === "lead_summary"
+        mode ===
+        "lead_summary"
           ? "Conversa iniciada pela Match IA, sem preferências suficientes para resumir."
-          : mode === "search"
-          ? "Posso te ajudar a montar sua busca. Qual região ou bairro você prefere?"
-          : "Posso te ajudar a entender melhor este imóvel ou organizar uma comparação com outras opções.";
+
+          : mode ===
+            "search"
+          ? "Qual bairro ou região você prefere?"
+
+          : "Posso continuar te ajudando com este imóvel.";
     }
 
-    return res.status(200).json({
-      success: true,
-      reply,
-      handoff
-    });
+    /*
+      ========================================================
+      RETURN
+      ========================================================
+    */
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        reply,
+        handoff
+      });
+
   } catch (error) {
     console.error(
       "ASSISTANT_FATAL",
       error
     );
 
-    return res.status(500).json({
-      success: false,
-      error: "Erro interno na assistente"
-    });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        error:
+          "Erro interno na assistente"
+      });
   }
 }
