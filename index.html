@@ -7180,6 +7180,104 @@ function ensureAiAssistantShell(){
   return shell;
 }
 
+
+function registerAiFoundProperty(p){
+  if(!p || !p.id)return p;
+
+  const normalized={
+    ...p,
+    id:String(p.id||p.building_id||""),
+    building_id:String(p.building_id||""),
+    name:p.name||"",
+    neighborhood:p.neighborhood||"",
+    city:p.city||"",
+    value:Number(p.value)||0,
+    area:Number(p.area)||0,
+    bedrooms:Number(p.bedrooms)||0,
+    bathrooms:Number(p.bathrooms)||0,
+    suites:Number(p.suites)||0,
+    parking:Number(p.parking)||0,
+    stock:Number(p.stock)||0,
+    source:p.source||"novos",
+    status:p.status||"",
+    developer:p.developer||"",
+    property_url:p.property_url||"",
+    image_url:p.image_url||"",
+    address:p.address||null,
+    rawData:
+      p.rawData && typeof p.rawData==="object"
+        ? p.rawData
+        : (
+            p.raw_data && typeof p.raw_data==="object"
+              ? p.raw_data
+              : {}
+          )
+  };
+
+  const upsertInto=list=>{
+    if(!Array.isArray(list))return [normalized];
+    const existingIndex=list.findIndex(
+      item=>String(item?.id||"")===String(normalized.id)
+    );
+    if(existingIndex>=0){
+      const copy=[...list];
+      copy[existingIndex]={
+        ...copy[existingIndex],
+        ...normalized
+      };
+      return copy;
+    }
+    return [normalized,...list];
+  };
+
+  properties=upsertInto(properties);
+
+  if(String(normalized.source||"").toLowerCase()==="novos"){
+    newPropertiesCache=upsertInto(newPropertiesCache);
+  }
+
+  return normalized;
+}
+
+function appendAiInternalDetailsButton(property){
+  if(!property?.id)return;
+
+  const shell=ensureAiAssistantShell();
+  const box=shell.querySelector("#aiAssistantMessages");
+  if(!box)return;
+
+  const wrap=document.createElement("div");
+  wrap.className="ai-quick-actions";
+
+  const button=document.createElement("button");
+  button.type="button";
+  button.textContent="Ver detalhes";
+  button.dataset.aiInternalDetails=String(property.id);
+
+  button.addEventListener("click",()=>{
+    const p=registerAiFoundProperty(property);
+    showPhotoModal(String(p.id));
+  });
+
+  wrap.appendChild(button);
+  box.appendChild(wrap);
+  box.scrollTop=box.scrollHeight;
+}
+
+function stripExternalProviderLinks(text){
+  return String(text||"")
+    .replace(
+      /\s*(?:Ver detalhes|Detalhes|Link do anúncio|Link):?\s*https?:\/\/(?:www\.)?orulo\.com\.br\/\S*/gi,
+      ""
+    )
+    .replace(
+      /https?:\/\/(?:www\.)?orulo\.com\.br\/\S*/gi,
+      ""
+    )
+    .replace(/\s{2,}/g," ")
+    .trim();
+}
+
 function appendAiMessage(role,text){
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
@@ -7970,12 +8068,8 @@ function aiDirectFollowUpAnswer(message, property){
   const t = norm(message || "");
   const name = property.name || "Este imóvel";
 
-  if(/\b(link|url)\b/.test(t)){
-    if(property.property_url){
-      return `${name}: ${property.property_url}`;
-    }
-
-    return `Eu encontrei ${name}, mas o link público não veio cadastrado nesse resultado. Posso te passar os detalhes disponíveis ou encaminhar para o Rafael.`;
+  if(/\b(link|url|detalhes|ver detalhes)\b/.test(t)){
+    return `Claro. Abra os detalhes completos do ${name} no botão abaixo.`;
   }
 
   if(/\b(endereco|endereço)\b/.test(t)){
@@ -8281,12 +8375,18 @@ async function sendAiAssistantMessage(text){
         }
 
         const reply=
-          clean(data.reply||"") ||
-          "Posso continuar te ajudando com esse imóvel.";
+          stripExternalProviderLinks(
+            clean(data.reply||"") ||
+            "Posso continuar te ajudando com esse imóvel."
+          );
 
         appendAiMessage(
           "assistant",
           reply
+        );
+
+        appendAiInternalDetailsButton(
+          referenced
         );
 
         aiAssistantHistory.push({
@@ -8393,7 +8493,9 @@ async function sendAiAssistantMessage(text){
 
     if(genericMode){
       reply=
-        reply
+        stripExternalProviderLinks(
+          reply
+        )
           .replace(
             /^\s*INVENT[ÁA]RIO CONSULTADO\s*[—\-:]*\s*/i,
             ""
@@ -8434,29 +8536,32 @@ async function sendAiAssistantMessage(text){
           a partir daqui a conversa deixa de ser "busca geral"
           e passa a usar o MESMO contexto de imóvel do fluxo Ver detalhes.
         */
+        const registeredFoundProperty =
+          registerAiFoundProperty(foundProperty);
+
         aiAssistantProperty = {
-          ...foundProperty,
+          ...registeredFoundProperty,
 
           /*
             Compatibilidade com o objeto já usado pelo app.
           */
-          id: foundProperty.id || foundProperty.building_id || "",
-          name: foundProperty.name || "",
-          neighborhood: foundProperty.neighborhood || "",
-          city: foundProperty.city || "",
-          value: Number(foundProperty.value) || 0,
-          area: Number(foundProperty.area) || 0,
-          bedrooms: Number(foundProperty.bedrooms) || 0,
-          bathrooms: Number(foundProperty.bathrooms) || 0,
-          suites: Number(foundProperty.suites) || 0,
-          parking: Number(foundProperty.parking) || 0,
-          stock: Number(foundProperty.stock) || 0,
-          source: foundProperty.source || "novos",
-          status: foundProperty.status || "",
-          developer: foundProperty.developer || "",
-          property_url: foundProperty.property_url || "",
-          image_url: foundProperty.image_url || "",
-          address: foundProperty.address || null,
+          id: registeredFoundProperty.id || registeredFoundProperty.building_id || "",
+          name: registeredFoundProperty.name || "",
+          neighborhood: registeredFoundProperty.neighborhood || "",
+          city: registeredFoundProperty.city || "",
+          value: Number(registeredFoundProperty.value) || 0,
+          area: Number(registeredFoundProperty.area) || 0,
+          bedrooms: Number(registeredFoundProperty.bedrooms) || 0,
+          bathrooms: Number(registeredFoundProperty.bathrooms) || 0,
+          suites: Number(registeredFoundProperty.suites) || 0,
+          parking: Number(registeredFoundProperty.parking) || 0,
+          stock: Number(registeredFoundProperty.stock) || 0,
+          source: registeredFoundProperty.source || "novos",
+          status: registeredFoundProperty.status || "",
+          developer: registeredFoundProperty.developer || "",
+          property_url: registeredFoundProperty.property_url || "",
+          image_url: registeredFoundProperty.image_url || "",
+          address: registeredFoundProperty.address || null,
 
           /*
             Crucial: mensagens seguintes passam a ir em mode=property.
@@ -8530,6 +8635,17 @@ async function sendAiAssistantMessage(text){
       "assistant",
       reply
     );
+
+    if(
+      genericMode &&
+      inventoryContext &&
+      Array.isArray(inventoryContext.matches) &&
+      inventoryContext.matches.length === 1 &&
+      aiAssistantProperty &&
+      aiAssistantProperty.generic_search === false
+    ){
+      appendAiInternalDetailsButton(aiAssistantProperty);
+    }
 
     aiAssistantHistory.push({
       role:"assistant",
