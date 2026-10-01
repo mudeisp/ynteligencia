@@ -3638,6 +3638,63 @@ body.match-mode .wizard-wrap{
 }
 </style>
 
+
+<style id="direct-filter-visibility-fix">
+/* Corrige regra legada que escondia o filtro completo */
+body.filter-direct-mode #explore{
+  display:block!important;
+  visibility:visible!important;
+}
+
+body.filter-direct-mode #explore .unified-search-panel{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+body.filter-direct-mode #explore .unified-search-main{
+  display:grid!important;
+}
+
+body.filter-direct-mode #explore .unified-search-separator{
+  display:flex!important;
+}
+
+body.filter-direct-mode #explore .catalog-filters,
+body.filter-direct-mode #explore .unified-catalog-filters{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
+/* No mobile, filtro vira folha em tela cheia */
+@media(max-width:700px){
+  body.filter-direct-mode #catalogFilters.open,
+  body.filter-direct-mode .catalog-filters.open{
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+    transform:translateY(0)!important;
+    pointer-events:auto!important;
+  }
+}
+
+/* Desktop: exibe painel inteiro imediatamente */
+@media(min-width:701px){
+  body.filter-direct-mode #explore{
+    padding-top:110px!important;
+    min-height:100vh!important;
+  }
+
+  body.filter-direct-mode #unifiedSearchPanel{
+    display:block!important;
+    max-width:920px!important;
+    margin:0 auto!important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -7609,6 +7666,46 @@ function aiParseMoneyPhrase(text){
   return {min,max};
 }
 
+
+async function ensureAiInventoryReady(){
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const started=Date.now();
+
+  try{
+    if((!Array.isArray(properties) || properties.length===0) && typeof loadInventory==="function"){
+      if(!inventoryLoading){
+        try{ await loadInventory(); }catch(error){}
+      }
+
+      while(inventoryLoading && Date.now()-started<6500){
+        await sleep(160);
+      }
+    }
+
+    /* Para a IA, não esperamos o carregamento ocioso dos usados.
+       Carregamos a base de usados imediatamente antes da consulta. */
+    if(typeof loadUsedInventory==="function" && !usedInventoryLoaded){
+      try{
+        await loadUsedInventory();
+      }catch(error){
+        console.warn("AI_USED_INVENTORY_LOAD_ERROR",error);
+      }
+    }
+
+    /* Se ainda houver carregamento em andamento, aguarda mais um pouco. */
+    while(
+      (inventoryLoading || usedInventoryLoading) &&
+      Date.now()-started<8000
+    ){
+      await sleep(160);
+    }
+  }catch(error){
+    console.warn("AI_INVENTORY_WAIT_ERROR",error);
+  }
+
+  return Array.isArray(properties) && properties.length>0;
+}
+
 function aiInventoryContext(message){
   const recentUsers=aiLeadConversation
     .filter(item=>item.role==="user")
@@ -7718,7 +7815,7 @@ function aiInventoryContext(message){
   }));
 
   return {
-    inventory_ready:Boolean(inventoryReady),
+    inventory_ready:Boolean(inventory.length>0),
     inventory_count:inventory.length,
     recognized_filters:recognized,
     query:{
@@ -7744,6 +7841,10 @@ async function generateAiLeadSummary(){
   if(!aiLeadConversation.length)return "";
 
   try{
+    if(aiAssistantProperty?.generic_search){
+      await ensureAiInventoryReady();
+    }
+
     const response=await fetch("/api/assistant",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -12387,6 +12488,7 @@ body.ad-match-mode .refine-match-shell{
       "ad-match-mode",
       "campaign-catalog-mode"
     );
+    document.body.classList.add("filter-direct-mode");
 
     try{
       if(typeof openGeneralCatalog==="function"){
@@ -12396,6 +12498,16 @@ body.ad-match-mode .refine-match-shell{
       }
     }catch(error){
       console.error("OPEN_CATALOG_ERROR",error);
+    }
+
+    const exploreSection=document.getElementById("explore");
+    const unifiedPanel=document.getElementById("unifiedSearchPanel");
+
+    if(exploreSection){
+      exploreSection.style.display="block";
+    }
+    if(unifiedPanel){
+      unifiedPanel.style.setProperty("display","block","important");
     }
 
     requestAnimationFrame(()=>{
