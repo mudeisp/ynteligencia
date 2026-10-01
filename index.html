@@ -3695,6 +3695,30 @@ body.filter-direct-mode #explore .unified-catalog-filters{
 }
 </style>
 
+
+<style id="region-neighborhood-filter-design">
+.unified-filter-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+
+@media(max-width:1100px){
+  .unified-filter-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:700px){
+  .unified-filter-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  #catalogRegion,
+  #catalogNeighborhood{
+    min-height:54px!important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -3840,6 +3864,26 @@ body.filter-direct-mode #explore .unified-catalog-filters{
         <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros" style="display:none">×</button>
 
         <div class="filter-grid unified-filter-grid">
+          <label class="unified-field">
+            <span>Região</span>
+            <select id="catalogRegion" class="field" aria-label="Região">
+              <option value="">Todas as regiões</option>
+              <option value="oeste">Zona Oeste</option>
+              <option value="sul">Zona Sul</option>
+              <option value="leste">Zona Leste</option>
+              <option value="norte">Zona Norte</option>
+              <option value="centro">Centro</option>
+              <option value="outras">Outras regiões</option>
+            </select>
+          </label>
+
+          <label class="unified-field">
+            <span>Bairro</span>
+            <select id="catalogNeighborhood" class="field" aria-label="Bairro">
+              <option value="">Todos os bairros</option>
+            </select>
+          </label>
+
           <label class="unified-field">
             <span>Estoque</span>
             <select id="catalogSource" class="field" aria-label="Tipo de estoque">
@@ -12569,6 +12613,156 @@ body.ad-match-mode .refine-match-shell{
   if(wizard){
     wizard.setAttribute("data-home-bypass","true");
   }
+
+})();
+</script>
+
+
+<script id="region-neighborhood-filter">
+(function(){
+
+  const REGION_MAP_FILTER = {
+    oeste:[
+      "Perdizes","Pompéia","Pinheiros","Vila Madalena","Lapa",
+      "Alto da Lapa","Barra Funda","Butantã","Jaguaré",
+      "Sumaré","Vila Leopoldina","Alto de Pinheiros","Rio Pequeno",
+      "Vila Sônia","Morumbi"
+    ],
+    sul:[
+      "Moema","Vila Mariana","Chácara Klabin","Brooklin","Campo Belo",
+      "Saúde","Ipiranga","Paraíso","Aclimação","Jardins",
+      "Jardim Paulista","Itaim Bibi","Vila Nova Conceição",
+      "Santo Amaro","Campo Grande","Vila Clementino",
+      "Planalto Paulista","Mirandópolis"
+    ],
+    leste:[
+      "Tatuapé","Mooca","Anália Franco","Vila Prudente","Penha",
+      "Carrão","Belém","Brás","Água Rasa","Vila Formosa",
+      "Vila Matilde","Itaquera","Aricanduva","Sapopemba","São Mateus"
+    ],
+    norte:[
+      "Santana","Tucuruvi","Casa Verde","Mandaqui","Vila Guilherme",
+      "Vila Maria","Parada Inglesa","Jardim São Paulo",
+      "Lauzane Paulista","Limão","Freguesia do Ó",
+      "Tremembé","Jaçanã"
+    ],
+    centro:[
+      "Bela Vista","Consolação","Higienópolis","República","Santa Cecília",
+      "Sé","Liberdade","Cambuci","Bom Retiro","Campos Elíseos"
+    ]
+  };
+
+  function normalizeText(v){
+    return String(v||"")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .toLowerCase()
+      .trim();
+  }
+
+  function getInventoryNeighborhoods(){
+    if(!Array.isArray(window.properties) && typeof properties==="undefined"){
+      return [];
+    }
+
+    const list = (typeof properties!=="undefined" && Array.isArray(properties))
+      ? properties
+      : [];
+
+    return [...new Set(
+      list
+        .map(p=>String(p?.neighborhood||"").trim())
+        .filter(Boolean)
+    )].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  }
+
+  function regionForNeighborhood(name){
+    const n=normalizeText(name);
+
+    for(const [region,bairros] of Object.entries(REGION_MAP_FILTER)){
+      if(
+        bairros.some(item=>{
+          const b=normalizeText(item);
+          return n===b || n.includes(b) || b.includes(n);
+        })
+      ){
+        return region;
+      }
+    }
+
+    return "outras";
+  }
+
+  function populateNeighborhoods(){
+    const region=document.getElementById("catalogRegion");
+    const neighborhood=document.getElementById("catalogNeighborhood");
+
+    if(!region || !neighborhood)return;
+
+    const selected=neighborhood.value;
+    let neighborhoods=getInventoryNeighborhoods();
+
+    if(region.value){
+      neighborhoods=neighborhoods.filter(
+        item=>regionForNeighborhood(item)===region.value
+      );
+    }
+
+    neighborhood.innerHTML='<option value="">Todos os bairros</option>';
+
+    neighborhoods.forEach(item=>{
+      const option=document.createElement("option");
+      option.value=item;
+      option.textContent=item;
+      neighborhood.appendChild(option);
+    });
+
+    if([...neighborhood.options].some(o=>o.value===selected)){
+      neighborhood.value=selected;
+    }
+  }
+
+  function applyRegionFilter(){
+    const region=document.getElementById("catalogRegion");
+    if(typeof window.catalogRegion!=="undefined"){
+      window.catalogRegion=region?.value || "";
+    }
+
+    populateNeighborhoods();
+
+    const neighborhood=document.getElementById("catalogNeighborhood");
+    if(neighborhood) neighborhood.value="";
+
+    try{
+      if(typeof updateCatalogUrl==="function") updateCatalogUrl();
+    }catch(e){}
+
+    try{
+      if(typeof executeCatalogSearch==="function") executeCatalogSearch();
+    }catch(e){}
+  }
+
+  const region=document.getElementById("catalogRegion");
+  const neighborhood=document.getElementById("catalogNeighborhood");
+
+  region?.addEventListener("change",applyRegionFilter);
+
+  neighborhood?.addEventListener("change",()=>{
+    try{
+      if(typeof updateCatalogUrl==="function") updateCatalogUrl();
+      if(typeof executeCatalogSearch==="function") executeCatalogSearch();
+    }catch(e){}
+  });
+
+  // Populate after inventory load and again shortly after used inventory enters.
+  window.addEventListener("load",()=>{
+    setTimeout(populateNeighborhoods,500);
+    setTimeout(populateNeighborhoods,1800);
+    setTimeout(populateNeighborhoods,3500);
+  });
+
+  // Expose helper for other app flows.
+  window.populateCatalogNeighborhoodsByRegion=populateNeighborhoods;
 
 })();
 </script>
