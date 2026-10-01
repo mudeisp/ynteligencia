@@ -9,17 +9,16 @@ export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
   try {
+    /*
+      ========================================================
+      CONFIGURAÇÃO
+      ========================================================
+    */
+
     const SUPABASE_URL =
       process.env.SUPABASE_URL ||
       "https://wzaegidwtdjuhqchpdpd.supabase.co";
 
-    /*
-      IMPORTANTE:
-      na sua Vercel a chave já está cadastrada como
-      SUPABASE_SECRET_KEY.
-
-      Mantemos também os outros nomes como fallback.
-    */
     const SUPABASE_KEY =
       process.env.SUPABASE_SECRET_KEY ||
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -31,6 +30,12 @@ export default async function handler(req, res) {
         error: "Chave do Supabase não configurada"
       });
     }
+
+    /*
+      ========================================================
+      ENTRADA
+      ========================================================
+    */
 
     const body = req.body || {};
 
@@ -81,7 +86,7 @@ export default async function handler(req, res) {
         .trim()
         .toLowerCase();
 
-    const limit =
+    const resultLimit =
       Math.min(
         Math.max(
           Number(body.limit) || 20,
@@ -89,6 +94,12 @@ export default async function handler(req, res) {
         ),
         50
       );
+
+    /*
+      ========================================================
+      NORMALIZAÇÃO
+      ========================================================
+    */
 
     const normalize = value =>
       String(value || "")
@@ -102,101 +113,170 @@ export default async function handler(req, res) {
 
     /*
       ========================================================
-      BUSCA PRINCIPAL
+      CONSULTA PAGINADA AO SUPABASE
       ========================================================
 
-      Busca os imóveis reais na tabela properties.
+      Supabase/PostgREST normalmente limita uma resposta
+      a 1000 registros.
+
+      Portanto buscamos:
+
+      0-999
+      1000-1999
+      2000-2999
+      ...
+
+      até acabar o inventário.
     */
 
-    const params =
-      new URLSearchParams();
-
-    params.set(
-      "active",
-      "eq.true"
-    );
+    const PAGE_SIZE = 1000;
 
     /*
-      Filtra a origem do estoque.
+      Proteção.
+
+      50 páginas = até 50.000 imóveis.
+      Muito acima do estoque que você pretende usar agora.
     */
-    if (source === "novos") {
-      params.set(
-        "source",
-        "eq.novos"
-      );
-    } else if (
-      source === "usados"
+    const MAX_PAGES = 50;
+
+    async function fetchInventoryPage(
+      start,
+      end
     ) {
+      const params =
+        new URLSearchParams();
+
       params.set(
-        "source",
-        "eq.usados"
+        "active",
+        "eq.true"
       );
-    }
 
-    params.set(
-      "select",
-      "*"
-    );
+      if (source === "novos") {
+        params.set(
+          "source",
+          "eq.novos"
+        );
+      } else if (
+        source === "usados"
+      ) {
+        params.set(
+          "source",
+          "eq.usados"
+        );
+      }
 
-    /*
-      Por enquanto buscamos até 5.000 registros candidatos
-      para permitir pesquisa também dentro do rawData do Órulo.
+      params.set(
+        "select",
+        "*"
+      );
 
-      Quando a base crescer muito, podemos otimizar isso
-      criando colunas indexadas no Supabase.
-    */
-    params.set(
-      "limit",
-      "5000"
-    );
+      /*
+        Ordenação estável é importante
+        para paginação.
+      */
+      params.set(
+        "order",
+        "id.asc"
+      );
 
-    const url =
-      `${SUPABASE_URL}/rest/v1/properties?${params.toString()}`;
+      const url =
+        `${SUPABASE_URL}/rest/v1/properties?${params.toString()}`;
 
-    const response =
-      await fetch(
-        url,
-        {
-          headers: {
-            apikey:
-              SUPABASE_KEY,
+      const response =
+        await fetch(
+          url,
+          {
+            method: "GET",
 
-            Authorization:
-              `Bearer ${SUPABASE_KEY}`,
+            headers: {
+              apikey:
+                SUPABASE_KEY,
 
-            "Content-Type":
-              "application/json"
+              Authorization:
+                `Bearer ${SUPABASE_KEY}`,
+
+              "Content-Type":
+                "application/json",
+
+              /*
+                Range é o que permite escapar
+                do limite padrão de 1000.
+              */
+              Range:
+                `${start}-${end}`
+            }
           }
-        }
-      );
+        );
 
-    const data =
-      await response
-        .json()
-        .catch(() => []);
+      const data =
+        await response
+          .json()
+          .catch(() => []);
 
-    if (!response.ok) {
-      console.error(
-        "SEARCH_PROPERTIES_SUPABASE_ERROR",
-        response.status,
-        data
-      );
+      if (!response.ok) {
+        console.error(
+          "SEARCH_PROPERTIES_PAGE_ERROR",
+          {
+            status:
+              response.status,
 
-      return res
-        .status(502)
-        .json({
-          success: false,
-          error:
-            "Falha ao consultar inventário",
-          details:
+            start,
+            end,
+
             data
-        });
-    }
+          }
+        );
 
-    const inventory =
-      Array.isArray(data)
+        throw new Error(
+          "Falha ao consultar inventário"
+        );
+      }
+
+      return Array.isArray(data)
         ? data
         : [];
+    }
+
+    /*
+      Carrega todas as páginas.
+    */
+
+    let inventory = [];
+
+    for (
+      let page = 0;
+      page < MAX_PAGES;
+      page++
+    ) {
+      const start =
+        page * PAGE_SIZE;
+
+      const end =
+        start +
+        PAGE_SIZE -
+        1;
+
+      const rows =
+        await fetchInventoryPage(
+          start,
+          end
+        );
+
+      inventory.push(
+        ...rows
+      );
+
+      /*
+        Quando vier menos de 1000,
+        acabou o inventário.
+      */
+      if (
+        rows.length <
+        PAGE_SIZE
+      ) {
+        break;
+      }
+    }
 
     /*
       ========================================================
@@ -204,20 +284,26 @@ export default async function handler(req, res) {
       ========================================================
     */
 
-    function rawOf(property) {
-      return (
+    function rawOf(
+      property
+    ) {
+      if (
         property?.rawData &&
         typeof property.rawData ===
           "object"
-      )
-        ? property.rawData
-        : (
-            property?.raw_data &&
-            typeof property.raw_data ===
-              "object"
-          )
-        ? property.raw_data
-        : {};
+      ) {
+        return property.rawData;
+      }
+
+      if (
+        property?.raw_data &&
+        typeof property.raw_data ===
+          "object"
+      ) {
+        return property.raw_data;
+      }
+
+      return {};
     }
 
     function buildingOf(
@@ -226,13 +312,15 @@ export default async function handler(req, res) {
       const raw =
         rawOf(property);
 
-      return (
+      if (
         raw?.building &&
         typeof raw.building ===
           "object"
-      )
-        ? raw.building
-        : {};
+      ) {
+        return raw.building;
+      }
+
+      return {};
     }
 
     function typologyOf(
@@ -241,13 +329,15 @@ export default async function handler(req, res) {
       const raw =
         rawOf(property);
 
-      return (
+      if (
         raw?.typology &&
         typeof raw.typology ===
           "object"
-      )
-        ? raw.typology
-        : {};
+      ) {
+        return raw.typology;
+      }
+
+      return {};
     }
 
     function propertyName(
@@ -264,6 +354,7 @@ export default async function handler(req, res) {
         building?.name ||
         building?.commercial_name ||
         building?.title ||
+        building?.development_name ||
         raw?.name ||
         raw?.title ||
         raw?.project_name ||
@@ -284,10 +375,33 @@ export default async function handler(req, res) {
 
       return (
         property?.neighborhood ||
-        building?.address
+        building
+          ?.address
           ?.neighborhood ||
         raw?.neighborhood ||
         ""
+      );
+    }
+
+    function propertyValue(
+      property
+    ) {
+      const typology =
+        typologyOf(property);
+
+      return (
+        Number(
+          property?.value
+        ) ||
+        Number(
+          typology
+            ?.discount_price
+        ) ||
+        Number(
+          typology
+            ?.original_price
+        ) ||
+        0
       );
     }
 
@@ -300,32 +414,57 @@ export default async function handler(req, res) {
       const building =
         buildingOf(property);
 
+      const typology =
+        typologyOf(property);
+
       return normalize(
         [
+          /*
+            Dados normalizados
+          */
           property?.name,
           property?.neighborhood,
           property?.address,
           property?.description,
 
+          /*
+            Raw principal
+          */
           raw?.name,
           raw?.title,
           raw?.project_name,
           raw?.development_name,
           raw?.building_name,
 
+          /*
+            Building Órulo
+          */
           building?.name,
           building?.title,
           building?.commercial_name,
-          building
-            ?.development_name,
+          building?.development_name,
           building?.description,
 
-          building?.address
+          /*
+            Endereço
+          */
+          building
+            ?.address
             ?.neighborhood,
-          building?.address
+
+          building
+            ?.address
             ?.street,
-          building?.address
-            ?.city
+
+          building
+            ?.address
+            ?.city,
+
+          /*
+            Tipologia
+          */
+          typology?.name,
+          typology?.type
         ]
           .filter(Boolean)
           .join(" ")
@@ -334,7 +473,7 @@ export default async function handler(req, res) {
 
     /*
       ========================================================
-      FILTRAGEM
+      FILTROS
       ========================================================
     */
 
@@ -349,6 +488,84 @@ export default async function handler(req, res) {
     const queryNormalized =
       normalize(query);
 
+    /*
+      Palavras genéricas não ajudam
+      na busca textual livre.
+    */
+
+    const stopWords =
+      new Set([
+        "voce",
+        "voces",
+        "tem",
+        "tenho",
+        "quero",
+        "procuro",
+
+        "imovel",
+        "imoveis",
+
+        "apartamento",
+        "apartamentos",
+
+        "lancamento",
+        "lancamentos",
+
+        "novo",
+        "novos",
+
+        "usado",
+        "usados",
+
+        "dorm",
+        "dorms",
+        "dormitorio",
+        "dormitorios",
+
+        "quarto",
+        "quartos",
+
+        "ate",
+        "acima",
+        "entre",
+
+        "mil",
+        "milhao",
+        "milhoes",
+
+        "reais",
+        "para",
+        "por",
+        "com",
+
+        "uma",
+        "um"
+      ]);
+
+    const queryTokens =
+      queryNormalized
+        .split(/\s+/)
+        .map(
+          token =>
+            token.trim()
+        )
+        .filter(
+          token =>
+            token.length >= 3 &&
+            !stopWords.has(
+              token
+            ) &&
+            !/^\d/.test(
+              token
+            )
+        );
+
+    /*
+      ========================================================
+      BUSCA
+      ========================================================
+    */
+
     let matches =
       inventory.filter(
         property => {
@@ -362,18 +579,19 @@ export default async function handler(req, res) {
             );
 
           /*
-            Empreendimento
+            EMPREENDIMENTO
           */
+
           if (
             projectNormalized
           ) {
-            const projectTokens =
+            const tokens =
               projectNormalized
                 .split(/\s+/)
                 .filter(Boolean);
 
             if (
-              !projectTokens.every(
+              !tokens.every(
                 token =>
                   text.includes(
                     token
@@ -385,18 +603,19 @@ export default async function handler(req, res) {
           }
 
           /*
-            Bairro
+            BAIRRO
           */
+
           if (
             neighborhoodNormalized
           ) {
-            const neighborhoodTokens =
+            const tokens =
               neighborhoodNormalized
                 .split(/\s+/)
                 .filter(Boolean);
 
             if (
-              !neighborhoodTokens.every(
+              !tokens.every(
                 token =>
                   text.includes(
                     token
@@ -408,8 +627,9 @@ export default async function handler(req, res) {
           }
 
           /*
-            Dormitórios
+            DORMITÓRIOS
           */
+
           if (bedrooms) {
             const typology =
               typologyOf(
@@ -434,12 +654,13 @@ export default async function handler(req, res) {
           }
 
           /*
-            Preço
+            PREÇO
           */
+
           const value =
-            Number(
-              property?.value
-            ) || 0;
+            propertyValue(
+              property
+            );
 
           if (
             minPrice &&
@@ -456,27 +677,29 @@ export default async function handler(req, res) {
           }
 
           /*
-            Busca textual livre.
+            BUSCA LIVRE
 
-            Só é usada quando não recebemos
-            projeto ou bairro estruturados.
+            Importante para consultas como:
+
+            Upper Brooklin
+            Well Perdizes
+            Brooklin
+            Cyrela
           */
+
           if (
             queryNormalized &&
             !projectNormalized &&
             !neighborhoodNormalized
           ) {
-            const tokens =
-              queryNormalized
-                .split(/\s+/)
-                .filter(
-                  token =>
-                    token.length >= 3
-                );
+            /*
+              Pelo menos um token relevante
+              precisa aparecer.
+            */
 
             if (
-              tokens.length &&
-              !tokens.some(
+              queryTokens.length &&
+              !queryTokens.some(
                 token =>
                   text.includes(
                     token
@@ -492,19 +715,74 @@ export default async function handler(req, res) {
       );
 
     /*
-      Ordenação padrão:
-      menor preço primeiro.
+      ========================================================
+      RANKING
+      ========================================================
+
+      Primeiro imóveis cujo nome contém
+      mais palavras pesquisadas.
+
+      Depois menor preço.
     */
+
+    function relevanceScore(
+      property
+    ) {
+      if (
+        !queryTokens.length
+      ) {
+        return 0;
+      }
+
+      const text =
+        searchableText(
+          property
+        );
+
+      return queryTokens
+        .reduce(
+          (
+            score,
+            token
+          ) =>
+            score +
+            (
+              text.includes(
+                token
+              )
+                ? 1
+                : 0
+            ),
+          0
+        );
+    }
+
     matches.sort(
-      (a, b) =>
-        (
-          Number(a?.value) ||
+      (a, b) => {
+        const scoreA =
+          relevanceScore(a);
+
+        const scoreB =
+          relevanceScore(b);
+
+        if (
+          scoreA !== scoreB
+        ) {
+          return (
+            scoreB -
+            scoreA
+          );
+        }
+
+        return (
+          propertyValue(a) ||
           Infinity
         ) -
         (
-          Number(b?.value) ||
+          propertyValue(b) ||
           Infinity
-        )
+        );
+      }
     );
 
     const total =
@@ -513,12 +791,12 @@ export default async function handler(req, res) {
     matches =
       matches.slice(
         0,
-        limit
+        resultLimit
       );
 
     /*
       ========================================================
-      RESPOSTA LIMPA
+      RESPOSTA
       ========================================================
     */
 
@@ -574,9 +852,9 @@ export default async function handler(req, res) {
               "São Paulo",
 
             value:
-              Number(
-                property?.value
-              ) || 0,
+              propertyValue(
+                property
+              ),
 
             area:
               Number(
@@ -595,7 +873,8 @@ export default async function handler(req, res) {
 
             suites:
               Number(
-                property?.suites ||
+                property
+                  ?.suites ||
                 typology
                   ?.suites
               ) || 0,
@@ -633,11 +912,18 @@ export default async function handler(req, res) {
               "",
 
             address:
-              building?.address ||
+              building
+                ?.address ||
               null
           };
         }
       );
+
+    /*
+      ========================================================
+      LOG
+      ========================================================
+    */
 
     console.log(
       "SEARCH_PROPERTIES",
@@ -649,11 +935,25 @@ export default async function handler(req, res) {
         minPrice,
         maxPrice,
         source,
+
         inventory_count:
           inventory.length,
-        total
+
+        total,
+
+        pages_loaded:
+          Math.ceil(
+            inventory.length /
+            PAGE_SIZE
+          )
       }
     );
+
+    /*
+      ========================================================
+      RETURN
+      ========================================================
+    */
 
     return res
       .status(200)
@@ -694,8 +994,10 @@ export default async function handler(req, res) {
       .status(500)
       .json({
         success: false,
+
         error:
           "Erro interno na busca de imóveis",
+
         details:
           String(
             error?.message ||
