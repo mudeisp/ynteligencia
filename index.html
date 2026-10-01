@@ -5084,6 +5084,81 @@ body.explore-filter-mode .unified-search-main{
 }
 </style>
 
+
+<style id="wizard-filter-ai-3s-final">
+/* Wizard: sem foto / sem textos extras / somente Explorar */
+#match img,
+#match .wizard-photo,
+#match .wizard-avatar,
+#match .wizard-profile,
+#match .wizard-header-image,
+#match .step,
+#match .progress,
+#match .step-count,
+#match .inventory-switch,
+#match .wizard-actions,
+#match .options,
+#match .wizard-inner > *:not(.wizard-single-action):not(#wizardExploreOnly){
+  display:none!important;
+}
+
+#match .wizard-single-action,
+#wizardExploreOnly{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+#match .wizard-single-action{
+  min-height:100%;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+#wizardExploreOnly{
+  width:min(360px,100%)!important;
+  min-height:58px!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+/* filtro com botão X */
+#catalogFilters{
+  position:relative;
+}
+
+#closeFilters.filters-close{
+  display:grid!important;
+  place-items:center!important;
+  position:sticky!important;
+  top:0!important;
+  margin-left:auto!important;
+  z-index:20!important;
+  width:42px!important;
+  height:42px!important;
+  border:1px solid #DED8CD!important;
+  border-radius:50%!important;
+  background:#fff!important;
+  color:#171513!important;
+  font-size:26px!important;
+  line-height:1!important;
+}
+
+/* IA aparece em 3s na ficha */
+.ai-assistant-trigger{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+/* garante que não haja botão WhatsApp na ficha */
+.detail-share-btn,
+.detail-whatsapp-btn{
+  display:none!important;
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -5134,6 +5209,12 @@ body.explore-filter-mode .unified-search-main{
 
 
 <section class="wizard-wrap clean-filter-shell" id="match">
+  <div class="wizard-single-action">
+    <button id="wizardExploreOnly" type="button" class="primary wizard-explore-only-btn">
+      EXPLORAR IMÓVEIS
+    </button>
+  </div>
+
   <div class="clean-filter-page">
 
     <div class="clean-filter-top">
@@ -5317,7 +5398,7 @@ body.explore-filter-mode .unified-search-main{
     <div class="section-head">
 
       <h2>
-        Prefere procurar sozinho?
+        ?
       </h2>
 
       <p>
@@ -5368,9 +5449,22 @@ body.explore-filter-mode .unified-search-main{
       <div class="catalog-filters unified-catalog-filters" id="catalogFilters" aria-label="Filtros de compra">
         <!-- Elementos técnicos preservados para compatibilidade com a lógica atual -->
         <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true" style="display:none"></div>
-        <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros" style="display:none">×</button>
+        <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros">×</button>
 
         <div class="filter-grid unified-filter-grid">
+          <label class="unified-field">
+            <span>Região</span>
+            <select id="catalogRegion" class="field" aria-label="Região">
+              <option value="">Todas as regiões</option>
+              <option value="oeste">Zona Oeste</option>
+              <option value="sul">Zona Sul</option>
+              <option value="leste">Zona Leste</option>
+              <option value="norte">Zona Norte</option>
+              <option value="centro">Centro</option>
+              <option value="outras">Outras regiões</option>
+            </select>
+          </label>
+
           <label class="unified-field">
             <span>Estoque</span>
             <select id="catalogSource" class="field" aria-label="Tipo de estoque">
@@ -5513,10 +5607,7 @@ body.explore-filter-mode .unified-search-main{
   aria-label="Falar com o especialista pelo WhatsApp">
 
   <span class="specialist-photo-wrap">
-    <img
-      src="/PERFIL.jfif"
-      alt="Especialista Ynteligencia"
-      class="specialist-photo">
+    
     <span class="specialist-online" aria-hidden="true"></span>
   </span>
 
@@ -9856,13 +9947,7 @@ async function showPhotoModal(id){
     </main>
 
     <div class="detail-sticky-cta">
-      <button class="detail-ai-main-btn" type="button" aria-label="Conversar com a inteligência artificial sobre este imóvel">
-        <span class="detail-ai-main-icon" aria-hidden="true">🤖</span>
-        <span>
-          <strong>FALAR COM A IA</strong>
-          <small>Tire dúvidas sobre este imóvel</small>
-        </span>
-      </button>
+      
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
@@ -9891,6 +9976,7 @@ async function showPhotoModal(id){
   });
 
 document.body.appendChild(modal);
+  scheduleAiAssistantForProperty(p,modal);
 
   // Atendimento por IA agora fica disponível diretamente no CTA fixo da ficha.
 
@@ -13443,6 +13529,81 @@ body.ad-match-mode .refine-match-shell{
   window.addEventListener("load",()=>{
     setTimeout(applyCleanHeroPhoto,700);
     setTimeout(applyCleanHeroPhoto,1800);
+  });
+})();
+</script>
+
+
+<script id="region-neighborhood-filter-v2">
+(function(){
+  const MAP = {
+    oeste:["Perdizes","Pompéia","Pinheiros","Vila Madalena","Lapa","Alto da Lapa","Barra Funda","Butantã","Jaguaré","Sumaré","Vila Leopoldina","Alto de Pinheiros","Rio Pequeno","Vila Sônia","Morumbi"],
+    sul:["Moema","Vila Mariana","Chácara Klabin","Brooklin","Campo Belo","Saúde","Ipiranga","Paraíso","Aclimação","Jardins","Jardim Paulista","Itaim Bibi","Vila Nova Conceição","Santo Amaro","Campo Grande","Vila Clementino","Planalto Paulista","Mirandópolis"],
+    leste:["Tatuapé","Mooca","Anália Franco","Vila Prudente","Penha","Carrão","Belém","Brás","Água Rasa","Vila Formosa","Vila Matilde","Itaquera","Aricanduva","Sapopemba","São Mateus"],
+    norte:["Santana","Tucuruvi","Casa Verde","Mandaqui","Vila Guilherme","Vila Maria","Parada Inglesa","Jardim São Paulo","Lauzane Paulista","Limão","Freguesia do Ó","Tremembé","Jaçanã"],
+    centro:["Bela Vista","Consolação","Higienópolis","República","Santa Cecília","Sé","Liberdade","Cambuci","Bom Retiro","Campos Elíseos"],
+    outras:[]
+  };
+
+  function fill(){
+    const region=document.getElementById("catalogRegion");
+    const bairro=document.getElementById("catalogNeighborhood");
+    if(!region || !bairro)return;
+
+    const current=bairro.value;
+    const list=region.value
+      ? (MAP[region.value] || [])
+      : Object.values(MAP).flat();
+
+    bairro.innerHTML='<option value="">Todos os bairros</option>' +
+      [...new Set(list)]
+        .sort((a,b)=>a.localeCompare(b,"pt-BR"))
+        .map(v=>`<option value="${v}">${v}</option>`)
+        .join("");
+
+    if([...bairro.options].some(o=>o.value===current)){
+      bairro.value=current;
+    }
+  }
+
+  document.getElementById("catalogRegion")?.addEventListener("change",()=>{
+    fill();
+    const b=document.getElementById("catalogNeighborhood");
+    if(b)b.value="";
+  });
+
+  document.getElementById("closeFilters")?.addEventListener("click",()=>{
+    try{
+      if(typeof setFiltersOpen==="function"){
+        setFiltersOpen(false);
+      }else{
+        document.getElementById("catalogFilters")?.classList.remove("open");
+      }
+    }catch(e){}
+    document.body.classList.remove("explore-filter-mode");
+    document.body.style.overflow="";
+  });
+
+  fill();
+})();
+</script>
+
+
+<script id="ai-trigger-3s-fix">
+(function(){
+  document.addEventListener("click",function(e){
+    const trigger=e.target.closest(".ai-assistant-trigger,#aiAssistantTrigger");
+    if(!trigger)return;
+
+    const modal=document.getElementById("photoModal");
+    const id=modal?.dataset?.propertyId;
+    const property=(typeof propertyForInteraction==="function" && id)
+      ? propertyForInteraction(id)
+      : null;
+
+    if(property && typeof openAiAssistant==="function"){
+      openAiAssistant(property);
+    }
   });
 })();
 </script>
