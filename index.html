@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -3108,6 +3107,20 @@ body.match-mode .wizard-explore-only-inner{
 }
 </style>
 
+
+<style id="dock-cleanup-final">
+/* Rodapé simplificado: somente DESCOBRIR + PERFIL */
+.app-dock{
+  grid-template-columns:repeat(2,1fr)!important;
+}
+
+/* O bloco "Prefere procurar sozinho?" foi removido.
+   Mantém apenas o filtro/base usada pelo fluxo EXPLORAR IMÓVEIS. */
+#explore .section-head{
+  display:none!important;
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -3234,18 +3247,7 @@ body.match-mode .wizard-explore-only-inner{
 
   <div class="container">
 
-    <div class="section-head">
-
-      <h2>
-        Prefere procurar sozinho?
-      </h2>
-
-      <p>
-        Explore a base disponível e use os filtros
-        para encontrar uma oportunidade.
-      </p>
-
-    </div>
+    
 
     <div class="unified-search-panel" id="unifiedSearchPanel" aria-label="Busca de imóveis">
       <!-- Mantidos ocultos para preservar a lógica atual de São Paulo/SP no backend -->
@@ -3471,12 +3473,6 @@ body.match-mode .wizard-explore-only-inner{
 <nav class="app-dock" aria-label="Navegação principal">
   <button type="button" onclick="enterMatchMode()">
     <b>✦</b><span>DESCOBRIR</span>
-  </button>
-  <button type="button" onclick="openGeneralCatalog(true)">
-    <b>⌕</b><span>EXPLORAR</span>
-  </button>
-  <button type="button" onclick="showToast('Salvos será ativado em uma próxima etapa do produto.')">
-    <b>♡</b><span>SALVOS</span>
   </button>
   <button type="button" id="openAppMenuDock">
     <b>○</b><span>PERFIL</span>
