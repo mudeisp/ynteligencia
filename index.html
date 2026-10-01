@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -3153,6 +3152,208 @@ body.match-mode .wizard-explore-only-content{
   visibility:visible!important;
   opacity:1!important;
   pointer-events:auto!important;
+}
+</style>
+
+
+<style id="home-clean-final-fix">
+/* =========================================================
+   HOME MOBILE LIMPA — correção final
+========================================================= */
+
+@media(max-width:768px){
+
+  /* Header */
+  header{
+    position:fixed!important;
+    top:0!important;
+    left:0!important;
+    right:0!important;
+    z-index:100!important;
+  }
+
+  .nav{
+    min-height:72px!important;
+  }
+
+  /* Home começa abaixo do header */
+  .hero{
+    min-height:auto!important;
+    height:auto!important;
+    padding:
+      calc(92px + env(safe-area-inset-top))
+      0
+      34px!important;
+    display:block!important;
+    align-items:initial!important;
+    overflow:visible!important;
+  }
+
+  .hero .container{
+    width:calc(100% - 34px)!important;
+    max-width:none!important;
+    margin:0 auto!important;
+    text-align:center!important;
+  }
+
+  /* Remove resíduos visuais antigos */
+  .hero .container:after,
+  .hero .container::after,
+  .hero:after,
+  .hero::after{
+    content:none!important;
+    display:none!important;
+  }
+
+  .hero .eyebrow{
+    display:none!important;
+  }
+
+  /* Título */
+  .hero h1{
+    display:block!important;
+    width:100%!important;
+    max-width:520px!important;
+    margin:0 auto 20px!important;
+    padding:0!important;
+    color:#171513!important;
+    font-size:clamp(40px,11vw,54px)!important;
+    line-height:1.03!important;
+    letter-spacing:-.045em!important;
+    text-align:center!important;
+  }
+
+  .hero h1 span{
+    display:inline!important;
+    color:#171513!important;
+  }
+
+  /* Subtítulo */
+  .hero p{
+    width:100%!important;
+    max-width:470px!important;
+    margin:0 auto 28px!important;
+    color:#77736B!important;
+    font-size:17px!important;
+    line-height:1.55!important;
+    text-align:center!important;
+  }
+
+  /* Só um CTA */
+  .hero-actions{
+    display:block!important;
+    width:100%!important;
+    max-width:580px!important;
+    margin:0 auto!important;
+  }
+
+  .hero-actions .primary,
+  #startHero,
+  #wizardExploreOnly{
+    width:100%!important;
+    min-height:62px!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:18px!important;
+    background:#E4D0A3!important;
+    color:#171513!important;
+    font-size:18px!important;
+    font-weight:900!important;
+    box-shadow:none!important;
+  }
+
+  .hero-actions .secondary,
+  #exploreHero{
+    display:none!important;
+  }
+
+  /* Tira espaço fantasma abaixo da home */
+  body.home-mode{
+    min-height:100dvh!important;
+    height:auto!important;
+    overflow-y:auto!important;
+    padding-bottom:0!important;
+  }
+
+  body.home-mode main{
+    min-height:0!important;
+  }
+
+  body.home-mode .hero{
+    margin-bottom:0!important;
+  }
+
+  /* Esconde blocos vazios da home */
+  body.home-mode .wizard-wrap:not(.match-mode .wizard-wrap),
+  body.home-mode .explore,
+  body.home-mode .catalog,
+  body.home-mode .results{
+    display:none!important;
+  }
+
+  /* Remove WhatsApp / atendimento flutuante na home */
+  body.home-mode .specialist-float,
+  body.home-mode .whatsapp-float,
+  body.home-mode .floating-whatsapp,
+  body.home-mode .floating-contact,
+  body.home-mode [class*="specialist-float"],
+  body.home-mode [class*="whatsapp-float"]{
+    display:none!important;
+  }
+
+  /* Sem dock / rodapé */
+  .app-dock,
+  .mobile-bottom-nav,
+  .mobile-dock,
+  .bottom-nav,
+  #mobileDock{
+    display:none!important;
+  }
+
+  footer{
+    display:none!important;
+  }
+}
+
+/* Desktop também sem MATCH decorativo residual */
+.hero .container:after,
+.hero .container::after{
+  content:none!important;
+  display:none!important;
+}
+
+/* Esconde atendimento flutuante apenas na home em qualquer tela */
+body.home-mode .specialist-float,
+body.home-mode .whatsapp-float,
+body.home-mode .floating-whatsapp,
+body.home-mode .floating-contact{
+  display:none!important;
+}
+</style>
+
+
+<style id="final-button-fix">
+/* Remove CTA "Explorar imóveis" do topo no desktop */
+@media (min-width:769px){
+  header .nav-links,
+  header .top-explore,
+  header .header-explore,
+  header [data-action="explore"],
+  header a[href="#explore"],
+  header button[onclick*="openGeneralCatalog"],
+  header button[onclick*="explore"]{
+    display:none!important;
+  }
+}
+
+/* Mantém o botão principal central visível */
+#startHero,
+#wizardExploreOnly{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  cursor:pointer!important;
 }
 </style>
 
@@ -11440,6 +11641,111 @@ body.ad-match-mode .refine-match-shell{
   document
     .getElementById("wizardExploreOnly")
     ?.addEventListener("click",openCompleteFilter);
+})();
+</script>
+
+
+<script id="final-working-buttons">
+(function(){
+
+  function openWizardOnly(){
+    try{
+      document.body.classList.remove(
+        "catalog-mode",
+        "campaign-catalog-mode",
+        "ad-match-mode",
+        "match-results-mode"
+      );
+      document.body.classList.add("match-mode");
+      document.body.classList.remove("home-mode");
+
+      const match=document.getElementById("match");
+      if(match){
+        match.style.display="";
+        match.scrollTop=0;
+      }
+
+      const intro=document.querySelector(".wizard-explore-only");
+      if(intro){
+        intro.style.display="";
+      }
+    }catch(e){
+      console.error("Falha ao abrir wizard:",e);
+    }
+  }
+
+  function openFullExplorer(){
+    try{
+      document.body.classList.remove("match-mode","home-mode");
+
+      /* Prefer the app's own catalog function when present */
+      if(typeof window.openGeneralCatalog==="function"){
+        window.openGeneralCatalog(true);
+      }else{
+        const explore=document.getElementById("explore");
+        const catalog=document.getElementById("catalog");
+
+        if(explore){
+          explore.style.display="block";
+          explore.scrollIntoView({behavior:"smooth",block:"start"});
+        }
+
+        if(catalog){
+          catalog.classList.add("visible");
+          catalog.style.display="block";
+        }
+      }
+
+      /* Open the full filter on mobile */
+      const filters=document.getElementById("catalogFilters")
+        || document.querySelector(".catalog-filters");
+
+      if(filters){
+        filters.classList.add("open");
+        filters.style.display="";
+      }
+
+      document.querySelector(".filters-backdrop")?.classList.add("open");
+    }catch(e){
+      console.error("Falha ao abrir filtro completo:",e);
+    }
+  }
+
+  /* Main home CTA */
+  const homeBtn=document.getElementById("startHero");
+  if(homeBtn){
+    const clone=homeBtn.cloneNode(true);
+    homeBtn.replaceWith(clone);
+    clone.addEventListener("click",function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      openWizardOnly();
+    });
+  }
+
+  /* Wizard single CTA */
+  const wizardBtn=document.getElementById("wizardExploreOnly");
+  if(wizardBtn){
+    const clone=wizardBtn.cloneNode(true);
+    wizardBtn.replaceWith(clone);
+    clone.addEventListener("click",function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      openFullExplorer();
+    });
+  }
+
+  /* Final catalog search button */
+  const searchBtn=document.getElementById("catalogSearchBtn");
+  if(searchBtn){
+    searchBtn.addEventListener("click",function(){
+      const filters=document.getElementById("catalogFilters")
+        || document.querySelector(".catalog-filters");
+      filters?.classList.remove("open");
+      document.querySelector(".filters-backdrop")?.classList.remove("open");
+    });
+  }
+
 })();
 </script>
 
