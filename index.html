@@ -3719,6 +3719,35 @@ body.filter-direct-mode #explore .unified-catalog-filters{
 }
 </style>
 
+
+<style id="fast-inventory-ui">
+.fast-inventory-status{
+  margin:0 0 12px!important;
+  color:#8B847A!important;
+  font-size:11px!important;
+  font-weight:700!important;
+}
+
+.fast-inventory-status.ready{
+  color:#4D6B52!important;
+}
+
+body.filter-direct-mode #explore,
+body.filter-direct-mode #unifiedSearchPanel,
+body.filter-direct-mode #catalogFilters{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+@media(max-width:700px){
+  body.filter-direct-mode #catalogFilters{
+    transform:translateY(0)!important;
+    pointer-events:auto!important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -3863,7 +3892,12 @@ body.filter-direct-mode #explore .unified-catalog-filters{
         <div class="filters-backdrop" id="filtersBackdrop" aria-hidden="true" style="display:none"></div>
         <button class="filters-close" id="closeFilters" type="button" aria-label="Fechar filtros" style="display:none">×</button>
 
-        <div class="filter-grid unified-filter-grid">
+        
+        <div class="fast-inventory-status" id="fastInventoryStatus">
+          Estoque carregando em segundo plano…
+        </div>
+
+<div class="filter-grid unified-filter-grid">
           <label class="unified-field">
             <span>Região</span>
             <select id="catalogRegion" class="field" aria-label="Região">
@@ -7716,35 +7750,34 @@ async function ensureAiInventoryReady(){
   const started=Date.now();
 
   try{
-    if((!Array.isArray(properties) || properties.length===0) && typeof loadInventory==="function"){
-      if(!inventoryLoading){
-        try{ await loadInventory(); }catch(error){}
+    /*
+      Prioridade: responder com inventário já disponível.
+      Não vamos travar a IA esperando toda a base.
+    */
+    if(Array.isArray(properties) && properties.length>0){
+      if(typeof loadUsedInventory==="function" && !usedInventoryLoaded && !usedInventoryLoading){
+        loadUsedInventory().catch(()=>{});
       }
-
-      while(inventoryLoading && Date.now()-started<6500){
-        await sleep(160);
-      }
+      return true;
     }
 
-    /* Para a IA, não esperamos o carregamento ocioso dos usados.
-       Carregamos a base de usados imediatamente antes da consulta. */
-    if(typeof loadUsedInventory==="function" && !usedInventoryLoaded){
-      try{
-        await loadUsedInventory();
-      }catch(error){
-        console.warn("AI_USED_INVENTORY_LOAD_ERROR",error);
-      }
+    if(typeof loadInventory==="function" && !inventoryLoading){
+      loadInventory().catch(()=>{});
     }
 
-    /* Se ainda houver carregamento em andamento, aguarda mais um pouco. */
     while(
-      (inventoryLoading || usedInventoryLoading) &&
-      Date.now()-started<8000
+      (!Array.isArray(properties) || properties.length===0) &&
+      Date.now()-started<2200
     ){
-      await sleep(160);
+      await sleep(120);
     }
+
+    if(typeof loadUsedInventory==="function" && !usedInventoryLoaded && !usedInventoryLoading){
+      loadUsedInventory().catch(()=>{});
+    }
+
   }catch(error){
-    console.warn("AI_INVENTORY_WAIT_ERROR",error);
+    console.warn("AI_INVENTORY_FAST_READY_ERROR",error);
   }
 
   return Array.isArray(properties) && properties.length>0;
@@ -7860,6 +7893,11 @@ function aiInventoryContext(message){
 
   return {
     inventory_ready:Boolean(inventory.length>0),
+    inventory_partial:Boolean(
+      inventory.length>0 &&
+      typeof usedInventoryLoaded!=="undefined" &&
+      !usedInventoryLoaded
+    ),
     inventory_count:inventory.length,
     recognized_filters:recognized,
     query:{
@@ -11195,11 +11233,11 @@ async function loadInventory(){
 
     const loadUsedLater=()=>loadUsedInventory().catch(()=>{});
 
-    if("requestIdleCallback" in window){
-      window.requestIdleCallback(loadUsedLater,{timeout:1400});
-    }else{
-      setTimeout(loadUsedLater,450);
-    }
+    /*
+      Usados entram cedo, mas SEM bloquear a home.
+      Primeiro paint acontece normalmente e o CSV começa logo depois.
+    */
+    setTimeout(loadUsedLater,180);
 
   }catch(error){
     console.error("Falha ao carregar inventário:",error);
@@ -12532,51 +12570,58 @@ body.ad-match-mode .refine-match-shell{
       "ad-match-mode",
       "campaign-catalog-mode"
     );
-    document.body.classList.add("filter-direct-mode");
 
-    try{
-      if(typeof openGeneralCatalog==="function"){
-        openGeneralCatalog(true);
-      }else{
-        document.getElementById("catalog")?.classList.add("visible");
-      }
-    }catch(error){
-      console.error("OPEN_CATALOG_ERROR",error);
-    }
+    document.body.classList.add("filter-direct-mode");
 
     const exploreSection=document.getElementById("explore");
     const unifiedPanel=document.getElementById("unifiedSearchPanel");
+    const filters=
+      document.getElementById("catalogFilters")
+      || document.querySelector(".catalog-filters")
+      || document.querySelector(".unified-catalog-filters");
 
+    /* Primeiro paint: abre o filtro imediatamente */
     if(exploreSection){
-      exploreSection.style.display="block";
+      exploreSection.style.setProperty("display","block","important");
     }
+
     if(unifiedPanel){
       unifiedPanel.style.setProperty("display","block","important");
     }
 
-    requestAnimationFrame(()=>{
-      requestAnimationFrame(()=>{
-        const filters =
-          document.getElementById("catalogFilters")
-          || document.querySelector(".catalog-filters")
-          || document.querySelector(".unified-catalog-filters");
+    if(filters){
+      filters.classList.add("open");
+      filters.style.setProperty("display","block","important");
+      filters.style.setProperty("visibility","visible","important");
+      filters.style.setProperty("opacity","1","important");
+    }
 
+    try{
+      if(typeof populateCatalogNeighborhoodsByRegion==="function"){
+        populateCatalogNeighborhoodsByRegion();
+      }
+    }catch(e){}
+
+    /* Só depois prepara o catálogo */
+    setTimeout(()=>{
+      try{
+        if(typeof openGeneralCatalog==="function"){
+          openGeneralCatalog(false);
+        }else{
+          document.getElementById("catalog")?.classList.add("visible");
+        }
+      }catch(error){
+        console.warn("OPEN_CATALOG_BACKGROUND_ERROR",error);
+      }
+
+      /* Garante que openGeneralCatalog não feche o filtro */
+      requestAnimationFrame(()=>{
         if(filters){
           filters.classList.add("open");
-          filters.style.display="";
-        }
-
-        const backdrop =
-          document.getElementById("filtersBackdrop")
-          || document.querySelector(".filters-backdrop");
-
-        backdrop?.classList.add("open");
-
-        if(typeof setFiltersOpen==="function"){
-          try{ setFiltersOpen(true); }catch(e){}
+          filters.style.setProperty("display","block","important");
         }
       });
-    });
+    },0);
   }
 
   function openGeneralAI(){
@@ -12618,6 +12663,7 @@ body.ad-match-mode .refine-match-shell{
 </script>
 
 
+
 <script id="region-neighborhood-filter">
 (function(){
 
@@ -12643,13 +12689,14 @@ body.ad-match-mode .refine-match-shell{
     norte:[
       "Santana","Tucuruvi","Casa Verde","Mandaqui","Vila Guilherme",
       "Vila Maria","Parada Inglesa","Jardim São Paulo",
-      "Lauzane Paulista","Limão","Freguesia do Ó",
-      "Tremembé","Jaçanã"
+      "Lauzane Paulista","Limão","Freguesia do Ó","Tremembé","Jaçanã"
     ],
     centro:[
-      "Bela Vista","Consolação","Higienópolis","República","Santa Cecília",
-      "Sé","Liberdade","Cambuci","Bom Retiro","Campos Elíseos"
-    ]
+      "Bela Vista","Consolação","Higienópolis","República",
+      "Santa Cecília","Sé","Liberdade","Cambuci","Bom Retiro",
+      "Campos Elíseos"
+    ],
+    outras:[]
   };
 
   function normalizeText(v){
@@ -12658,22 +12705,6 @@ body.ad-match-mode .refine-match-shell{
       .replace(/[\u0300-\u036f]/g,"")
       .toLowerCase()
       .trim();
-  }
-
-  function getInventoryNeighborhoods(){
-    if(!Array.isArray(window.properties) && typeof properties==="undefined"){
-      return [];
-    }
-
-    const list = (typeof properties!=="undefined" && Array.isArray(properties))
-      ? properties
-      : [];
-
-    return [...new Set(
-      list
-        .map(p=>String(p?.neighborhood||"").trim())
-        .filter(Boolean)
-    )].sort((a,b)=>a.localeCompare(b,"pt-BR"));
   }
 
   function regionForNeighborhood(name){
@@ -12693,6 +12724,36 @@ body.ad-match-mode .refine-match-shell{
     return "outras";
   }
 
+  function currentInventoryNeighborhoods(){
+    try{
+      if(typeof properties==="undefined" || !Array.isArray(properties)){
+        return [];
+      }
+
+      return [...new Set(
+        properties
+          .map(p=>String(p?.neighborhood||"").trim())
+          .filter(Boolean)
+      )];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function neighborhoodsForRegion(region){
+    const base = region
+      ? [...(REGION_MAP_FILTER[region] || [])]
+      : Object.values(REGION_MAP_FILTER).flat();
+
+    const live = currentInventoryNeighborhoods().filter(item=>{
+      return !region || regionForNeighborhood(item)===region;
+    });
+
+    return [...new Set([...base,...live])]
+      .filter(Boolean)
+      .sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  }
+
   function populateNeighborhoods(){
     const region=document.getElementById("catalogRegion");
     const neighborhood=document.getElementById("catalogNeighborhood");
@@ -12700,17 +12761,11 @@ body.ad-match-mode .refine-match-shell{
     if(!region || !neighborhood)return;
 
     const selected=neighborhood.value;
-    let neighborhoods=getInventoryNeighborhoods();
-
-    if(region.value){
-      neighborhoods=neighborhoods.filter(
-        item=>regionForNeighborhood(item)===region.value
-      );
-    }
+    const list=neighborhoodsForRegion(region.value);
 
     neighborhood.innerHTML='<option value="">Todos os bairros</option>';
 
-    neighborhoods.forEach(item=>{
+    list.forEach(item=>{
       const option=document.createElement("option");
       option.value=item;
       option.textContent=item;
@@ -12723,11 +12778,6 @@ body.ad-match-mode .refine-match-shell{
   }
 
   function applyRegionFilter(){
-    const region=document.getElementById("catalogRegion");
-    if(typeof window.catalogRegion!=="undefined"){
-      window.catalogRegion=region?.value || "";
-    }
-
     populateNeighborhoods();
 
     const neighborhood=document.getElementById("catalogNeighborhood");
@@ -12736,34 +12786,63 @@ body.ad-match-mode .refine-match-shell{
     try{
       if(typeof updateCatalogUrl==="function") updateCatalogUrl();
     }catch(e){}
+  }
+
+  document.getElementById("catalogRegion")
+    ?.addEventListener("change",applyRegionFilter);
+
+  document.getElementById("catalogNeighborhood")
+    ?.addEventListener("change",()=>{
+      try{
+        if(typeof updateCatalogUrl==="function") updateCatalogUrl();
+      }catch(e){}
+    });
+
+  /* Imediato: sem esperar inventário */
+  populateNeighborhoods();
+
+  /* Depois apenas incorpora bairros reais adicionais */
+  window.addEventListener("load",()=>{
+    setTimeout(populateNeighborhoods,900);
+    setTimeout(populateNeighborhoods,2600);
+  });
+
+  window.populateCatalogNeighborhoodsByRegion=populateNeighborhoods;
+
+})();
+</script>
+
+
+
+<script id="fast-inventory-status-script">
+(function(){
+  function updateInventoryStatus(){
+    const el=document.getElementById("fastInventoryStatus");
+    if(!el)return;
 
     try{
-      if(typeof executeCatalogSearch==="function") executeCatalogSearch();
+      const count=typeof properties!=="undefined" && Array.isArray(properties)
+        ? properties.length
+        : 0;
+
+      const usedReady=
+        typeof usedInventoryLoaded!=="undefined"
+          ? usedInventoryLoaded
+          : false;
+
+      if(count>0 && usedReady){
+        el.textContent=`${count} imóveis disponíveis`;
+        el.classList.add("ready");
+      }else if(count>0){
+        el.textContent=`${count} imóveis disponíveis · completando estoque…`;
+      }else{
+        el.textContent="Estoque carregando em segundo plano…";
+      }
     }catch(e){}
   }
 
-  const region=document.getElementById("catalogRegion");
-  const neighborhood=document.getElementById("catalogNeighborhood");
-
-  region?.addEventListener("change",applyRegionFilter);
-
-  neighborhood?.addEventListener("change",()=>{
-    try{
-      if(typeof updateCatalogUrl==="function") updateCatalogUrl();
-      if(typeof executeCatalogSearch==="function") executeCatalogSearch();
-    }catch(e){}
-  });
-
-  // Populate after inventory load and again shortly after used inventory enters.
-  window.addEventListener("load",()=>{
-    setTimeout(populateNeighborhoods,500);
-    setTimeout(populateNeighborhoods,1800);
-    setTimeout(populateNeighborhoods,3500);
-  });
-
-  // Expose helper for other app flows.
-  window.populateCatalogNeighborhoodsByRegion=populateNeighborhoods;
-
+  updateInventoryStatus();
+  setInterval(updateInventoryStatus,700);
 })();
 </script>
 
