@@ -7071,57 +7071,42 @@ let aiAssistantSending=false;
 let aiAssistantTriggerTimer=null;
 
 function aiPropertyContext(p){
-  const raw=p?.rawData && typeof p.rawData==="object" ? p.rawData : {};
-  const building=raw.building && typeof raw.building==="object" ? raw.building : {};
-  const typology=raw.typology && typeof raw.typology==="object" ? raw.typology : {};
-  const paymentConditions=Array.isArray(building?.payment_conditions)
-    ? building.payment_conditions.slice(0,30)
-    : [];
+  if(!p)return {};
+
   return {
-    id:String(p?.id||""),
-    building_id:String(
-      raw?.building_id ||
-      building?.id ||
-      p?.building_id ||
-      ""
-    ),
-    name:p?.name||"",
-    neighborhood:p?.neighborhood||"",
-    city:p?.city||building?.address?.city||"São Paulo",
-    source:p?.source||"",
-    value:Number(p?.value)||0,
-    area:Number(p?.area)||0,
-    bedrooms:Number(p?.bedrooms)||0,
-    suites:Number(p?.suites)||0,
-    parking:Number(p?.parking)||0,
-    availability:{
-      typology_stock:Number(typology?.stock)||Number(p?.stock)||0,
-      building_stock:Number(building?.stock)||0,
-      status:building?.stage||building?.status||"",
-      price_table_updated_at:building?.last_updated_pricetable_at||building?.updated_at||""
-    },
-    commercial:{
-      payment_conditions:paymentConditions,
-      opportunity:building?.opportunity||null,
-      original_price:typology?.original_price??null,
-      discount_price:typology?.discount_price??null
-    },
-    developer:building?.developer||building?.publisher||"",
-    delivery:building?.opening_date||"",
-    description:building?.description||p?.description||"",
-    address:building?.address||null,
-    features:Array.isArray(building?.building_features)?building.building_features.slice(0,30):[],
-    typology:{
-      type:typology?.type||"",
-      private_area:typology?.private_area||null,
-      bedrooms:typology?.bedrooms??null,
-      bathrooms:typology?.bathrooms??null,
-      suites:typology?.suites??null,
-      parking:typology?.parking??null,
-      stock:typology?.stock??null,
-      original_price:typology?.original_price??null,
-      discount_price:typology?.discount_price??null
-    }
+    id:String(p.id||""),
+    building_id:String(p.building_id||""),
+    name:p.name||"",
+    neighborhood:p.neighborhood||"",
+    city:p.city||"",
+    value:Number(p.value)||0,
+    area:Number(p.area)||0,
+    bedrooms:Number(p.bedrooms)||0,
+    bathrooms:Number(p.bathrooms)||0,
+    suites:Number(p.suites)||0,
+    parking:Number(p.parking)||0,
+    stock:Number(p.stock)||0,
+    source:p.source||"",
+    status:p.status||"",
+    developer:p.developer||"",
+    property_url:p.property_url||"",
+    image_url:p.image_url||"",
+    address:p.address||null,
+
+    /*
+      Mantém compatibilidade com propriedades oriundas do catálogo.
+    */
+    type:p.type||"",
+    description:p.description||"",
+    property_type:p.property_type||"",
+    rawData:
+      p.rawData && typeof p.rawData==="object"
+        ? p.rawData
+        : (
+            p.raw_data && typeof p.raw_data==="object"
+              ? p.raw_data
+              : null
+          )
   };
 }
 
@@ -8440,8 +8425,58 @@ async function sendAiAssistantMessage(text){
         Array.isArray(ctx.matches) &&
         ctx.matches.length === 1
       ){
-        aiLastSelectedProperty=
-          ctx.matches[0];
+        const foundProperty = ctx.matches[0];
+
+        aiLastSelectedProperty = foundProperty;
+
+        /*
+          TRANSIÇÃO AUTOMÁTICA:
+          a partir daqui a conversa deixa de ser "busca geral"
+          e passa a usar o MESMO contexto de imóvel do fluxo Ver detalhes.
+        */
+        aiAssistantProperty = {
+          ...foundProperty,
+
+          /*
+            Compatibilidade com o objeto já usado pelo app.
+          */
+          id: foundProperty.id || foundProperty.building_id || "",
+          name: foundProperty.name || "",
+          neighborhood: foundProperty.neighborhood || "",
+          city: foundProperty.city || "",
+          value: Number(foundProperty.value) || 0,
+          area: Number(foundProperty.area) || 0,
+          bedrooms: Number(foundProperty.bedrooms) || 0,
+          bathrooms: Number(foundProperty.bathrooms) || 0,
+          suites: Number(foundProperty.suites) || 0,
+          parking: Number(foundProperty.parking) || 0,
+          stock: Number(foundProperty.stock) || 0,
+          source: foundProperty.source || "novos",
+          status: foundProperty.status || "",
+          developer: foundProperty.developer || "",
+          property_url: foundProperty.property_url || "",
+          image_url: foundProperty.image_url || "",
+          address: foundProperty.address || null,
+
+          /*
+            Crucial: mensagens seguintes passam a ir em mode=property.
+          */
+          generic_search: false
+        };
+
+        console.log(
+          "MATCH_IA_SWITCH_TO_PROPERTY",
+          aiAssistantProperty
+        );
+
+        const aiInput =
+          document
+            .getElementById("aiAssistantInput");
+
+        if(aiInput){
+          aiInput.placeholder =
+            `Pergunte sobre ${aiAssistantProperty.name || "este imóvel"}...`;
+        }
       }
 
       if(
