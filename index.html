@@ -9988,12 +9988,10 @@ function setCatalogRegion(regionKey){
   fillCatalogNeighborhoodsForRegion(catalogRegion);
   $("catalogNeighborhood").value="";
 
-  // Se o catálogo já estiver aberto, a troca de região atualiza na hora
-  // e também gera o caminho compartilhável.
-  if($("catalog").classList.contains("visible")){
-    updateCatalogUrl();
-    executeCatalogSearch();
-  }
+  /*
+    A decisão de executar busca automática agora pertence a
+    maybeAutoExecuteCatalogSearch(), que exige 4 critérios.
+  */
 }
 
 document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
@@ -10899,7 +10897,16 @@ async function executeCatalogSearch(){
   $("catalog").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-$("catalogSearchBtn").addEventListener("click", executeCatalogSearch);
+$("catalogSearchBtn").addEventListener("click",()=>{
+  catalogAutoSearchStarted=true;
+
+  if(catalogAutoSearchTimer){
+    clearTimeout(catalogAutoSearchTimer);
+    catalogAutoSearchTimer=null;
+  }
+
+  executeCatalogSearch();
+});
 
 $("catalogLoadMore")?.addEventListener("click",async()=>{
   const button=$("catalogLoadMore");
@@ -10924,16 +10931,195 @@ $("catalogSearch").addEventListener("keydown", event=>{
 });
 
 
+/*
+  =========================================================
+  EXPLORAR · RECOMENDAÇÃO AUTOMÁTICA APÓS 4 CRITÉRIOS
+  =========================================================
+
+  Antes de 4 critérios:
+    - não abre resultados automaticamente;
+    - apenas preserva os filtros escolhidos.
+
+  Ao chegar em 4:
+    - executa a busca automaticamente.
+
+  Depois que já existem 4 ou mais:
+    - qualquer mudança relevante atualiza os resultados.
+
+  O botão BUSCAR IMÓVEIS continua funcionando com qualquer
+  quantidade de critérios.
+*/
+
+let catalogAutoSearchTimer=null;
+let catalogAutoSearchStarted=false;
+
+function catalogFilledCriteriaCount(){
+  const values=[
+    /*
+      Região
+    */
+    catalogRegion || "",
+
+    /*
+      Bairro
+    */
+    $("catalogNeighborhood")?.value || "",
+
+    /*
+      Nome do empreendimento / condomínio
+    */
+    clean($("catalogSearch")?.value || ""),
+
+    /*
+      Estoque só conta se o usuário restringiu o padrão "todos"
+    */
+    (
+      ($("catalogSource")?.value || "todos")!=="todos"
+        ? $("catalogSource")?.value
+        : ""
+    ),
+
+    /*
+      Tipo
+    */
+    $("catalogType")?.value || "",
+
+    /*
+      Dormitórios
+    */
+    $("catalogBedrooms")?.value || "",
+
+    /*
+      Faixa de preço: mínimo e máximo são critérios separados,
+      porque são dois campos efetivamente preenchidos.
+    */
+    numberBR($("minPrice")?.value || "") > 0
+      ? $("minPrice").value
+      : "",
+
+    numberBR($("maxPrice")?.value || "") > 0
+      ? $("maxPrice").value
+      : "",
+
+    /*
+      Área mínima
+    */
+    numberBR($("minArea")?.value || "") > 0
+      ? $("minArea").value
+      : "",
+
+    /*
+      Vagas: "0" é uma escolha válida e precisa contar.
+    */
+    $("catalogParking")?.value !== undefined &&
+    $("catalogParking")?.value !== ""
+      ? $("catalogParking").value
+      : "",
+
+    /*
+      Condomínio e IPTU
+    */
+    numberBR($("maxCondo")?.value || "") > 0
+      ? $("maxCondo").value
+      : "",
+
+    numberBR($("maxIptu")?.value || "") > 0
+      ? $("maxIptu").value
+      : ""
+  ];
+
+  return values.filter(value=>
+    String(value ?? "").trim()!==""
+  ).length;
+}
+
+function maybeAutoExecuteCatalogSearch({
+  debounce=false
+}={}){
+  const count=
+    catalogFilledCriteriaCount();
+
+  /*
+    Com menos de 4 filtros, não mostramos resultados
+    automaticamente.
+  */
+  if(count<4){
+    catalogAutoSearchStarted=false;
+
+    if(catalogAutoSearchTimer){
+      clearTimeout(catalogAutoSearchTimer);
+      catalogAutoSearchTimer=null;
+    }
+
+    /*
+      Se a busca anterior foi automática e o cliente removeu
+      filtros até ficar abaixo de 4, ocultamos os resultados.
+      O botão BUSCAR ainda pode reabri-los manualmente.
+    */
+    if($("catalog")?.classList.contains("visible")){
+      $("catalog")?.classList.remove("visible");
+    }
+
+    return;
+  }
+
+  const run=()=>{
+    catalogAutoSearchTimer=null;
+    catalogAutoSearchStarted=true;
+    executeCatalogSearch();
+  };
+
+  if(debounce){
+    if(catalogAutoSearchTimer){
+      clearTimeout(catalogAutoSearchTimer);
+    }
+
+    catalogAutoSearchTimer=
+      setTimeout(run,450);
+  }else{
+    run();
+  }
+}
+
+
+/*
+  Selects relevantes:
+  o 4º preenchimento dispara na hora.
+  Ordenação NÃO conta como critério, mas se resultados já estão
+  visíveis ela continua reordenando normalmente.
+*/
 [
   "catalogNeighborhood",
   "catalogSource",
-  "catalogSort",
   "catalogType",
   "catalogBedrooms",
   "catalogParking"
 ]
-.forEach(id=>$(id)?.addEventListener("change",()=>{updateCatalogUrl();executeCatalogSearch();}));
+.forEach(id=>{
+  $(id)?.addEventListener("change",()=>{
+    updateCatalogUrl();
+    maybeAutoExecuteCatalogSearch();
+  });
+});
 
+
+/*
+  Ordenar não é um critério de busca.
+  Só atualiza quando já existe uma lista de resultados aberta.
+*/
+$("catalogSort")?.addEventListener("change",()=>{
+  updateCatalogUrl();
+
+  if($("catalog")?.classList.contains("visible")){
+    renderCatalog();
+  }
+});
+
+
+/*
+  Texto e números usam debounce para não consultar o backend
+  a cada tecla.
+*/
 [
   "catalogSearch",
   "minPrice",
@@ -10942,7 +11128,14 @@ $("catalogSearch").addEventListener("keydown", event=>{
   "maxCondo",
   "maxIptu"
 ]
-.forEach(id=>$(id)?.addEventListener("input",updateCatalogUrl));
+.forEach(id=>{
+  $(id)?.addEventListener("input",()=>{
+    updateCatalogUrl();
+    maybeAutoExecuteCatalogSearch({
+      debounce:true
+    });
+  });
+});
 
 
 function resetCatalogState(render=true){
@@ -11044,19 +11237,42 @@ function openGeneralCatalog(openFilters=true){
   currentMatchById.clear();
   document.body.classList.remove("home-mode");
   leaveMatchMode();
-  $("catalog").classList.add("visible");
-  renderCatalog();
+
+  /*
+    EXPLORAR:
+    não exibe o inventário inteiro imediatamente.
+    Resultados só aparecem quando:
+      1) o cliente preencher 4 critérios; ou
+      2) clicar em BUSCAR IMÓVEIS.
+  */
+  $("catalog")?.classList.remove("visible");
 
   const mobileFilter=window.matchMedia("(max-width:700px)").matches;
+
   if(openFilters && mobileFilter){
     setFiltersOpen(true);
   }else{
     setFiltersOpen(false);
-    $("explore").scrollIntoView({behavior:"smooth",block:"start"});
   }
+
+  $("explore")?.scrollIntoView({
+    behavior:"smooth",
+    block:"start"
+  });
 }
 
-$("resetCatalogFilters")?.addEventListener("click",()=>resetCatalogState(true));
+$("resetCatalogFilters")?.addEventListener("click",()=>{
+  resetCatalogState(false);
+  catalogAutoSearchStarted=false;
+
+  if(catalogAutoSearchTimer){
+    clearTimeout(catalogAutoSearchTimer);
+    catalogAutoSearchTimer=null;
+  }
+
+  $("catalog")?.classList.remove("visible");
+  updateCatalogUrl();
+});
 
 
 /* =========================================================
@@ -13198,6 +13414,19 @@ if ("serviceWorker" in navigator) {
     regionSelect.addEventListener("change",()=>{
       if(typeof setCatalogRegion==="function"){
         setCatalogRegion(regionSelect.value || "");
+      }
+
+      /*
+        Região é um critério válido da busca.
+        Como o select fica em um script posterior, chamamos
+        o controlador automático aqui também.
+      */
+      if(typeof updateCatalogUrl==="function"){
+        updateCatalogUrl();
+      }
+
+      if(typeof maybeAutoExecuteCatalogSearch==="function"){
+        maybeAutoExecuteCatalogSearch();
       }
     });
 
