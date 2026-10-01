@@ -7439,6 +7439,62 @@ function aiOruloParseMoney(text){
   return {min,max};
 }
 
+function aiGetRawProperty(p){
+  return p?.rawData && typeof p.rawData==="object"
+    ? p.rawData
+    : {};
+}
+
+function aiGetPropertySearchText(p){
+  const raw=aiGetRawProperty(p);
+  const building=raw?.building && typeof raw.building==="object"
+    ? raw.building
+    : {};
+
+  const address=building?.address && typeof building.address==="object"
+    ? building.address
+    : {};
+
+  return norm([
+    p?.name,
+    p?.neighborhood,
+    p?.address,
+    p?.description,
+
+    raw?.name,
+    raw?.title,
+    raw?.project_name,
+    raw?.development_name,
+    raw?.building_name,
+
+    building?.name,
+    building?.title,
+    building?.commercial_name,
+    building?.development_name,
+    building?.description,
+
+    address?.neighborhood,
+    address?.street,
+    address?.city
+  ].filter(Boolean).join(" "));
+}
+
+function aiGetPropertyDisplayName(p){
+  const raw=aiGetRawProperty(p);
+  const building=raw?.building && typeof raw.building==="object"
+    ? raw.building
+    : {};
+
+  return clean(
+    p?.name ||
+    building?.name ||
+    building?.commercial_name ||
+    raw?.name ||
+    raw?.title ||
+    "Empreendimento"
+  );
+}
+
 function aiOruloContext(message){
   const inventory=Array.isArray(newPropertiesCache)?newPropertiesCache:[];
   const historyText=(Array.isArray(aiAssistantHistory)?aiAssistantHistory:[])
@@ -7460,18 +7516,44 @@ function aiOruloContext(message){
 
   const neighborhoods=[...new Set(
     inventory
-      .map(p=>clean(p?.neighborhood||""))
+      .map(p=>{
+        const raw=aiGetRawProperty(p);
+        const building=raw?.building && typeof raw.building==="object" ? raw.building : {};
+        return clean(
+          p?.neighborhood ||
+          building?.address?.neighborhood ||
+          raw?.neighborhood ||
+          ""
+        );
+      })
       .filter(Boolean)
   )].sort((a,b)=>b.length-a.length);
 
   const names=[...new Set(
     inventory
-      .map(p=>clean(p?.name||""))
-      .filter(v=>v.length>=4)
+      .flatMap(p=>{
+        const raw=aiGetRawProperty(p);
+        const building=raw?.building && typeof raw.building==="object" ? raw.building : {};
+        return [
+          p?.name,
+          raw?.name,
+          raw?.title,
+          raw?.project_name,
+          raw?.development_name,
+          raw?.building_name,
+          building?.name,
+          building?.title,
+          building?.commercial_name,
+          building?.development_name
+        ];
+      })
+      .map(clean)
+      .filter(v=>v && v.length>=4)
   )].sort((a,b)=>b.length-a.length);
 
   /*
-    1. Empreendimento: match por nome completo/parcial normalizado.
+    Nome do empreendimento:
+    procura em múltiplos campos do Órulo, não só em p.name.
   */
   for(const value of names){
     const key=norm(value);
@@ -7481,18 +7563,12 @@ function aiOruloContext(message){
     }
   }
 
-  /*
-    2. Bairro:
-       - aceita nome completo
-       - aceita "Brooklin" contra "Brooklin Paulista"/"Brooklin Novo"
-       - aceita tokens relevantes vindos da frase do usuário
-  */
   const stop=new Set([
     "apartamento","apartamentos","imovel","imoveis","novo","novos",
     "lancamento","lancamentos","ate","maximo","minimo","quero",
     "procuro","dorm","dorms","dormitorio","dormitorios","quarto",
     "quartos","mil","milhao","milhoes","reais","com","para","por",
-    "uma","um","dois","tres","quatro"
+    "uma","um","dois","tres","quatro","voces","voce","tem","tenho"
   ]);
 
   const userTokens=combined
@@ -7515,13 +7591,8 @@ function aiOruloContext(message){
     }
   }
 
-  /*
-    Se ainda não encontrou bairro no inventário,
-    usa o primeiro token textual plausível como intenção de bairro.
-    Isso permite "Brooklin" mesmo antes de aparecer exatamente no cache.
-  */
   let neighborhoodIntent="";
-  if(!neighborhood && userTokens.length){
+  if(!neighborhood && !exactName && userTokens.length){
     neighborhoodIntent=userTokens[0];
   }
 
@@ -7530,24 +7601,23 @@ function aiOruloContext(message){
   const filtered=inventory.filter(p=>{
     if(!p)return false;
 
+    const searchText=aiGetPropertySearchText(p);
+
     if(exactName){
-      if(!norm(p.name||"").includes(norm(exactName)))return false;
+      const exactTokens=norm(exactName).split(/\s+/).filter(Boolean);
+      if(!exactTokens.every(t=>searchText.includes(t)))return false;
     }
 
     if(searchNeighborhood){
-      const hay=norm(
-        `${p.neighborhood||""} ${p.address||""} ${p.name||""}`
-      );
-
       const tokens=norm(searchNeighborhood)
         .split(/\s+/)
         .filter(Boolean);
 
-      if(!tokens.every(t=>hay.includes(t)))return false;
+      if(!tokens.every(t=>searchText.includes(t)))return false;
     }
 
     if(bedrooms){
-      const pBedrooms=Number(p.bedrooms||0);
+      const pBedrooms=Number(p.bedrooms||p?.rawData?.typology?.bedrooms||0);
       if(pBedrooms!==bedrooms)return false;
     }
 
@@ -7565,6 +7635,33 @@ function aiOruloContext(message){
     money.max
   );
 
+  /*
+    Alternativas próximas:
+    só usa critérios que o cliente realmente informou.
+    Não inventa dormitórios, preço ou região.
+  */
+  let alternatives=[];
+
+  if(recognized && filtered.length===0){
+    alternatives=inventory
+      .filter(p=>{
+        const text=aiGetPropertySearchText(p);
+
+        if(searchNeighborhood){
+          const tokens=norm(searchNeighborhood).split(/\s+/).filter(Boolean);
+          if(!tokens.every(t=>text.includes(t)))return false;
+        }
+
+        if(exactName){
+          const nameTokens=norm(exactName).split(/\s+/).filter(Boolean);
+          if(!nameTokens.some(t=>text.includes(t)))return false;
+        }
+
+        return true;
+      })
+      .slice(0,6);
+  }
+
   return {
     inventory_ready:inventory.length>0,
     inventory_count:inventory.length,
@@ -7580,16 +7677,24 @@ function aiOruloContext(message){
     total:filtered.length,
     matches:filtered.slice(0,12).map(p=>({
       id:String(p.id||""),
-      name:p.name||"",
-      neighborhood:p.neighborhood||"",
-      city:p.city||activeCity||"São Paulo",
+      name:aiGetPropertyDisplayName(p),
+      neighborhood:p.neighborhood||p?.rawData?.building?.address?.neighborhood||"",
+      city:p.city||p?.rawData?.building?.address?.city||activeCity||"São Paulo",
       value:Number(p.value)||0,
       area:Number(p.area)||0,
-      bedrooms:Number(p.bedrooms)||0,
-      suites:Number(p.suites)||0,
-      parking:Number(p.parking)||0,
+      bedrooms:Number(p.bedrooms||p?.rawData?.typology?.bedrooms||0),
+      suites:Number(p.suites||p?.rawData?.typology?.suites||0),
+      parking:Number(p.parking||p?.rawData?.typology?.parking||0),
       source:"novos",
-      status:p.status||""
+      status:p.status||p?.rawData?.building?.stage||""
+    })),
+    alternatives:alternatives.map(p=>({
+      id:String(p.id||""),
+      name:aiGetPropertyDisplayName(p),
+      neighborhood:p.neighborhood||p?.rawData?.building?.address?.neighborhood||"",
+      value:Number(p.value)||0,
+      bedrooms:Number(p.bedrooms||p?.rawData?.typology?.bedrooms||0),
+      area:Number(p.area)||0
     }))
   };
 }
@@ -7727,10 +7832,40 @@ async function sendAiAssistantMessage(text){
     thinking.remove();
     if(!response.ok || data.success!==true)throw new Error(data.error||"Não foi possível falar com a assistente agora.");
 
-    const reply=clean(data.reply||"")||
+    let reply=clean(data.reply||"")||
       (aiAssistantProperty?.generic_search
         ? "Posso continuar refinando sua busca. Qual bairro ou faixa de preço você prefere?"
         : "Posso continuar te ajudando com este imóvel.");
+
+    if(aiAssistantProperty?.generic_search){
+      reply=reply
+        .replace(/^\s*INVENT[ÁA]RIO CONSULTADO\s*[—\-:]*\s*/i,"")
+        .replace(/\baceite\s+\d+\s*[–-]\s*\d+\s+dormit[oó]rios\??/gi,"")
+        .replace(/\s{2,}/g," ")
+        .trim();
+
+      const ctx=aiOruloContext(text);
+
+      if(ctx.recognized_filters && ctx.total===0){
+        const q=ctx.query||{};
+        const parts=[];
+
+        if(q.exact_name)parts.push(`o empreendimento ${q.exact_name}`);
+        else if(q.neighborhood)parts.push(q.neighborhood);
+
+        if(q.max_price)parts.push(`até ${money(q.max_price)}`);
+        if(q.min_price)parts.push(`a partir de ${money(q.min_price)}`);
+        if(q.bedrooms)parts.push(`${q.bedrooms} dormitório${q.bedrooms>1?"s":""}`);
+
+        const criteria=parts.filter(Boolean).join(", ");
+
+        if(ctx.alternatives?.length){
+          reply=`Não encontrei uma correspondência exata${criteria?` para ${criteria}`:""} na base consultada. Encontrei algumas opções próximas e posso te mostrar se quiser.`;
+        }else{
+          reply=`Não encontrei uma correspondência exata${criteria?` para ${criteria}`:""} na base consultada. Posso ampliar a busca por preço, bairro ou características se você quiser.`;
+        }
+      }
+    }
     appendAiMessage("assistant",reply);
     aiAssistantHistory.push({role:"assistant",content:reply});
     aiAssistantHistory=aiAssistantHistory.slice(-10);
