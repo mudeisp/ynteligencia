@@ -2,50 +2,97 @@ const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   "https://wzaegidwtdjuhqchpdpd.supabase.co";
 
+
+// =========================================================
+// HELPERS
+// =========================================================
+
 function clean(value) {
-  return String(value ?? "").trim();
+  return String(
+    value ?? ""
+  ).trim();
 }
+
 
 function num(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+  const n =
+    Number(value);
+
+  return Number.isFinite(n)
+    ? n
+    : null;
 }
+
 
 function uniq(values) {
-  return [...new Set(values.filter(Boolean))];
+  return [
+    ...new Set(
+      values.filter(Boolean)
+    )
+  ];
 }
 
-function uniqueObjects(items, keyFn) {
-  const map = new Map();
-
-  for (const item of items || []) {
-    if (!item) continue;
-
-    const key = keyFn(item);
-
-    if (!key) continue;
-
-    if (!map.has(key)) {
-      map.set(key, item);
-    }
-  }
-
-  return [...map.values()];
-}
 
 function safeObject(value) {
-  return value &&
+  return (
+    value &&
     typeof value === "object" &&
     !Array.isArray(value)
+  )
     ? value
     : {};
 }
+
 
 function safeArray(value) {
   return Array.isArray(value)
     ? value
     : [];
 }
+
+
+function uniqueObjects(
+  items,
+  keyFn
+) {
+  const map =
+    new Map();
+
+  for (
+    const item of
+    items || []
+  ) {
+
+    if (!item) {
+      continue;
+    }
+
+    const key =
+      keyFn(item);
+
+    if (!key) {
+      continue;
+    }
+
+    if (
+      !map.has(key)
+    ) {
+      map.set(
+        key,
+        item
+      );
+    }
+  }
+
+  return [
+    ...map.values()
+  ];
+}
+
+
+// =========================================================
+// SUPABASE RAW DATA
+// =========================================================
 
 function getRaw(row) {
   return safeObject(
@@ -54,11 +101,13 @@ function getRaw(row) {
   );
 }
 
+
 function getBuilding(row) {
   return safeObject(
     getRaw(row)?.building
   );
 }
+
 
 function getTypology(row) {
   return safeObject(
@@ -66,30 +115,49 @@ function getTypology(row) {
   );
 }
 
+
+// =========================================================
+// IMAGENS
+// =========================================================
+
 function normalizeImageList(
   rows,
   building
 ) {
-  const all = [];
 
-  for (const row of rows) {
+  const all =
+    [];
+
+  for (
+    const row of
+    rows
+  ) {
+
     const raw =
       getRaw(row);
 
     for (
       const image of
-      safeArray(raw.images)
+      safeArray(
+        raw.images
+      )
     ) {
+
       if (
         typeof image === "string" &&
         image.trim()
       ) {
+
         all.push(
           image.trim()
         );
+
       }
+
     }
+
   }
+
 
   for (
     const image of
@@ -97,239 +165,88 @@ function normalizeImageList(
       building.images
     )
   ) {
+
     if (
       typeof image === "string" &&
       image.trim()
     ) {
+
       all.push(
         image.trim()
       );
+
     }
+
   }
+
 
   return uniq(all);
 }
 
-function normalizeSimpleArray(
-  value
-) {
-  return safeArray(value)
-    .filter(Boolean);
-}
+
+// =========================================================
+// FEATURES
+// =========================================================
 
 function normalizeFeatures(
   value
 ) {
+
   return safeArray(value)
+
     .map(item => {
+
       if (
         typeof item === "string"
       ) {
+
         return {
           name: item
         };
+
       }
+
 
       if (
         item &&
         typeof item === "object"
       ) {
+
         return item;
+
       }
+
 
       return null;
+
     })
+
     .filter(Boolean);
 }
 
-function normalizeFloorPlans(
-  value
-) {
-  return safeArray(value)
-    .map(
-      (
-        item,
-        index
-      ) => {
-        if (
-          typeof item === "string"
-        ) {
-          return {
-            id:
-              `floorplan-${index + 1}`,
 
-            name:
-              `Planta ${index + 1}`,
-
-            url:
-              item
-          };
-        }
-
-        if (
-          !item ||
-          typeof item !== "object"
-        ) {
-          return null;
-        }
-
-        const url =
-          item.url ||
-          item.image_url ||
-          item.image ||
-          item.src ||
-          item.file_url ||
-          item.original ||
-          item["1024x1024"] ||
-          item["2280x1800"] ||
-          null;
-
-        const area =
-          num(
-            item.area ??
-            item.private_area ??
-            item.usable_area ??
-            item.total_area ??
-            null
-          );
-
-        return {
-          id:
-            clean(
-              item.id ??
-              item.floorplan_id ??
-              item.typology_id ??
-              `floorplan-${index + 1}`
-            ),
-
-          name:
-            clean(
-              item.name ??
-              item.title ??
-              item.label ??
-              (
-                area
-                  ? `Planta ${area.toLocaleString("pt-BR")} m²`
-                  : `Planta ${index + 1}`
-              )
-            ),
-
-          area,
-
-          bedrooms:
-            num(
-              item.bedrooms ??
-              item.rooms ??
-              null
-            ),
-
-          suites:
-            num(
-              item.suites ??
-              null
-            ),
-
-          parking:
-            num(
-              item.parking ??
-              item.parking_spaces ??
-              null
-            ),
-
-          url:
-            clean(url),
-
-          raw:
-            item
-        };
-      }
-    )
-    .filter(Boolean);
-}
-
-function normalizeVideos(
-  value
-) {
-  return safeArray(value)
-    .map(
-      (
-        item,
-        index
-      ) => {
-        if (
-          typeof item === "string"
-        ) {
-          return {
-            id:
-              `video-${index + 1}`,
-
-            title:
-              `Vídeo ${index + 1}`,
-
-            url:
-              item
-          };
-        }
-
-        if (
-          !item ||
-          typeof item !== "object"
-        ) {
-          return null;
-        }
-
-        return {
-          id:
-            clean(
-              item.id ??
-              `video-${index + 1}`
-            ),
-
-          title:
-            clean(
-              item.title ??
-              item.name ??
-              `Vídeo ${index + 1}`
-            ),
-
-          url:
-            clean(
-              item.url ??
-              item.video_url ??
-              item.embed_url ??
-              item.src ??
-              ""
-            ),
-
-          thumbnail:
-            clean(
-              item.thumbnail ??
-              item.thumbnail_url ??
-              item.image ??
-              ""
-            ),
-
-          raw:
-            item
-        };
-      }
-    )
-    .filter(Boolean);
-}
+// =========================================================
+// ARQUIVOS
+// =========================================================
 
 function normalizeFiles(
   value
 ) {
+
   return safeArray(value)
+
     .map(
       (
         item,
         index
       ) => {
+
         if (
           typeof item === "string"
         ) {
+
           return {
+
             id:
               `file-${index + 1}`,
 
@@ -338,17 +255,24 @@ function normalizeFiles(
 
             url:
               item
+
           };
+
         }
+
 
         if (
           !item ||
           typeof item !== "object"
         ) {
+
           return null;
+
         }
 
+
         return {
+
           id:
             clean(
               item.id ??
@@ -382,35 +306,557 @@ function normalizeFiles(
 
           raw:
             item
+
         };
+
       }
     )
+
     .filter(Boolean);
 }
+
+
+// =========================================================
+// VÍDEOS
+// =========================================================
+
+function normalizeVideos(
+  value
+) {
+
+  return safeArray(value)
+
+    .map(
+      (
+        item,
+        index
+      ) => {
+
+        if (
+          typeof item === "string"
+        ) {
+
+          return {
+
+            id:
+              `video-${index + 1}`,
+
+            title:
+              `Vídeo ${index + 1}`,
+
+            url:
+              item
+
+          };
+
+        }
+
+
+        if (
+          !item ||
+          typeof item !== "object"
+        ) {
+
+          return null;
+
+        }
+
+
+        return {
+
+          id:
+            clean(
+              item.id ??
+              `video-${index + 1}`
+            ),
+
+          title:
+            clean(
+              item.title ??
+              item.name ??
+              `Vídeo ${index + 1}`
+            ),
+
+          url:
+            clean(
+              item.url ??
+              item.video_url ??
+              item.embed_url ??
+              item.src ??
+              ""
+            ),
+
+          thumbnail:
+            clean(
+              item.thumbnail ??
+              item.thumbnail_url ??
+              item.image ??
+              ""
+            ),
+
+          raw:
+            item
+
+        };
+
+      }
+    )
+
+    .filter(Boolean);
+}
+
+
+// =========================================================
+// PLANTAS
+// =========================================================
+
+function normalizeFloorPlans(
+  value
+) {
+
+  return safeArray(value)
+
+    .map(
+      (
+        item,
+        index
+      ) => {
+
+        if (
+          typeof item === "string"
+        ) {
+
+          return {
+
+            id:
+              `floorplan-${index + 1}`,
+
+            name:
+              `Planta ${index + 1}`,
+
+            description:
+              "",
+
+            url:
+              item,
+
+            raw:
+              item
+
+          };
+
+        }
+
+
+        if (
+          !item ||
+          typeof item !== "object"
+        ) {
+
+          return null;
+
+        }
+
+
+        const url =
+          clean(
+
+            item["1024x1024"] ||
+
+            item["2280x1800"] ||
+
+            item["520x280"] ||
+
+            item["200x140"] ||
+
+            item.url ||
+
+            item.image_url ||
+
+            item.image ||
+
+            item.src ||
+
+            item.file_url ||
+
+            item.original ||
+
+            ""
+
+          );
+
+
+        const description =
+          clean(
+
+            item.description ||
+
+            item.name ||
+
+            item.title ||
+
+            item.label ||
+
+            ""
+
+          );
+
+
+        const area =
+          num(
+
+            item.area ??
+
+            item.private_area ??
+
+            item.usable_area ??
+
+            item.total_area ??
+
+            null
+
+          );
+
+
+        return {
+
+          id:
+            clean(
+
+              item.id ??
+
+              item.floorplan_id ??
+
+              item.typology_id ??
+
+              `floorplan-${index + 1}`
+
+            ),
+
+          name:
+            description ||
+            (
+              area
+                ? `Planta ${area.toLocaleString("pt-BR")} m²`
+                : `Planta ${index + 1}`
+            ),
+
+          description,
+
+          area,
+
+          bedrooms:
+            num(
+              item.bedrooms ??
+              item.rooms ??
+              null
+            ),
+
+          suites:
+            num(
+              item.suites ??
+              null
+            ),
+
+          parking:
+            num(
+              item.parking ??
+              item.parking_spaces ??
+              null
+            ),
+
+          url,
+
+          raw:
+            item
+
+        };
+
+      }
+    )
+
+    .filter(Boolean);
+}
+
+
+// =========================================================
+// AUTENTICAÇÃO ÓRULO
+// =========================================================
+
+async function getOruloAccessToken() {
+
+  const clientId =
+    process.env.ORULO_CLIENT_ID;
+
+  const clientSecret =
+    process.env.ORULO_CLIENT_SECRET;
+
+
+  if (
+    !clientId ||
+    !clientSecret
+  ) {
+
+    return null;
+
+  }
+
+
+  try {
+
+    const response =
+      await fetch(
+
+        "https://www.orulo.com.br/oauth/token",
+
+        {
+
+          method:
+            "POST",
+
+          headers: {
+
+            "Content-Type":
+              "application/x-www-form-urlencoded"
+
+          },
+
+          body:
+            new URLSearchParams({
+
+              client_id:
+                clientId,
+
+              client_secret:
+                clientSecret,
+
+              grant_type:
+                "client_credentials"
+
+            }).toString()
+
+        }
+
+      );
+
+
+    const data =
+      await response
+        .json()
+        .catch(
+          () => ({})
+        );
+
+
+    if (
+      !response.ok ||
+      !data.access_token
+    ) {
+
+      console.warn(
+        "DEVELOPMENT_ORULO_TOKEN_FAILED",
+        response.status
+      );
+
+      return null;
+
+    }
+
+
+    return data.access_token;
+
+  } catch (error) {
+
+    console.warn(
+      "DEVELOPMENT_ORULO_TOKEN_ERROR",
+      error
+    );
+
+    return null;
+
+  }
+
+}
+
+
+// =========================================================
+// BUSCA PLANTAS DIRETAMENTE NA ÓRULO
+// =========================================================
+
+async function fetchOruloFloorPlans(
+  buildingId
+) {
+
+  if (!buildingId) {
+    return [];
+  }
+
+
+  const token =
+    await getOruloAccessToken();
+
+
+  if (!token) {
+    return [];
+  }
+
+
+  try {
+
+    const params =
+      new URLSearchParams();
+
+
+    params.append(
+      "dimensions[]",
+      "1024x1024"
+    );
+
+
+    const response =
+      await fetch(
+
+        `https://www.orulo.com.br/api/v2/buildings/${encodeURIComponent(buildingId)}/floor_plans?${params.toString()}`,
+
+        {
+
+          headers: {
+
+            Authorization:
+              `Bearer ${token}`,
+
+            Accept:
+              "application/json"
+
+          }
+
+        }
+
+      );
+
+
+    const data =
+      await response
+        .json()
+        .catch(
+          () => ({})
+        );
+
+
+    if (!response.ok) {
+
+      console.warn(
+        "DEVELOPMENT_ORULO_FLOORPLANS_FAILED",
+        {
+          building_id:
+            buildingId,
+
+          status:
+            response.status,
+
+          data
+        }
+      );
+
+
+      return [];
+
+    }
+
+
+    const floorPlans =
+
+      Array.isArray(
+        data.floor_plans
+      )
+
+        ? data.floor_plans
+
+        : Array.isArray(data)
+
+          ? data
+
+          : [];
+
+
+    console.info(
+      "DEVELOPMENT_ORULO_FLOORPLANS_OK",
+      {
+        building_id:
+          buildingId,
+
+        count:
+          floorPlans.length
+      }
+    );
+
+
+    return normalizeFloorPlans(
+      floorPlans
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "DEVELOPMENT_ORULO_FLOORPLANS_ERROR",
+      {
+        building_id:
+          buildingId,
+
+        error:
+          error?.message ||
+          String(error)
+      }
+    );
+
+
+    return [];
+
+  }
+
+}
+
+
+// =========================================================
+// TIPOLOGIA
+// =========================================================
 
 function buildTypology(
   row
 ) {
+
   const raw =
     getRaw(row);
 
   const typology =
     getTypology(row);
 
+
   const stock =
     num(
+
       typology.stock ??
+
       row.stock ??
+
       null
+
     );
 
+
   return {
+
     id:
       clean(
+
         typology.id ??
+
         raw.typology_id ??
+
         row.external_id ??
+
         ""
+
       ),
 
     property_id:
@@ -421,62 +867,96 @@ function buildTypology(
 
     type:
       clean(
+
         typology.type ??
+
         row.property_type ??
+
         ""
+
       ),
 
     area:
       num(
+
         typology.private_area ??
+
         row.area ??
+
         null
+
       ),
 
     bedrooms:
       num(
+
         typology.bedrooms ??
+
         row.bedrooms ??
+
         null
+
       ),
 
     bathrooms:
       num(
+
         typology.bathrooms ??
+
         row.bathrooms ??
+
         null
+
       ),
 
     suites:
       num(
+
         typology.suites ??
+
         row.suites ??
+
         null
+
       ),
 
     parking:
       num(
+
         typology.parking ??
+
         row.parking_spaces ??
+
         row.parking ??
+
         null
+
       ),
 
     stock,
 
     price:
       num(
+
         typology.discount_price ??
+
         typology.original_price ??
+
         row.price ??
+
         null
+
       ),
 
     original_price:
       num(
+
         typology.original_price ??
+
         row.price ??
+
         null
+
       ),
 
     discount_price:
@@ -510,104 +990,126 @@ function buildTypology(
 
     updated_at:
       clean(
+
         typology.updated_at ??
+
         row.updated_at ??
+
         ""
+
       ),
 
     raw:
       typology
+
   };
+
 }
+
+
+// =========================================================
+// RESUMO
+// =========================================================
 
 function statsFromTypologies(
   typologies
 ) {
+
   const areas =
     typologies
+
       .map(
         item =>
           num(item.area)
       )
+
       .filter(
         value =>
           value !== null &&
           value > 0
       );
 
+
   const prices =
     typologies
+
       .map(
         item =>
           num(item.price)
       )
+
       .filter(
         value =>
           value !== null &&
           value > 0
       );
 
+
   const bedrooms =
     uniq(
+
       typologies
+
         .map(
           item =>
             num(
               item.bedrooms
             )
         )
+
         .filter(
           value =>
             value !== null
         )
+
     )
       .sort(
-        (a, b) =>
+        (
+          a,
+          b
+        ) =>
           a - b
       );
 
+
   const stocks =
     typologies
+
       .map(
         item =>
           num(item.stock)
       )
+
       .filter(
         value =>
           value !== null &&
           value >= 0
       );
 
+
   return {
+
     typologies_count:
       typologies.length,
 
     min_area:
       areas.length
-        ? Math.min(
-            ...areas
-          )
+        ? Math.min(...areas)
         : null,
 
     max_area:
       areas.length
-        ? Math.max(
-            ...areas
-          )
+        ? Math.max(...areas)
         : null,
 
     min_price:
       prices.length
-        ? Math.min(
-            ...prices
-          )
+        ? Math.min(...prices)
         : null,
 
     max_price:
       prices.length
-        ? Math.max(
-            ...prices
-          )
+        ? Math.max(...prices)
         : null,
 
     bedrooms,
@@ -616,64 +1118,91 @@ function statsFromTypologies(
       stocks.length
         ? stocks.reduce(
             (
-              sum,
+              total,
               value
             ) =>
-              sum +
-              value,
+              total + value,
             0
           )
         : null
+
   };
+
 }
+
+
+// =========================================================
+// SUPABASE
+// =========================================================
 
 async function querySupabase({
   buildingId,
   developmentName,
   supabaseKey
 }) {
+
   const params =
     new URLSearchParams();
+
 
   params.set(
     "select",
     "*"
   );
 
+
   params.set(
     "source",
     "eq.novos"
   );
+
 
   params.set(
     "active",
     "eq.true"
   );
 
+
   params.set(
     "limit",
     "500"
   );
 
+
   if (buildingId) {
+
     params.set(
+
       "raw_data->>building_id",
+
       `eq.${buildingId}`
+
     );
+
   } else if (
     developmentName
   ) {
+
     params.set(
+
       "development_name",
+
       `ilike.*${developmentName}*`
+
     );
+
   }
+
 
   const response =
     await fetch(
+
       `${SUPABASE_URL}/rest/v1/properties?${params.toString()}`,
+
       {
+
         headers: {
+
           apikey:
             supabaseKey,
 
@@ -682,9 +1211,13 @@ async function querySupabase({
 
           "Content-Type":
             "application/json"
+
         }
+
       }
+
     );
+
 
   const data =
     await response
@@ -693,27 +1226,39 @@ async function querySupabase({
         () => []
       );
 
+
   if (!response.ok) {
+
     console.error(
       "DEVELOPMENT_SUPABASE_ERROR",
       response.status,
       data
     );
 
+
     throw new Error(
       "Falha ao consultar o empreendimento"
     );
+
   }
+
 
   return Array.isArray(data)
     ? data
     : [];
+
 }
+
+
+// =========================================================
+// HANDLER
+// =========================================================
 
 export default async function handler(
   req,
   res
 ) {
+
   if (
     ![
       "GET",
@@ -722,150 +1267,236 @@ export default async function handler(
       req.method
     )
   ) {
+
     return res
       .status(405)
       .json({
-        success: false,
+
+        success:
+          false,
+
         error:
           "Method not allowed"
+
       });
+
   }
+
 
   res.setHeader(
     "Cache-Control",
     "no-store"
   );
 
+
   try {
+
     const supabaseKey =
+
       process.env.SUPABASE_SECRET_KEY ||
+
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
+
       process.env.SUPABASE_ANON_KEY;
 
+
     if (!supabaseKey) {
+
       return res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             "Chave do Supabase não configurada"
+
         });
+
     }
 
+
     const body =
+
       req.method === "POST"
+
         ? req.body || {}
+
         : {};
+
 
     const buildingId =
       clean(
+
         req.query?.id ??
+
         req.query?.building_id ??
+
         body.id ??
+
         body.building_id ??
+
         ""
+
       );
+
 
     const developmentName =
       clean(
+
         req.query?.name ??
+
         req.query?.development ??
+
         req.query?.development_name ??
+
         body.name ??
+
         body.development ??
+
         body.development_name ??
+
         ""
+
       );
+
 
     if (
       !buildingId &&
       !developmentName
     ) {
+
       return res
         .status(400)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             "Informe id/building_id ou development_name"
+
         });
+
     }
+
+
+    // =====================================================
+    // CONSULTA SUPABASE
+    // =====================================================
+
 
     const rows =
       await querySupabase({
+
         buildingId,
+
         developmentName,
+
         supabaseKey
+
       });
 
-    if (
-      !rows.length
-    ) {
+
+    if (!rows.length) {
+
       return res
         .status(404)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             "Empreendimento não encontrado"
+
         });
+
     }
 
-    /*
-      Se a busca foi por nome e encontrou mais de um building,
-      escolhemos o grupo com mais tipologias.
-    */
+
+    // =====================================================
+    // AGRUPA POR BUILDING
+    // =====================================================
+
+
     const groups =
       new Map();
+
 
     for (
       const row of
       rows
     ) {
+
       const raw =
         getRaw(row);
+
 
       const building =
         getBuilding(row);
 
+
       const id =
         clean(
+
           raw.building_id ??
+
           building.id ??
+
           ""
+
         );
 
+
       const key =
+
         id ||
+
         clean(
+
           row.development_name ??
+
           building.name ??
+
           row.title ??
+
           ""
+
         );
+
 
       if (!key) {
         continue;
       }
 
+
       if (
-        !groups.has(
-          key
-        )
+        !groups.has(key)
       ) {
+
         groups.set(
           key,
           []
         );
+
       }
+
 
       groups
         .get(key)
         .push(row);
+
     }
 
+
     const groupEntries =
+
       [
         ...groups.entries()
       ]
+
         .sort(
           (
             a,
@@ -875,145 +1506,249 @@ export default async function handler(
             a[1].length
         );
 
+
     const [
       resolvedGroupKey,
       developmentRows
     ] =
+
       groupEntries[0] ||
+
       [
         "",
         rows
       ];
 
+
     const firstRow =
       developmentRows[0];
 
+
     const raw =
       getRaw(firstRow);
+
 
     const building =
       getBuilding(
         firstRow
       );
 
+
     const resolvedBuildingId =
       clean(
+
         raw.building_id ??
+
         building.id ??
+
         buildingId ??
+
         resolvedGroupKey
+
       );
 
+
+    // =====================================================
+    // TIPOLOGIAS
+    // =====================================================
+
+
     const typologies =
+
       uniqueObjects(
+
         developmentRows.map(
           buildTypology
         ),
+
         item =>
           item.id ||
           item.property_id
+
       )
+
         .sort(
           (
             a,
             b
           ) => {
+
             const areaA =
               num(a.area) ??
               999999;
+
 
             const areaB =
               num(b.area) ??
               999999;
 
+
             if (
-              areaA !== areaB
+              areaA !==
+              areaB
             ) {
+
               return (
                 areaA -
                 areaB
               );
+
             }
 
-            const priceA =
-              num(
-                a.price
-              ) ??
-              999999999;
-
-            const priceB =
-              num(
-                b.price
-              ) ??
-              999999999;
 
             return (
-              priceA -
-              priceB
+
+              (
+                num(a.price) ??
+                999999999
+              )
+
+              -
+
+              (
+                num(b.price) ??
+                999999999
+              )
+
             );
+
           }
         );
 
+
+    // =====================================================
+    // FOTOS
+    // =====================================================
+
+
     const images =
       normalizeImageList(
+
         developmentRows,
+
         building
+
       );
 
-    const floorPlans =
-      normalizeFloorPlans(
-        building.floor_plans
+
+    // =====================================================
+    // PLANTAS
+    // =====================================================
+    //
+    // PRIORIDADE:
+    //
+    // 1. Endpoint oficial da Órulo
+    // 2. raw_data antigo do Supabase
+    //
+    // =====================================================
+
+
+    let floorPlans =
+      await fetchOruloFloorPlans(
+        resolvedBuildingId
       );
+
+
+    if (!floorPlans.length) {
+
+      floorPlans =
+        normalizeFloorPlans(
+          building.floor_plans
+        );
+
+    }
+
+
+    // =====================================================
+    // VÍDEOS
+    // =====================================================
+
 
     const videos =
       normalizeVideos(
         building.videos
       );
 
+
+    // =====================================================
+    // ARQUIVOS
+    // =====================================================
+
+
     const files =
       normalizeFiles(
         building.files
       );
 
+
+    // =====================================================
+    // FEATURES
+    // =====================================================
+
+
     const buildingFeatures =
       normalizeFeatures(
+
         building.building_features ??
+
         building.features
+
       );
+
 
     const unitFeatures =
       normalizeFeatures(
         building.unit_features
       );
 
+
+    // =====================================================
+    // RESUMO
+    // =====================================================
+
+
     const summary =
       statsFromTypologies(
         typologies
       );
+
 
     const address =
       safeObject(
         building.address
       );
 
-    /*
-      URLs externas da Órulo não são devolvidas.
-      A Ynteligencia usa os dados e sua própria interface.
-    */
+
+    // =====================================================
+    // RESPONSE
+    // =====================================================
+
+
     const response = {
-      success: true,
+
+      success:
+        true,
+
 
       development: {
+
         id:
           resolvedBuildingId,
 
+
         name:
           clean(
+
             building.name ??
+
             firstRow.development_name ??
+
             firstRow.title ??
+
             ""
+
           ),
+
 
         finality:
           clean(
@@ -1021,11 +1756,13 @@ export default async function handler(
             ""
           ),
 
+
         status:
           clean(
             building.status ??
             ""
           ),
+
 
         stage:
           clean(
@@ -1033,11 +1770,13 @@ export default async function handler(
             ""
           ),
 
+
         type:
           clean(
             building.type ??
             ""
           ),
+
 
         description:
           clean(
@@ -1045,11 +1784,13 @@ export default async function handler(
             ""
           ),
 
+
         developer:
           clean(
             building.developer ??
             ""
           ),
+
 
         publisher:
           clean(
@@ -1057,11 +1798,13 @@ export default async function handler(
             ""
           ),
 
+
         launch_date:
           clean(
             building.launch_date ??
             ""
           ),
+
 
         opening_date:
           clean(
@@ -1069,87 +1812,125 @@ export default async function handler(
             ""
           ),
 
+
         total_units:
           num(
             building.total_units
           ),
+
 
         number_of_towers:
           num(
             building.number_of_towers
           ),
 
+
         number_of_floors:
           num(
             building.number_of_floors
           ),
+
 
         apts_per_floor:
           num(
             building.apts_per_floor
           ),
 
+
         total_area:
           num(
             building.total_area
           ),
+
 
         floor_area:
           num(
             building.floor_area
           ),
 
+
         building_stock:
           num(
             building.stock
           ),
+
 
         min_price:
           num(
             building.min_price
           ),
 
+
         address,
+
 
         neighborhood:
           clean(
+
             firstRow.neighborhood ??
+
             address.area ??
+
             address.neighborhood ??
+
             ""
+
           ),
+
 
         city:
           clean(
+
             firstRow.city ??
+
             address.city ??
+
             "São Paulo"
+
           ),
+
 
         state:
           clean(
+
             firstRow.state ??
+
             address.state ??
+
             "SP"
+
           ),
+
 
         updated_at:
           clean(
+
             building.updated_at ??
+
             firstRow.updated_at ??
+
             ""
+
           ),
+
 
         last_updated_pricetable_at:
           clean(
+
             building.last_updated_pricetable_at ??
+
             ""
+
           )
+
       },
+
 
       summary,
 
+
       media: {
+
         images,
 
         videos,
@@ -1164,30 +1945,40 @@ export default async function handler(
           floorPlans,
 
         files
+
       },
 
+
       features: {
+
         building:
           buildingFeatures,
 
         units:
           unitFeatures
+
       },
 
+
       commercial: {
+
         payment_conditions:
-          normalizeSimpleArray(
+          safeArray(
             building.payment_conditions
           ),
 
         opportunity:
           building.opportunity ??
           null
+
       },
+
 
       typologies,
 
+
       meta: {
+
         source:
           "novos",
 
@@ -1203,9 +1994,17 @@ export default async function handler(
         queried_by:
           buildingId
             ? "building_id"
-            : "development_name"
+            : "development_name",
+
+        floor_plans_source:
+          floorPlans.length
+            ? "orulo_api"
+            : "supabase"
+
       }
+
     };
+
 
     return res
       .status(200)
@@ -1213,20 +2012,28 @@ export default async function handler(
         response
       );
 
+
   } catch (error) {
+
     console.error(
       "DEVELOPMENT_API_FATAL",
       error
     );
 
+
     return res
       .status(500)
       .json({
-        success: false,
+
+        success:
+          false,
 
         error:
           error?.message ||
           "Erro interno ao carregar empreendimento"
+
       });
+
   }
+
 }
