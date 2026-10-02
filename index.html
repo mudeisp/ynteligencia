@@ -2073,6 +2073,127 @@ body.campaign-catalog-mode .specialist-float{
 <style>
 /* ===== DETALHE V3 · PLANTAS + MAPA ===== */
 
+
+.development-lp-intro{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  margin-bottom:16px;
+}
+
+.development-lp-intro-copy{
+  min-width:0;
+}
+
+.development-lp-intro-copy p{
+  margin:8px 0 0;
+  color:#7d776e;
+  line-height:1.6;
+}
+
+.development-lp-cta-row{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:18px;
+}
+
+.development-lp-cta{
+  min-height:50px;
+  padding:0 14px;
+  border-radius:13px;
+  border:1px solid #c6a76b;
+  background:#fcfaf6;
+  color:#4a443c;
+  font-size:13px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.development-lp-cta.primary{
+  background:#171714;
+  border-color:#171714;
+  color:#fff;
+}
+
+.development-lp-cta.whatsapp{
+  background:#eef8f3;
+  border-color:#9acdb8;
+  color:#1d7650;
+}
+
+.development-materials-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+
+.development-material-card{
+  padding:16px;
+  border:1px solid #ded8cd;
+  border-radius:16px;
+  background:#fcfaf6;
+}
+
+.development-material-card small{
+  display:block;
+  color:#7d776e;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+.development-material-card strong{
+  display:block;
+  margin-top:5px;
+  color:#4a443c;
+  font-size:16px;
+}
+
+.development-material-card p{
+  margin:7px 0 13px;
+  color:#7d776e;
+  font-size:13px;
+  line-height:1.45;
+}
+
+.development-material-card button,
+.development-material-card a{
+  width:100%;
+  min-height:44px;
+}
+
+.development-section-block{
+  margin-top:26px;
+  padding-top:24px;
+  border-top:1px solid #e4ddd1;
+}
+
+.development-section-block:first-of-type{
+  border-top:0;
+}
+
+.development-availability-note{
+  margin-top:12px;
+  color:#7d776e;
+  font-size:12px;
+  line-height:1.45;
+}
+
+@media(max-width:768px){
+  .development-lp-intro{
+    display:block;
+  }
+
+  .development-lp-cta-row,
+  .development-materials-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 .development-rich-section{
   margin-top:24px;
 }
@@ -8039,6 +8160,135 @@ function appendAiDevelopmentFloorplanButtons(
     box.scrollHeight;
 }
 
+
+function aiIsPdfRequest(message){
+  const t=norm(message||"");
+
+  return Boolean(
+    /\b(pdf|baixar|download|arquivo|book|tabela|memorial)\b/.test(t)
+  );
+}
+
+function developmentPdfFiles(data){
+  const files=
+    Array.isArray(data?.media?.files)
+      ? data.media.files
+      : [];
+
+  return files
+    .map((file,index)=>({
+      ...file,
+      _name:clean(
+        file?.name ||
+        file?.title ||
+        file?.filename ||
+        `Arquivo ${index+1}`
+      ),
+      _url:clean(
+        file?.url ||
+        file?.file_url ||
+        file?.download_url ||
+        ""
+      )
+    }))
+    .filter(file=>{
+      if(!file._url){
+        return false;
+      }
+
+      return Boolean(
+        /\.pdf(?:\?|$)/i.test(file._url) ||
+        /\b(pdf|book|tabela|memorial)\b/i.test(file._name)
+      );
+    });
+}
+
+function appendAiDownloadButton(
+  label,
+  url
+){
+  if(!url){
+    return;
+  }
+
+  const shell=
+    ensureAiAssistantShell();
+
+  const box=
+    shell.querySelector(
+      "#aiAssistantMessages"
+    );
+
+  if(!box){
+    return;
+  }
+
+  const wrap=
+    document.createElement("div");
+
+  wrap.className=
+    "ai-quick-actions";
+
+  const link=
+    document.createElement("a");
+
+  link.href=url;
+  link.target="_blank";
+  link.rel="noopener noreferrer";
+  link.download="";
+  link.textContent=label || "Baixar PDF";
+
+  link.style.cssText=
+    "display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid #c6a76b;background:#fcfaf6;color:#4a443c;font-weight:900;text-decoration:none;";
+
+  wrap.appendChild(link);
+  box.appendChild(wrap);
+  box.scrollTop=box.scrollHeight;
+}
+
+function appendAiImageDownloadButton(
+  label,
+  url
+){
+  if(!url){
+    return;
+  }
+
+  const shell=
+    ensureAiAssistantShell();
+
+  const box=
+    shell.querySelector(
+      "#aiAssistantMessages"
+    );
+
+  if(!box){
+    return;
+  }
+
+  const wrap=
+    document.createElement("div");
+
+  wrap.className=
+    "ai-quick-actions";
+
+  const link=
+    document.createElement("a");
+
+  link.href=url;
+  link.target="_blank";
+  link.rel="noopener noreferrer";
+  link.download="";
+  link.textContent=label || "Baixar imagem da planta";
+
+  link.style.cssText=
+    "display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid #c6a76b;background:#fcfaf6;color:#4a443c;font-weight:900;text-decoration:none;";
+
+  wrap.appendChild(link);
+  box.appendChild(wrap);
+  box.scrollTop=box.scrollHeight;
+}
+
 function aiIsMapRequest(message){
   const t=norm(message||"");
 
@@ -9677,6 +9927,101 @@ async function sendAiAssistantMessage(text){
   if(
     aiAssistantProperty &&
     aiAssistantProperty.generic_search===false &&
+    aiIsPdfRequest(text)
+  ){
+    const property=
+      aiAssistantProperty;
+
+    const developmentData=
+      await loadDevelopmentData(
+        property
+      );
+
+    const pdfFiles=
+      developmentPdfFiles(
+        developmentData
+      );
+
+    const requestedArea=
+      aiRequestedArea(text);
+
+    const floorPlans=
+      findDevelopmentFloorplans(
+        developmentData,
+        requestedArea
+      );
+
+    let reply="";
+
+    if(pdfFiles.length){
+      const first=
+        pdfFiles[0];
+
+      reply=
+        pdfFiles.length===1
+          ? `Encontrei o arquivo ${first._name}. Você pode abrir ou baixar abaixo.`
+          : `Encontrei ${pdfFiles.length} arquivos disponíveis. Você pode abrir o primeiro abaixo.`;
+
+      appendAiMessage(
+        "assistant",
+        reply
+      );
+
+      appendAiDownloadButton(
+        `Baixar ${first._name}`,
+        first._url
+      );
+    }else if(floorPlans.length){
+      const plan=
+        floorPlans[0];
+
+      reply=
+        "Não há um PDF cadastrado para esta planta no momento. Tenho a imagem oficial da planta e posso abrir ou baixar essa imagem.";
+
+      appendAiMessage(
+        "assistant",
+        reply
+      );
+
+      appendAiDevelopmentFloorplanButtons(
+        property,
+        floorPlans
+      );
+
+      appendAiImageDownloadButton(
+        plan._area>0
+          ? `Baixar imagem ${plan._area.toLocaleString("pt-BR")} m²`
+          : "Baixar imagem da planta",
+        plan._url
+      );
+    }else{
+      reply=
+        "Não encontrei um PDF ou arquivo para download cadastrado para este imóvel neste momento.";
+
+      appendAiMessage(
+        "assistant",
+        reply
+      );
+    }
+
+    aiAssistantHistory.push({
+      role:"assistant",
+      content:reply
+    });
+
+    aiAssistantHistory=
+      aiAssistantHistory.slice(-12);
+
+    aiAssistantSending=false;
+
+    if(send)send.disabled=false;
+
+    return;
+  }
+
+  if(
+    aiAssistantProperty &&
+    aiAssistantProperty.generic_search===false &&
     aiIsInternalDetailsRequest(text)
   ){
     const property=
@@ -11044,6 +11389,42 @@ function renderDevelopmentRichModal(
       videoUrl
     );
 
+  const description=
+    clean(
+      development.description ||
+      p.description ||
+      ""
+    );
+
+  const address=
+    development.address &&
+    typeof development.address==="object"
+      ? development.address
+      : {};
+
+  const fullAddress=
+    clean(
+      [
+        address.street_type,
+        address.street,
+        address.number
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+
+  const locationLabel=
+    clean(
+      [
+        fullAddress,
+        development.neighborhood,
+        development.city,
+        development.state
+      ]
+        .filter(Boolean)
+        .join(" • ")
+    );
+
   const areaRange=
     Number(summary.min_area)>0 &&
     Number(summary.max_area)>0
@@ -11105,6 +11486,9 @@ function renderDevelopmentRichModal(
               Number(item.bedrooms)>0
                 ? `${item.bedrooms} dorm${Number(item.bedrooms)===1?"":"s"}`
                 : "",
+              Number(item.bathrooms)>0
+                ? `${item.bathrooms} banho${Number(item.bathrooms)===1?"":"s"}`
+                : "",
               Number(item.suites)>0
                 ? `${item.suites} suíte${Number(item.suites)===1?"":"s"}`
                 : "",
@@ -11123,6 +11507,7 @@ function renderDevelopmentRichModal(
                   <div class="development-typology-area">
                     ${Number(item.area)>0 ? `${area(item.area)} m²` : "Tipologia"}
                   </div>
+
                   <div class="development-typology-price">
                     ${Number(item.price)>0 ? money(item.price) : "Consulte"}
                   </div>
@@ -11136,85 +11521,6 @@ function renderDevelopmentRichModal(
               </article>
             `;
           }).join("")}
-        </div>
-      `
-      : "";
-
-  const features=
-    [
-      ...buildingFeatures,
-      ...unitFeatures
-    ]
-      .map(
-        developmentFeatureName
-      )
-      .filter(Boolean)
-      .filter(
-        (value,index,array)=>
-          array.indexOf(value)===index
-      )
-      .slice(
-        0,
-        28
-      );
-
-  const featureHtml=
-    features.length
-      ? `
-        <div class="development-feature-list">
-          ${features.map(name=>`<span>${esc(name)}</span>`).join("")}
-        </div>
-      `
-      : "";
-
-  const videoHtml=
-    embedUrl
-      ? `
-        <div class="development-video-wrap">
-          <iframe
-            src="${esc(embedUrl)}"
-            title="${esc(video?.title || `Vídeo de ${development.name || p.name || "empreendimento"}`)}"
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen>
-          </iframe>
-        </div>
-      `
-      : (
-          videoUrl
-            ? `
-              <div class="development-media-actions">
-                <a
-                  class="development-action-link"
-                  href="${esc(videoUrl)}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  data-development-video-link="true">
-                  ▶ ASSISTIR VÍDEO
-                </a>
-              </div>
-            `
-            : ""
-        );
-
-  const bookHtml=
-    book?.url
-      ? `
-        <div class="development-book-card">
-          <div class="development-book-card-copy">
-            <small>Material do empreendimento</small>
-            <strong>${esc(developmentFileName(book) || "Book digital")}</strong>
-          </div>
-
-          <a
-            class="development-action-link primary"
-            href="${esc(book.url)}"
-            target="_blank"
-            rel="noopener noreferrer"
-            download
-            data-development-book="true">
-            ↓ BAIXAR BOOK
-          </a>
         </div>
       `
       : "";
@@ -11267,23 +11573,131 @@ function renderDevelopmentRichModal(
       .filter(Boolean)
       .join("");
 
-  const floorPlanInfo=
-    floorPlanCards
-      ? `
-        <div style="margin-top:24px">
-          <div class="detail-section-title">Plantas</div>
-          <h3>Conheça as opções do empreendimento</h3>
+  const buildingFeatureNames=
+    buildingFeatures
+      .map(developmentFeatureName)
+      .filter(Boolean)
+      .filter(
+        (value,index,array)=>
+          array.indexOf(value)===index
+      )
+      .slice(0,28);
 
-          <div class="development-floorplans">
-            ${floorPlanCards}
-          </div>
+  const unitFeatureNames=
+    unitFeatures
+      .map(developmentFeatureName)
+      .filter(Boolean)
+      .filter(
+        (value,index,array)=>
+          array.indexOf(value)===index
+      )
+      .slice(0,20);
+
+  const featureHtml=
+    buildingFeatureNames.length
+      ? `
+        <div class="development-feature-list">
+          ${buildingFeatureNames.map(name=>`<span>${esc(name)}</span>`).join("")}
         </div>
       `
       : "";
 
+  const unitFeatureHtml=
+    unitFeatureNames.length
+      ? `
+        <div class="development-feature-list">
+          ${unitFeatureNames.map(name=>`<span>${esc(name)}</span>`).join("")}
+        </div>
+      `
+      : "";
+
+  const videoHtml=
+    embedUrl
+      ? `
+        <div class="development-video-wrap">
+          <iframe
+            src="${esc(embedUrl)}"
+            title="${esc(video?.title || `Vídeo de ${development.name || p.name || "empreendimento"}`)}"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen>
+          </iframe>
+        </div>
+      `
+      : (
+          videoUrl
+            ? `
+              <div class="development-media-actions">
+                <a
+                  class="development-action-link"
+                  href="${esc(videoUrl)}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-development-video-link="true">
+                  ▶ ASSISTIR VÍDEO
+                </a>
+              </div>
+            `
+            : ""
+        );
+
+  const bookMaterialHtml=
+    book?.url
+      ? `
+        <div class="development-material-card">
+          <small>Book do empreendimento</small>
+          <strong>${esc(developmentFileName(book) || "Book digital")}</strong>
+          <p>Material completo disponibilizado para consulta.</p>
+
+          <a
+            class="development-action-link primary"
+            href="${esc(book.url)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+            data-development-book="true">
+            ↓ BAIXAR BOOK
+          </a>
+        </div>
+      `
+      : `
+        <div class="development-material-card">
+          <small>Book do empreendimento</small>
+          <strong>Solicitar material completo</strong>
+          <p>Peça o Book atualizado e o Rafael envia pelo atendimento.</p>
+
+          <button
+            class="development-lp-cta"
+            type="button"
+            data-development-request="book">
+            SOLICITAR BOOK
+          </button>
+        </div>
+      `;
+
+  const tableMaterialHtml=`
+    <div class="development-material-card">
+      <small>Tabela comercial</small>
+      <strong>Solicitar tabela atualizada</strong>
+      <p>Valores e disponibilidade podem mudar. Solicite a tabela comercial mais recente.</p>
+
+      <button
+        class="development-lp-cta"
+        type="button"
+        data-development-request="table">
+        SOLICITAR TABELA
+      </button>
+    </div>
+  `;
+
   target.innerHTML=`
-    <div class="detail-section-title">Empreendimento completo</div>
-    <h3>${esc(development.name || p.name || "Conheça o empreendimento")}</h3>
+    <div class="development-lp-intro">
+      <div class="development-lp-intro-copy">
+        <div class="detail-section-title">Empreendimento completo</div>
+        <h3>${esc(development.name || p.name || "Conheça o empreendimento")}</h3>
+        ${locationLabel ? `<p>${esc(locationLabel)}</p>` : ""}
+      </div>
+    </div>
 
     ${summaryCards ? `
       <div class="development-summary-grid">
@@ -11291,33 +11705,85 @@ function renderDevelopmentRichModal(
       </div>
     ` : ""}
 
+    <div class="development-lp-cta-row">
+      <button
+        class="development-lp-cta primary"
+        type="button"
+        data-development-ai="true">
+        ✦ PERGUNTAR À MATCH IA
+      </button>
+
+      <button
+        class="development-lp-cta whatsapp"
+        type="button"
+        data-development-human="true">
+        FALAR COM RAFAEL
+      </button>
+    </div>
+
     ${typologyHtml ? `
-      <div style="margin-top:24px">
+      <div class="development-section-block">
         <div class="detail-section-title">Tipologias disponíveis</div>
-        <h3>Escolha a planta que combina com você</h3>
+        <h3>Compare as opções deste projeto</h3>
         ${typologyHtml}
+        <div class="development-availability-note">
+          Valores e disponibilidade são dinâmicos e podem mudar sem aviso prévio.
+        </div>
       </div>
     ` : ""}
 
-    ${bookHtml}
+    ${floorPlanCards ? `
+      <div class="development-section-block">
+        <div class="detail-section-title">Plantas</div>
+        <h3>Conheça as opções do empreendimento</h3>
+
+        <div class="development-floorplans">
+          ${floorPlanCards}
+        </div>
+      </div>
+    ` : ""}
 
     ${videoHtml ? `
-      <div style="margin-top:24px">
+      <div class="development-section-block">
         <div class="detail-section-title">Vídeo</div>
         <h3>Conheça o projeto</h3>
         ${videoHtml}
       </div>
     ` : ""}
 
+    ${description ? `
+      <div class="development-section-block">
+        <div class="detail-section-title">Sobre o projeto</div>
+        <h3>${esc(development.name || p.name || "Empreendimento")}</h3>
+        <p>${esc(description)}</p>
+      </div>
+    ` : ""}
+
     ${featureHtml ? `
-      <div style="margin-top:24px">
-        <div class="detail-section-title">Diferenciais</div>
-        <h3>Estrutura e características</h3>
+      <div class="development-section-block">
+        <div class="detail-section-title">Lazer e comodidades</div>
+        <h3>Estrutura do condomínio</h3>
         ${featureHtml}
       </div>
     ` : ""}
 
-    ${floorPlanInfo}
+    ${unitFeatureHtml ? `
+      <div class="development-section-block">
+        <div class="detail-section-title">Características das unidades</div>
+        <h3>Detalhes dos apartamentos</h3>
+        ${unitFeatureHtml}
+      </div>
+    ` : ""}
+
+    <div class="development-section-block">
+      <div class="detail-section-title">Materiais comerciais</div>
+      <h3>Book e tabela atualizada</h3>
+
+      <div class="development-materials-grid">
+        ${bookMaterialHtml}
+        ${tableMaterialHtml}
+      </div>
+    </div>
   `;
 
   target
@@ -11361,6 +11827,82 @@ function renderDevelopmentRichModal(
               building_id:String(development.id||""),
               property_name:p.name||""
             }
+          );
+        }
+      );
+    });
+
+  target
+    .querySelector(
+      "[data-development-ai]"
+    )
+    ?.addEventListener(
+      "click",
+      ()=>{
+        openAiAssistant(p);
+      }
+    );
+
+  target
+    .querySelector(
+      "[data-development-human]"
+    )
+    ?.addEventListener(
+      "click",
+      ()=>{
+        openPropertySpecialist(p);
+      }
+    );
+
+  target
+    .querySelectorAll(
+      "[data-development-request]"
+    )
+    .forEach(button=>{
+      button.addEventListener(
+        "click",
+        ()=>{
+          const kind=
+            button.dataset.developmentRequest;
+
+          const label=
+            kind==="table"
+              ? "Solicitação de tabela atualizada"
+              : "Solicitação de Book";
+
+          const requestProperty={
+            ...p,
+            id:String(p.id||development.id||""),
+            name:`${development.name || p.name || "Empreendimento"} — ${label}`
+          };
+
+          try{
+            gtag(
+              "event",
+              kind==="table"
+                ? "development_table_request"
+                : "development_book_request",
+              {
+                property_id:String(p.id||""),
+                building_id:String(development.id||""),
+                property_name:p.name||""
+              }
+            );
+          }catch(error){}
+
+          supabaseTrack(
+            kind==="table"
+              ? "development_table_request"
+              : "development_book_request",
+            {
+              property_id:String(p.id||""),
+              building_id:String(development.id||""),
+              property_name:p.name||""
+            }
+          );
+
+          openLeadCapture(
+            requestProperty
           );
         }
       );
@@ -11438,10 +11980,12 @@ function renderDevelopmentRichModal(
         : 0,
       floor_plans:floorPlans.length,
       videos:videos.length,
-      book:Boolean(book?.url)
+      book:Boolean(book?.url),
+      lp_complete:true
     }
   );
 }
+
 
 async function hydrateDevelopmentRichModal(
   modal,
@@ -11682,6 +12226,16 @@ async function showPhotoModal(id){
           <div class="detail-tech-grid">${techRows}</div>
         </section>` : ""}
 
+      ${isNew ? `
+        <section class="detail-section development-rich-section" id="developmentRichSection">
+          <div class="detail-section-title">Empreendimento completo</div>
+          <h3>Carregando informações do projeto...</h3>
+          <div class="development-rich-loading">
+            Consultando tipologias, plantas, vídeo e conteúdo do empreendimento.
+          </div>
+        </section>
+      ` : ""}
+
       ${isNew && buildingRows ? `
         <section class="detail-section">
           <div class="detail-section-title">Empreendimento</div>
@@ -11689,27 +12243,17 @@ async function showPhotoModal(id){
           <div class="detail-tech-grid">${buildingRows}</div>
         </section>` : ""}
 
-      ${isNew ? `
-        <section class="detail-section development-rich-section" id="developmentRichSection">
-          <div class="detail-section-title">Empreendimento completo</div>
-          <h3>Carregando informações do projeto...</h3>
-          <div class="development-rich-loading">
-            Consultando tipologias, materiais e conteúdo do empreendimento.
-          </div>
-        </section>
-      ` : ""}
-
-      ${isNew && amenities.length ? `
+      ${!isNew && amenities.length ? `
         <section class="detail-section">
           <div class="detail-section-title">Estrutura</div>
           <h3>Lazer e comodidades</h3>
           <div class="detail-amenities">${amenities.map(x=>`<span class="detail-amenity">${esc(x)}</span>`).join("")}</div>
         </section>` : ""}
 
-      ${description ? `
+      ${description && !isNew ? `
         <section class="detail-section">
           <div class="detail-section-title">Sobre</div>
-          <h3>${isNew?"Sobre o empreendimento":"Sobre o imóvel"}</h3>
+          <h3>Sobre o imóvel</h3>
           <p>${esc(description)}</p>
         </section>` : ""}
 
@@ -11722,6 +12266,7 @@ async function showPhotoModal(id){
           </div>
         </section>` : ""}
 
+      ${!isNew ? `
       <section class="detail-section detail-floorplans">
         <div class="detail-section-title">Plantas</div>
         <h3>Plantas do condomínio</h3>
@@ -11737,6 +12282,7 @@ async function showPhotoModal(id){
           `<p class="detail-map-address">Planta não disponível nos dados deste imóvel.</p>`
         }
       </section>
+      ` : ""}
 
       ${mapEmbedUrl ? `
         <section class="detail-section detail-location-section">
