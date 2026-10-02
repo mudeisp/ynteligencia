@@ -2166,6 +2166,61 @@ body.campaign-catalog-mode .specialist-float{
   font-weight:700;
 }
 
+
+.development-floorplans{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-top:14px;
+}
+
+.development-floorplan-card{
+  overflow:hidden;
+  border:1px solid #ded8cd;
+  border-radius:16px;
+  background:#fcfaf6;
+}
+
+.development-floorplan-image{
+  display:block;
+  width:100%;
+  aspect-ratio:4/3;
+  object-fit:contain;
+  padding:10px;
+  background:#fff;
+  cursor:pointer;
+}
+
+.development-floorplan-body{
+  padding:14px;
+}
+
+.development-floorplan-body strong{
+  display:block;
+  color:#4a443c;
+  font-size:15px;
+  line-height:1.35;
+}
+
+.development-floorplan-body button{
+  width:100%;
+  min-height:44px;
+  margin-top:12px;
+  border:1px solid #c6a76b;
+  border-radius:11px;
+  background:#fcfaf6;
+  color:#4a443c;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+@media(max-width:768px){
+  .development-floorplans{
+    grid-template-columns:1fr;
+  }
+}
+
 .development-media-actions{
   display:flex;
   flex-wrap:wrap;
@@ -7823,6 +7878,167 @@ function appendAiFloorplanButton(property,url,label="Ver planta"){
   box.scrollTop=box.scrollHeight;
 }
 
+
+function developmentFloorplanLabel(plan,index=0){
+  return clean(
+    plan?.name ||
+    plan?.description ||
+    `Planta ${index+1}`
+  );
+}
+
+function developmentFloorplanArea(plan){
+  const direct=Number(
+    plan?.area ||
+    plan?.private_area ||
+    0
+  );
+
+  if(Number.isFinite(direct) && direct>0){
+    return direct;
+  }
+
+  const text=norm(
+    [
+      plan?.name,
+      plan?.description,
+      plan?.raw?.description
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  const match=text.match(
+    /(\d{2,3}(?:[.,]\d{1,2})?)\s*(?:m2|m²|metros?)/i
+  );
+
+  if(!match){
+    return 0;
+  }
+
+  const value=Number(
+    String(match[1]).replace(",",".")
+  );
+
+  return Number.isFinite(value)
+    ? value
+    : 0;
+}
+
+function developmentFloorplanUrl(plan){
+  return clean(
+    plan?.url ||
+    plan?.["1024x1024"] ||
+    plan?.["2280x1800"] ||
+    plan?.raw?.["1024x1024"] ||
+    plan?.raw?.["2280x1800"] ||
+    ""
+  );
+}
+
+function findDevelopmentFloorplans(
+  data,
+  requestedArea=0
+){
+  const plans=
+    Array.isArray(data?.media?.floor_plans)
+      ? data.media.floor_plans
+      : [];
+
+  const available=
+    plans
+      .map((plan,index)=>({
+        ...plan,
+        _label:developmentFloorplanLabel(plan,index),
+        _area:developmentFloorplanArea(plan),
+        _url:developmentFloorplanUrl(plan)
+      }))
+      .filter(plan=>plan._url);
+
+  if(!(requestedArea>0)){
+    return available;
+  }
+
+  return available.filter(
+    plan=>
+      plan._area>0 &&
+      Math.abs(plan._area-requestedArea)<=1.2
+  );
+}
+
+function appendAiDevelopmentFloorplanButtons(
+  property,
+  plans
+){
+  if(
+    !property ||
+    !Array.isArray(plans) ||
+    !plans.length
+  ){
+    return;
+  }
+
+  const shell=
+    ensureAiAssistantShell();
+
+  const box=
+    shell.querySelector(
+      "#aiAssistantMessages"
+    );
+
+  if(!box){
+    return;
+  }
+
+  const wrap=
+    document.createElement("div");
+
+  wrap.className=
+    "ai-quick-actions";
+
+  plans
+    .slice(0,8)
+    .forEach(plan=>{
+      const button=
+        document.createElement("button");
+
+      button.type="button";
+
+      button.textContent=
+        plan._area>0
+          ? `Ver planta ${plan._area.toLocaleString("pt-BR")} m²`
+          : `Ver ${plan._label}`;
+
+      button.addEventListener(
+        "click",
+        ()=>{
+          closeAiAssistant();
+
+          window.setTimeout(
+            ()=>{
+              openFloorplan(
+                plan._url,
+                property
+              );
+            },
+            60
+          );
+        }
+      );
+
+      wrap.appendChild(
+        button
+      );
+    });
+
+  box.appendChild(
+    wrap
+  );
+
+  box.scrollTop=
+    box.scrollHeight;
+}
+
 function aiIsMapRequest(message){
   const t=norm(message||"");
 
@@ -9347,46 +9563,100 @@ async function sendAiAssistantMessage(text){
     const requestedArea=
       aiRequestedArea(text);
 
-    const floorplanUrl=
-      aiFindFloorplanForArea(
-        property,
+    /*
+      Primeiro tenta o contexto rico do empreendimento.
+      Não altera o fluxo atual; é uma camada adicional.
+    */
+    const developmentData=
+      await loadDevelopmentData(
+        property
+      );
+
+    const developmentPlans=
+      findDevelopmentFloorplans(
+        developmentData,
         requestedArea
       );
 
     let reply="";
 
-    if(floorplanUrl){
-      reply=
-        requestedArea>0
-          ? `Encontrei uma planta cadastrada para consultar${requestedArea ? ` na faixa de ${requestedArea.toLocaleString("pt-BR")} m²` : ""}. Abra abaixo.`
-          : "Encontrei uma planta cadastrada deste empreendimento. Abra abaixo.";
+    if(developmentPlans.length){
+      if(requestedArea>0){
+        reply=
+          `Sim. Encontrei a planta de ${requestedArea.toLocaleString("pt-BR")} m² deste empreendimento.`;
+      }else{
+        const labels=
+          developmentPlans
+            .map(plan=>
+              plan._area>0
+                ? `${plan._area.toLocaleString("pt-BR")} m²`
+                : plan._label
+            )
+            .filter(Boolean)
+            .filter(
+              (value,index,array)=>
+                array.indexOf(value)===index
+            );
+
+        reply=
+          labels.length
+            ? `Encontrei ${developmentPlans.length} plantas cadastradas neste empreendimento: ${labels.join(", ")}. Escolha abaixo qual deseja abrir.`
+            : `Encontrei ${developmentPlans.length} plantas cadastradas neste empreendimento. Escolha abaixo qual deseja abrir.`;
+      }
 
       appendAiMessage(
         "assistant",
         reply
       );
 
-      appendAiFloorplanButton(
+      appendAiDevelopmentFloorplanButtons(
         property,
-        floorplanUrl,
-        requestedArea>0
-          ? `Ver planta ${requestedArea.toLocaleString("pt-BR")} m²`
-          : "Ver planta"
+        developmentPlans
       );
     }else{
-      reply=
-        requestedArea>0
-          ? `Não encontrei uma planta identificada como ${requestedArea.toLocaleString("pt-BR")} m² nos dados carregados deste imóvel. Posso abrir os detalhes completos para você conferir as plantas disponíveis.`
-          : "Não encontrei uma planta identificada nos dados carregados deste imóvel. Posso abrir os detalhes completos para você.";
+      /*
+        Fallback antigo: mantém compatibilidade com usados
+        e registros que ainda tenham planta só no raw_data.
+      */
+      const floorplanUrl=
+        aiFindFloorplanForArea(
+          property,
+          requestedArea
+        );
 
-      appendAiMessage(
-        "assistant",
-        reply
-      );
+      if(floorplanUrl){
+        reply=
+          requestedArea>0
+            ? `Encontrei uma planta cadastrada para ${requestedArea.toLocaleString("pt-BR")} m². Abra abaixo.`
+            : "Encontrei uma planta cadastrada deste imóvel. Abra abaixo.";
 
-      appendAiInternalDetailsButton(
-        property
-      );
+        appendAiMessage(
+          "assistant",
+          reply
+        );
+
+        appendAiFloorplanButton(
+          property,
+          floorplanUrl,
+          requestedArea>0
+            ? `Ver planta ${requestedArea.toLocaleString("pt-BR")} m²`
+            : "Ver planta"
+        );
+      }else{
+        reply=
+          requestedArea>0
+            ? `Não encontrei uma planta de ${requestedArea.toLocaleString("pt-BR")} m² entre as plantas disponíveis deste empreendimento.`
+            : "Não encontrei plantas disponíveis para este imóvel neste momento.";
+
+        appendAiMessage(
+          "assistant",
+          reply
+        );
+
+        appendAiInternalDetailsButton(
+          property
+        );
+      }
     }
 
     aiAssistantHistory.push({
@@ -10949,12 +11219,65 @@ function renderDevelopmentRichModal(
       `
       : "";
 
+  const floorPlanCards=
+    floorPlans
+      .map((plan,index)=>{
+        const url=
+          developmentFloorplanUrl(plan);
+
+        if(!url){
+          return "";
+        }
+
+        const label=
+          developmentFloorplanLabel(
+            plan,
+            index
+          );
+
+        const planArea=
+          developmentFloorplanArea(
+            plan
+          );
+
+        return `
+          <article class="development-floorplan-card">
+            <img
+              class="development-floorplan-image"
+              src="${esc(url)}"
+              alt="${esc(label)}"
+              loading="lazy"
+              data-development-floorplan="${esc(url)}"
+            >
+
+            <div class="development-floorplan-body">
+              <strong>${esc(label)}</strong>
+
+              <button
+                type="button"
+                data-development-floorplan="${esc(url)}">
+                ${planArea>0
+                  ? `VER PLANTA ${esc(planArea.toLocaleString("pt-BR"))} m²`
+                  : "VER PLANTA"}
+              </button>
+            </div>
+          </article>
+        `;
+      })
+      .filter(Boolean)
+      .join("");
+
   const floorPlanInfo=
-    floorPlans.length
+    floorPlanCards
       ? `
-        <p class="detail-map-address">
-          ${floorPlans.length} planta${floorPlans.length===1?"":"s"} / referência${floorPlans.length===1?"":"s"} cadastrada${floorPlans.length===1?"":"s"} para este empreendimento.
-        </p>
+        <div style="margin-top:24px">
+          <div class="detail-section-title">Plantas</div>
+          <h3>Conheça as opções do empreendimento</h3>
+
+          <div class="development-floorplans">
+            ${floorPlanCards}
+          </div>
+        </div>
       `
       : "";
 
@@ -10996,6 +11319,52 @@ function renderDevelopmentRichModal(
 
     ${floorPlanInfo}
   `;
+
+  target
+    .querySelectorAll(
+      "[data-development-floorplan]"
+    )
+    .forEach(element=>{
+      element.addEventListener(
+        "click",
+        ()=>{
+          const url=
+            clean(
+              element.dataset.developmentFloorplan
+            );
+
+          if(!url){
+            return;
+          }
+
+          openFloorplan(
+            url,
+            p
+          );
+
+          try{
+            gtag(
+              "event",
+              "development_floorplan_click",
+              {
+                property_id:String(p.id||""),
+                building_id:String(development.id||""),
+                property_name:p.name||""
+              }
+            );
+          }catch(error){}
+
+          supabaseTrack(
+            "development_floorplan_click",
+            {
+              property_id:String(p.id||""),
+              building_id:String(development.id||""),
+              property_name:p.name||""
+            }
+          );
+        }
+      );
+    });
 
   target
     .querySelector(
