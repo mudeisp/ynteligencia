@@ -20,7 +20,10 @@ export default async function handler(req, res) {
         req.query?.id || "83363"
       ).trim();
 
-    // 1. TOKEN ATUAL — MESMA AUTENTICAÇÃO DA INFRA
+    // =========================================================
+    // 1. TOKEN
+    // =========================================================
+
     const tokenResponse =
       await fetch(
         "https://www.orulo.com.br/oauth/token",
@@ -57,9 +60,13 @@ export default async function handler(req, res) {
     ) {
       return res.status(502).json({
         ok: false,
-        step: "oauth",
+
+        step:
+          "oauth",
+
         status:
           tokenResponse.status,
+
         response:
           tokenData
       });
@@ -72,6 +79,10 @@ export default async function handler(req, res) {
       Accept:
         "application/json"
     };
+
+    // =========================================================
+    // 2. HELPER DE TESTE
+    // =========================================================
 
     async function testEndpoint(
       name,
@@ -116,9 +127,13 @@ export default async function handler(req, res) {
       } catch (error) {
         return {
           name,
+
           url,
-          ok: false,
+
           status: 0,
+
+          ok: false,
+
           error:
             error?.message ||
             String(error)
@@ -126,56 +141,111 @@ export default async function handler(req, res) {
       }
     }
 
+    // =========================================================
+    // 3. ENDPOINTS
+    // =========================================================
+
     const base =
       "https://www.orulo.com.br/api/v2/buildings";
 
     const results =
       await Promise.all([
+
+        // -----------------------------------------------------
+        // EMPREENDIMENTO
+        // -----------------------------------------------------
+
         testEndpoint(
           "building",
           `${base}/${buildingId}`
         ),
+
+        // -----------------------------------------------------
+        // TIPOLOGIAS
+        // -----------------------------------------------------
 
         testEndpoint(
           "typologies",
           `${base}/${buildingId}/typologies`
         ),
 
+        // -----------------------------------------------------
+        // FOTOS
+        // -----------------------------------------------------
+
         testEndpoint(
           "images",
-          `${base}/${buildingId}/images`
+          `${base}/${buildingId}/images?dimensions[]=1024x1024`
         ),
+
+        // -----------------------------------------------------
+        // PLANTAS
+        // IMPORTANTE: precisa informar dimensão
+        // -----------------------------------------------------
 
         testEndpoint(
           "floor_plans",
-          `${base}/${buildingId}/floor_plans`
+          `${base}/${buildingId}/floor_plans?dimensions[]=1024x1024`
         ),
+
+        // -----------------------------------------------------
+        // ARQUIVOS
+        // Mantemos apenas para confirmar comportamento
+        // -----------------------------------------------------
 
         testEndpoint(
           "files",
           `${base}/${buildingId}/files`
         )
+
       ]);
 
-    return res.status(200).json({
-      ok: true,
+    // =========================================================
+    // 4. RESUMO
+    // =========================================================
 
-      building_id:
-        buildingId,
+    const summary =
+      results.map(item => ({
+        name:
+          item.name,
 
-      auth:
-        "client_credentials",
+        status:
+          item.status,
 
-      results
-    });
+        ok:
+          item.ok
+      }));
+
+    return res
+      .status(200)
+      .json({
+        ok: true,
+
+        building_id:
+          buildingId,
+
+        auth:
+          "client_credentials",
+
+        summary,
+
+        results
+      });
 
   } catch (error) {
-    return res.status(500).json({
-      ok: false,
+    console.error(
+      "ORULO_DEBUG_FATAL",
+      error
+    );
 
-      error:
-        error?.message ||
-        String(error)
-    });
+    return res
+      .status(500)
+      .json({
+        ok: false,
+
+        error:
+          error?.message ||
+          String(error)
+      });
   }
 }
