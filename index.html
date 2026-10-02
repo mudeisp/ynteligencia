@@ -1919,6 +1919,31 @@ body.campaign-catalog-mode .catalog{
   padding-top:22px !important;
 }
 
+/*
+  GOOGLE ADS / modo=explorar
+  Remove o dock inferior do app para não competir com o CTA da campanha.
+  Mantém apenas o especialista/WhatsApp flutuante.
+*/
+body.campaign-catalog-mode .app-dock{
+  display:none !important;
+}
+
+body.campaign-catalog-mode .specialist-float{
+  display:flex !important;
+  z-index:220 !important;
+}
+
+@media(max-width:768px){
+  body.campaign-catalog-mode{
+    padding-bottom:96px !important;
+  }
+
+  body.campaign-catalog-mode .specialist-float{
+    right:10px !important;
+    bottom:max(10px,env(safe-area-inset-bottom)) !important;
+  }
+}
+
 /* Mobile: foto "subindo" acima do botão, como solicitado. */
 @media (max-width:768px){
   body{
@@ -3046,19 +3071,42 @@ body.match-results-mode #results{
     grid-template-columns:1fr!important;
   }
 
+  /*
+    MOBILE: formulário único.
+    Região/Bairro/Empreendimento e filtros ficam no mesmo fluxo.
+    Não transformamos apenas #catalogFilters em fullscreen,
+    porque isso escondia Região e Bairro atrás do overlay.
+  */
+  #catalogFilters,
   #catalogFilters.open{
-    position:fixed!important;
-    inset:0!important;
-    z-index:700!important;
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
     width:100%!important;
-    height:100dvh!important;
+    height:auto!important;
     max-height:none!important;
-    padding:66px 16px calc(20px + env(safe-area-inset-bottom))!important;
-    overflow-y:auto!important;
-    background:#FCFAF6!important;
+    padding:0 0 calc(28px + env(safe-area-inset-bottom))!important;
+    overflow:visible!important;
+    background:transparent!important;
     border-radius:0!important;
+    scroll-padding-bottom:0!important;
   }
 
+  /*
+    O botão X era do antigo bottom-sheet/fullscreen.
+    No formulário inline ele só atrapalha e cobre o select Estoque.
+  */
+  #closeFilters{
+    display:none!important;
+  }
+
+  .unified-search-panel{
+    width:100%!important;
+    max-width:none!important;
+    overflow:visible!important;
+  }
+
+  .unified-search-main,
   .unified-filter-grid{
     grid-template-columns:1fr!important;
   }
@@ -3067,18 +3115,9 @@ body.match-results-mode #results{
     grid-template-columns:1fr!important;
     position:static!important;
     bottom:auto!important;
-    background:#FCFAF6!important;
+    background:transparent!important;
     padding:14px 0 8px!important;
     margin-top:18px!important;
-  }
-
-  /*
-    Garante espaço real depois do último campo no mobile.
-    Os botões deixam de cobrir Dormitórios / Preço / Área.
-  */
-  #catalogFilters.open{
-    padding-bottom:calc(34px + env(safe-area-inset-bottom))!important;
-    scroll-padding-bottom:34px!important;
   }
 }
 </style>
@@ -3714,7 +3753,8 @@ body.match-results-mode #results{
   type="button"
   class="specialist-float"
   id="specialistFloat"
-  aria-label="Falar com o especialista pelo WhatsApp">
+  data-whatsapp-cta="true"
+  aria-label="Falar com Rafael pelo WhatsApp">
 
   <span class="specialist-photo-wrap">
     <img
@@ -10233,6 +10273,27 @@ document.querySelectorAll(".catalog-region-btn").forEach(btn=>{
   btn.addEventListener("click",()=>setCatalogRegion(btn.dataset.region || ""));
 });
 
+/*
+  Select principal de Região (desktop/mobile).
+  Garante que o Bairro seja repopulado imediatamente.
+*/
+$("catalogRegionSelect")?.addEventListener("change",event=>{
+  const region=
+    String(
+      event.target?.value || ""
+    );
+
+  setCatalogRegion(region);
+
+  if(typeof updateCatalogUrl==="function"){
+    updateCatalogUrl();
+  }
+
+  if(typeof maybeAutoExecuteCatalogSearch==="function"){
+    maybeAutoExecuteCatalogSearch();
+  }
+});
+
 
 function updateSpecialistContext(){
   const kicker=$("specialistFloatKicker");
@@ -11118,21 +11179,62 @@ $("catalogState")?.addEventListener(
 
 
 async function executeCatalogSearch(){
-  $("catalog").classList.add("visible");
-  activeCity=clean($("catalogCity")?.value || activeCity) || activeCity;
-  activeState=String($("catalogState")?.value || activeState).trim().toUpperCase() || activeState;
-  if($("catalogStatus")) $("catalogStatus").textContent="Carregando imóveis...";
-  if($("catalogLoadMore")) $("catalogLoadMore").style.display="none";
-  await fetchNewCatalogPage({reset:true});
+  /*
+    Fecha qualquer estado legado de filtros antes de mostrar resultados.
+    No mobile isso evita resultado "abrir por trás" do formulário.
+  */
+  if(typeof setFiltersOpen==="function"){
+    setFiltersOpen(false);
+  }
+
+  $("catalog")?.classList.add("visible");
+
+  activeCity=
+    clean(
+      $("catalogCity")?.value ||
+      activeCity
+    ) || activeCity;
+
+  activeState=
+    String(
+      $("catalogState")?.value ||
+      activeState
+    )
+      .trim()
+      .toUpperCase() ||
+    activeState;
+
+  if($("catalogStatus")){
+    $("catalogStatus").textContent=
+      "Carregando imóveis...";
+  }
+
+  if($("catalogLoadMore")){
+    $("catalogLoadMore").style.display=
+      "none";
+  }
+
+  await fetchNewCatalogPage({
+    reset:true
+  });
+
   inventoryReady=true;
   inventoryLoading=false;
   inventoryLoadError=false;
+
   renderCatalog();
   updateCatalogUrl();
-  $("catalog").scrollIntoView({behavior:"smooth",block:"start"});
+
+  $("catalog")?.scrollIntoView({
+    behavior:"smooth",
+    block:"start"
+  });
 }
 
-$("catalogSearchBtn").addEventListener("click",()=>{
+$("catalogSearchBtn")?.addEventListener("click",async event=>{
+  event.preventDefault();
+  event.stopPropagation();
+
   catalogAutoSearchStarted=true;
 
   if(catalogAutoSearchTimer){
@@ -11140,7 +11242,36 @@ $("catalogSearchBtn").addEventListener("click",()=>{
     catalogAutoSearchTimer=null;
   }
 
-  executeCatalogSearch();
+  const button=
+    $("catalogSearchBtn");
+
+  const originalText=
+    button?.textContent || "BUSCAR IMÓVEIS";
+
+  if(button){
+    button.disabled=true;
+    button.textContent="BUSCANDO...";
+  }
+
+  try{
+    await executeCatalogSearch();
+  }catch(error){
+    console.error(
+      "CATALOG_SEARCH_CLICK_ERROR",
+      error
+    );
+
+    if(typeof showToast==="function"){
+      showToast(
+        "Não foi possível buscar os imóveis agora."
+      );
+    }
+  }finally{
+    if(button){
+      button.disabled=false;
+      button.textContent=originalText;
+    }
+  }
 });
 
 $("catalogLoadMore")?.addEventListener("click",async()=>{
@@ -11482,13 +11613,11 @@ function openGeneralCatalog(openFilters=true){
   */
   $("catalog")?.classList.remove("visible");
 
-  const mobileFilter=window.matchMedia("(max-width:700px)").matches;
-
-  if(openFilters && mobileFilter){
-    setFiltersOpen(true);
-  }else{
-    setFiltersOpen(false);
-  }
+  /*
+    O mobile agora usa o formulário inline completo.
+    Mantemos o estado legado fechado para não bloquear Região/Bairro.
+  */
+  setFiltersOpen(false);
 
   $("explore")?.scrollIntoView({
     behavior:"smooth",
@@ -11622,6 +11751,15 @@ function interest(
 $("specialistFloat")?.addEventListener(
   "click",
   ()=>{
+
+    console.log(
+      "YNT_WHATSAPP_CTA_CLICK",
+      {
+        page:window.location.pathname,
+        search:window.location.search,
+        campaign_mode:document.body.classList.contains("campaign-catalog-mode")
+      }
+    );
 
     try{
       gtag(
@@ -12225,8 +12363,20 @@ function openLeadCapture(p,prefill={}){
           .filter(Boolean)
           .join("\n");
 
-          window.location.href=
+          const whatsappUrl=
             `https://wa.me/5511992976368?text=${encodeURIComponent(whatsappMessage)}`;
+
+          console.log(
+            "YNT_WHATSAPP_OPEN",
+            {
+              phone:"5511992976368",
+              property_id:lead.property_id||"",
+              property_name:lead.property_name||""
+            }
+          );
+
+          window.location.href=
+            whatsappUrl;
 
 
         }catch(error){
@@ -13646,24 +13796,7 @@ if ("serviceWorker" in navigator) {
 (() => {
   const regionSelect=document.getElementById("catalogRegionSelect");
   if(regionSelect){
-    regionSelect.addEventListener("change",()=>{
-      if(typeof setCatalogRegion==="function"){
-        setCatalogRegion(regionSelect.value || "");
-      }
 
-      /*
-        Região é um critério válido da busca.
-        Como o select fica em um script posterior, chamamos
-        o controlador automático aqui também.
-      */
-      if(typeof updateCatalogUrl==="function"){
-        updateCatalogUrl();
-      }
-
-      if(typeof maybeAutoExecuteCatalogSearch==="function"){
-        maybeAutoExecuteCatalogSearch();
-      }
-    });
 
     /* Sincroniza também quando a busca veio de URL/campanha. */
     const syncRegion=()=>{
