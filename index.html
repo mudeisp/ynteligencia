@@ -2072,6 +2072,222 @@ body.campaign-catalog-mode .specialist-float{
 
 <style>
 /* ===== DETALHE V3 · PLANTAS + MAPA ===== */
+
+.development-rich-section{
+  margin-top:24px;
+}
+
+.development-rich-loading{
+  padding:18px;
+  border:1px solid #ded8cd;
+  border-radius:16px;
+  background:#fcfaf6;
+  color:#7d776e;
+  font-size:14px;
+}
+
+.development-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+
+.development-summary-card{
+  padding:14px 12px;
+  border:1px solid #ded8cd;
+  border-radius:14px;
+  background:#fcfaf6;
+}
+
+.development-summary-card strong{
+  display:block;
+  color:#4a443c;
+  font-size:17px;
+  line-height:1.15;
+}
+
+.development-summary-card span{
+  display:block;
+  margin-top:5px;
+  color:#7d776e;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+
+.development-typologies{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+
+.development-typology-card{
+  padding:16px;
+  border:1px solid #ded8cd;
+  border-radius:16px;
+  background:#fcfaf6;
+}
+
+.development-typology-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.development-typology-area{
+  color:#4a443c;
+  font-size:20px;
+  font-weight:900;
+}
+
+.development-typology-price{
+  color:#4a443c;
+  font-size:15px;
+  font-weight:800;
+  text-align:right;
+}
+
+.development-typology-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:10px;
+}
+
+.development-typology-meta span{
+  padding:7px 9px;
+  border-radius:999px;
+  background:#f0ece3;
+  color:#6a635a;
+  font-size:12px;
+  font-weight:700;
+}
+
+.development-media-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:14px;
+}
+
+.development-action-btn,
+.development-action-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:46px;
+  padding:0 16px;
+  border:1px solid #c6a76b;
+  border-radius:12px;
+  background:#fcfaf6;
+  color:#4a443c;
+  font-size:13px;
+  font-weight:900;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.development-action-link.primary{
+  background:#c6a76b;
+  color:#201c17;
+}
+
+.development-video-wrap{
+  overflow:hidden;
+  margin-top:14px;
+  border-radius:16px;
+  background:#111;
+}
+
+.development-video-wrap iframe,
+.development-video-wrap video{
+  display:block;
+  width:100%;
+  aspect-ratio:16/9;
+  border:0;
+}
+
+.development-book-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-top:14px;
+  padding:16px;
+  border:1px solid #d9c28f;
+  border-radius:16px;
+  background:#f8f1df;
+}
+
+.development-book-card-copy small{
+  display:block;
+  color:#7d776e;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+.development-book-card-copy strong{
+  display:block;
+  margin-top:4px;
+  color:#4a443c;
+  font-size:16px;
+}
+
+.development-book-card a{
+  flex:0 0 auto;
+}
+
+.development-feature-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+
+.development-feature-list span{
+  padding:8px 10px;
+  border:1px solid #ded8cd;
+  border-radius:999px;
+  background:#fcfaf6;
+  color:#6a635a;
+  font-size:12px;
+  font-weight:700;
+}
+
+@media(max-width:768px){
+  .development-summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .development-typologies{
+    grid-template-columns:1fr;
+  }
+
+  .development-book-card{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .development-book-card a{
+    width:100%;
+  }
+
+  .development-media-actions{
+    flex-direction:column;
+  }
+
+  .development-action-btn,
+  .development-action-link{
+    width:100%;
+  }
+}
+
+
 .detail-floorplans{margin-top:24px}
 .detail-floorplan-grid{
   display:grid;
@@ -7318,6 +7534,295 @@ function aiGreetingReply(){
   return `Olá! 👋 Pode perguntar o que quiser sobre ${name} — e, se preferir, também posso buscar outras opções para comparar.`;
 }
 
+
+function aiIsInternalDetailsRequest(message){
+  const t=norm(message||"");
+
+  return Boolean(
+    /\b(link|url|detalhes|ver detalhes|pagina|página|anuncio|anúncio)\b/.test(t)
+  );
+}
+
+function aiIsFloorplanRequest(message){
+  const t=norm(message||"");
+
+  return Boolean(
+    /\b(planta|plantas|floor plan|floorplan|layout|tipologia)\b/.test(t)
+  );
+}
+
+function aiRequestedArea(message){
+  const t=norm(message||"");
+
+  const m=t.match(
+    /\b(\d{2,3}(?:[.,]\d{1,2})?)\s*(?:m2|m²|metros?|metros quadrados?)\b/
+  );
+
+  if(!m)return 0;
+
+  const n=Number(
+    String(m[1])
+      .replace(",",".")
+  );
+
+  return Number.isFinite(n)
+    ? n
+    : 0;
+}
+
+function aiFindFloorplanForArea(property,requestedArea=0){
+  if(!property)return "";
+
+  const raw=
+    property?.rawData &&
+    typeof property.rawData==="object"
+      ? property.rawData
+      : (
+          property?.raw_data &&
+          typeof property.raw_data==="object"
+            ? property.raw_data
+            : {}
+        );
+
+  const seen=new Set();
+  const exact=[];
+  const generic=[];
+
+  const validImage=url=>{
+    const s=clean(url);
+    if(!validURL(s))return false;
+
+    return Boolean(
+      /\.(?:jpe?g|png|webp|avif)(?:\?|$)/i.test(s) ||
+      /image|photo|media|cdn|orulo/i.test(s)
+    );
+  };
+
+  const collectUrls=(obj,target)=>{
+    if(!obj || typeof obj!=="object")return;
+
+    Object.entries(obj).forEach(([key,val])=>{
+      if(
+        typeof val==="string" &&
+        /^https?:\/\//i.test(val) &&
+        validImage(val) &&
+        /url|image|photo|picture|file|src|plant|planta|floor|layout/i.test(key)
+      ){
+        const u=clean(val);
+
+        if(!seen.has(u)){
+          seen.add(u);
+          target.push(u);
+        }
+      }
+    });
+  };
+
+  const walk=(value,path="",depth=0)=>{
+    if(value==null || depth>11)return;
+
+    if(Array.isArray(value)){
+      value.forEach(
+        (item,index)=>
+          walk(
+            item,
+            `${path}[${index}]`,
+            depth+1
+          )
+      );
+      return;
+    }
+
+    if(typeof value!=="object")return;
+
+    const areaCandidates=[
+      value.area,
+      value.private_area,
+      value.usable_area,
+      value.total_area,
+      value.area_private,
+      value.area_privativa
+    ]
+      .map(Number)
+      .filter(Number.isFinite);
+
+    const isRequestedArea=
+      requestedArea>0 &&
+      areaCandidates.some(
+        a=>Math.abs(a-requestedArea)<=1.2
+      );
+
+    const context=
+      norm(
+        [
+          path,
+          value.name,
+          value.title,
+          value.label,
+          value.type,
+          value.description
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+    const looksLikePlan=
+      /\b(planta|plantas|floorplan|floor plan|layout|tipologia|typology)\b/.test(context);
+
+    if(isRequestedArea){
+      collectUrls(
+        value,
+        exact
+      );
+    }
+
+    if(looksLikePlan){
+      collectUrls(
+        value,
+        generic
+      );
+    }
+
+    Object.entries(value).forEach(
+      ([key,val])=>{
+        const next=
+          path
+            ? `${path}.${key}`
+            : key;
+
+        if(
+          typeof val==="string" &&
+          /^https?:\/\//i.test(val) &&
+          validImage(val) &&
+          /planta|plant|floor|layout|typolog/i.test(next)
+        ){
+          const u=clean(val);
+
+          if(!seen.has(u)){
+            seen.add(u);
+
+            if(isRequestedArea){
+              exact.push(u);
+            }else{
+              generic.push(u);
+            }
+          }
+
+          return;
+        }
+
+        if(
+          val &&
+          typeof val==="object"
+        ){
+          walk(
+            val,
+            next,
+            depth+1
+          );
+        }
+      }
+    );
+  };
+
+  walk(
+    raw,
+    "raw_data",
+    0
+  );
+
+  walk(
+    property,
+    "property",
+    0
+  );
+
+  /*
+    Fallback no extrator já usado pela ficha do imóvel.
+  */
+  if(
+    !exact.length &&
+    !generic.length &&
+    typeof extractFloorplans==="function"
+  ){
+    const fallback=
+      extractFloorplans(
+        raw,
+        property
+      );
+
+    if(
+      Array.isArray(fallback) &&
+      fallback.length
+    ){
+      return fallback[0];
+    }
+  }
+
+  return (
+    exact[0] ||
+    generic[0] ||
+    ""
+  );
+}
+
+function appendAiFloorplanButton(property,url,label="Ver planta"){
+  if(!property || !url)return;
+
+  const shell=
+    ensureAiAssistantShell();
+
+  const box=
+    shell.querySelector(
+      "#aiAssistantMessages"
+    );
+
+  if(!box)return;
+
+  const wrap=
+    document.createElement("div");
+
+  wrap.className=
+    "ai-quick-actions";
+
+  const button=
+    document.createElement("button");
+
+  button.type="button";
+  button.textContent=label;
+
+  button.addEventListener(
+    "click",
+    ()=>{
+      closeAiAssistant();
+
+      window.setTimeout(
+        ()=>{
+          if(
+            typeof openFloorplan==="function"
+          ){
+            openFloorplan(
+              url,
+              property
+            );
+          }else{
+            window.open(
+              url,
+              "_blank",
+              "noopener,noreferrer"
+            );
+          }
+        },
+        60
+      );
+    }
+  );
+
+  wrap.appendChild(button);
+  box.appendChild(wrap);
+  box.scrollTop=box.scrollHeight;
+}
+
 function aiIsMapRequest(message){
   const t=norm(message||"");
 
@@ -7478,6 +7983,14 @@ function stripExternalProviderLinks(text){
     .replace(
       /https?:\/\/(?:www\.)?orulo\.com\.br\/\S*/gi,
       ""
+    )
+    .replace(
+      /(?:Tem|Existe|Há|Possui|Consta)?\s*(?:o\s+)?link\s+(?:do\s+)?empreendimento\s+(?:no|na)\s+Ó?rulo[^.!?]*[.!?]?/gi,
+      ""
+    )
+    .replace(
+      /\bÓ?rulo\b/gi,
+      "catálogo"
     )
     .replace(/\s{2,}/g," ")
     .trim();
@@ -8820,6 +9333,113 @@ async function sendAiAssistantMessage(text){
   }
 
   /*
+    Em contexto de imóvel, ações conhecidas são resolvidas
+    pelo próprio app, sem chamar a IA genérica.
+  */
+  if(
+    aiAssistantProperty &&
+    aiAssistantProperty.generic_search===false &&
+    aiIsFloorplanRequest(text)
+  ){
+    const property=
+      aiAssistantProperty;
+
+    const requestedArea=
+      aiRequestedArea(text);
+
+    const floorplanUrl=
+      aiFindFloorplanForArea(
+        property,
+        requestedArea
+      );
+
+    let reply="";
+
+    if(floorplanUrl){
+      reply=
+        requestedArea>0
+          ? `Encontrei uma planta cadastrada para consultar${requestedArea ? ` na faixa de ${requestedArea.toLocaleString("pt-BR")} m²` : ""}. Abra abaixo.`
+          : "Encontrei uma planta cadastrada deste empreendimento. Abra abaixo.";
+
+      appendAiMessage(
+        "assistant",
+        reply
+      );
+
+      appendAiFloorplanButton(
+        property,
+        floorplanUrl,
+        requestedArea>0
+          ? `Ver planta ${requestedArea.toLocaleString("pt-BR")} m²`
+          : "Ver planta"
+      );
+    }else{
+      reply=
+        requestedArea>0
+          ? `Não encontrei uma planta identificada como ${requestedArea.toLocaleString("pt-BR")} m² nos dados carregados deste imóvel. Posso abrir os detalhes completos para você conferir as plantas disponíveis.`
+          : "Não encontrei uma planta identificada nos dados carregados deste imóvel. Posso abrir os detalhes completos para você.";
+
+      appendAiMessage(
+        "assistant",
+        reply
+      );
+
+      appendAiInternalDetailsButton(
+        property
+      );
+    }
+
+    aiAssistantHistory.push({
+      role:"assistant",
+      content:reply
+    });
+
+    aiAssistantHistory=
+      aiAssistantHistory.slice(-12);
+
+    aiAssistantSending=false;
+
+    if(send)send.disabled=false;
+
+    return;
+  }
+
+  if(
+    aiAssistantProperty &&
+    aiAssistantProperty.generic_search===false &&
+    aiIsInternalDetailsRequest(text)
+  ){
+    const property=
+      aiAssistantProperty;
+
+    const reply=
+      `Claro. Abra os detalhes completos do ${property.name || "imóvel"} dentro da Ynteligencia.`;
+
+    appendAiMessage(
+      "assistant",
+      reply
+    );
+
+    appendAiInternalDetailsButton(
+      property
+    );
+
+    aiAssistantHistory.push({
+      role:"assistant",
+      content:reply
+    });
+
+    aiAssistantHistory=
+      aiAssistantHistory.slice(-12);
+
+    aiAssistantSending=false;
+
+    if(send)send.disabled=false;
+
+    return;
+  }
+
+  /*
     Em contexto de imóvel, "tem mapa?", "como chegar?" etc.
     usa os dados já cadastrados e oferece Google Maps,
     sem expor coordenadas ou URL externa da Órulo.
@@ -9841,6 +10461,661 @@ async function hydrateNewProperty(p){
   return result;
 }
 
+
+const developmentDataCache=new Map();
+
+function developmentBuildingId(p){
+  const raw=
+    p?.rawData && typeof p.rawData==="object"
+      ? p.rawData
+      : (
+          p?.raw_data && typeof p.raw_data==="object"
+            ? p.raw_data
+            : {}
+        );
+
+  const building=
+    raw?.building && typeof raw.building==="object"
+      ? raw.building
+      : {};
+
+  return clean(
+    raw?.building_id ||
+    building?.id ||
+    p?.building_id ||
+    ""
+  );
+}
+
+async function loadDevelopmentData(p){
+  const buildingId=
+    developmentBuildingId(p);
+
+  if(!buildingId){
+    return null;
+  }
+
+  if(
+    developmentDataCache.has(
+      buildingId
+    )
+  ){
+    return await developmentDataCache.get(
+      buildingId
+    );
+  }
+
+  const promise=(async()=>{
+    try{
+      const response=
+        await fetch(
+          `/api/development?id=${encodeURIComponent(buildingId)}`,
+          {
+            method:"GET",
+            cache:"no-store",
+            headers:{
+              Accept:"application/json"
+            }
+          }
+        );
+
+      const data=
+        await response.json()
+          .catch(()=>null);
+
+      if(
+        !response.ok ||
+        data?.success!==true
+      ){
+        throw new Error(
+          data?.error ||
+          `Development API ${response.status}`
+        );
+      }
+
+      return data;
+    }catch(error){
+      console.warn(
+        "YNT_DEVELOPMENT_LOAD_ERROR",
+        {
+          building_id:buildingId,
+          error:error?.message || String(error)
+        }
+      );
+
+      return null;
+    }
+  })();
+
+  developmentDataCache.set(
+    buildingId,
+    promise
+  );
+
+  return await promise;
+}
+
+function developmentFileName(file){
+  return clean(
+    file?.name ||
+    file?.title ||
+    file?.filename ||
+    file?.type ||
+    ""
+  );
+}
+
+function findDevelopmentBook(data){
+  const files=
+    Array.isArray(data?.media?.files)
+      ? data.media.files
+      : [];
+
+  const book=
+    files.find(file=>{
+      const name=
+        norm(
+          developmentFileName(file)
+        );
+
+      const url=
+        clean(file?.url);
+
+      return Boolean(
+        url &&
+        (
+          /\bbook\b/.test(name) ||
+          /book\s*(digital|de\s*vendas|do\s*empreendimento)?/.test(name) ||
+          /\bbook\b/.test(
+            norm(url)
+          )
+        )
+      );
+    });
+
+  return book || null;
+}
+
+function developmentFeatureName(item){
+  if(
+    typeof item==="string"
+  ){
+    return clean(item);
+  }
+
+  return clean(
+    item?.name ||
+    item?.title ||
+    item?.label ||
+    item?.description ||
+    ""
+  );
+}
+
+function developmentVideoEmbedUrl(url){
+  const value=
+    clean(url);
+
+  if(!value){
+    return "";
+  }
+
+  try{
+    const parsed=
+      new URL(value);
+
+    const host=
+      parsed.hostname
+        .replace(/^www\./,"")
+        .toLowerCase();
+
+    if(
+      host==="youtube.com" ||
+      host==="m.youtube.com"
+    ){
+      const id=
+        parsed.searchParams.get("v");
+
+      if(id){
+        return `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
+      }
+
+      const match=
+        parsed.pathname.match(
+          /\/(?:embed|shorts)\/([^/?#]+)/
+        );
+
+      if(match?.[1]){
+        return `https://www.youtube.com/embed/${encodeURIComponent(match[1])}`;
+      }
+    }
+
+    if(
+      host==="youtu.be"
+    ){
+      const id=
+        parsed.pathname
+          .split("/")
+          .filter(Boolean)[0];
+
+      if(id){
+        return `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
+      }
+    }
+
+    if(
+      host==="vimeo.com" ||
+      host==="player.vimeo.com"
+    ){
+      const parts=
+        parsed.pathname
+          .split("/")
+          .filter(Boolean);
+
+      const id=
+        parts.find(
+          part=>/^\d+$/.test(part)
+        );
+
+      if(id){
+        return `https://player.vimeo.com/video/${encodeURIComponent(id)}`;
+      }
+    }
+  }catch(error){}
+
+  return "";
+}
+
+function developmentSummaryItem(
+  value,
+  label
+){
+  if(
+    value===null ||
+    value===undefined ||
+    value===""
+  ){
+    return "";
+  }
+
+  return `
+    <div class="development-summary-card">
+      <strong>${esc(value)}</strong>
+      <span>${esc(label)}</span>
+    </div>
+  `;
+}
+
+function renderDevelopmentRichModal(
+  modal,
+  p,
+  data
+){
+  if(
+    !modal ||
+    !data?.success
+  ){
+    return;
+  }
+
+  const target=
+    modal.querySelector(
+      "#developmentRichSection"
+    );
+
+  if(!target){
+    return;
+  }
+
+  const development=
+    data.development || {};
+
+  const summary=
+    data.summary || {};
+
+  const typologies=
+    Array.isArray(data.typologies)
+      ? data.typologies
+      : [];
+
+  const buildingFeatures=
+    Array.isArray(data?.features?.building)
+      ? data.features.building
+      : [];
+
+  const unitFeatures=
+    Array.isArray(data?.features?.units)
+      ? data.features.units
+      : [];
+
+  const videos=
+    Array.isArray(data?.media?.videos)
+      ? data.media.videos
+      : [];
+
+  const floorPlans=
+    Array.isArray(data?.media?.floor_plans)
+      ? data.media.floor_plans
+      : [];
+
+  const book=
+    findDevelopmentBook(data);
+
+  const video=
+    videos.find(
+      item=>clean(item?.url)
+    ) || null;
+
+  const videoUrl=
+    clean(video?.url);
+
+  const embedUrl=
+    developmentVideoEmbedUrl(
+      videoUrl
+    );
+
+  const areaRange=
+    Number(summary.min_area)>0 &&
+    Number(summary.max_area)>0
+      ? (
+          Number(summary.min_area)===Number(summary.max_area)
+            ? `${area(summary.min_area)} m²`
+            : `${area(summary.min_area)} a ${area(summary.max_area)} m²`
+        )
+      : "";
+
+  const bedroomValues=
+    Array.isArray(summary.bedrooms)
+      ? summary.bedrooms.filter(
+          item=>Number.isFinite(Number(item))
+        )
+      : [];
+
+  const bedroomLabel=
+    bedroomValues.length
+      ? (
+          bedroomValues.length===1
+            ? `${bedroomValues[0]} dorm.`
+            : `${bedroomValues.join(" e ")} dorms.`
+        )
+      : "";
+
+  const summaryCards=[
+    developmentSummaryItem(
+      summary.min_price
+        ? `A partir de ${money(summary.min_price)}`
+        : "",
+      "PREÇO"
+    ),
+    developmentSummaryItem(
+      areaRange,
+      "METRAGENS"
+    ),
+    developmentSummaryItem(
+      bedroomLabel,
+      "DORMITÓRIOS"
+    ),
+    developmentSummaryItem(
+      summary.total_stock!==null &&
+      summary.total_stock!==undefined
+        ? `${summary.total_stock}`
+        : "",
+      "UNIDADES DISPONÍVEIS"
+    )
+  ]
+    .filter(Boolean)
+    .join("");
+
+  const typologyHtml=
+    typologies.length
+      ? `
+        <div class="development-typologies">
+          ${typologies.map(item=>{
+            const bits=[
+              Number(item.bedrooms)>0
+                ? `${item.bedrooms} dorm${Number(item.bedrooms)===1?"":"s"}`
+                : "",
+              Number(item.suites)>0
+                ? `${item.suites} suíte${Number(item.suites)===1?"":"s"}`
+                : "",
+              Number(item.parking)>0
+                ? `${item.parking} vaga${Number(item.parking)===1?"":"s"}`
+                : "",
+              item.stock!==null &&
+              item.stock!==undefined
+                ? `${item.stock} disp.`
+                : ""
+            ].filter(Boolean);
+
+            return `
+              <article class="development-typology-card">
+                <div class="development-typology-card-head">
+                  <div class="development-typology-area">
+                    ${Number(item.area)>0 ? `${area(item.area)} m²` : "Tipologia"}
+                  </div>
+                  <div class="development-typology-price">
+                    ${Number(item.price)>0 ? money(item.price) : "Consulte"}
+                  </div>
+                </div>
+
+                ${bits.length ? `
+                  <div class="development-typology-meta">
+                    ${bits.map(bit=>`<span>${esc(bit)}</span>`).join("")}
+                  </div>
+                ` : ""}
+              </article>
+            `;
+          }).join("")}
+        </div>
+      `
+      : "";
+
+  const features=
+    [
+      ...buildingFeatures,
+      ...unitFeatures
+    ]
+      .map(
+        developmentFeatureName
+      )
+      .filter(Boolean)
+      .filter(
+        (value,index,array)=>
+          array.indexOf(value)===index
+      )
+      .slice(
+        0,
+        28
+      );
+
+  const featureHtml=
+    features.length
+      ? `
+        <div class="development-feature-list">
+          ${features.map(name=>`<span>${esc(name)}</span>`).join("")}
+        </div>
+      `
+      : "";
+
+  const videoHtml=
+    embedUrl
+      ? `
+        <div class="development-video-wrap">
+          <iframe
+            src="${esc(embedUrl)}"
+            title="${esc(video?.title || `Vídeo de ${development.name || p.name || "empreendimento"}`)}"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen>
+          </iframe>
+        </div>
+      `
+      : (
+          videoUrl
+            ? `
+              <div class="development-media-actions">
+                <a
+                  class="development-action-link"
+                  href="${esc(videoUrl)}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-development-video-link="true">
+                  ▶ ASSISTIR VÍDEO
+                </a>
+              </div>
+            `
+            : ""
+        );
+
+  const bookHtml=
+    book?.url
+      ? `
+        <div class="development-book-card">
+          <div class="development-book-card-copy">
+            <small>Material do empreendimento</small>
+            <strong>${esc(developmentFileName(book) || "Book digital")}</strong>
+          </div>
+
+          <a
+            class="development-action-link primary"
+            href="${esc(book.url)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+            data-development-book="true">
+            ↓ BAIXAR BOOK
+          </a>
+        </div>
+      `
+      : "";
+
+  const floorPlanInfo=
+    floorPlans.length
+      ? `
+        <p class="detail-map-address">
+          ${floorPlans.length} planta${floorPlans.length===1?"":"s"} / referência${floorPlans.length===1?"":"s"} cadastrada${floorPlans.length===1?"":"s"} para este empreendimento.
+        </p>
+      `
+      : "";
+
+  target.innerHTML=`
+    <div class="detail-section-title">Empreendimento completo</div>
+    <h3>${esc(development.name || p.name || "Conheça o empreendimento")}</h3>
+
+    ${summaryCards ? `
+      <div class="development-summary-grid">
+        ${summaryCards}
+      </div>
+    ` : ""}
+
+    ${typologyHtml ? `
+      <div style="margin-top:24px">
+        <div class="detail-section-title">Tipologias disponíveis</div>
+        <h3>Escolha a planta que combina com você</h3>
+        ${typologyHtml}
+      </div>
+    ` : ""}
+
+    ${bookHtml}
+
+    ${videoHtml ? `
+      <div style="margin-top:24px">
+        <div class="detail-section-title">Vídeo</div>
+        <h3>Conheça o projeto</h3>
+        ${videoHtml}
+      </div>
+    ` : ""}
+
+    ${featureHtml ? `
+      <div style="margin-top:24px">
+        <div class="detail-section-title">Diferenciais</div>
+        <h3>Estrutura e características</h3>
+        ${featureHtml}
+      </div>
+    ` : ""}
+
+    ${floorPlanInfo}
+  `;
+
+  target
+    .querySelector(
+      "[data-development-book]"
+    )
+    ?.addEventListener(
+      "click",
+      ()=>{
+        try{
+          gtag(
+            "event",
+            "development_book_click",
+            {
+              property_id:String(p.id||""),
+              building_id:String(development.id||""),
+              property_name:p.name||"",
+              file_name:developmentFileName(book)
+            }
+          );
+        }catch(error){}
+
+        supabaseTrack(
+          "development_book_click",
+          {
+            property_id:String(p.id||""),
+            building_id:String(development.id||""),
+            property_name:p.name||"",
+            file_name:developmentFileName(book)
+          }
+        );
+      }
+    );
+
+  target
+    .querySelector(
+      "[data-development-video-link]"
+    )
+    ?.addEventListener(
+      "click",
+      ()=>{
+        try{
+          gtag(
+            "event",
+            "development_video_click",
+            {
+              property_id:String(p.id||""),
+              building_id:String(development.id||""),
+              property_name:p.name||""
+            }
+          );
+        }catch(error){}
+
+        supabaseTrack(
+          "development_video_click",
+          {
+            property_id:String(p.id||""),
+            building_id:String(development.id||""),
+            property_name:p.name||""
+          }
+        );
+      }
+    );
+
+  console.info(
+    "YNT_DEVELOPMENT_RENDERED",
+    {
+      building_id:String(development.id||""),
+      typologies:typologies.length,
+      images:Array.isArray(data?.media?.images)
+        ? data.media.images.length
+        : 0,
+      floor_plans:floorPlans.length,
+      videos:videos.length,
+      book:Boolean(book?.url)
+    }
+  );
+}
+
+async function hydrateDevelopmentRichModal(
+  modal,
+  p
+){
+  const target=
+    modal?.querySelector(
+      "#developmentRichSection"
+    );
+
+  if(
+    !target ||
+    String(p?.source||"").toLowerCase()!=="novos"
+  ){
+    return;
+  }
+
+  const buildingId=
+    developmentBuildingId(p);
+
+  if(!buildingId){
+    target.remove();
+    return;
+  }
+
+  const data=
+    await loadDevelopmentData(p);
+
+  if(
+    !data ||
+    !document.body.contains(modal)
+  ){
+    target.remove();
+    return;
+  }
+
+  renderDevelopmentRichModal(
+    modal,
+    p,
+    data
+  );
+}
+
 async function showPhotoModal(id){
   let p=propertyForInteraction(id);
   if(!p)return;
@@ -10045,6 +11320,16 @@ async function showPhotoModal(id){
           <div class="detail-tech-grid">${buildingRows}</div>
         </section>` : ""}
 
+      ${isNew ? `
+        <section class="detail-section development-rich-section" id="developmentRichSection">
+          <div class="detail-section-title">Empreendimento completo</div>
+          <h3>Carregando informações do projeto...</h3>
+          <div class="development-rich-loading">
+            Consultando tipologias, materiais e conteúdo do empreendimento.
+          </div>
+        </section>
+      ` : ""}
+
       ${isNew && amenities.length ? `
         <section class="detail-section">
           <div class="detail-section-title">Estrutura</div>
@@ -10149,6 +11434,18 @@ async function showPhotoModal(id){
   modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openAiAssistant(p));
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
   document.body.appendChild(modal);
+
+  /*
+    Camada adicional de empreendimento.
+    Não bloqueia a abertura do modal e não altera o fluxo atual.
+  */
+  if(isNew){
+    hydrateDevelopmentRichModal(
+      modal,
+      p
+    );
+  }
+
   scheduleAiAssistantForProperty(p,modal);
 
   modal.querySelector(".detail-gallery-all-btn")?.addEventListener("click",()=>{
