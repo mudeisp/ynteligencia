@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -5498,14 +5497,26 @@ function mapOruloProperty(row){
   const building =
     raw.building || {};
 
+  /*
+    NOVOS (Órulo): endereço costuma vir em raw.building.address.
+    USADOS (Nonstop): endereço vem em raw.address.
+  */
   const addressData =
-    building.address || {};
+    (
+      raw.address &&
+      typeof raw.address === "object"
+    )
+      ? raw.address
+      : (building.address || {});
 
   const streetParts = [
     addressData.street_type,
     addressData.street,
     addressData.number
   ].filter(Boolean);
+
+  const propertySource =
+    clean(row.source || "novos").toLowerCase();
 
   return {
 
@@ -5523,6 +5534,7 @@ function mapOruloProperty(row){
       clean(
         row.neighborhood ||
         addressData.area ||
+        addressData.neighborhood ||
         ""
       ),
 
@@ -5550,6 +5562,7 @@ function mapOruloProperty(row){
       clean(
         typology.reference ||
         typology.section_reference ||
+        raw.reference ||
         ""
       ),
 
@@ -5560,26 +5573,45 @@ function mapOruloProperty(row){
       Number(row.bedrooms) || 0,
 
     suites:
-      Number(typology.suites) || 0,
+      Number(
+        typology.suites ??
+        raw.suites ??
+        0
+      ) || 0,
 
     parking:
       Number(row.parking_spaces) || 0,
 
     year:
-      0,
+      Number(
+        raw.year_of_construction ??
+        raw.yearOfConstruction ??
+        0
+      ) || 0,
 
     description:
       clean(
         building.description ||
+        raw.description ||
         row.title ||
         ""
       ),
 
     condominium:
-      0,
+      Number(
+        raw?.fees?.condo ??
+        raw?.values?.condoFee ??
+        raw?.condoFee ??
+        0
+      ) || 0,
 
     iptu:
-      0,
+      Number(
+        raw?.fees?.propertyTax ??
+        raw?.values?.propertyTax ??
+        raw?.propertyTax ??
+        0
+      ) || 0,
 
     value:
       Number(row.price) || 0,
@@ -5594,19 +5626,25 @@ function mapOruloProperty(row){
 
     type:
       normalizeOruloType(
+        raw.normalized_type ||
         typology.type ||
+        raw.type ||
         row.title ||
         "apartamento"
       ),
 
     source:
-      "novos",
+      propertySource || "novos",
 
     propertyUrl:
       clean(row.property_url || ""),
 
     stock:
-      Number(typology.stock) || 0,
+      Number(
+        typology.stock ??
+        raw.stock ??
+        0
+      ) || 0,
 
     rawData:
       raw
@@ -12831,14 +12869,17 @@ function renderCatalog(){
   const usedFilteredCount=list.filter(p=>p.source!=="novos").length;
   const sourceForStatus=$("catalogSource")?.value || "todos";
   let totalAvailable=list.length;
-  if(sourceForStatus==="novos") totalAvailable=newCatalogTotal || list.length;
-  else if(sourceForStatus==="todos") totalAvailable=usedFilteredCount + (newCatalogTotal || list.filter(p=>p.source==="novos").length);
+  if(sourceForStatus==="novos" || sourceForStatus==="usados"){
+    totalAvailable=newCatalogTotal || list.length;
+  }else if(sourceForStatus==="todos"){
+    totalAvailable=newCatalogTotal || list.length;
+  }
 
   $("catalogStatus").textContent=`${list.length} exibidos${totalAvailable>list.length ? ` · ${totalAvailable} encontrados` : ""}`;
 
   const loadMoreButton=$("catalogLoadMore");
   if(loadMoreButton){
-    const canLoadMore=sourceForStatus!=="usados" && newCatalogHasMore;
+    const canLoadMore=newCatalogHasMore;
     loadMoreButton.style.display=canLoadMore ? "" : "none";
     loadMoreButton.disabled=newCatalogLoading;
     loadMoreButton.textContent=newCatalogLoading ? "CARREGANDO..." : "CARREGAR MAIS 30";
@@ -14911,9 +14952,25 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
 
 function catalogServerQuery(offset=0){
   const url=new URL("https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties");
-  url.searchParams.set("source","eq.novos");
+
+  /*
+    O catálogo agora lê NOVOS e USADOS diretamente do Supabase.
+    O CSV permanece desativado.
+  */
+  const source=
+    $("catalogSource")?.value || "todos";
+
+  if(source==="novos"){
+    url.searchParams.set("source","eq.novos");
+  }else if(source==="usados"){
+    url.searchParams.set("source","eq.usados");
+  }
+
   url.searchParams.set("active","eq.true");
-  url.searchParams.set("select","id,external_id,source,title,development_name,neighborhood,city,state,price,bedrooms,bathrooms,parking_spaces,area,image_url,property_url,active,updated_at");
+  url.searchParams.set(
+    "select",
+    "id,external_id,source,title,development_name,neighborhood,city,state,price,bedrooms,bathrooms,parking_spaces,area,image_url,property_url,active,updated_at,raw_data"
+  );
   url.searchParams.set("city",`eq.${activeCity}`);
   url.searchParams.set("state",`eq.${activeState}`);
 
@@ -14940,7 +14997,7 @@ function catalogServerQuery(offset=0){
   if(search){
     const safeSearch=search.replace(/[(),]/g," ").trim();
     if(safeSearch){
-      url.searchParams.set("or",`(development_name.ilike.*${safeSearch}*,neighborhood.ilike.*${safeSearch}*,external_id.ilike.*${safeSearch}*)`);
+      url.searchParams.set("or",`(development_name.ilike.*${safeSearch}*,title.ilike.*${safeSearch}*,neighborhood.ilike.*${safeSearch}*,external_id.ilike.*${safeSearch}*)`);
     }
   }
   const orderMap={price_asc:"price.asc.nullslast",price_desc:"price.desc.nullslast",area_desc:"area.desc.nullslast",area_asc:"area.asc.nullslast"};
@@ -14951,40 +15008,77 @@ function catalogServerQuery(offset=0){
 }
 
 async function fetchNewCatalogPage({reset=false}={}){
-  const source=$("catalogSource")?.value || "todos";
-  if(source==="usados"){
-    if(reset){newPropertiesCache=[];newCatalogOffset=0;newCatalogHasMore=false;newCatalogTotal=0;}
-    properties=deduplicate([...usedPropertiesCache]);
-    return;
-  }
   if(newCatalogLoading) return;
   if(!reset && !newCatalogHasMore) return;
-  if(reset){newCatalogOffset=0;newCatalogHasMore=true;newCatalogTotal=0;newPropertiesCache=[];}
+  if(reset){
+    newCatalogOffset=0;
+    newCatalogHasMore=true;
+    newCatalogTotal=0;
+    newPropertiesCache=[];
+  }
 
   const requestId=++newCatalogRequestId;
   newCatalogLoading=true;
+
   try{
     const response=await fetch(catalogServerQuery(newCatalogOffset),{
       cache:"no-store",
       headers:{
         "apikey":SUPABASE_PUBLISHABLE_KEY,
-        "Authorization":`Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+        "Authorization":`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        "Prefer":"count=exact"
       }
     });
+
     if(!response.ok){
       const t=await response.text().catch(()=>"");
       throw new Error(`Supabase catálogo: ${response.status} ${t}`);
     }
+
     const rows=await response.json();
     if(requestId!==newCatalogRequestId) return;
+
     const contentRange=response.headers.get("content-range") || "";
     const totalMatch=contentRange.match(/\/(\d+)$/);
-    if(totalMatch) newCatalogTotal=Number(totalMatch[1])||0;
-    const mapped=Array.isArray(rows)?rows.map(mapOruloProperty).filter(p=>p.id&&p.value>0):[];
-    newPropertiesCache=deduplicate([...newPropertiesCache,...mapped]);
-    newCatalogOffset += Array.isArray(rows)?rows.length:0;
-    newCatalogHasMore=Array.isArray(rows) && rows.length===CATALOG_PAGE_SIZE && (!newCatalogTotal || newCatalogOffset<newCatalogTotal);
-    properties=deduplicate([...usedPropertiesCache,...newPropertiesCache]);
+    if(totalMatch){
+      newCatalogTotal=Number(totalMatch[1])||0;
+    }
+
+    const mapped=
+      Array.isArray(rows)
+        ? rows
+            .map(mapOruloProperty)
+            .filter(p=>p.id && p.value>0)
+        : [];
+
+    newPropertiesCache=
+      deduplicate([
+        ...newPropertiesCache,
+        ...mapped
+      ]);
+
+    newCatalogOffset +=
+      Array.isArray(rows)
+        ? rows.length
+        : 0;
+
+    newCatalogHasMore=
+      Array.isArray(rows) &&
+      rows.length===CATALOG_PAGE_SIZE &&
+      (
+        !newCatalogTotal ||
+        newCatalogOffset<newCatalogTotal
+      );
+
+    /*
+      O cache principal agora já contém o estoque filtrado
+      solicitado ao Supabase: novos, usados ou todos.
+    */
+    properties=
+      deduplicate([
+        ...newPropertiesCache
+      ]);
+
   }finally{
     newCatalogLoading=false;
   }
@@ -15029,8 +15123,9 @@ async function loadInventory(){
   try{
     /*
       PERFORMANCE:
-      primeiro carregamos somente 30 novos leves do Supabase.
-      O CSV de usados entra depois, sem bloquear a primeira tela.
+      carrega a primeira página do estoque solicitado diretamente
+      do Supabase (novos, usados/Nonstop ou todos).
+      O CSV permanece desativado.
     */
     await fetchNewCatalogPage({reset:true});
 
