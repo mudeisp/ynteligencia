@@ -42,7 +42,6 @@ function normalizeType(type) {
     STUDIO: "studio",
     KITNET: "studio",
     LOFT: "studio",
-
     FLAT: "apartamento",
 
     CASA_TIPO: "casa",
@@ -51,7 +50,8 @@ function normalizeType(type) {
     SOBRADO: "casa",
 
     TERRENO_RESIDENCIAL: "terreno",
-    TERRENO_RESIDENCIAL_EM_CONDOMINIO: "terreno"
+    TERRENO_RESIDENCIAL_EM_CONDOMINIO:
+      "terreno"
   };
 
   return (
@@ -63,9 +63,7 @@ function normalizeType(type) {
 
 function firstImage(property) {
   const mediaImages =
-    arr(
-      property?.media?.images
-    );
+    arr(property?.media?.images);
 
   if (mediaImages.length) {
     const first =
@@ -87,9 +85,7 @@ function firstImage(property) {
 
 
   const images =
-    arr(
-      property?.images
-    );
+    arr(property?.images);
 
   if (images.length) {
     const first =
@@ -110,6 +106,7 @@ function firstImage(property) {
 
 
   return (
+    property?.image ||
     property?.condo
       ?.media
       ?.images
@@ -121,7 +118,7 @@ function firstImage(property) {
 
 
 // =========================================================
-// NORMALIZA IMÓVEL NONSTOP PARA properties
+// NORMALIZA IMÓVEL
 // =========================================================
 
 function normalizeProperty(property) {
@@ -184,8 +181,7 @@ function normalizeProperty(property) {
       .map(item => {
 
         if (
-          typeof item ===
-          "string"
+          typeof item === "string"
         ) {
           return item;
         }
@@ -232,6 +228,15 @@ function normalizeProperty(property) {
       property?.salePrice ??
       property?.price ??
       property?.valor ??
+      null
+    );
+
+
+  const rentPrice =
+    num(
+      property?.values?.rent ??
+      property?.rentPrice ??
+      property?.rentalPrice ??
       null
     );
 
@@ -297,6 +302,12 @@ function normalizeProperty(property) {
       : null;
 
 
+  const chosenPrice =
+    salePrice ??
+    rentPrice ??
+    null;
+
+
   return {
 
     external_id:
@@ -350,7 +361,7 @@ function normalizeProperty(property) {
 
 
     price:
-      salePrice,
+      chosenPrice,
 
 
     bedrooms,
@@ -428,6 +439,14 @@ function normalizeProperty(property) {
 
       available_for:
         availableFor,
+
+
+      sale_price:
+        salePrice,
+
+
+      rent_price:
+        rentPrice,
 
 
       suites:
@@ -728,7 +747,7 @@ async function deactivateProperty(
 
 
 // =========================================================
-// EXTRAI IMÓVEIS DO JSON
+// EXTRAI LISTA DA NONSTOP
 // =========================================================
 
 function extractProperties(
@@ -838,20 +857,15 @@ function extractTotal(
 
 
 // =========================================================
-// CONSULTA API NONSTOP
+// API NONSTOP
 // =========================================================
 
 async function fetchNonstopPage(
   token,
   currentPage = 1,
-  perPage = 50
+  perPage = 50,
+  availableFor = ""
 ) {
-
-  /*
-    Sem filtro de venda por enquanto.
-    Primeiro queremos enxergar o estoque real liberado
-    para esta integração.
-  */
 
   const params =
     new URLSearchParams({
@@ -868,6 +882,25 @@ async function fetchNonstopPage(
         )
 
     });
+
+
+  const operation =
+    clean(
+      availableFor
+    ).toUpperCase();
+
+
+  if (
+    operation === "VENDA" ||
+    operation === "LOCACAO"
+  ) {
+
+    params.set(
+      "availableFor",
+      operation
+    );
+
+  }
 
 
   const url =
@@ -960,6 +993,10 @@ async function fetchNonstopPage(
       response.status,
 
 
+    operation:
+      operation || null,
+
+
     data,
 
 
@@ -980,7 +1017,8 @@ async function fetchNonstopPage(
 async function syncPage(
   token,
   supabaseKey,
-  page = 1
+  page = 1,
+  availableFor = ""
 ) {
 
   const PER_PAGE =
@@ -994,7 +1032,9 @@ async function syncPage(
 
       page,
 
-      PER_PAGE
+      PER_PAGE,
+
+      availableFor
 
     );
 
@@ -1076,6 +1116,10 @@ async function syncPage(
 
 
   return {
+
+    operation:
+      result.operation,
+
 
     page,
 
@@ -1206,7 +1250,7 @@ export default async function handler(
 
 
   // =====================================================
-  // TESTE DAS VARIÁVEIS
+  // ENV CHECK
   // =====================================================
 
   if (
@@ -1245,13 +1289,7 @@ export default async function handler(
   }
 
 
-  // =====================================================
-  // PRECISAMOS DO TOKEN DE API PARA DEBUG / SYNC
-  // =====================================================
-
-  if (
-    !nonstopToken
-  ) {
+  if (!nonstopToken) {
 
     return res
       .status(500)
@@ -1273,10 +1311,6 @@ export default async function handler(
 
     // ===================================================
     // DEBUG
-    //
-    // NÃO GRAVA NADA.
-    //
-    // /api/nonstop-webhook?action=debug&page=1
     // ===================================================
 
     if (
@@ -1298,6 +1332,12 @@ export default async function handler(
         );
 
 
+      const availableFor =
+        clean(
+          req.query?.availableFor
+        ).toUpperCase();
+
+
       const result =
         await fetchNonstopPage(
 
@@ -1305,7 +1345,9 @@ export default async function handler(
 
           page,
 
-          10
+          10,
+
+          availableFor
 
         );
 
@@ -1320,6 +1362,10 @@ export default async function handler(
 
           mode:
             "debug",
+
+
+          operation:
+            result.operation,
 
 
           request_url:
@@ -1362,10 +1408,6 @@ export default async function handler(
 
     // ===================================================
     // SYNC
-    //
-    // GRAVA UMA PÁGINA NO SUPABASE
-    //
-    // /api/nonstop-webhook?action=sync&page=1
     // ===================================================
 
     if (
@@ -1405,6 +1447,12 @@ export default async function handler(
         );
 
 
+      const availableFor =
+        clean(
+          req.query?.availableFor
+        ).toUpperCase();
+
+
       const result =
         await syncPage(
 
@@ -1412,7 +1460,9 @@ export default async function handler(
 
           supabaseKey,
 
-          page
+          page,
+
+          availableFor
 
         );
 
@@ -1437,7 +1487,7 @@ export default async function handler(
 
 
     // ===================================================
-    // A PARTIR DAQUI É WEBHOOK
+    // WEBHOOK
     // ===================================================
 
     if (
@@ -1459,10 +1509,6 @@ export default async function handler(
 
     }
 
-
-    // ===================================================
-    // VALIDAÇÃO DO TOKEN DO WEBHOOK
-    // ===================================================
 
     if (!webhookToken) {
 
@@ -1532,10 +1578,6 @@ export default async function handler(
 
     }
 
-
-    // ===================================================
-    // PAYLOAD
-    // ===================================================
 
     const payload =
       req.body || {};
@@ -1657,7 +1699,7 @@ export default async function handler(
 
 
     // ===================================================
-    // EXCLUSÃO / DESPUBLICAÇÃO
+    // EXCLUSÃO
     // ===================================================
 
     if (
@@ -1723,19 +1765,6 @@ export default async function handler(
         });
 
     }
-
-
-    // ===================================================
-    // EVENTO AINDA NÃO MAPEADO
-    // ===================================================
-
-    console.info(
-
-      "NONSTOP_EVENT_IGNORED",
-
-      event
-
-    );
 
 
     return res
