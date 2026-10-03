@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -47,7 +48,7 @@
 <link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="description" content="Ynteligencia — encontre imóveis que fazem sentido para você.">
 
-<title>Ynteligencia | Seu imóvel por MATCH</title>
+<title>Ynteligencia</title>
 
 <style>
 :root{
@@ -1794,14 +1795,6 @@ body.match-results-mode .refine-match-shell{
   font-size:clamp(34px,5vw,58px) !important;
   line-height:1.02 !important;
 }
-.hero h1{
-  font-size:0 !important;
-}
-.hero h1:after{
-  content:"Encontre seu imóvel em São Paulo";
-  display:block;
-  font-size:clamp(34px,5vw,58px);
-}
 .hero p{
   margin:0 auto 20px !important;
   text-align:center !important;
@@ -3513,6 +3506,435 @@ body.match-results-mode #results{
 }
 </style>
 
+
+<style id="mobile-clean-light-v1">
+/* =========================================================
+   MOBILE LEVE · SEM PRETO · SEM RODAPÉ
+   Camada somente visual/UX. Não altera APIs, Supabase,
+   Nonstop, Órulo, tracking, MATCH ou integrações.
+========================================================= */
+@media (max-width:768px){
+
+  /* Remove navegação inferior e o espaço reservado para ela. */
+  .app-dock,
+  footer{
+    display:none !important;
+  }
+
+  body,
+  body.campaign-catalog-mode{
+    padding-bottom:0 !important;
+  }
+
+  /* Mantém WhatsApp/especialista independente do dock. */
+  .specialist-float{
+    bottom:max(12px,env(safe-area-inset-bottom)) !important;
+  }
+
+  /* ---------- HOME ---------- */
+  .clean-home{
+    min-height:calc(100svh - 68px) !important;
+    padding:32px 18px 36px !important;
+    background:#F7F4ED !important;
+  }
+
+  /* Corrige a duplicação criada pelo h1::after legado. */
+  .clean-home h1::after{
+    content:none !important;
+    display:none !important;
+  }
+
+  .clean-home h1{
+    font-size:clamp(38px,11vw,48px) !important;
+    line-height:.98 !important;
+    letter-spacing:-.045em !important;
+    margin:0 auto 14px !important;
+  }
+
+  .clean-kicker{
+    margin-bottom:10px !important;
+    font-size:10px !important;
+    letter-spacing:.13em !important;
+  }
+
+  .clean-home p{
+    max-width:340px !important;
+    font-size:16px !important;
+    line-height:1.45 !important;
+  }
+
+  .clean-home-actions{
+    width:100% !important;
+    max-width:360px !important;
+    margin-top:22px !important;
+    gap:10px !important;
+  }
+
+  .clean-home-actions button{
+    min-height:54px !important;
+    border-radius:15px !important;
+    font-size:16px !important;
+  }
+
+  .clean-primary{
+    background:#DCC486 !important;
+    border-color:#DCC486 !important;
+    color:#2B261F !important;
+  }
+
+  /* Remove o preto da CTA de IA no mobile. */
+  .clean-ai-primary{
+    background:#FCFAF6 !important;
+    color:#4A443C !important;
+    border:1px solid #C6A76B !important;
+    box-shadow:none !important;
+  }
+
+  .clean-ai-icon{
+    width:28px !important;
+    height:28px !important;
+    border-radius:8px !important;
+    background:#F0ECE3 !important;
+  }
+
+  /* ---------- FILTRO ---------- */
+  .explore{
+    padding:16px 0 24px !important;
+  }
+
+  .unified-search-panel{
+    padding:12px !important;
+    border-radius:16px !important;
+    box-shadow:none !important;
+    border-color:#DED8CD !important;
+  }
+
+  .unified-search-main{
+    gap:8px !important;
+  }
+
+  .unified-field{
+    gap:5px !important;
+  }
+
+  .unified-field > span,
+  .filter-title{
+    font-size:10px !important;
+    line-height:1.2 !important;
+    letter-spacing:.07em !important;
+  }
+
+  .unified-search-panel .field{
+    min-height:44px !important;
+    height:44px !important;
+    padding:0 11px !important;
+    border-radius:12px !important;
+    font-size:15px !important;
+    box-shadow:none !important;
+  }
+
+  input.field{
+    line-height:44px !important;
+  }
+
+  .unified-search-separator{
+    margin:13px 0 9px !important;
+    gap:8px !important;
+    font-size:9px !important;
+  }
+
+  /*
+    Região, Bairro e Empreendimento continuam 100% largura.
+    Os filtros de compra ficam em 2 colunas para reduzir bastante
+    o comprimento da tela.
+  */
+  .unified-filter-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:8px !important;
+  }
+
+  .unified-filter-actions{
+    gap:8px !important;
+    margin-top:10px !important;
+    padding:8px 0 0 !important;
+  }
+
+  .unified-filter-actions .catalog-search-btn{
+    min-height:50px !important;
+    border-radius:13px !important;
+    background:#DCC486 !important;
+    color:#2B261F !important;
+  }
+
+  .unified-filter-actions .filter-reset{
+    min-height:42px !important;
+    border-radius:12px !important;
+  }
+
+  /* O botão principal de busca também deixa de ser preto. */
+  #catalogSearchBtn{
+    background:#DCC486 !important;
+    color:#2B261F !important;
+    border:1px solid #D1B66F !important;
+  }
+
+  /* Não volta para uma coluna em celulares estreitos. */
+  .unified-filter-grid{
+    min-width:0 !important;
+  }
+}
+
+/* Sobrescreve o antigo breakpoint que transformava o grid em 1 coluna. */
+@media (max-width:430px){
+  .unified-filter-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
+</style>
+
+
+<style id="mobile-final-clean-override">
+@media (max-width:768px){
+
+  /* HEADER mais compacto */
+  header{
+    background:#FCFAF6 !important;
+    border-bottom:1px solid #DED8CD !important;
+    box-shadow:none !important;
+  }
+
+  .nav{
+    min-height:64px !important;
+  }
+
+  .brand-icon{
+    width:42px !important;
+    height:42px !important;
+    border-radius:11px !important;
+  }
+
+  .brand-link.brand-icon-fallback::before{
+    content:"✦";
+    width:42px;
+    height:42px;
+    display:grid;
+    place-items:center;
+    border-radius:11px;
+    background:#E4D0A3;
+    color:#2B261F;
+    font-size:22px;
+    font-weight:900;
+    flex:0 0 42px;
+  }
+
+  .brand-copy strong{
+    font-size:17px !important;
+    color:#2B261F !important;
+  }
+
+  .brand-copy small{
+    font-size:9px !important;
+    letter-spacing:.12em !important;
+    color:#7D776E !important;
+  }
+
+  .hamburger-btn{
+    width:50px !important;
+    height:50px !important;
+    border-radius:15px !important;
+    background:#F0ECE3 !important;
+    border:1px solid #D8D0C4 !important;
+  }
+
+  .hamburger-btn span{
+    background:#4A443C !important;
+  }
+
+  /* HOME: uma única hierarquia, sem preto */
+  .clean-home{
+    min-height:calc(100svh - 64px) !important;
+    padding:30px 18px 34px !important;
+    background:#F7F4ED !important;
+    display:flex !important;
+    align-items:flex-start !important;
+  }
+
+  .clean-home-inner{
+    width:100% !important;
+  }
+
+  .clean-home-copy{
+    width:100% !important;
+    text-align:center !important;
+  }
+
+  .clean-home .clean-kicker{
+    display:block !important;
+    margin:10px 0 12px !important;
+    color:#A57E39 !important;
+    font-size:10px !important;
+    line-height:1.2 !important;
+    letter-spacing:.13em !important;
+    font-weight:900 !important;
+  }
+
+  .clean-home h1{
+    max-width:350px !important;
+    margin:0 auto 14px !important;
+    font-size:43px !important;
+    line-height:.98 !important;
+    letter-spacing:-.045em !important;
+    color:#242424 !important;
+  }
+
+  .clean-home h1::before,
+  .clean-home h1::after{
+    content:none !important;
+    display:none !important;
+  }
+
+  .clean-home p{
+    max-width:330px !important;
+    margin:0 auto !important;
+    font-size:16px !important;
+    line-height:1.42 !important;
+    color:#6A635A !important;
+  }
+
+  .clean-home-actions{
+    width:100% !important;
+    max-width:360px !important;
+    margin:22px auto 0 !important;
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:9px !important;
+  }
+
+  .clean-home-actions button{
+    min-height:52px !important;
+    border-radius:14px !important;
+    font-size:15px !important;
+    box-shadow:none !important;
+  }
+
+  .clean-primary{
+    background:#DCC486 !important;
+    border:1px solid #D1B66F !important;
+    color:#2B261F !important;
+  }
+
+  .clean-ai-primary{
+    background:#FCFAF6 !important;
+    border:1px solid #C6A76B !important;
+    color:#4A443C !important;
+  }
+
+  .clean-ai-icon{
+    width:28px !important;
+    height:28px !important;
+    background:#F0ECE3 !important;
+    border-radius:8px !important;
+  }
+
+  /* FILTRO: mais curto e leve */
+  #explore{
+    padding:12px 0 20px !important;
+  }
+
+  .unified-search-panel{
+    padding:10px !important;
+    border-radius:15px !important;
+    background:#FCFAF6 !important;
+    box-shadow:none !important;
+    border:1px solid #DED8CD !important;
+  }
+
+  .unified-search-main{
+    gap:7px !important;
+  }
+
+  .unified-field{
+    gap:4px !important;
+  }
+
+  .unified-field > span,
+  .filter-title{
+    font-size:9px !important;
+    line-height:1.15 !important;
+    letter-spacing:.07em !important;
+  }
+
+  .unified-search-panel .field{
+    min-height:42px !important;
+    height:42px !important;
+    padding:0 10px !important;
+    border-radius:11px !important;
+    font-size:14px !important;
+    background:#fff !important;
+    border-color:#DED8CD !important;
+    box-shadow:none !important;
+  }
+
+  .unified-search-separator{
+    margin:11px 0 8px !important;
+    font-size:9px !important;
+  }
+
+  .unified-filter-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:7px !important;
+  }
+
+  .unified-filter-actions{
+    grid-template-columns:1fr !important;
+    gap:7px !important;
+    margin-top:10px !important;
+    padding:8px 0 0 !important;
+    position:static !important;
+    background:transparent !important;
+  }
+
+  .unified-filter-actions .filter-reset{
+    order:2;
+    min-height:40px !important;
+    border-radius:11px !important;
+  }
+
+  #catalogSearchBtn{
+    order:1;
+    min-height:48px !important;
+    border-radius:12px !important;
+    background:#DCC486 !important;
+    border:1px solid #D1B66F !important;
+    color:#2B261F !important;
+    font-size:14px !important;
+    font-weight:900 !important;
+  }
+
+  /* Remove rodapé/nav inferior, mantém WhatsApp */
+  .app-dock,
+  footer{
+    display:none !important;
+  }
+
+  body,
+  body.campaign-catalog-mode{
+    padding-bottom:0 !important;
+  }
+
+  .specialist-float{
+    bottom:max(10px,env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* mantém 2 colunas mesmo em celulares estreitos */
+@media (max-width:430px){
+  .unified-filter-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -3520,7 +3942,7 @@ body.match-results-mode #results{
 <header>
   <div class="container nav app-topbar">
     <a href="#inicio" class="brand-lockup" aria-label="Ynteligencia - início">
-      <img src="/icon-192.png" alt="" class="brand-icon">
+      <img src="/icon-192.png" alt="" class="brand-icon" onerror="this.style.display='none';this.parentElement?.classList.add('brand-icon-fallback')">
       <span class="brand-copy">
         <strong>Ynteligencia</strong>
         <small>IMÓVEIS QUE COMBINAM COM VOCÊ</small>
@@ -13786,6 +14208,20 @@ function catalogFilledCriteriaCount(){
 function maybeAutoExecuteCatalogSearch({
   debounce=false
 }={}){
+  /*
+    MOBILE:
+    evita consultas automáticas enquanto o cliente está montando
+    os filtros. A busca acontece ao tocar em BUSCAR IMÓVEIS.
+    Isso deixa selects/inputs mais leves sem alterar o backend.
+  */
+  if(window.matchMedia && window.matchMedia("(max-width:768px)").matches){
+    if(catalogAutoSearchTimer){
+      clearTimeout(catalogAutoSearchTimer);
+      catalogAutoSearchTimer=null;
+    }
+    return;
+  }
+
   const count=
     catalogFilledCriteriaCount();
 
@@ -13842,8 +14278,16 @@ function maybeAutoExecuteCatalogSearch({
   Se mudar Novos / Usados / Todos, recarrega também o índice
   completo de bairros daquele estoque.
 */
-$("catalogSource")?.addEventListener("change",async()=>{
-  await fillCatalogNeighborhoodsForRegion(catalogRegion);
+$("catalogSource")?.addEventListener("change",()=>{
+  /*
+    Atualiza bairros em segundo plano para não travar a interação
+    do select no mobile.
+  */
+  Promise.resolve(
+    fillCatalogNeighborhoodsForRegion(catalogRegion)
+  ).catch(error=>{
+    console.warn("Falha ao atualizar bairros:",error);
+  });
 });
 
 [
