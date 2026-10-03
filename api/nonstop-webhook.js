@@ -4,6 +4,20 @@ const SUPABASE_URL =
 
 
 // =========================================================
+// CONFIG
+// =========================================================
+
+const NONSTOP_BASE_URL =
+  "https://www.usenonstop.com/api/unstable/imoveis/todos";
+
+const OPERATION =
+  "VENDA";
+
+const PER_PAGE =
+  50;
+
+
+// =========================================================
 // HELPERS
 // =========================================================
 
@@ -13,7 +27,8 @@ function clean(value) {
 
 
 function num(value) {
-  const n = Number(value);
+  const n =
+    Number(value);
 
   return Number.isFinite(n)
     ? n
@@ -28,31 +43,72 @@ function arr(value) {
 }
 
 
+function sleep(ms) {
+  return new Promise(resolve =>
+    setTimeout(resolve, ms)
+  );
+}
+
+
+// =========================================================
+// TIPO DE IMÓVEL
+// =========================================================
+
 function normalizeType(type) {
+
   const t =
     clean(type).toUpperCase();
 
+
   const map = {
-    APARTAMENTO_TIPO: "apartamento",
-    APARTAMENTO_GARDEN: "apartamento",
-    COBERTURA: "apartamento",
-    DUPLEX: "apartamento",
-    TRIPLEX: "apartamento",
 
-    STUDIO: "studio",
-    KITNET: "studio",
-    LOFT: "studio",
-    FLAT: "apartamento",
+    APARTAMENTO_TIPO:
+      "apartamento",
 
-    CASA_TIPO: "casa",
-    CASA_DE_VILA: "casa",
-    CASA_EM_CONDOMINIO: "casa",
-    SOBRADO: "casa",
+    APARTAMENTO_GARDEN:
+      "apartamento",
 
-    TERRENO_RESIDENCIAL: "terreno",
+    COBERTURA:
+      "apartamento",
+
+    DUPLEX:
+      "apartamento",
+
+    TRIPLEX:
+      "apartamento",
+
+    STUDIO:
+      "studio",
+
+    KITNET:
+      "studio",
+
+    LOFT:
+      "studio",
+
+    FLAT:
+      "apartamento",
+
+    CASA_TIPO:
+      "casa",
+
+    CASA_DE_VILA:
+      "casa",
+
+    CASA_EM_CONDOMINIO:
+      "casa",
+
+    SOBRADO:
+      "casa",
+
+    TERRENO_RESIDENCIAL:
+      "terreno",
+
     TERRENO_RESIDENCIAL_EM_CONDOMINIO:
       "terreno"
+
   };
+
 
   return (
     map[t] ||
@@ -61,82 +117,276 @@ function normalizeType(type) {
 }
 
 
+// =========================================================
+// FOTO PRINCIPAL
+// =========================================================
+
 function firstImage(property) {
+
+  /*
+    A Nonstop pode devolver foto principal diretamente
+    em property.image.
+  */
+
+  if (
+    typeof property?.image ===
+      "string" &&
+    clean(property.image)
+  ) {
+
+    return clean(
+      property.image
+    );
+
+  }
+
+
   const mediaImages =
-    arr(property?.media?.images);
+    arr(
+      property?.media?.images
+    );
+
 
   if (mediaImages.length) {
+
     const first =
       mediaImages[0];
 
+
     if (
-      typeof first === "string"
+      typeof first ===
+      "string"
     ) {
-      return first;
+
+      return clean(first);
+
     }
 
-    return (
+
+    return clean(
+
       first?.url ||
+
       first?.src ||
+
       first?.original ||
-      null
-    );
+
+      ""
+
+    ) || null;
+
   }
 
 
   const images =
-    arr(property?.images);
+    arr(
+      property?.images
+    );
+
 
   if (images.length) {
+
     const first =
       images[0];
 
+
     if (
-      typeof first === "string"
+      typeof first ===
+      "string"
     ) {
-      return first;
+
+      return clean(first);
+
     }
 
-    return (
+
+    return clean(
+
       first?.url ||
+
       first?.src ||
-      null
-    );
+
+      ""
+
+    ) || null;
+
   }
 
 
   return (
-    property?.image ||
-    property?.condo
-      ?.media
-      ?.images
-      ?.[0]
-      ?.url ||
+
+    clean(
+
+      property?.condo
+        ?.media
+        ?.images
+        ?.[0]
+        ?.url
+
+    ) ||
+
     null
+
   );
+
 }
 
 
 // =========================================================
-// NORMALIZA IMÓVEL
+// TODAS AS FOTOS
 // =========================================================
 
-function normalizeProperty(property) {
+function extractImages(property) {
+
+  const results =
+    [];
+
+
+  if (
+    typeof property?.image ===
+      "string" &&
+    clean(property.image)
+  ) {
+
+    results.push(
+      clean(property.image)
+    );
+
+  }
+
+
+  for (
+    const item of
+    arr(
+      property?.media?.images
+    )
+  ) {
+
+    if (
+      typeof item ===
+      "string"
+    ) {
+
+      if (clean(item)) {
+        results.push(
+          clean(item)
+        );
+      }
+
+      continue;
+
+    }
+
+
+    const url =
+      clean(
+
+        item?.url ||
+
+        item?.src ||
+
+        item?.original ||
+
+        ""
+
+      );
+
+
+    if (url) {
+
+      results.push(url);
+
+    }
+
+  }
+
+
+  for (
+    const item of
+    arr(
+      property?.images
+    )
+  ) {
+
+    if (
+      typeof item ===
+      "string"
+    ) {
+
+      if (clean(item)) {
+        results.push(
+          clean(item)
+        );
+      }
+
+      continue;
+
+    }
+
+
+    const url =
+      clean(
+
+        item?.url ||
+
+        item?.src ||
+
+        ""
+
+      );
+
+
+    if (url) {
+
+      results.push(url);
+
+    }
+
+  }
+
+
+  return [
+    ...new Set(
+      results
+    )
+  ];
+
+}
+
+
+// =========================================================
+// NORMALIZA NONSTOP → PROPERTIES
+// =========================================================
+
+function normalizeProperty(
+  property
+) {
 
   const id =
     clean(
+
       property?.id ||
+
       property?._id ||
+
       property?.base36Id ||
+
       property?.code
+
     );
 
 
   if (!id) {
+
     throw new Error(
       "Imóvel Nonstop sem ID"
     );
+
   }
+
+
+  const address =
+    property?.address || {};
 
 
   const availableFor =
@@ -147,17 +397,21 @@ function normalizeProperty(property) {
 
   const transactionStatus =
     clean(
-      property?.transactionStatus
+      property
+        ?.transactionStatus
     ).toUpperCase();
 
 
-  let active = true;
+  let active =
+    true;
 
 
   if (
+
     availableFor.includes(
       "INDISPONIVEL"
     ) ||
+
     [
       "VENDIDO",
       "ALUGADO",
@@ -165,113 +419,80 @@ function normalizeProperty(property) {
     ].includes(
       transactionStatus
     )
+
   ) {
-    active = false;
+
+    active =
+      false;
+
   }
-
-
-  const address =
-    property?.address || {};
-
-
-  const mediaImages =
-    arr(
-      property?.media?.images
-    )
-      .map(item => {
-
-        if (
-          typeof item === "string"
-        ) {
-          return item;
-        }
-
-        return (
-          item?.url ||
-          item?.src ||
-          item?.original ||
-          null
-        );
-
-      })
-      .filter(Boolean);
-
-
-  const floorPlans =
-    arr(
-      property?.media?.floorPlans
-    );
-
-
-  const promotionalFiles =
-    arr(
-      property?.media
-        ?.promotionalFiles
-    );
-
-
-  const videos =
-    arr(
-      property?.media?.videos
-    );
-
-
-  const tours =
-    arr(
-      property?.media?.tours
-    );
 
 
   const salePrice =
     num(
+
       property?.values?.sale ??
+
       property?.salePrice ??
+
       property?.price ??
+
       property?.valor ??
-      null
-    );
 
-
-  const rentPrice =
-    num(
-      property?.values?.rent ??
-      property?.rentPrice ??
-      property?.rentalPrice ??
       null
+
     );
 
 
   const privateArea =
     num(
+
       property?.areas?.private ??
+
       property?.privateArea ??
+
       property?.area ??
+
       null
+
     );
 
 
   const totalArea =
     num(
+
       property?.areas?.total ??
+
       property?.totalArea ??
+
       null
+
     );
 
 
   const bedrooms =
     num(
+
       property?.rooms ??
+
       property?.bedrooms ??
+
       property?.dormitories ??
+
       null
+
     );
 
 
   const bathrooms =
     num(
+
       property?.baths ??
+
       property?.bathrooms ??
+
       null
+
     );
 
 
@@ -279,15 +500,60 @@ function normalizeProperty(property) {
     Array.isArray(
       property?.parkingLots
     )
+
       ? property
           .parkingLots
           .length
+
       : num(
+
           property
             ?.parkingSpaces ??
-          property?.parking ??
+
+          property
+            ?.parking ??
+
           null
+
         );
+
+
+  const images =
+    extractImages(
+      property
+    );
+
+
+  const floorPlans =
+    arr(
+      property
+        ?.media
+        ?.floorPlans
+    );
+
+
+  const promotionalFiles =
+    arr(
+      property
+        ?.media
+        ?.promotionalFiles
+    );
+
+
+  const videos =
+    arr(
+      property
+        ?.media
+        ?.videos
+    );
+
+
+  const tours =
+    arr(
+      property
+        ?.media
+        ?.tours
+    );
 
 
   const base36Id =
@@ -298,14 +564,14 @@ function normalizeProperty(property) {
 
   const propertyUrl =
     base36Id
+
       ? `https://www.usenonstop.com/imovel/${encodeURIComponent(base36Id)}`
-      : null;
 
-
-  const chosenPrice =
-    salePrice ??
-    rentPrice ??
-    null;
+      : (
+          clean(
+            property?.url
+          ) || null
+        );
 
 
   return {
@@ -320,48 +586,78 @@ function normalizeProperty(property) {
 
     title:
       clean(
+
         property?.title ||
+
         property?.name ||
-        `${normalizeType(property?.type)} em ${address?.area || address?.neighborhood || ""}`
+
+        `${normalizeType(
+          property?.type
+        )} em ${
+          address?.area ||
+          address?.neighborhood ||
+          ""
+        }`
+
       ),
 
 
     development_name:
       clean(
-        property?.condo?.name ||
-        property?.condominium
+
+        property
+          ?.condo
           ?.name ||
+
+        property
+          ?.condominium
+          ?.name ||
+
         ""
+
       ) || null,
 
 
     neighborhood:
       clean(
+
         address?.area ||
+
         address?.neighborhood ||
+
         property?.neighborhood ||
+
         ""
+
       ) || null,
 
 
     city:
       clean(
+
         address?.city ||
+
         property?.city ||
+
         ""
+
       ) || null,
 
 
     state:
       clean(
+
         address?.state ||
+
         property?.state ||
+
         ""
+
       ) || null,
 
 
     price:
-      chosenPrice,
+      salePrice,
 
 
     bedrooms,
@@ -400,6 +696,10 @@ function normalizeProperty(property) {
 
       provider:
         "nonstop",
+
+
+      operation:
+        "VENDA",
 
 
       nonstop_id:
@@ -443,10 +743,6 @@ function normalizeProperty(property) {
 
       sale_price:
         salePrice,
-
-
-      rent_price:
-        rentPrice,
 
 
       suites:
@@ -510,8 +806,7 @@ function normalizeProperty(property) {
         null,
 
 
-      images:
-        mediaImages,
+      images,
 
 
       floor_plans:
@@ -528,6 +823,12 @@ function normalizeProperty(property) {
       tours,
 
 
+      year_of_construction:
+        property
+          ?.yearOfConstruction ??
+        null,
+
+
       user:
         property?.user ??
         null,
@@ -539,18 +840,12 @@ function normalizeProperty(property) {
         null,
 
 
-      year_of_construction:
-        property
-          ?.yearOfConstruction ??
-        null,
-
-
       created_at:
         property?.createdAt ??
         null,
 
 
-      updated_at:
+      provider_updated_at:
         property?.updatedAt ??
         null
 
@@ -604,7 +899,89 @@ function supabaseHeaders(
 }
 
 
-async function upsertProperty(
+// =========================================================
+// BATCH UPSERT
+// =========================================================
+
+async function upsertBatch(
+  rows,
+  supabaseKey
+) {
+
+  if (
+    !Array.isArray(rows) ||
+    !rows.length
+  ) {
+
+    return {
+      saved:
+        0
+    };
+
+  }
+
+
+  const response =
+    await fetch(
+
+      `${SUPABASE_URL}/rest/v1/properties?on_conflict=external_id`,
+
+      {
+
+        method:
+          "POST",
+
+
+        headers:
+          supabaseHeaders(
+
+            supabaseKey,
+
+            "resolution=merge-duplicates,return=minimal"
+
+          ),
+
+
+        body:
+          JSON.stringify(
+            rows
+          )
+
+      }
+
+    );
+
+
+  const text =
+    await response.text();
+
+
+  if (!response.ok) {
+
+    throw new Error(
+
+      `Supabase batch ${response.status}: ${text.slice(0, 2000)}`
+
+    );
+
+  }
+
+
+  return {
+
+    saved:
+      rows.length
+
+  };
+
+}
+
+
+// =========================================================
+// FALLBACK INDIVIDUAL
+// =========================================================
+
+async function upsertIndividual(
   row,
   supabaseKey
 ) {
@@ -625,7 +1002,7 @@ async function upsertProperty(
 
             supabaseKey,
 
-            "resolution=merge-duplicates,return=representation"
+            "resolution=merge-duplicates,return=minimal"
 
           ),
 
@@ -640,35 +1017,26 @@ async function upsertProperty(
     );
 
 
-  const text =
-    await response.text();
-
-
   if (!response.ok) {
+
+    const text =
+      await response.text();
+
 
     throw new Error(
 
-      `Supabase upsert ${response.status}: ${text}`
+      `Supabase ${response.status}: ${text.slice(0, 1000)}`
 
     );
-
-  }
-
-
-  try {
-
-    return JSON.parse(
-      text
-    );
-
-  } catch {
-
-    return [];
 
   }
 
 }
 
+
+// =========================================================
+// DESATIVA
+// =========================================================
 
 async function deactivateProperty(
   id,
@@ -757,7 +1125,9 @@ function extractProperties(
   if (
     Array.isArray(data)
   ) {
+
     return data;
+
   }
 
 
@@ -857,54 +1227,34 @@ function extractTotal(
 
 
 // =========================================================
-// API NONSTOP
+// BUSCA PÁGINA NONSTOP
 // =========================================================
 
 async function fetchNonstopPage(
   token,
-  currentPage = 1,
-  perPage = 50,
-  availableFor = ""
+  page = 1,
+  perPage = PER_PAGE
 ) {
 
   const params =
     new URLSearchParams({
 
       currentPage:
-        String(
-          currentPage
-        ),
+        String(page),
 
 
       perPage:
-        String(
-          perPage
-        )
+        String(perPage),
+
+
+      availableFor:
+        OPERATION
 
     });
 
 
-  const operation =
-    clean(
-      availableFor
-    ).toUpperCase();
-
-
-  if (
-    operation === "VENDA" ||
-    operation === "LOCACAO"
-  ) {
-
-    params.set(
-      "availableFor",
-      operation
-    );
-
-  }
-
-
   const url =
-    `https://www.usenonstop.com/api/unstable/imoveis/todos?${params.toString()}`;
+    `${NONSTOP_BASE_URL}?${params.toString()}`;
 
 
   const response =
@@ -944,17 +1294,13 @@ async function fetchNonstopPage(
   try {
 
     data =
-      JSON.parse(
-        text
-      );
+      JSON.parse(text);
 
   } catch {
 
     data = {
-
       raw:
         text
-
     };
 
   }
@@ -979,25 +1325,20 @@ async function fetchNonstopPage(
 
   const total =
     extractTotal(
+
       data,
+
       properties.length
+
     );
 
 
   return {
 
+    page,
+
+
     url,
-
-
-    status:
-      response.status,
-
-
-    operation:
-      operation || null,
-
-
-    data,
 
 
     properties,
@@ -1011,35 +1352,14 @@ async function fetchNonstopPage(
 
 
 // =========================================================
-// SYNC DE UMA PÁGINA
+// NORMALIZA UMA PÁGINA
 // =========================================================
 
-async function syncPage(
-  token,
-  supabaseKey,
-  page = 1,
-  availableFor = ""
+function normalizePage(
+  properties
 ) {
 
-  const PER_PAGE =
-    50;
-
-
-  const result =
-    await fetchNonstopPage(
-
-      token,
-
-      page,
-
-      PER_PAGE,
-
-      availableFor
-
-    );
-
-
-  const saved =
+  const rows =
     [];
 
 
@@ -1049,28 +1369,15 @@ async function syncPage(
 
   for (
     const property of
-    result.properties
+    properties
   ) {
 
     try {
 
-      const row =
+      rows.push(
         normalizeProperty(
           property
-        );
-
-
-      await upsertProperty(
-
-        row,
-
-        supabaseKey
-
-      );
-
-
-      saved.push(
-        row.external_id
+        )
       );
 
     } catch (error) {
@@ -1101,15 +1408,180 @@ async function syncPage(
   }
 
 
-  const totalPages =
+  return {
 
+    rows,
+
+    errors
+
+  };
+
+}
+
+
+// =========================================================
+// SALVA COM FALLBACK
+// =========================================================
+
+async function saveRows(
+  rows,
+  supabaseKey
+) {
+
+  if (!rows.length) {
+
+    return {
+
+      saved:
+        0,
+
+      errors:
+        []
+
+    };
+
+  }
+
+
+  try {
+
+    await upsertBatch(
+
+      rows,
+
+      supabaseKey
+
+    );
+
+
+    return {
+
+      saved:
+        rows.length,
+
+      errors:
+        []
+
+    };
+
+
+  } catch (batchError) {
+
+    console.warn(
+
+      "NONSTOP_BATCH_FAILED_FALLBACK",
+
+      batchError?.message
+
+    );
+
+
+    let saved =
+      0;
+
+
+    const errors =
+      [];
+
+
+    for (
+      const row of
+      rows
+    ) {
+
+      try {
+
+        await upsertIndividual(
+
+          row,
+
+          supabaseKey
+
+        );
+
+
+        saved +=
+          1;
+
+
+      } catch (error) {
+
+        errors.push({
+
+          external_id:
+            row.external_id,
+
+
+          error:
+            error?.message ||
+            String(error)
+
+        });
+
+      }
+
+    }
+
+
+    return {
+
+      saved,
+
+      errors
+
+    };
+
+  }
+
+}
+
+
+// =========================================================
+// SYNC UMA PÁGINA
+// =========================================================
+
+async function syncOnePage(
+  token,
+  supabaseKey,
+  page
+) {
+
+  const result =
+    await fetchNonstopPage(
+
+      token,
+
+      page,
+
+      PER_PAGE
+
+    );
+
+
+  const normalized =
+    normalizePage(
+
+      result.properties
+
+    );
+
+
+  const saveResult =
+    await saveRows(
+
+      normalized.rows,
+
+      supabaseKey
+
+    );
+
+
+  const totalPages =
     result.total > 0
 
       ? Math.ceil(
-
           result.total /
           PER_PAGE
-
         )
 
       : null;
@@ -1117,26 +1589,30 @@ async function syncPage(
 
   return {
 
-    operation:
-      result.operation,
-
-
     page,
 
 
-    per_page:
-      PER_PAGE,
-
-
     received:
-      result.properties.length,
+      result.properties
+        .length,
+
+
+    normalized:
+      normalized.rows
+        .length,
 
 
     saved:
-      saved.length,
+      saveResult.saved,
 
 
-    errors,
+    errors: [
+
+      ...normalized.errors,
+
+      ...saveResult.errors
+
+    ],
 
 
     total:
@@ -1162,7 +1638,265 @@ async function syncPage(
 
 
 // =========================================================
-// TOKEN DO WEBHOOK
+// SYNC BATCH
+// =========================================================
+
+async function syncBatch(
+  token,
+  supabaseKey,
+  startPage,
+  numberOfPages
+) {
+
+  const MAX_PAGES =
+    10;
+
+
+  const pagesToRun =
+    Math.min(
+
+      Math.max(
+        1,
+        numberOfPages
+      ),
+
+      MAX_PAGES
+
+    );
+
+
+  const details =
+    [];
+
+
+  let received =
+    0;
+
+
+  let saved =
+    0;
+
+
+  let errors =
+    [];
+
+
+  let detectedTotal =
+    null;
+
+
+  let detectedTotalPages =
+    null;
+
+
+  for (
+    let i = 0;
+    i < pagesToRun;
+    i++
+  ) {
+
+    const page =
+      startPage + i;
+
+
+    /*
+      Se já sabemos que acabaram as páginas,
+      não continua.
+    */
+
+    if (
+
+      detectedTotalPages &&
+
+      page >
+        detectedTotalPages
+
+    ) {
+
+      break;
+
+    }
+
+
+    console.info(
+
+      "NONSTOP_BATCH_PAGE_START",
+
+      page
+
+    );
+
+
+    const result =
+      await syncOnePage(
+
+        token,
+
+        supabaseKey,
+
+        page
+
+      );
+
+
+    detectedTotal =
+      result.total;
+
+
+    detectedTotalPages =
+      result.total_pages;
+
+
+    received +=
+      result.received;
+
+
+    saved +=
+      result.saved;
+
+
+    errors = [
+
+      ...errors,
+
+      ...result.errors
+
+    ];
+
+
+    details.push({
+
+      page:
+        result.page,
+
+
+      received:
+        result.received,
+
+
+      saved:
+        result.saved,
+
+
+      errors:
+        result.errors.length
+
+    });
+
+
+    console.info(
+
+      "NONSTOP_BATCH_PAGE_DONE",
+
+      {
+
+        page,
+
+        received:
+          result.received,
+
+        saved:
+          result.saved,
+
+        errors:
+          result.errors.length
+
+      }
+
+    );
+
+
+    /*
+      Pequeno intervalo para não pressionar a API.
+    */
+
+    await sleep(150);
+
+  }
+
+
+  const lastPage =
+    details.length
+
+      ? details[
+          details.length - 1
+        ].page
+
+      : startPage;
+
+
+  const nextStart =
+
+    detectedTotalPages &&
+
+    lastPage <
+      detectedTotalPages
+
+      ? lastPage + 1
+
+      : null;
+
+
+  return {
+
+    operation:
+      OPERATION,
+
+
+    start_page:
+      startPage,
+
+
+    pages_requested:
+      pagesToRun,
+
+
+    pages_processed:
+      details.length,
+
+
+    received,
+
+
+    saved,
+
+
+    error_count:
+      errors.length,
+
+
+    errors:
+      errors.slice(
+        0,
+        50
+      ),
+
+
+    total:
+      detectedTotal,
+
+
+    total_pages:
+      detectedTotalPages,
+
+
+    last_page:
+      lastPage,
+
+
+    next_start:
+      nextStart,
+
+
+    details
+
+  };
+
+}
+
+
+// =========================================================
+// TOKEN WEBHOOK
 // =========================================================
 
 function getIncomingWebhookToken(
@@ -1176,17 +1910,21 @@ function getIncomingWebhookToken(
 
 
   if (
+
     authorization
       .toLowerCase()
       .startsWith(
         "bearer "
       )
+
   ) {
 
     return clean(
+
       authorization.slice(
         7
       )
+
     );
 
   }
@@ -1254,9 +1992,12 @@ export default async function handler(
   // =====================================================
 
   if (
+
     req.method === "GET" &&
+
     req.query?.action ===
       "envcheck"
+
   ) {
 
     return res
@@ -1265,6 +2006,10 @@ export default async function handler(
 
         ok:
           true,
+
+
+        operation:
+          OPERATION,
 
 
         has_api_token:
@@ -1314,9 +2059,12 @@ export default async function handler(
     // ===================================================
 
     if (
+
       req.method === "GET" &&
+
       req.query?.action ===
         "debug"
+
     ) {
 
       const page =
@@ -1332,12 +2080,6 @@ export default async function handler(
         );
 
 
-      const availableFor =
-        clean(
-          req.query?.availableFor
-        ).toUpperCase();
-
-
       const result =
         await fetchNonstopPage(
 
@@ -1345,9 +2087,7 @@ export default async function handler(
 
           page,
 
-          10,
-
-          availableFor
+          10
 
         );
 
@@ -1365,15 +2105,10 @@ export default async function handler(
 
 
           operation:
-            result.operation,
+            OPERATION,
 
 
-          request_url:
-            result.url,
-
-
-          nonstop_status:
-            result.status,
+          page,
 
 
           extracted_count:
@@ -1385,21 +2120,16 @@ export default async function handler(
             result.total,
 
 
-          response_keys:
-
-            result.data &&
-            typeof result.data ===
-              "object"
-
-              ? Object.keys(
-                  result.data
-                )
-
-              : [],
+          total_pages:
+            Math.ceil(
+              result.total /
+              PER_PAGE
+            ),
 
 
-          raw_response:
-            result.data
+          sample:
+            result.properties
+              .slice(0, 2)
 
         });
 
@@ -1407,13 +2137,16 @@ export default async function handler(
 
 
     // ===================================================
-    // SYNC
+    // SYNC DE UMA PÁGINA
     // ===================================================
 
     if (
+
       req.method === "GET" &&
+
       req.query?.action ===
         "sync"
+
     ) {
 
       if (!supabaseKey) {
@@ -1447,22 +2180,14 @@ export default async function handler(
         );
 
 
-      const availableFor =
-        clean(
-          req.query?.availableFor
-        ).toUpperCase();
-
-
       const result =
-        await syncPage(
+        await syncOnePage(
 
           nonstopToken,
 
           supabaseKey,
 
-          page,
-
-          availableFor
+          page
 
         );
 
@@ -1477,6 +2202,110 @@ export default async function handler(
 
           mode:
             "sync",
+
+
+          operation:
+            OPERATION,
+
+
+          ...result
+
+        });
+
+    }
+
+
+    // ===================================================
+    // SYNC EM LOTE
+    //
+    // Exemplo:
+    //
+    // ?action=sync-batch&start=1&pages=5
+    // ===================================================
+
+    if (
+
+      req.method === "GET" &&
+
+      req.query?.action ===
+        "sync-batch"
+
+    ) {
+
+      if (!supabaseKey) {
+
+        return res
+          .status(500)
+          .json({
+
+            ok:
+              false,
+
+
+            error:
+              "SUPABASE_SECRET_KEY ausente"
+
+          });
+
+      }
+
+
+      const start =
+        Math.max(
+
+          1,
+
+          Number(
+            req.query?.start ||
+            1
+          ) || 1
+
+        );
+
+
+      const pages =
+        Math.min(
+
+          10,
+
+          Math.max(
+
+            1,
+
+            Number(
+              req.query?.pages ||
+              5
+            ) || 5
+
+          )
+
+        );
+
+
+      const result =
+        await syncBatch(
+
+          nonstopToken,
+
+          supabaseKey,
+
+          start,
+
+          pages
+
+        );
+
+
+      return res
+        .status(200)
+        .json({
+
+          ok:
+            true,
+
+
+          mode:
+            "sync-batch",
 
 
           ...result
@@ -1535,9 +2364,12 @@ export default async function handler(
 
 
     if (
+
       !incomingToken ||
+
       incomingToken !==
         webhookToken
+
     ) {
 
       console.warn(
@@ -1585,8 +2417,11 @@ export default async function handler(
 
     const event =
       clean(
+
         payload?.event ||
+
         payload?.type
+
       );
 
 
@@ -1601,19 +2436,12 @@ export default async function handler(
 
         property_id:
 
-          payload?.property?.id ||
+          payload
+            ?.property
+            ?.id ||
 
-          payload?.propertyId ||
-
-          null,
-
-
-        base36_id:
-
-          payload?.property
-            ?.base36Id ||
-
-          payload?.base36Id ||
+          payload
+            ?.propertyId ||
 
           null
 
@@ -1637,8 +2465,13 @@ export default async function handler(
     ) {
 
       const property =
+
         payload?.property ||
-        payload?.data?.property ||
+
+        payload
+          ?.data
+          ?.property ||
+
         null;
 
 
@@ -1653,7 +2486,51 @@ export default async function handler(
 
 
             error:
-              "Webhook recebido sem property"
+              "Webhook sem property"
+
+          });
+
+      }
+
+
+      /*
+        Como só queremos venda,
+        ignora imóvel exclusivamente de locação.
+      */
+
+      const availableFor =
+        arr(
+          property?.availableFor
+        );
+
+
+      if (
+
+        availableFor.length &&
+
+        !availableFor.includes(
+          "VENDA"
+        )
+
+      ) {
+
+        return res
+          .status(200)
+          .json({
+
+            ok:
+              true,
+
+
+            ignored:
+              true,
+
+
+            reason:
+              "Imóvel não disponível para venda",
+
+
+            event
 
           });
 
@@ -1666,7 +2543,7 @@ export default async function handler(
         );
 
 
-      await upsertProperty(
+      await upsertIndividual(
 
         row,
 
@@ -1699,7 +2576,7 @@ export default async function handler(
 
 
     // ===================================================
-    // EXCLUSÃO
+    // EXCLUSÃO / DESPUBLICAÇÃO
     // ===================================================
 
     if (
@@ -1717,13 +2594,18 @@ export default async function handler(
 
           payload?.propertyId ||
 
-          payload?.property?.id ||
+          payload
+            ?.property
+            ?.id ||
 
-          payload?.data
+          payload
+            ?.data
             ?.propertyId ||
 
-          payload?.data
-            ?.property?.id ||
+          payload
+            ?.data
+            ?.property
+            ?.id ||
 
           ""
 
@@ -1766,6 +2648,10 @@ export default async function handler(
 
     }
 
+
+    // ===================================================
+    // EVENTO NÃO MAPEADO
+    // ===================================================
 
     return res
       .status(200)
