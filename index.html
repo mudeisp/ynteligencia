@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -5815,6 +5816,28 @@ function mapOruloProperty(row){
       raw
   };
 }
+
+/*
+  PERFORMANCE · CATÁLOGO LEVE
+  ---------------------------------------------
+  O mapper usa raw_data apenas para normalizar campos necessários
+  (tipo, suítes, condomínio, IPTU, fotos etc.).
+
+  Depois disso, a listagem NÃO precisa manter o objeto raw_data inteiro
+  em memória. Os dados completos são buscados sob demanda quando o
+  usuário abre o imóvel.
+*/
+function toCatalogLiteProperty(p){
+  if(!p || typeof p!=="object")return p;
+
+  return {
+    ...p,
+    rawData:{},
+    detailHydrated:false
+  };
+}
+
+
 function deduplicate(items){
 
   const map=new Map();
@@ -11787,10 +11810,11 @@ function replacePropertyEverywhere(updated){
   return current || updated;
 }
 
-async function hydrateNewProperty(p){
-  if(!p || String(p.source||"").toLowerCase()!=="novos")return p;
+async function hydratePropertyDetails(p){
+  if(!p)return p;
 
   if(
+    p.detailHydrated===true &&
     p.rawData &&
     typeof p.rawData==="object" &&
     Object.keys(p.rawData).length
@@ -11832,7 +11856,9 @@ async function hydrateNewProperty(p){
       const merged={
         ...p,
         ...full,
-        match:p.match || full.match
+        source:full.source || p.source || "",
+        match:p.match || full.match,
+        detailHydrated:true
       };
 
       return replacePropertyEverywhere(merged);
@@ -11847,6 +11873,13 @@ async function hydrateNewProperty(p){
   fullNewPropertyCache.set(id,result);
   return result;
 }
+
+
+/*
+  Compatibilidade interna com chamadas antigas.
+  Novos usos devem chamar hydratePropertyDetails().
+*/
+const hydrateNewProperty=hydratePropertyDetails;
 
 
 const developmentDataCache=new Map();
@@ -12805,9 +12838,13 @@ async function showPhotoModal(id){
   let p=propertyForInteraction(id);
   if(!p)return;
 
-  if(String(p.source||"").toLowerCase()==="novos"){
-    p=await hydrateNewProperty(p);
-  }
+  /*
+    PERFORMANCE:
+    A listagem mantém somente dados normalizados.
+    O raw_data completo é carregado aqui, sob demanda,
+    para NOVOS e USADOS.
+  */
+  p=await hydratePropertyDetails(p);
 
   /*
     O photos.json dos usados é grande. Ele não bloqueia mais a abertura
@@ -16031,12 +16068,16 @@ async function fetchNewCatalogPage({reset=false}={}){
     const mapped=
       Array.isArray(rows)
         ? rows
+            /*
+              raw_data ainda participa da NORMALIZAÇÃO desta resposta,
+              garantindo que MATCH/filtros mantenham tipo, suítes,
+              condomínio, IPTU e demais campos derivados.
+              Logo depois descartamos o rawData bruto da listagem.
+            */
             .map(mapOruloProperty)
+            .map(toCatalogLiteProperty)
             /*
               Preço 0 é um registro válido no inventário.
-              Antes esses imóveis eram descartados aqui, então uma página
-              inteira com preço 0 podia virar "0 exibidos" mesmo com
-              milhares de resultados no Supabase.
             */
             .filter(p=>p && p.id)
         : [];
@@ -16046,6 +16087,17 @@ async function fetchNewCatalogPage({reset=false}={}){
         ...newPropertiesCache,
         ...mapped
       ]);
+
+    console.info(
+      "YNT_CATALOG_LITE_CACHE",
+      {
+        page_rows:Array.isArray(rows) ? rows.length : 0,
+        cached:newPropertiesCache.length,
+        raw_data_in_memory:newPropertiesCache.filter(
+          p=>p?.rawData && Object.keys(p.rawData).length
+        ).length
+      }
+    );
 
     newCatalogOffset +=
       Array.isArray(rows)
