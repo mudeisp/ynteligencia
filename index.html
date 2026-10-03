@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -9976,12 +9977,27 @@ async function searchPropertiesForAi(message){
 
 let aiPendingSearchOverride = null;
 
+/*
+  Último imóvel deixado para trás quando a conversa volta
+  à busca geral. Serve para entender "outro imóvel" logo
+  depois de sair de um detalhe.
+*/
+let aiLastPropertyBeforeHome = null;
+
+function aiIsPropertyMode(){
+  return Boolean(
+    aiAssistantProperty &&
+    aiAssistantProperty.generic_search !== true &&
+    aiAssistantProperty.id !== "__general_search__"
+  );
+}
+
 
 function aiIsRequestForAlternatives(message){
   const t=norm(message||"");
 
   return Boolean(
-    /\b(outra opcao|outra opção|outras opcoes|outras opções|mais opcoes|mais opções|outro imovel|outro imóvel|outros imoveis|outros imóveis|outro empreendimento|outros empreendimentos|me mostra outro|mostra outro|ver outro|quero outro|mais imoveis|mais imóveis|tem outro|tem mais|algo parecido|outra alternativa|outras alternativas)\b/.test(t)
+    /\b(outra opcao|outra opção|outras opcoes|outras opções|mais opcoes|mais opções|outro imovel|outro imóvel|outros imoveis|outros imóveis|outro empreendimento|outros empreendimentos|me mostra outro|me mostra outra|me mostre outro|me mostre outra|mostra outro|mostra outra|procura outro|procure outro|buscar outro|busca outro|ver outro|quero outro|quero outra|mais imoveis|mais imóveis|tem outro|tem outra|tem mais|algo parecido|outra alternativa|outras alternativas)\b/.test(t)
   );
 }
 
@@ -10064,10 +10080,13 @@ function aiSwitchToSearchMode(message){
     Ele será excluído da nova busca de alternativas.
   */
   const previousProperty=
-    aiAssistantProperty &&
-    aiAssistantProperty.generic_search===false
+    aiIsPropertyMode()
       ? {...aiAssistantProperty}
-      : null;
+      : (
+          aiLastPropertyBeforeHome
+            ? {...aiLastPropertyBeforeHome}
+            : null
+        );
 
   /*
     Se o usuário disser apenas:
@@ -10135,7 +10154,17 @@ function aiSwitchToSearchMode(message){
       previousProperty?.name||""
   };
 
+  if(previousProperty){
+    aiLastPropertyBeforeHome={
+      ...previousProperty
+    };
+  }
+
   aiAssistantProperty={
+    id:"__general_search__",
+    name:"Busca geral",
+    neighborhood:"",
+    source:"todos",
     generic_search:true
   };
 
@@ -10347,6 +10376,13 @@ function aiReturnToHomeConversation(){
     Sai do contexto do imóvel sem deixar o cliente preso.
     Volta à home do app e reabre a IA em busca geral.
   */
+
+  if(aiIsPropertyMode()){
+    aiLastPropertyBeforeHome={
+      ...aiAssistantProperty
+    };
+  }
+
   try{
     closeAiAssistant();
   }catch{}
@@ -10415,8 +10451,7 @@ function aiReturnToHomeConversation(){
 
 function aiScheduleHomeReturnForMissingInfo(reply){
   if(
-    !aiAssistantProperty ||
-    aiAssistantProperty.generic_search!==false ||
+    !aiIsPropertyMode() ||
     !aiReplyIndicatesMissingInformation(reply)
   ){
     return false;
@@ -10459,14 +10494,22 @@ async function sendAiAssistantMessage(text){
     mudamos para SEARCH antes de processar a mensagem.
   */
   const wasPropertyMode=
-    Boolean(
-      aiAssistantProperty &&
-      aiAssistantProperty.generic_search === false
-    );
+    aiIsPropertyMode();
 
+  /*
+    "Outro imóvel", "mais opções", "algo parecido" etc.
+    sempre saem de DETAIL e entram em SEARCH.
+
+    Se a conversa acabou de voltar para a home por falta de
+    informação, mantemos só a referência do imóvel anterior
+    para buscar alternativas — sem voltar ao detalhe.
+  */
   if(
-    wasPropertyMode &&
-    aiIsRequestForAlternatives(text)
+    aiIsRequestForAlternatives(text) &&
+    (
+      wasPropertyMode ||
+      aiLastPropertyBeforeHome
+    )
   ){
     aiSwitchToSearchMode(text);
   }
@@ -10526,8 +10569,7 @@ async function sendAiAssistantMessage(text){
     pelo próprio app, sem chamar a IA genérica.
   */
   if(
-    aiAssistantProperty &&
-    aiAssistantProperty.generic_search===false &&
+    aiIsPropertyMode() &&
     aiIsFloorplanRequest(text)
   ){
     const property=
@@ -10657,8 +10699,7 @@ async function sendAiAssistantMessage(text){
   }
 
   if(
-    aiAssistantProperty &&
-    aiAssistantProperty.generic_search===false &&
+    aiIsPropertyMode() &&
     aiIsPdfRequest(text)
   ){
     const property=
@@ -10761,8 +10802,7 @@ async function sendAiAssistantMessage(text){
   }
 
   if(
-    aiAssistantProperty &&
-    aiAssistantProperty.generic_search===false &&
+    aiIsPropertyMode() &&
     aiIsInternalDetailsRequest(text)
   ){
     const property=
@@ -10801,8 +10841,7 @@ async function sendAiAssistantMessage(text){
     sem expor coordenadas ou URL externa da Órulo.
   */
   if(
-    aiAssistantProperty &&
-    aiAssistantProperty.generic_search===false &&
+    aiIsPropertyMode() &&
     aiIsMapRequest(text)
   ){
     const property=
@@ -11135,6 +11174,8 @@ async function sendAiAssistantMessage(text){
         */
         const registeredFoundProperty =
           registerAiFoundProperty(foundProperty);
+
+        aiLastPropertyBeforeHome=null;
 
         aiAssistantProperty = {
           ...registeredFoundProperty,
