@@ -54,6 +54,12 @@ export default async function handler(req, res) {
         ? body.inventory
         : null;
 
+    const conversationIntent =
+      detectConversationIntent(
+        message,
+        history
+      );
+
     if (
       !message &&
       mode !== "lead_summary"
@@ -146,6 +152,155 @@ export default async function handler(req, res) {
       ).trim();
     }
 
+    function normalizeIntentText(value) {
+      return cleanText(value)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function detectConversationIntent(
+      message,
+      history = []
+    ) {
+      const joined = [
+        ...history
+          .filter(
+            item =>
+              item?.role === "user"
+          )
+          .slice(-5)
+          .map(
+            item =>
+              item?.content || ""
+          ),
+
+        message || ""
+      ]
+        .join(" ")
+        .slice(-7000);
+
+      const t =
+        normalizeIntentText(
+          joined
+        );
+
+      const human =
+        /\b(falar com (uma )?pessoa|falar com corretor|falar com rafael|atendimento humano|humano|me chama no whatsapp|whatsapp)\b/
+          .test(t);
+
+      const visit =
+        /\b(agendar visita|marcar visita|quero visitar|posso visitar|gostaria de visitar|visitar o imovel|ver o imovel pessoalmente)\b/
+          .test(t);
+
+      const availability =
+        /\b(esta disponivel|ainda esta disponivel|tem unidade disponivel|tem disponibilidade|confirmar disponibilidade|essa unidade existe|ainda tem essa unidade)\b/
+          .test(t);
+
+      const negotiation =
+        /\b(negociar|negociacao|fazer proposta|aceita proposta|tem desconto|consegue desconto|melhor preco|valor negociavel|condicao comercial)\b/
+          .test(t);
+
+      const financing =
+        /\b(financiamento|financiar|entrada|fgts|parcela|credito imobiliario)\b/
+          .test(t);
+
+      const alternatives =
+        /\b(outra opcao|outras opcoes|outro imovel|outros imoveis|mais opcoes|algo parecido|parecido com esse|alternativas)\b/
+          .test(t);
+
+      const explicitHandoff =
+        human ||
+        visit ||
+        availability ||
+        negotiation;
+
+      let temperature =
+        "baixa";
+
+      if (
+        explicitHandoff
+      ) {
+        temperature =
+          "alta";
+
+      } else if (
+        financing ||
+        /\b(gostei|me interessei|tenho interesse|quero esse|curti esse)\b/
+          .test(t)
+      ) {
+        temperature =
+          "media";
+      }
+
+      return {
+        human,
+        visit,
+        availability,
+        negotiation,
+        financing,
+        alternatives,
+
+        explicit_handoff:
+          explicitHandoff,
+
+        temperature
+      };
+    }
+
+    function nextSearchQuestion(
+      query = {}
+    ) {
+      if (
+        !cleanText(
+          query.neighborhood
+        ) &&
+        !cleanText(
+          query.region
+        )
+      ) {
+        return "Qual região ou bairro você prefere?";
+      }
+
+      if (
+        !(
+          Number(
+            query.max_price
+          ) > 0
+        ) &&
+        !(
+          Number(
+            query.min_price
+          ) > 0
+        )
+      ) {
+        return "Qual faixa de preço você quer considerar?";
+      }
+
+      if (
+        !(
+          Number(
+            query.bedrooms
+          ) > 0
+        )
+      ) {
+        return "Quantos dormitórios você precisa?";
+      }
+
+      if (
+        !cleanText(
+          query.source
+        ) ||
+        cleanText(
+          query.source
+        ) === "todos"
+      ) {
+        return "Você prefere imóvel novo, usado ou tanto faz?";
+      }
+
+      return "";
+    }
+
     /*
       ========================================================
       SEARCH MODE
@@ -163,7 +318,8 @@ export default async function handler(req, res) {
     if (
       mode === "search" &&
       inventory &&
-      inventory.inventory_ready !== false &&
+      inventory.inventory_ready !==
+        false &&
       Number(
         inventory.total
       ) > 0 &&
@@ -261,11 +417,9 @@ export default async function handler(req, res) {
         );
 
       let reply =
-        `Encontrei ${total} ${
-          total === 1
-            ? "opção"
-            : "opções"
-        }.`;
+        total === 1
+          ? "Encontrei 1 opção que atende ao que você pediu."
+          : `Encontrei ${total} opções no estoque. Vou te mostrar primeiro as 3 mais próximas do seu pedido.`;
 
       if (
         items.length
@@ -277,11 +431,28 @@ export default async function handler(req, res) {
           );
       }
 
+      const refineQuestion =
+        total > 3
+          ? nextSearchQuestion(
+              inventory.query ||
+              {}
+            )
+          : "";
+
+      if (
+        refineQuestion
+      ) {
+        reply +=
+          ` ${refineQuestion}`;
+      }
+
       /*
         Se encontrou um único imóvel,
         não fazemos pergunta automática.
+
         O frontend já consegue guardar esse match
         para perguntas como:
+
         "me manda o link"
         "qual o preço?"
         "qual o endereço?"
@@ -291,8 +462,20 @@ export default async function handler(req, res) {
         .status(200)
         .json({
           success: true,
+
           reply,
-          handoff: false
+
+          handoff:
+            false,
+
+          stage:
+            total === 1
+              ? "property"
+              : "search",
+
+          intent:
+            conversationIntent
+              .temperature
         });
     }
 
@@ -306,7 +489,8 @@ export default async function handler(req, res) {
     if (
       mode === "search" &&
       inventory &&
-      inventory.inventory_ready !== false &&
+      inventory.inventory_ready !==
+        false &&
       inventory.recognized_filters ===
         true &&
       Number(
@@ -326,6 +510,7 @@ export default async function handler(req, res) {
         criteria.push(
           `o empreendimento ${query.exact_name}`
         );
+
       } else if (
         query.neighborhood
       ) {
@@ -387,9 +572,29 @@ export default async function handler(req, res) {
           success: true,
 
           reply:
-            `Não encontrei uma correspondência exata${suffix} na base consultada. Posso ampliar a busca por bairro, preço ou características.`,
+            `Não encontrei uma correspondência exata${suffix}. ${
+              Number(
+                query.max_price
+              ) > 0
 
-          handoff: false
+                ? "Posso ampliar um pouco o valor máximo mantendo a localização."
+
+                : query.neighborhood
+
+                ? "Posso procurar em bairros próximos mantendo os demais critérios."
+
+                : "Posso ampliar um critério por vez para encontrar alternativas."
+            }`,
+
+          handoff:
+            false,
+
+          stage:
+            "search",
+
+          intent:
+            conversationIntent
+              .temperature
         });
     }
 
@@ -414,7 +619,8 @@ export default async function handler(req, res) {
           reply:
             "O estoque ainda está sendo carregado. Tente novamente em alguns instantes.",
 
-          handoff: false
+          handoff:
+            false
         });
     }
 
@@ -441,70 +647,94 @@ export default async function handler(req, res) {
     */
 
     const instructions =
-      mode === "lead_summary"
+      mode ===
+      "lead_summary"
+
         ? `
-Você resume uma conversa imobiliária para um corretor humano.
+Você transforma uma conversa imobiliária em um briefing comercial para o corretor.
 
-Use SOMENTE o histórico recebido.
+Use SOMENTE o histórico recebido. Não invente nem complete lacunas.
 
-Escreva em português do Brasil.
+Escreva em português do Brasil e entregue no máximo 7 linhas, usando estes rótulos quando houver informação:
 
-Produza um resumo comercial curto, com no máximo 6 linhas, contendo apenas o que estiver explícito:
+Busca:
+Orçamento:
+Perfil:
+Preferências:
+Imóvel de interesse:
+Sinais de intenção:
+Próxima ação:
 
-- região/bairro ou empreendimento;
-- faixa de preço;
-- dormitórios/tipo;
-- novo/usado;
-- objetivo morar/investir;
-- sinais de intenção: disponibilidade, visita, negociação, urgência.
+Em "Sinais de intenção", registre apenas fatos como: perguntou disponibilidade, quer visitar, falou de financiamento, negociação, prazo ou urgência.
 
-Não invente dados.
-Não faça recomendações.
+Em "Próxima ação", use apenas uma ação sustentada pelo histórico, por exemplo "confirmar disponibilidade" ou "agendar visita". Se não houver ação clara, escreva "continuar qualificação".
+
 Não use introdução.
-Entregue somente o resumo.
+Não faça recomendações de imóvel.
+Não invente dados.
+Entregue somente o briefing.
 `.trim()
 
-        : mode === "search"
+        : mode ===
+          "search"
+
         ? `
-Você é a Match IA, concierge imobiliária da Ynteligencia.
+Você é a Match IA, consultora de compra imobiliária da Ynteligencia.
 
-Converse em português do Brasil, de forma curta, clara, útil e humana.
+Seu papel não é preencher um formulário: é conduzir uma conversa comercial útil, curta e natural.
 
-Nesta modalidade o cliente está procurando imóveis.
+REGRAS:
 
-IMPORTANTE:
+- Português do Brasil.
+- Respostas de 1 a 4 frases.
+- Faça no máximo UMA pergunta por resposta.
+- Nunca repita pergunta que o cliente já respondeu no histórico.
+- Se já houver informação suficiente para pesquisar, não faça perguntas extras.
+- Evite frases vazias como "ficarei feliz em ajudar", "claro!" ou apresentações repetidas.
+- Não transforme a conversa em interrogatório.
+- Não pressione por telefone ou WhatsApp.
 
-- Quando o sistema tiver resultados do inventário, eles são tratados antes de você ser chamado.
-- Portanto, se você está recebendo esta conversa em modo search, normalmente ainda faltam informações suficientes para executar a busca.
-- Faça UMA pergunta curta por vez.
-- Ajude a descobrir:
-  bairro ou região;
-  faixa de preço;
-  dormitórios;
-  tipo;
-  novo/usado;
-  morar/investir.
+ORDEM DE DESCOBERTA, SOMENTE QUANDO FALTAR:
 
-Não invente imóveis.
-Não invente estoque.
-Não invente preço.
-Não invente disponibilidade.
+1. região ou bairro;
+2. faixa de preço;
+3. dormitórios;
+4. novo/usado;
+5. características relevantes;
+6. morar/investir, somente se isso ajudar a decisão.
+
+O estoque real é responsabilidade do sistema.
+
+NUNCA invente:
+- imóvel;
+- preço;
+- disponibilidade;
+- desconto;
+- condição comercial;
+- localização;
+- características.
+
+Quando o cliente pedir alternativas, preserve os critérios já informados e trate como continuidade da busca.
+
+Se houver sinal de financiamento/entrada, responda de forma útil, mas não confirme aprovação, taxa ou condição que não esteja nos dados.
 
 Não diga que é ChatGPT.
 Não mencione OpenAI.
 Você é "Match IA".
 
-Se o cliente pedir atendimento humano, visita ou negociação, termine com:
+Se o cliente pedir atendimento humano, visita, negociação ou confirmação de disponibilidade, termine com:
 
 [[HANDOFF]]
 `.trim()
 
         : `
-Você é a Match IA, concierge imobiliária da Ynteligencia.
+Você é a Match IA, consultora de compra imobiliária da Ynteligencia.
 
-Converse em português do Brasil, de forma curta, clara, útil e humana.
+Converse em português do Brasil como uma boa consultora: curta, clara, natural e objetiva.
 
 Seu contexto é UM imóvel que o cliente está vendo ou acabou de encontrar.
+
+Primeiro responda exatamente o que o cliente perguntou. Só depois, se realmente ajudar a decisão, acrescente uma observação curta.
 
 Use SOMENTE os dados fornecidos abaixo como fatos sobre esse imóvel.
 
@@ -546,7 +776,11 @@ ofereça encaminhar para o Rafael.
 REGRAS:
 
 - Faça no máximo uma pergunta por resposta.
-- Prefira respostas de 2 a 5 frases.
+- Prefira respostas de 1 a 4 frases.
+- Não repita fatos que o cliente já demonstrou conhecer.
+- Não despeje a ficha inteira do imóvel quando ele fizer uma pergunta específica.
+- Quando comparar, destaque diferenças objetivas; não invente vantagem.
+- Se a informação não estiver nos dados, diga isso em uma frase e siga a conversa.
 - Não pressione o cliente a deixar contato.
 - Não diga que é ChatGPT.
 - Não mencione OpenAI.
@@ -570,7 +804,9 @@ ${propertyContext}
     const input =
       mode ===
       "lead_summary"
+
         ? safeHistory
+
         : [
             ...safeHistory,
 
@@ -636,10 +872,14 @@ ${propertyContext}
           () => ({})
         );
 
-    if (!response.ok) {
+    if (
+      !response.ok
+    ) {
       console.error(
         "OPENAI_ASSISTANT_ERROR",
+
         response.status,
+
         data
       );
 
@@ -661,14 +901,16 @@ ${propertyContext}
       ========================================================
     */
 
-    let reply = "";
+    let reply =
+      "";
 
     if (
       typeof data.output_text ===
-      "string"
+        "string"
     ) {
       reply =
         data.output_text;
+
     } else if (
       Array.isArray(
         data.output
@@ -692,7 +934,7 @@ ${propertyContext}
         ) {
           if (
             typeof part?.text ===
-            "string"
+              "string"
           ) {
             reply +=
               part.text;
@@ -715,7 +957,10 @@ ${propertyContext}
     const handoff =
       reply.includes(
         "[[HANDOFF]]"
-      );
+      ) ||
+      conversationIntent
+        .explicit_handoff ===
+        true;
 
     reply =
       reply
@@ -731,14 +976,18 @@ ${propertyContext}
       ========================================================
     */
 
-    if (!reply) {
+    if (
+      !reply
+    ) {
       reply =
         mode ===
         "lead_summary"
+
           ? "Conversa iniciada pela Match IA, sem preferências suficientes para resumir."
 
           : mode ===
             "search"
+
           ? "Qual bairro ou região você prefere?"
 
           : "Posso continuar te ajudando com este imóvel.";
@@ -754,13 +1003,63 @@ ${propertyContext}
       .status(200)
       .json({
         success: true,
+
         reply,
-        handoff
+
+        handoff,
+
+        /*
+          Metadados opcionais.
+          O frontend atual pode ignorar
+          sem quebrar compatibilidade.
+        */
+
+        stage:
+          mode ===
+          "property"
+
+            ? "property"
+
+            : mode ===
+              "lead_summary"
+
+            ? "lead_summary"
+
+            : "search",
+
+        intent:
+          conversationIntent
+            .temperature,
+
+        signals: {
+          visit:
+            conversationIntent
+              .visit,
+
+          availability:
+            conversationIntent
+              .availability,
+
+          negotiation:
+            conversationIntent
+              .negotiation,
+
+          financing:
+            conversationIntent
+              .financing,
+
+          alternatives:
+            conversationIntent
+              .alternatives
+        }
       });
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
     console.error(
       "ASSISTANT_FATAL",
+
       error
     );
 
@@ -768,6 +1067,7 @@ ${propertyContext}
       .status(500)
       .json({
         success: false,
+
         error:
           "Erro interno na assistente"
       });
