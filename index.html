@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -9518,7 +9517,7 @@ function openHomeAiSearch(){
     id:"__orulo_search__",
     name:"Busca de lançamentos",
     neighborhood:"",
-    source:"novos",
+    source:"todos",
     generic_search:true
   };
 
@@ -9538,7 +9537,7 @@ function openHomeAiSearch(){
 
   appendAiMessage(
     "assistant",
-    "Oi! 👋 Eu sou a Match IA. Posso pesquisar os lançamentos disponíveis na nossa base. Me diga um bairro, faixa de preço, dormitórios ou o nome de um empreendimento."
+    "Oi! 👋 Eu sou a Match IA. Posso pesquisar imóveis novos e usados disponíveis na nossa base. Me diga um bairro, faixa de preço, dormitórios ou o nome de um empreendimento."
   );
 
   /* Busca real acontece sob demanda via /api/search-properties */
@@ -10172,6 +10171,268 @@ function aiSwitchToSearchMode(message){
   }
 }
 
+
+/* =========================================================
+   MATCH IA · CONTEXTO RICO DE UNIDADE + SAÍDA DO LIMBO
+========================================================= */
+
+function aiCompactDevelopmentContext(data){
+  if(!data || data?.success!==true){
+    return null;
+  }
+
+  const typologies=
+    Array.isArray(data?.typologies)
+      ? data.typologies
+      : [];
+
+  const floorPlans=
+    Array.isArray(data?.media?.floor_plans)
+      ? data.media.floor_plans
+      : [];
+
+  const compactTypologies=
+    typologies
+      .slice(0,120)
+      .map(item=>({
+        id:item?.id ?? null,
+        type:item?.type ?? item?.raw?.type ?? "",
+        name:item?.name ?? item?.title ?? item?.raw?.name ?? "",
+        area:Number(
+          item?.area ??
+          item?.private_area ??
+          item?.raw?.private_area ??
+          0
+        ) || 0,
+        bedrooms:Number(
+          item?.bedrooms ??
+          item?.raw?.bedrooms ??
+          0
+        ) || 0,
+        bathrooms:Number(
+          item?.bathrooms ??
+          item?.raw?.bathrooms ??
+          0
+        ) || 0,
+        suites:Number(
+          item?.suites ??
+          item?.raw?.suites ??
+          0
+        ) || 0,
+        parking:Number(
+          item?.parking ??
+          item?.parking_spaces ??
+          item?.raw?.parking ??
+          0
+        ) || 0,
+        stock:Number(
+          item?.stock ??
+          item?.total_units ??
+          item?.raw?.stock ??
+          0
+        ) || 0,
+        price:Number(
+          item?.price ??
+          item?.discount_price ??
+          item?.original_price ??
+          item?.raw?.discount_price ??
+          item?.raw?.original_price ??
+          0
+        ) || 0,
+        reference:
+          clean(
+            item?.reference ??
+            item?.raw?.reference ??
+            ""
+          ),
+        floor_reference:
+          clean(
+            item?.floor_reference ??
+            item?.raw?.floor_reference ??
+            ""
+          ),
+        section_reference:
+          clean(
+            item?.section_reference ??
+            item?.raw?.section_reference ??
+            ""
+          )
+      }));
+
+  const compactPlans=
+    floorPlans
+      .slice(0,80)
+      .map((plan,index)=>({
+        id:plan?.id ?? null,
+        name:developmentFloorplanLabel(plan,index),
+        area:developmentFloorplanArea(plan),
+        description:clean(
+          plan?.description ||
+          plan?.raw?.description ||
+          ""
+        )
+      }));
+
+  return {
+    development:
+      data?.development && typeof data.development==="object"
+        ? {
+            id:data.development?.id ?? null,
+            name:data.development?.name ?? "",
+            total_units:Number(data.development?.total_units)||0,
+            number_of_towers:Number(data.development?.number_of_towers)||0,
+            number_of_floors:Number(data.development?.number_of_floors)||0,
+            units_per_floor:Number(data.development?.units_per_floor)||0,
+            stage:data.development?.stage ?? "",
+            status:data.development?.status ?? ""
+          }
+        : null,
+    summary:
+      data?.summary && typeof data.summary==="object"
+        ? data.summary
+        : null,
+    typologies:compactTypologies,
+    floor_plans:compactPlans
+  };
+}
+
+async function aiPropertyContextWithDevelopment(property){
+  const base=
+    aiPropertyContext(
+      property
+    );
+
+  try{
+    const developmentData=
+      await loadDevelopmentData(
+        property
+      );
+
+    const developmentContext=
+      aiCompactDevelopmentContext(
+        developmentData
+      );
+
+    if(developmentContext){
+      base.development_context=
+        developmentContext;
+    }
+  }catch(error){
+    console.warn(
+      "MATCH_IA_DEVELOPMENT_CONTEXT_ERROR",
+      error
+    );
+  }
+
+  return base;
+}
+
+function aiReplyIndicatesMissingInformation(reply){
+  const t=
+    norm(reply||"")
+      .replace(/\s+/g," ")
+      .trim();
+
+  if(!t){
+    return true;
+  }
+
+  return Boolean(
+    /\b(nao vejo cadastrado|não vejo cadastrado|nao encontrei|não encontrei|nao consta|não consta|nao tenho essa informacao|não tenho essa informação|nao aparece cadastrado|não aparece cadastrado|nao esta cadastrado|não está cadastrado|nao foi informado|não foi informado|nao consigo confirmar|não consigo confirmar|nao ha informacao|não há informação|nao ha um pdf|não há um pdf|nao ha pdf|não há pdf|nao encontrei plantas|não encontrei plantas|nao encontrei um pdf|não encontrei um pdf)\b/.test(t)
+  );
+}
+
+function aiReturnToHomeConversation(){
+  /*
+    Sai do contexto do imóvel sem deixar o cliente preso.
+    Volta à home do app e reabre a IA em busca geral.
+  */
+  try{
+    closeAiAssistant();
+  }catch{}
+
+  if(typeof goHome==="function"){
+    goHome();
+  }
+
+  if(typeof resetAiSearchState==="function"){
+    resetAiSearchState();
+  }
+
+  if(typeof aiResetConversationSearchMemory==="function"){
+    aiResetConversationSearchMemory();
+  }
+
+  aiAssistantProperty={
+    id:"__general_search__",
+    name:"Busca geral",
+    neighborhood:"",
+    source:"todos",
+    generic_search:true
+  };
+
+  aiLastSelectedProperty=null;
+  aiAssistantHistory=[];
+
+  const shell=
+    ensureAiAssistantShell();
+
+  const box=
+    shell.querySelector(
+      "#aiAssistantMessages"
+    );
+
+  const input=
+    shell.querySelector(
+      "#aiAssistantInput"
+    );
+
+  if(box){
+    box.innerHTML="";
+  }
+
+  if(input){
+    input.placeholder=
+      "Pergunte sobre bairro, preço, dormitórios ou outro imóvel...";
+  }
+
+  shell.classList.add("open");
+  document.body.style.overflow="hidden";
+
+  const message=
+    "Não encontrei essa informação no cadastro deste imóvel. Para não te deixar preso aqui, voltei para a busca geral. Pode fazer outra pergunta ou me pedir outro imóvel por bairro, preço, dormitórios ou empreendimento.";
+
+  appendAiMessage(
+    "assistant",
+    message
+  );
+
+  aiAssistantHistory.push({
+    role:"assistant",
+    content:message
+  });
+}
+
+function aiScheduleHomeReturnForMissingInfo(reply){
+  if(
+    !aiAssistantProperty ||
+    aiAssistantProperty.generic_search!==false ||
+    !aiReplyIndicatesMissingInformation(reply)
+  ){
+    return false;
+  }
+
+  window.setTimeout(
+    ()=>{
+      aiReturnToHomeConversation();
+    },
+    850
+  );
+
+  return true;
+}
+
+
 async function sendAiAssistantMessage(text){
   text=clean(text);
   if(!text || aiAssistantSending || !aiAssistantProperty)return;
@@ -10379,9 +10640,18 @@ async function sendAiAssistantMessage(text){
     aiAssistantHistory=
       aiAssistantHistory.slice(-12);
 
+    const returningHome=
+      aiScheduleHomeReturnForMissingInfo(
+        reply
+      );
+
     aiAssistantSending=false;
 
     if(send)send.disabled=false;
+
+    if(returningHome){
+      return;
+    }
 
     return;
   }
@@ -10474,9 +10744,18 @@ async function sendAiAssistantMessage(text){
     aiAssistantHistory=
       aiAssistantHistory.slice(-12);
 
+    const returningHome=
+      aiScheduleHomeReturnForMissingInfo(
+        reply
+      );
+
     aiAssistantSending=false;
 
     if(send)send.disabled=false;
+
+    if(returningHome){
+      return;
+    }
 
     return;
   }
@@ -10654,9 +10933,14 @@ async function sendAiAssistantMessage(text){
                   aiAssistantHistory
                     .slice(0,-1),
                 property:
-                  aiFormatPropertyForAssistant(
-                    referenced
-                  ),
+                  {
+                    ...aiFormatPropertyForAssistant(
+                      referenced
+                    ),
+                    ...await aiPropertyContextWithDevelopment(
+                      referenced
+                    )
+                  },
                 mode:"property",
                 page_url:
                   window.location.href
@@ -10753,7 +11037,7 @@ async function sendAiAssistantMessage(text){
             property:
               genericMode
                 ? {}
-                : aiPropertyContext(
+                : await aiPropertyContextWithDevelopment(
                     aiAssistantProperty
                   ),
 
@@ -10944,10 +11228,40 @@ async function sendAiAssistantMessage(text){
       }
     }
 
+    const shouldReturnHome=
+      !genericMode &&
+      aiReplyIndicatesMissingInformation(
+        reply
+      );
+
+    if(shouldReturnHome){
+      reply=
+        "Não encontrei essa informação no cadastro deste imóvel. Vou voltar para a busca geral para você continuar com outras perguntas.";
+    }
+
     appendAiMessage(
       "assistant",
       reply
     );
+
+    if(shouldReturnHome){
+      aiAssistantHistory.push({
+        role:"assistant",
+        content:reply
+      });
+
+      aiAssistantHistory=
+        aiAssistantHistory.slice(-12);
+
+      window.setTimeout(
+        ()=>{
+          aiReturnToHomeConversation();
+        },
+        850
+      );
+
+      return;
+    }
 
     if(
       genericMode &&
