@@ -3506,197 +3506,21 @@ body.match-results-mode #results{
 }
 </style>
 
-
-<style id="mobile-clean-light-v1">
+<style id="mobile-phase1-consolidated">
 /* =========================================================
-   MOBILE LEVE · SEM PRETO · SEM RODAPÉ
-   Camada somente visual/UX. Não altera APIs, Supabase,
-   Nonstop, Órulo, tracking, MATCH ou integrações.
+   YNTELIGENCIA · FASE 1
+   CSS MOBILE CONSOLIDADO
+
+   Somente apresentação/UX.
+   NÃO altera:
+   MATCH, Google Ads, UTMs/GCLID/GBRAID/WBRAID,
+   GA4, Meta Pixel, Supabase, Nonstop, Órulo,
+   /api/lead, Praedium, IA, PWA ou JavaScript funcional.
 ========================================================= */
+
 @media (max-width:768px){
 
-  /* Remove navegação inferior e o espaço reservado para ela. */
-  .app-dock,
-  footer{
-    display:none !important;
-  }
-
-  body,
-  body.campaign-catalog-mode{
-    padding-bottom:0 !important;
-  }
-
-  /* Mantém WhatsApp/especialista independente do dock. */
-  .specialist-float{
-    bottom:max(12px,env(safe-area-inset-bottom)) !important;
-  }
-
-  /* ---------- HOME ---------- */
-  .clean-home{
-    min-height:calc(100svh - 68px) !important;
-    padding:32px 18px 36px !important;
-    background:#F7F4ED !important;
-  }
-
-  /* Corrige a duplicação criada pelo h1::after legado. */
-  .clean-home h1::after{
-    content:none !important;
-    display:none !important;
-  }
-
-  .clean-home h1{
-    font-size:clamp(38px,11vw,48px) !important;
-    line-height:.98 !important;
-    letter-spacing:-.045em !important;
-    margin:0 auto 14px !important;
-  }
-
-  .clean-kicker{
-    margin-bottom:10px !important;
-    font-size:10px !important;
-    letter-spacing:.13em !important;
-  }
-
-  .clean-home p{
-    max-width:340px !important;
-    font-size:16px !important;
-    line-height:1.45 !important;
-  }
-
-  .clean-home-actions{
-    width:100% !important;
-    max-width:360px !important;
-    margin-top:22px !important;
-    gap:10px !important;
-  }
-
-  .clean-home-actions button{
-    min-height:54px !important;
-    border-radius:15px !important;
-    font-size:16px !important;
-  }
-
-  .clean-primary{
-    background:#DCC486 !important;
-    border-color:#DCC486 !important;
-    color:#2B261F !important;
-  }
-
-  /* Remove o preto da CTA de IA no mobile. */
-  .clean-ai-primary{
-    background:#FCFAF6 !important;
-    color:#4A443C !important;
-    border:1px solid #C6A76B !important;
-    box-shadow:none !important;
-  }
-
-  .clean-ai-icon{
-    width:28px !important;
-    height:28px !important;
-    border-radius:8px !important;
-    background:#F0ECE3 !important;
-  }
-
-  /* ---------- FILTRO ---------- */
-  .explore{
-    padding:16px 0 24px !important;
-  }
-
-  .unified-search-panel{
-    padding:12px !important;
-    border-radius:16px !important;
-    box-shadow:none !important;
-    border-color:#DED8CD !important;
-  }
-
-  .unified-search-main{
-    gap:8px !important;
-  }
-
-  .unified-field{
-    gap:5px !important;
-  }
-
-  .unified-field > span,
-  .filter-title{
-    font-size:10px !important;
-    line-height:1.2 !important;
-    letter-spacing:.07em !important;
-  }
-
-  .unified-search-panel .field{
-    min-height:44px !important;
-    height:44px !important;
-    padding:0 11px !important;
-    border-radius:12px !important;
-    font-size:15px !important;
-    box-shadow:none !important;
-  }
-
-  input.field{
-    line-height:44px !important;
-  }
-
-  .unified-search-separator{
-    margin:13px 0 9px !important;
-    gap:8px !important;
-    font-size:9px !important;
-  }
-
-  /*
-    Região, Bairro e Empreendimento continuam 100% largura.
-    Os filtros de compra ficam em 2 colunas para reduzir bastante
-    o comprimento da tela.
-  */
-  .unified-filter-grid{
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-    gap:8px !important;
-  }
-
-  .unified-filter-actions{
-    gap:8px !important;
-    margin-top:10px !important;
-    padding:8px 0 0 !important;
-  }
-
-  .unified-filter-actions .catalog-search-btn{
-    min-height:50px !important;
-    border-radius:13px !important;
-    background:#DCC486 !important;
-    color:#2B261F !important;
-  }
-
-  .unified-filter-actions .filter-reset{
-    min-height:42px !important;
-    border-radius:12px !important;
-  }
-
-  /* O botão principal de busca também deixa de ser preto. */
-  #catalogSearchBtn{
-    background:#DCC486 !important;
-    color:#2B261F !important;
-    border:1px solid #D1B66F !important;
-  }
-
-  /* Não volta para uma coluna em celulares estreitos. */
-  .unified-filter-grid{
-    min-width:0 !important;
-  }
-}
-
-/* Sobrescreve o antigo breakpoint que transformava o grid em 1 coluna. */
-@media (max-width:430px){
-  .unified-filter-grid{
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-  }
-}
-</style>
-
-
-<style id="mobile-final-clean-override">
-@media (max-width:768px){
-
-  /* HEADER mais compacto */
+  /* ---------- HEADER ---------- */
   header{
     background:#FCFAF6 !important;
     border-bottom:1px solid #DED8CD !important;
@@ -3713,7 +3537,8 @@ body.match-results-mode #results{
     border-radius:11px !important;
   }
 
-  .brand-link.brand-icon-fallback::before{
+  .brand-link.brand-icon-fallback::before,
+  .brand-lockup.brand-icon-fallback::before{
     content:"✦";
     width:42px;
     height:42px;
@@ -3750,7 +3575,7 @@ body.match-results-mode #results{
     background:#4A443C !important;
   }
 
-  /* HOME: uma única hierarquia, sem preto */
+  /* ---------- HOME ---------- */
   .clean-home{
     min-height:calc(100svh - 64px) !important;
     padding:30px 18px 34px !important;
@@ -3759,12 +3584,12 @@ body.match-results-mode #results{
     align-items:flex-start !important;
   }
 
-  .clean-home-inner{
+  .clean-home-inner,
+  .clean-home-copy{
     width:100% !important;
   }
 
   .clean-home-copy{
-    width:100% !important;
     text-align:center !important;
   }
 
@@ -3811,6 +3636,7 @@ body.match-results-mode #results{
   }
 
   .clean-home-actions button{
+    width:100% !important;
     min-height:52px !important;
     border-radius:14px !important;
     font-size:15px !important;
@@ -3832,12 +3658,13 @@ body.match-results-mode #results{
   .clean-ai-icon{
     width:28px !important;
     height:28px !important;
-    background:#F0ECE3 !important;
     border-radius:8px !important;
+    background:#F0ECE3 !important;
   }
 
-  /* FILTRO: mais curto e leve */
-  #explore{
+  /* ---------- EXPLORAR / FILTROS ---------- */
+  #explore,
+  .explore{
     padding:12px 0 20px !important;
   }
 
@@ -3871,18 +3698,25 @@ body.match-results-mode #results{
     border-radius:11px !important;
     font-size:14px !important;
     background:#fff !important;
+    color:#242424 !important;
     border-color:#DED8CD !important;
     box-shadow:none !important;
   }
 
+  input.field{
+    line-height:42px !important;
+  }
+
   .unified-search-separator{
     margin:11px 0 8px !important;
+    gap:8px !important;
     font-size:9px !important;
   }
 
   .unified-filter-grid{
     grid-template-columns:repeat(2,minmax(0,1fr)) !important;
     gap:7px !important;
+    min-width:0 !important;
   }
 
   .unified-filter-actions{
@@ -3891,6 +3725,7 @@ body.match-results-mode #results{
     margin-top:10px !important;
     padding:8px 0 0 !important;
     position:static !important;
+    bottom:auto !important;
     background:transparent !important;
   }
 
@@ -3900,7 +3735,8 @@ body.match-results-mode #results{
     border-radius:11px !important;
   }
 
-  #catalogSearchBtn{
+  #catalogSearchBtn,
+  .unified-filter-actions .catalog-search-btn{
     order:1;
     min-height:48px !important;
     border-radius:12px !important;
@@ -3911,7 +3747,24 @@ body.match-results-mode #results{
     font-weight:900 !important;
   }
 
-  /* Remove rodapé/nav inferior, mantém WhatsApp */
+  /* ---------- DETALHE ---------- */
+  .detail-sticky-cta{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    width:min(720px,calc(100% - 24px)) !important;
+  }
+
+  .detail-share-btn{
+    width:100% !important;
+    min-height:58px !important;
+    background:#E4D0A3 !important;
+    border:0 !important;
+    color:#171513 !important;
+    font-size:17px !important;
+    font-weight:900 !important;
+  }
+
+  /* ---------- NAVEGAÇÃO INFERIOR ---------- */
   .app-dock,
   footer{
     display:none !important;
@@ -3922,42 +3775,15 @@ body.match-results-mode #results{
     padding-bottom:0 !important;
   }
 
+  /* WhatsApp/especialista continua independente do dock. */
   .specialist-float{
     bottom:max(10px,env(safe-area-inset-bottom)) !important;
   }
 }
 
-/* mantém 2 colunas mesmo em celulares estreitos */
 @media (max-width:430px){
   .unified-filter-grid{
     grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-  }
-}
-</style>
-
-
-<style id="detail-actions-two-buttons-fix">
-.detail-sticky-cta{
-  display:grid !important;
-  grid-template-columns:1fr !important;
-}
-
-.detail-share-btn{
-  width:100% !important;
-}
-
-@media (max-width:768px){
-  .detail-sticky-cta{
-    width:min(720px,calc(100% - 24px)) !important;
-  }
-
-  .detail-share-btn{
-    min-height:58px !important;
-    background:#E4D0A3 !important;
-    border:0 !important;
-    color:#171513 !important;
-    font-size:17px !important;
-    font-weight:900 !important;
   }
 }
 </style>
