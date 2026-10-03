@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -13301,68 +13300,93 @@ async function fillCatalogNeighborhoods(){
 
 let catalogRegion="";
 
-async function fillCatalogNeighborhoodsForRegion(regionKey=""){
+async function fillCatalogNeighborhoodsForRegion(
+  regionKey="",
+  {
+    full=false
+  }={}
+){
   const select=$("catalogNeighborhood");
   if(!select)return;
 
   const current=select.value;
+  const key=catalogNeighborhoodIndexKey();
 
-  select.disabled=true;
-  select.innerHTML='<option value="">Carregando bairros...</option>';
+  /*
+    PERFORMANCE:
+    Não varremos milhares de registros do Supabase ao abrir o app.
+    Primeiro mostramos instantaneamente os bairros do lote já carregado.
+    O índice completo é buscado somente quando realmente necessário.
+  */
+  const loadedNeighborhoods=[...new Set(
+    properties
+      .map(p=>clean(p.neighborhood))
+      .filter(Boolean)
+  )]
+  .sort((a,b)=>a.localeCompare(b,"pt-BR"));
 
-  try{
-    const allNeighborhoods=await loadCatalogNeighborhoodIndex();
+  const cached=
+    catalogNeighborhoodIndexCache.get(key);
 
-    const list=allNeighborhoods
-      .filter(neighborhood=>
-        neighborhoodMatchesRegionName(
-          neighborhood,
-          regionKey
-        )
-      );
+  let allNeighborhoods=
+    Array.isArray(cached) && cached.length
+      ? cached
+      : loadedNeighborhoods;
 
-    select.innerHTML=
-      '<option value="">Todos os bairros</option>' +
-      list
-        .map(v=>`<option value="${esc(v)}">${esc(v)}</option>`)
-        .join("");
+  if(full){
+    select.disabled=true;
 
-    const currentMatch=list.find(v=>norm(v)===norm(current));
-    if(currentMatch){
-      select.value=currentMatch;
-    }else{
-      select.value="";
+    if(!allNeighborhoods.length){
+      select.innerHTML=
+        '<option value="">Carregando bairros...</option>';
     }
 
-  }catch(error){
-    console.warn("Falha ao carregar bairros do Supabase:",error);
-
-    /*
-      Fallback: usa o lote já carregado no navegador.
-    */
-    const fallback=[...new Set(
-      properties
-        .map(p=>clean(p.neighborhood))
-        .filter(Boolean)
-        .filter(neighborhood=>
-          neighborhoodMatchesRegionName(
-            neighborhood,
-            regionKey
-          )
-        )
-    )].sort((a,b)=>a.localeCompare(b,"pt-BR"));
-
-    select.innerHTML=
-      '<option value="">Todos os bairros</option>' +
-      fallback
-        .map(v=>`<option value="${esc(v)}">${esc(v)}</option>`)
-        .join("");
-
-    select.value="";
-
-  }finally{
-    select.disabled=false;
+    try{
+      allNeighborhoods=
+        await loadCatalogNeighborhoodIndex();
+    }catch(error){
+      console.warn(
+        "Falha ao carregar índice completo de bairros:",
+        error
+      );
+    }
   }
+
+  const list=allNeighborhoods
+    .filter(neighborhood=>
+      neighborhoodMatchesRegionName(
+        neighborhood,
+        regionKey
+      )
+    );
+
+  select.innerHTML=
+    '<option value="">Todos os bairros</option>' +
+    list
+      .map(v=>`<option value="${esc(v)}">${esc(v)}</option>`)
+      .join("");
+
+  /*
+    Preserva bairro vindo de URL/campanha mesmo se ele ainda não
+    apareceu no primeiro lote.
+  */
+  const currentMatch=list.find(
+    v=>norm(v)===norm(current)
+  );
+
+  if(currentMatch){
+    select.value=currentMatch;
+  }else if(current){
+    select.insertAdjacentHTML(
+      "beforeend",
+      `<option value="${esc(current)}">${esc(current)}</option>`
+    );
+    select.value=current;
+  }else{
+    select.value="";
+  }
+
+  select.disabled=false;
 }
 
 async function setCatalogRegion(regionKey){
@@ -13372,7 +13396,10 @@ async function setCatalogRegion(regionKey){
     btn.classList.toggle("selected",(btn.dataset.region || "")===catalogRegion);
   });
 
-  await fillCatalogNeighborhoodsForRegion(catalogRegion);
+  await fillCatalogNeighborhoodsForRegion(
+    catalogRegion,
+    {full:true}
+  );
 
   /*
     A decisão de executar busca automática agora pertence a
@@ -14272,7 +14299,10 @@ async function applyCatalogLocation(){
   activeCity=clean($("catalogCity")?.value || "São Paulo") || "São Paulo";
   activeState=String($("catalogState")?.value || "SP").trim().toUpperCase() || "SP";
   resetCatalogState(false);
-  await fillCatalogNeighborhoodsForRegion(catalogRegion);
+  await fillCatalogNeighborhoodsForRegion(
+    catalogRegion,
+    {full:true}
+  );
   await fetchNewCatalogPage({reset:true});
   inventoryReady=true;
   inventoryLoading=false;
@@ -14589,15 +14619,57 @@ function maybeAutoExecuteCatalogSearch({
 */
 $("catalogSource")?.addEventListener("change",()=>{
   /*
-    Atualiza bairros em segundo plano para não travar a interação
-    do select no mobile.
+    PERFORMANCE:
+    troca de estoque atualiza o select imediatamente com o lote
+    disponível. O índice completo fica lazy e só é buscado quando
+    o usuário realmente abrir/usar Bairro ou selecionar uma Região.
   */
   Promise.resolve(
-    fillCatalogNeighborhoodsForRegion(catalogRegion)
+    fillCatalogNeighborhoodsForRegion(
+      catalogRegion,
+      {full:false}
+    )
   ).catch(error=>{
     console.warn("Falha ao atualizar bairros:",error);
   });
 });
+
+
+/*
+  O índice completo de bairros só é solicitado quando o usuário
+  realmente interage com o campo Bairro. Depois fica em cache por
+  source + cidade + estado.
+*/
+let catalogNeighborhoodLazyLoading=false;
+
+async function ensureFullNeighborhoodIndex(){
+  if(catalogNeighborhoodLazyLoading)return;
+
+  const key=catalogNeighborhoodIndexKey();
+  if(catalogNeighborhoodIndexCache.has(key))return;
+
+  catalogNeighborhoodLazyLoading=true;
+
+  try{
+    await fillCatalogNeighborhoodsForRegion(
+      catalogRegion,
+      {full:true}
+    );
+  }finally{
+    catalogNeighborhoodLazyLoading=false;
+  }
+}
+
+$("catalogNeighborhood")?.addEventListener(
+  "focus",
+  ()=>ensureFullNeighborhoodIndex().catch(()=>{})
+);
+
+$("catalogNeighborhood")?.addEventListener(
+  "pointerdown",
+  ()=>ensureFullNeighborhoodIndex().catch(()=>{}),
+  {passive:true}
+);
 
 [
   "catalogNeighborhood",
@@ -15873,7 +15945,29 @@ function catalogServerQuery(offset=0){
   const parking=$("catalogParking")?.value || "";
   const sort=$("catalogSort")?.value || "price_asc";
 
-  if(neighborhood) url.searchParams.set("neighborhood",`eq.${neighborhood}`);
+  if(neighborhood){
+    url.searchParams.set("neighborhood",`eq.${neighborhood}`);
+  }else if(catalogRegion){
+    /*
+      PERFORMANCE:
+      Região agora é filtrada no Supabase ANTES da paginação.
+      Antes chegavam 30 imóveis aleatórios e a região era filtrada
+      somente no navegador, podendo resultar em "0 exibidos" mesmo
+      com milhares de imóveis no banco.
+    */
+    const regionNames=(REGION_MAP[norm(catalogRegion)] || [])
+      .map(name=>clean(name))
+      .filter(Boolean);
+
+    if(regionNames.length){
+      const regionOr=regionNames
+        .map(name=>`neighborhood.ilike.*${name.replace(/[(),]/g," ")}*`)
+        .join(",");
+
+      url.searchParams.set("or",`(${regionOr})`);
+    }
+  }
+
   if(minPrice && maxPrice){
     url.searchParams.set("and",`(price.gte.${minPrice},price.lte.${maxPrice})`);
   }else if(minPrice){
@@ -15974,6 +16068,17 @@ async function fetchNewCatalogPage({reset=false}={}){
       deduplicate([
         ...newPropertiesCache
       ]);
+
+    /*
+      Atualiza o campo Bairro com o que já veio nesta consulta,
+      sem disparar uma varredura adicional no banco.
+    */
+    if($("catalogNeighborhood")){
+      fillCatalogNeighborhoodsForRegion(
+        catalogRegion,
+        {full:false}
+      ).catch(()=>{});
+    }
 
   }finally{
     newCatalogLoading=false;
