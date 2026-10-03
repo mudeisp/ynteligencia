@@ -4317,6 +4317,8 @@ body.match-results-mode #results{
 <script>
 
 const CSV_FILE="Remax.teste.2.csv";
+// Temporariamente desativado: o arquivo permanece no projeto, mas não é carregado pelo app.
+const USE_CSV_INVENTORY=false;
 const SUPABASE_PROPERTIES_URL =
   "https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties?source=eq.novos&active=eq.true&select=*";
 let properties=[];
@@ -4333,7 +4335,7 @@ let inventoryLoadError=false;
 
 const CATALOG_PAGE_SIZE=30;
 let usedPropertiesCache=[];
-let usedInventoryLoaded=false;
+let usedInventoryLoaded=!USE_CSV_INVENTORY;
 let usedInventoryLoading=false;
 let newPropertiesCache=[];
 let newCatalogOffset=0;
@@ -14989,6 +14991,14 @@ async function fetchNewCatalogPage({reset=false}={}){
 }
 
 async function loadUsedInventory(){
+  if(!USE_CSV_INVENTORY){
+    usedPropertiesCache=[];
+    usedInventoryLoaded=true;
+    usedInventoryLoading=false;
+    properties=deduplicate([...newPropertiesCache]);
+    return;
+  }
+
   if(usedInventoryLoaded || usedInventoryLoading)return;
   usedInventoryLoading=true;
 
@@ -15032,12 +15042,14 @@ async function loadInventory(){
     fillCatalogNeighborhoods();
     if($("catalog")?.classList.contains("visible"))renderCatalog();
 
-    const loadUsedLater=()=>loadUsedInventory().catch(()=>{});
+    if(USE_CSV_INVENTORY){
+      const loadUsedLater=()=>loadUsedInventory().catch(()=>{});
 
-    if("requestIdleCallback" in window){
-      window.requestIdleCallback(loadUsedLater,{timeout:1400});
-    }else{
-      setTimeout(loadUsedLater,450);
+      if("requestIdleCallback" in window){
+        window.requestIdleCallback(loadUsedLater,{timeout:1400});
+      }else{
+        setTimeout(loadUsedLater,450);
+      }
     }
 
   }catch(error){
