@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -9230,6 +9229,7 @@ function aiGetPropertyDisplayName(p){
 ========================================================= */
 
 let aiSearchState={
+  region:"",
   neighborhood:"",
   exactName:"",
   bedrooms:0,
@@ -9239,6 +9239,7 @@ let aiSearchState={
 
 function resetAiSearchState(){
   aiSearchState={
+    region:"",
     neighborhood:"",
     exactName:"",
     bedrooms:0,
@@ -9247,10 +9248,33 @@ function resetAiSearchState(){
   };
 }
 
+function aiExtractExplicitRegion(message){
+  const t=norm(message||"");
+
+  if(/\b(zona oeste|regiao oeste|região oeste|oeste)\b/.test(t)){
+    return "oeste";
+  }
+
+  if(/\b(zona sul|regiao sul|região sul|sul)\b/.test(t)){
+    return "sul";
+  }
+
+  if(/\b(zona norte|regiao norte|região norte|norte)\b/.test(t)){
+    return "norte";
+  }
+
+  if(/\b(zona leste|regiao leste|região leste|leste)\b/.test(t)){
+    return "leste";
+  }
+
+  return "";
+}
+
 function aiMessageStartsNewSearch(text){
   const t=norm(text||"");
 
   return Boolean(
+    aiExtractExplicitRegion(t) ||
     /\b(nova busca|outra busca|outro bairro|outro empreendimento|agora quero|agora procure|agora busca|tem lancamentos|tem lancamento|voces tem|voce tem)\b/.test(t)
   );
 }
@@ -9343,6 +9367,7 @@ function aiExtractExplicitProject(message,inventory){
 
 function aiUpdateSearchState(message,inventory){
   const t=norm(message||"");
+  const explicitRegion=aiExtractExplicitRegion(message);
   const isNew=aiMessageStartsNewSearch(t);
 
   if(isNew){
@@ -9351,6 +9376,19 @@ function aiUpdateSearchState(message,inventory){
 
   const explicitProject=aiExtractExplicitProject(message,inventory);
   const explicitNeighborhood=aiExtractExplicitNeighborhood(message,inventory);
+
+  if(explicitRegion){
+    aiSearchState.region=explicitRegion;
+
+    /*
+      Região explícita significa nova intenção geográfica.
+      Nunca reaproveitamos bairro/empreendimento anteriores.
+    */
+    aiSearchState.neighborhood="";
+    aiSearchState.exactName="";
+  }else if(isNew){
+    aiSearchState.region="";
+  }
 
   const bedroomsMatch=t.match(
     /(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/
@@ -9368,7 +9406,7 @@ function aiUpdateSearchState(message,inventory){
     aiSearchState.exactName="";
   }
 
-  if(explicitNeighborhood){
+  if(!explicitRegion && explicitNeighborhood){
     aiSearchState.neighborhood=explicitNeighborhood;
   }else if(isNew){
     aiSearchState.neighborhood="";
@@ -9483,7 +9521,7 @@ function aiOruloContext(message){
       bedrooms,
       min_price:minPrice,
       max_price:maxPrice,
-      source:"novos"
+      source:"todos"
     },
     total:filtered.length,
     matches:filtered.slice(0,12).map(p=>({
@@ -9764,6 +9802,152 @@ function aiDirectFollowUpAnswer(message, property){
 
   return "";
 }
+
+async function aiSearchRegionFromSupabase(state){
+  const regionKey=norm(state?.region||"");
+  const regionNames=(REGION_MAP[regionKey]||[])
+    .map(clean)
+    .filter(Boolean);
+
+  if(!regionNames.length){
+    return {
+      inventory_ready:true,
+      inventory_count:0,
+      recognized_filters:true,
+      query:{
+        text:"",
+        exact_name:"",
+        region:regionKey,
+        neighborhood:"",
+        bedrooms:Number(state?.bedrooms)||0,
+        min_price:Number(state?.minPrice)||0,
+        max_price:Number(state?.maxPrice)||0,
+        source:"todos"
+      },
+      total:0,
+      matches:[]
+    };
+  }
+
+  const url=new URL(
+    "https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties"
+  );
+
+  url.searchParams.set("active","eq.true");
+  url.searchParams.set(
+    "select",
+    "id,external_id,source,title,development_name,neighborhood,city,state,price,bedrooms,bathrooms,parking_spaces,area,image_url,property_url,active,updated_at,raw_data"
+  );
+  url.searchParams.set("city",`eq.${activeCity || "São Paulo"}`);
+  url.searchParams.set("state",`eq.${activeState || "SP"}`);
+
+  /*
+    Região é traduzida para os bairros conhecidos do app.
+    Não enviamos "Zona Oeste" como se fosse bairro.
+  */
+  const orParts=regionNames
+    .map(name=>`neighborhood.ilike.*${name.replace(/[(),]/g," ")}*`)
+    .join(",");
+
+  if(orParts){
+    url.searchParams.set("or",`(${orParts})`);
+  }
+
+  const bedrooms=Number(state?.bedrooms)||0;
+  const minPrice=Number(state?.minPrice)||0;
+  const maxPrice=Number(state?.maxPrice)||0;
+
+  if(bedrooms){
+    url.searchParams.set("bedrooms",`gte.${bedrooms}`);
+  }
+
+  if(minPrice && maxPrice){
+    url.searchParams.set(
+      "and",
+      `(price.gte.${minPrice},price.lte.${maxPrice})`
+    );
+  }else if(minPrice){
+    url.searchParams.set("price",`gte.${minPrice}`);
+  }else if(maxPrice){
+    url.searchParams.set("price",`lte.${maxPrice}`);
+  }
+
+  url.searchParams.set("order","price.asc.nullslast");
+  url.searchParams.set("limit","100");
+
+  const response=await fetch(url.toString(),{
+    cache:"no-store",
+    headers:{
+      "apikey":SUPABASE_PUBLISHABLE_KEY,
+      "Authorization":`Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      "Prefer":"count=exact"
+    }
+  });
+
+  if(!response.ok){
+    const errorText=await response.text().catch(()=>"");
+    throw new Error(
+      `Supabase IA região: ${response.status} ${errorText}`
+    );
+  }
+
+  const rows=await response.json();
+  const mapped=Array.isArray(rows)
+    ? rows
+        .map(mapOruloProperty)
+        .filter(p=>p && p.id && p.value>0)
+    : [];
+
+  /*
+    A consulta do PostgREST usa nomes da região. Revalidamos
+    no frontend para impedir qualquer bairro indevido.
+  */
+  const filtered=mapped
+    .filter(p=>propertyMatchesRegion(p,regionKey))
+    .slice(0,12);
+
+  const range=response.headers.get("content-range") || "";
+  const totalMatch=range.match(/\/(\d+)$/);
+  const total=totalMatch
+    ? Number(totalMatch[1])||filtered.length
+    : filtered.length;
+
+  return {
+    inventory_ready:true,
+    inventory_count:total,
+    recognized_filters:true,
+    query:{
+      text:"",
+      exact_name:"",
+      region:regionKey,
+      neighborhood:"",
+      bedrooms,
+      min_price:minPrice,
+      max_price:maxPrice,
+      source:"todos"
+    },
+    total,
+    matches:filtered.map(p=>({
+      id:String(p.id||""),
+      external_id:String(p.id||""),
+      name:p.name||"Imóvel disponível",
+      neighborhood:p.neighborhood||"",
+      city:p.city||activeCity||"São Paulo",
+      state:p.state||activeState||"SP",
+      value:Number(p.value)||0,
+      area:Number(p.area)||0,
+      bedrooms:Number(p.bedrooms)||0,
+      bathrooms:Number(p.bathrooms)||0,
+      suites:Number(p.suites)||0,
+      parking:Number(p.parking)||0,
+      source:p.source||"usados",
+      property_url:p.propertyUrl||"",
+      image_url:Array.isArray(p.photos)&&p.photos.length ? p.photos[0] : "",
+      raw_data:p.rawData||{}
+    }))
+  };
+}
+
 async function searchPropertiesForAi(message){
   const inventoryForParsing=
     Array.isArray(newPropertiesCache)
@@ -9790,6 +9974,7 @@ async function searchPropertiesForAi(message){
 
   if(override){
     state={
+      region:override.region||"",
       neighborhood:override.neighborhood||"",
       exactName:"",
       bedrooms:Number(override.bedrooms)||0,
@@ -9798,6 +9983,7 @@ async function searchPropertiesForAi(message){
     };
 
     if(typeof aiSearchState==="object" && aiSearchState){
+      aiSearchState.region=state.region;
       aiSearchState.neighborhood=state.neighborhood;
       aiSearchState.exactName="";
       aiSearchState.bedrooms=state.bedrooms;
@@ -9809,12 +9995,36 @@ async function searchPropertiesForAi(message){
       typeof aiUpdateSearchState==="function"
         ? aiUpdateSearchState(message,inventoryForParsing)
         : {
+            region:"",
             neighborhood:"",
             exactName:"",
             bedrooms:0,
             minPrice:0,
             maxPrice:0
           };
+  }
+
+  /*
+    Região explícita (ex.: "zona oeste") é uma busca estruturada.
+    Isso limpa bairro/preço antigos e evita que o backend interprete
+    "zona oeste" como texto/bairro anterior.
+  */
+  if(state.region){
+    const regionContext=
+      await aiSearchRegionFromSupabase(
+        state
+      );
+
+    console.log(
+      "MATCH_IA_REGION_SEARCH_RESPONSE",
+      regionContext
+    );
+
+    aiStoreSearchContext(
+      regionContext
+    );
+
+    return regionContext;
   }
 
   const payload={
@@ -9836,7 +10046,7 @@ async function searchPropertiesForAi(message){
     min_price:Number(state.minPrice)||0,
     max_price:Number(state.maxPrice)||0,
 
-    source:"novos",
+    source:"todos",
     limit:12
   };
 
@@ -9940,6 +10150,7 @@ async function searchPropertiesForAi(message){
 
     recognized_filters:Boolean(
       payload.query ||
+      state.region ||
       payload.neighborhood ||
       payload.project ||
       payload.bedrooms ||
@@ -10006,6 +10217,7 @@ function aiExtractSearchHintFromMessage(message){
 
   const hint={
     query:String(message||"").trim(),
+    region:aiExtractExplicitRegion(message),
     neighborhood:"",
     bedrooms:0,
     min_price:0,
@@ -10048,23 +10260,10 @@ function aiExtractSearchHintFromMessage(message){
     hint.bedrooms=Number(dormMatch[1])||0;
   }
 
-  const maxMatch=t.match(/\b(?:ate|até|maximo|max|no maximo|no máximo)\s*r?\$?\s*([\d.,]+)\s*(mil|mi|milhao|milhão)?\b/);
-  if(maxMatch){
-    let v=Number(String(maxMatch[1]).replace(/\./g,"").replace(",","."));
-    const unit=maxMatch[2]||"";
-    if(/milhao|milhão|mi/.test(unit))v*=1000000;
-    else if(/mil/.test(unit))v*=1000;
-    if(Number.isFinite(v))hint.max_price=v;
-  }
+  const parsedMoney=aiOruloParseMoney(message);
+  hint.min_price=Number(parsedMoney?.min)||0;
+  hint.max_price=Number(parsedMoney?.max)||0;
 
-  const minMatch=t.match(/\b(?:acima de|a partir de|minimo|mínimo|min)\s*r?\$?\s*([\d.,]+)\s*(mil|mi|milhao|milhão)?\b/);
-  if(minMatch){
-    let v=Number(String(minMatch[1]).replace(/\./g,"").replace(",","."));
-    const unit=minMatch[2]||"";
-    if(/milhao|milhão|mi/.test(unit))v*=1000000;
-    else if(/mil/.test(unit))v*=1000;
-    if(Number.isFinite(v))hint.min_price=v;
-  }
 
   return hint;
 }
@@ -10101,15 +10300,22 @@ function aiSwitchToSearchMode(message){
     o bairro explícito da nova frase vence.
   */
   const targetNeighborhood=
-    hint.neighborhood ||
-    previousProperty?.neighborhood ||
-    "";
+    hint.region
+      ? ""
+      : (
+          hint.neighborhood ||
+          previousProperty?.neighborhood ||
+          ""
+        );
 
   if(typeof resetAiSearchState==="function"){
     resetAiSearchState();
   }
 
   if(typeof aiSearchState==="object" && aiSearchState){
+    aiSearchState.region=
+      hint.region||"";
+
     aiSearchState.neighborhood=
       targetNeighborhood;
 
@@ -10139,6 +10345,7 @@ function aiSwitchToSearchMode(message){
   */
   aiPendingSearchOverride={
     query:"",
+    region:hint.region||"",
     neighborhood:targetNeighborhood,
     bedrooms:hint.bedrooms||0,
     min_price:hint.min_price||0,
@@ -11234,6 +11441,10 @@ async function sendAiAssistantMessage(text){
         if(q.exact_name){
           parts.push(
             `o empreendimento ${q.exact_name}`
+          );
+        }else if(q.region){
+          parts.push(
+            `Zona ${String(q.region).charAt(0).toUpperCase()+String(q.region).slice(1)}`
           );
         }else if(q.neighborhood){
           parts.push(
