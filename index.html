@@ -3679,6 +3679,47 @@ body.match-results-mode #results{
 }
 </style>
 
+
+<style id="ai-disambiguation-v1">
+.ai-disambiguation{
+  display:grid;
+  gap:9px;
+  margin:10px 0 14px;
+}
+.ai-disambiguation-btn{
+  width:100%;
+  min-height:48px;
+  padding:11px 14px;
+  border:1px solid #D8C9A8;
+  border-radius:14px;
+  background:#FFFDF8;
+  color:#211F1B;
+  font:inherit;
+  font-size:14px;
+  line-height:1.25;
+  font-weight:800;
+  text-align:left;
+  cursor:pointer;
+}
+.ai-disambiguation-btn strong{
+  display:block;
+  margin-bottom:2px;
+}
+.ai-disambiguation-btn small{
+  display:block;
+  color:#746D62;
+  font-size:12px;
+  font-weight:600;
+}
+.ai-disambiguation-btn:active{
+  transform:scale(.99);
+}
+.ai-disambiguation-btn[disabled]{
+  opacity:.55;
+  cursor:default;
+}
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -7736,6 +7777,8 @@ function openPropertySpecialist(p){
    MATCH IA · CONCIERGE DE COMPRA
 ========================================================= */
 let aiAssistantProperty=null;
+let aiPendingDisambiguationChoice=null;
+
 let aiAssistantHistory=[];
 let aiAssistantSending=false;
 let aiAssistantTriggerTimer=null;
@@ -8698,6 +8741,252 @@ function appendAiMessage(role,text){
   div.className=`ai-msg ${role}`;
   div.textContent=text;
   box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+}
+
+
+function aiTitleCase(value){
+  return clean(value)
+    .toLowerCase()
+    .replace(
+      /(^|\s|-)([a-záàâãéèêíïóôõöúçñ])/g,
+      (_,sep,ch)=>sep+ch.toUpperCase()
+    );
+}
+
+function aiKnownNeighborhoodNames(){
+  const fromRegions=
+    typeof REGION_MAP==="object" && REGION_MAP
+      ? Object.values(REGION_MAP).flat()
+      : [];
+
+  const fromInventory=
+    Array.isArray(newPropertiesCache)
+      ? newPropertiesCache
+          .map(p=>clean(p?.neighborhood))
+          .filter(Boolean)
+      : [];
+
+  return [...new Set([
+    ...fromRegions,
+    ...fromInventory
+  ])]
+    .filter(Boolean)
+    .sort((a,b)=>b.length-a.length);
+}
+
+function aiDetectSearchAmbiguity(message){
+  const original=clean(message);
+  const t=norm(original);
+
+  if(!original || !t){
+    return null;
+  }
+
+  /*
+    Bairro explícito.
+    Usamos a mesma base de bairros do app + bairros já vistos
+    no inventário, sem consultar backend extra.
+  */
+  const neighborhood=
+    aiKnownNeighborhoodNames()
+      .find(name=>{
+        const key=norm(name);
+        return key && (
+          t===key ||
+          t.includes(` ${key} `) ||
+          t.startsWith(`${key} `) ||
+          t.endsWith(` ${key}`)
+        );
+      }) || "";
+
+  if(!neighborhood){
+    return null;
+  }
+
+  /*
+    Remove do texto:
+    - o bairro identificado;
+    - verbos de busca/conversa;
+    - filtros claros (preço, dormitórios etc.);
+    O que sobra precisa parecer nome de empreendimento/condomínio.
+  */
+  let candidate=
+    ` ${t} `
+      .replace(
+        new RegExp(
+          `\\s${norm(neighborhood)
+            .replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\s`,
+          "g"
+        ),
+        " "
+      )
+      .replace(
+        /\b(quero|queria|gostaria|saber|sobre|busca|buscar|busque|procura|procurar|procure|mostra|mostrar|mostre|ver|imovel|imoveis|apartamento|apartamentos|casa|casas|empreendimento|empreendimentos|condominio|condominios|no|na|em|do|da|de|para|por|com|um|uma|o|a|os|as)\b/g,
+        " "
+      )
+      .replace(
+        /\b\d+\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos|m2|m²)?\b/g,
+        " "
+      )
+      .replace(
+        /\b(?:ate|até|acima|abaixo|entre|mil|milhao|milhoes|reais|r\$)\b/g,
+        " "
+      )
+      .replace(/\s+/g," ")
+      .trim();
+
+  /*
+    Evita oferecer "empreendimento" para palavras genéricas.
+  */
+  const generic=
+    new Set([
+      "novo","novos","usado","usados","studio","studios",
+      "cobertura","garden","duplex","triplex","lancamento",
+      "lancamentos","residencial","comercial","perto",
+      "proximo","proxima","metro","estacao"
+    ]);
+
+  const candidateTokens=
+    candidate
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter(token=>!generic.has(token));
+
+  if(
+    !candidateTokens.length ||
+    candidateTokens.join("").length < 3
+  ){
+    return null;
+  }
+
+  /*
+    Para não transformar frases longas em "nome de condomínio",
+    limitamos a hipótese a até 4 palavras úteis.
+  */
+  if(candidateTokens.length>4){
+    return null;
+  }
+
+  const project=
+    aiTitleCase(
+      candidateTokens.join(" ")
+    );
+
+  return {
+    ambiguous:true,
+    project,
+    neighborhood
+  };
+}
+
+function appendAiDisambiguationChoice({
+  project,
+  neighborhood
+}){
+  const shell=ensureAiAssistantShell();
+  const box=shell.querySelector("#aiAssistantMessages");
+
+  if(!box)return;
+
+  const question=
+    `Entendi duas possibilidades: você quer procurar o empreendimento “${project}” ou imóveis no bairro ${neighborhood}?`;
+
+  appendAiMessage(
+    "assistant",
+    question
+  );
+
+  aiAssistantHistory.push({
+    role:"assistant",
+    content:question
+  });
+
+  aiAssistantHistory=
+    aiAssistantHistory.slice(-12);
+
+  const wrap=
+    document.createElement("div");
+
+  wrap.className=
+    "ai-disambiguation";
+
+  const projectButton=
+    document.createElement("button");
+
+  projectButton.type="button";
+  projectButton.className=
+    "ai-disambiguation-btn";
+
+  projectButton.innerHTML=
+    `<strong>Empreendimento ${esc(project)}</strong>` +
+    `<small>Buscar pelo nome do empreendimento/condomínio</small>`;
+
+  const neighborhoodButton=
+    document.createElement("button");
+
+  neighborhoodButton.type="button";
+  neighborhoodButton.className=
+    "ai-disambiguation-btn";
+
+  neighborhoodButton.innerHTML=
+    `<strong>Imóveis em ${esc(neighborhood)}</strong>` +
+    `<small>Buscar todo o estoque disponível no bairro</small>`;
+
+  function lockButtons(){
+    projectButton.disabled=true;
+    neighborhoodButton.disabled=true;
+  }
+
+  projectButton.addEventListener(
+    "click",
+    ()=>{
+      lockButtons();
+
+      aiPendingDisambiguationChoice={
+        type:"project",
+        value:project
+      };
+
+      /*
+        Nova intenção explícita:
+        não herda bairro/região/preço/dormitórios antigos.
+      */
+      resetAiSearchState();
+
+      sendAiAssistantMessage(
+        `Buscar empreendimento ${project}`
+      );
+    }
+  );
+
+  neighborhoodButton.addEventListener(
+    "click",
+    ()=>{
+      lockButtons();
+
+      aiPendingDisambiguationChoice={
+        type:"neighborhood",
+        value:neighborhood
+      };
+
+      resetAiSearchState();
+
+      sendAiAssistantMessage(
+        `Buscar imóveis em ${neighborhood}`
+      );
+    }
+  );
+
+  wrap.appendChild(
+    projectButton
+  );
+
+  wrap.appendChild(
+    neighborhoodButton
+  );
+
+  box.appendChild(wrap);
   box.scrollTop=box.scrollHeight;
 }
 
@@ -9722,6 +10011,18 @@ async function searchPropertiesForAi(message){
       : [];
 
   /*
+    Escolha explícita feita nos botões de desambiguação.
+    É consumida uma única vez e tem prioridade sobre o estado antigo.
+  */
+  const disambiguationChoice=
+    aiPendingDisambiguationChoice &&
+    typeof aiPendingDisambiguationChoice==="object"
+      ? {...aiPendingDisambiguationChoice}
+      : null;
+
+  aiPendingDisambiguationChoice=null;
+
+  /*
     Quando a mensagem veio de PROPERTY → SEARCH
     ("outras opções no Brooklin", por exemplo), usamos um
     payload estruturado de uma única execução.
@@ -9739,7 +10040,32 @@ async function searchPropertiesForAi(message){
 
   let state;
 
-  if(override){
+  if(disambiguationChoice){
+    state={
+      region:"",
+      neighborhood:
+        disambiguationChoice.type==="neighborhood"
+          ? clean(disambiguationChoice.value)
+          : "",
+      exactName:
+        disambiguationChoice.type==="project"
+          ? clean(disambiguationChoice.value)
+          : "",
+      bedrooms:0,
+      minPrice:0,
+      maxPrice:0
+    };
+
+    if(typeof aiSearchState==="object" && aiSearchState){
+      aiSearchState.region="";
+      aiSearchState.neighborhood=state.neighborhood;
+      aiSearchState.exactName=state.exactName;
+      aiSearchState.bedrooms=0;
+      aiSearchState.minPrice=0;
+      aiSearchState.maxPrice=0;
+    }
+
+  }else if(override){
     state={
       region:override.region||"",
       neighborhood:override.neighborhood||"",
@@ -9803,7 +10129,13 @@ async function searchPropertiesForAi(message){
         query fica vazia e usamos bairro/preço/dormitórios
         como filtros estruturados.
     */
-    query:override
+    query:disambiguationChoice
+      ? (
+          disambiguationChoice.type==="project"
+            ? clean(disambiguationChoice.value)
+            : ""
+        )
+      : override
       ? String(override.query||"").trim()
       : String(message||"").trim(),
 
@@ -10536,6 +10868,55 @@ async function sendAiAssistantMessage(text){
     if(send)send.disabled=false;
 
     return;
+  }
+
+
+  /*
+    DESAMBIGUAÇÃO DE INTENÇÃO
+    Exemplo:
+      "Quero saber sobre Well Perdizes"
+
+    Pode significar:
+      - empreendimento "Well"
+      - bairro "Perdizes"
+
+    Em vez de adivinhar, oferecemos as duas rotas.
+  */
+  if(
+    Boolean(
+      aiAssistantProperty
+        ?.generic_search
+    ) &&
+    !aiPendingDisambiguationChoice
+  ){
+    const ambiguity=
+      aiDetectSearchAmbiguity(
+        text
+      );
+
+    if(ambiguity){
+      appendAiDisambiguationChoice(
+        ambiguity
+      );
+
+      aiAssistantSending=false;
+
+      if(send){
+        send.disabled=false;
+      }
+
+      const input=
+        shell.querySelector(
+          "#aiAssistantInput"
+        );
+
+      if(input){
+        input.placeholder=
+          "Escolha uma das opções acima...";
+      }
+
+      return;
+    }
   }
 
   /*
