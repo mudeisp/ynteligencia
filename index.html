@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -3930,6 +3931,33 @@ body.match-results-mode #results{
 @media (max-width:430px){
   .unified-filter-grid{
     grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
+</style>
+
+
+<style id="detail-actions-two-buttons-fix">
+.detail-sticky-cta{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+}
+
+.detail-share-btn{
+  width:100% !important;
+}
+
+@media (max-width:768px){
+  .detail-sticky-cta{
+    width:min(720px,calc(100% - 24px)) !important;
+  }
+
+  .detail-share-btn{
+    min-height:58px !important;
+    background:#E4D0A3 !important;
+    border:0 !important;
+    color:#171513 !important;
+    font-size:17px !important;
+    font-weight:900 !important;
   }
 }
 </style>
@@ -13353,7 +13381,6 @@ async function showPhotoModal(id){
 
     <div class="detail-sticky-cta">
       <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">Compartilhar</button>
-      <button class="detail-interest-btn" type="button">✨ Perguntar à IA</button>
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
@@ -13374,7 +13401,6 @@ async function showPhotoModal(id){
     ].filter(Boolean).join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
   });
-  modal.querySelector(".detail-interest-btn")?.addEventListener("click",()=>openAiAssistant(p));
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
   document.body.appendChild(modal);
 
