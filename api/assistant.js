@@ -251,7 +251,14 @@ export default async function handler(req, res) {
     function nextSearchQuestion(
       query = {}
     ) {
+      /*
+        Se o cliente já buscou um empreendimento pelo nome,
+        não faz sentido perguntar região/bairro em seguida.
+      */
       if (
+        !cleanText(
+          query.exact_name
+        ) &&
         !cleanText(
           query.neighborhood
         ) &&
@@ -306,20 +313,12 @@ export default async function handler(req, res) {
       SEARCH MODE
       RESPOSTA DETERMINÍSTICA COM DADOS REAIS
       ========================================================
-
-      A search-properties já consultou o banco.
-
-      Se temos resultado, não precisamos pedir para a IA
-      "inventar" ou interpretar o estoque.
-
-      Ela recebe fatos estruturados.
     */
 
     if (
       mode === "search" &&
       inventory &&
-      inventory.inventory_ready !==
-        false &&
+      inventory.inventory_ready !== false &&
       Number(
         inventory.total
       ) > 0 &&
@@ -445,18 +444,6 @@ export default async function handler(req, res) {
         reply +=
           ` ${refineQuestion}`;
       }
-
-      /*
-        Se encontrou um único imóvel,
-        não fazemos pergunta automática.
-
-        O frontend já consegue guardar esse match
-        para perguntas como:
-
-        "me manda o link"
-        "qual o preço?"
-        "qual o endereço?"
-      */
 
       return res
         .status(200)
