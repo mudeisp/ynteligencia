@@ -8822,7 +8822,7 @@ function aiDetectSearchAmbiguity(message){
         " "
       )
       .replace(
-        /\b(quero|queria|gostaria|saber|sobre|busca|buscar|busque|procura|procurar|procure|mostra|mostrar|mostre|ver|imovel|imoveis|apartamento|apartamentos|casa|casas|empreendimento|empreendimentos|condominio|condominios|no|na|em|do|da|de|para|por|com|um|uma|o|a|os|as)\b/g,
+        /\b(quero|queria|gostaria|saber|sobre|busca|buscar|busque|procura|procurar|procure|mostra|mostrar|mostre|ver|comparar|compare|comparacao|comparação|imovel|imoveis|apartamento|apartamentos|casa|casas|empreendimento|empreendimentos|condominio|condominios|no|na|em|do|da|de|para|por|com|um|uma|o|a|os|as)\b/g,
         " "
       )
       .replace(
@@ -10311,7 +10311,7 @@ function aiIsExplicitInventorySearch(message){
 
   return Boolean(
     /\b(tem|existe|ha|há)\b.*\b(estoque|imovel|imóvel|empreendimento|condominio|condomínio)\b/.test(t) ||
-    /\b(busca|buscar|busque|procura|procurar|procure|pesquisa|pesquisar|ache|encontre|quero ver|quero saber sobre)\b/.test(t) ||
+    /\b(busca|buscar|busque|procura|procurar|procure|pesquisa|pesquisar|ache|encontre|quero ver|quero saber sobre|comparar|compare|comparacao|comparação)\b/.test(t) ||
     /\b(tem algum|tem alguma|tem o|tem a|existe algum|existe alguma)\b/.test(t)
   );
 }
@@ -10881,8 +10881,10 @@ async function sendAiAssistantMessage(text){
       "tem algum Maskan no estoque"
       "busca Well"
       "quero saber sobre Marka Perdizes"
+      "comparar com o Marka Perdizes"
 
       Isso é uma NOVA BUSCA, não uma pergunta sobre o imóvel atual.
+      Se houver bairro + provável empreendimento, entra na desambiguação.
     */
     aiSwitchToFreshSearchMode();
   }
