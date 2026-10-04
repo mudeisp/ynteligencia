@@ -9775,6 +9775,38 @@ function aiPickReferencedMatch(message){
     return ctx.matches[0];
   }
 
+  /*
+    Várias tipologias podem ser do MESMO empreendimento.
+    Nesse caso, "tem link?" refere-se naturalmente ao empreendimento,
+    então usamos a primeira tipologia como porta de entrada do detalhe.
+  */
+  const visible=
+    ctx.matches.slice(0,3);
+
+  const normalizedNames=
+    [...new Set(
+      visible
+        .map(item=>norm(item?.name||""))
+        .filter(Boolean)
+    )];
+
+  const buildingIds=
+    [...new Set(
+      visible
+        .map(item=>String(item?.building_id||"").trim())
+        .filter(Boolean)
+    )];
+
+  if(
+    visible.length > 1 &&
+    (
+      normalizedNames.length === 1 ||
+      buildingIds.length === 1
+    )
+  ){
+    return visible[0];
+  }
+
   return aiLastSelectedProperty || null;
 }
 
@@ -11362,6 +11394,19 @@ async function sendAiAssistantMessage(text){
             direct
           );
 
+          /*
+            Pedido de link/detalhes abre o detalhe INTERNO do app.
+            Nunca expomos URL bruta do provedor.
+          */
+          if(
+            typeof aiIsInternalDetailsRequest==="function" &&
+            aiIsInternalDetailsRequest(text)
+          ){
+            appendAiInternalDetailsButton(
+              referenced
+            );
+          }
+
           aiAssistantHistory.push({
             role:"assistant",
             content:direct
@@ -11369,6 +11414,12 @@ async function sendAiAssistantMessage(text){
 
           aiAssistantHistory=
             aiAssistantHistory.slice(-12);
+
+          aiAssistantSending=false;
+
+          if(send){
+            send.disabled=false;
+          }
 
           return;
         }
