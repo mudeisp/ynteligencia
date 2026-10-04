@@ -10303,6 +10303,57 @@ function aiIsPropertyMode(){
 }
 
 
+
+function aiIsExplicitInventorySearch(message){
+  const t=norm(message||"");
+
+  if(!t)return false;
+
+  return Boolean(
+    /\b(tem|existe|ha|há)\b.*\b(estoque|imovel|imóvel|empreendimento|condominio|condomínio)\b/.test(t) ||
+    /\b(busca|buscar|busque|procura|procurar|procure|pesquisa|pesquisar|ache|encontre|quero ver|quero saber sobre)\b/.test(t) ||
+    /\b(tem algum|tem alguma|tem o|tem a|existe algum|existe alguma)\b/.test(t)
+  );
+}
+
+function aiSyncInputPlaceholder(){
+  const input=
+    document.getElementById(
+      "aiAssistantInput"
+    );
+
+  if(!input)return;
+
+  input.placeholder=
+    Boolean(
+      aiAssistantProperty?.generic_search
+    )
+      ? "Digite bairro, preço, dormitórios ou empreendimento..."
+      : "Digite sua dúvida sobre este imóvel...";
+}
+
+function aiSwitchToFreshSearchMode(){
+  /*
+    Nova intenção explícita de busca:
+    não herda bairro, região, preço ou dormitórios do imóvel anterior.
+  */
+  aiPendingSearchOverride=null;
+  aiPendingDisambiguationChoice=null;
+
+  if(typeof resetAiSearchState==="function"){
+    resetAiSearchState();
+  }
+
+  aiAssistantProperty={
+    generic_search:true
+  };
+
+  aiLastSelectedProperty=null;
+  aiLastPropertyBeforeHome=null;
+
+  aiSyncInputPlaceholder();
+}
+
 function aiIsRequestForAlternatives(message){
   const t=norm(message||"");
 
@@ -10781,6 +10832,8 @@ async function sendAiAssistantMessage(text){
   aiAssistantSending=true;
 
   const shell=ensureAiAssistantShell();
+  aiSyncInputPlaceholder();
+
   const send=shell.querySelector("#aiAssistantSend");
 
   if(send)send.disabled=true;
@@ -10818,6 +10871,20 @@ async function sendAiAssistantMessage(text){
     )
   ){
     aiSwitchToSearchMode(text);
+
+  }else if(
+    wasPropertyMode &&
+    aiIsExplicitInventorySearch(text)
+  ){
+    /*
+      Ex.:
+      "tem algum Maskan no estoque"
+      "busca Well"
+      "quero saber sobre Marka Perdizes"
+
+      Isso é uma NOVA BUSCA, não uma pergunta sobre o imóvel atual.
+    */
+    aiSwitchToFreshSearchMode();
   }
 
   const detectedPhone=
