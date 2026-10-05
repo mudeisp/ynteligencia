@@ -45,7 +45,7 @@
   Troque YOUR_ONESIGNAL_APP_ID pelo App ID do painel OneSignal.
   A REST API KEY NUNCA entra no HTML; fica somente na Vercel.
 -->
-<meta name="onesignal-app-id" content="SEU_APP_ID_REAL_DO_ONESIGNAL">
+<meta name="onesignal-app-id" content="YOUR_ONESIGNAL_APP_ID">
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 </script>
@@ -3794,6 +3794,141 @@ body.match-results-mode #results{
   }
 </style>
 
+
+<style id="ynt-detail-floating-actions-v1">
+  /*
+    DETALHE · 3 AÇÕES FLUTUANTES
+    Compartilhar / Oportunidades / I.A ajuda
+  */
+  .detail-sticky-cta{
+    position:fixed !important;
+    z-index:275 !important;
+    right:14px !important;
+    left:auto !important;
+    bottom:max(16px,env(safe-area-inset-bottom)) !important;
+    transform:none !important;
+    width:auto !important;
+    padding:0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    backdrop-filter:none !important;
+    box-shadow:none !important;
+
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-end !important;
+    gap:8px !important;
+    grid-template-columns:none !important;
+  }
+
+  .detail-float-btn{
+    width:132px;
+    min-height:42px;
+    border:1px solid rgba(198,167,107,.65);
+    border-radius:999px;
+    padding:0 13px;
+    background:rgba(252,250,246,.96);
+    color:#4A443C;
+    box-shadow:0 8px 24px rgba(25,22,18,.13);
+    backdrop-filter:blur(14px);
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:8px;
+    font:inherit;
+    font-size:12px;
+    font-weight:900;
+    line-height:1;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:transform .16s ease, box-shadow .16s ease, background .16s ease;
+  }
+
+  .detail-float-btn:active{
+    transform:scale(.97);
+  }
+
+  .detail-float-btn-icon{
+    width:22px;
+    height:22px;
+    flex:0 0 22px;
+    display:grid;
+    place-items:center;
+    border-radius:50%;
+    background:#F0ECE3;
+    font-size:13px;
+  }
+
+  .detail-opportunities-btn{
+    background:#E4D0A3;
+    border-color:#C6A76B;
+    color:#342A1D;
+  }
+
+  .detail-opportunities-btn .detail-float-btn-icon{
+    background:rgba(255,255,255,.45);
+  }
+
+  .detail-ai-float-btn{
+    background:#171717;
+    border-color:#171717;
+    color:#fff;
+  }
+
+  .detail-ai-float-btn .detail-float-btn-icon{
+    background:rgba(255,255,255,.12);
+    color:#E4D0A3;
+  }
+
+  .detail-ai-float-btn.ai-pulse{
+    animation:yntAiFloatPulse 1.6s ease 2;
+  }
+
+  @keyframes yntAiFloatPulse{
+    0%,100%{
+      box-shadow:0 8px 24px rgba(25,22,18,.14);
+      transform:translateY(0);
+    }
+    50%{
+      box-shadow:0 10px 32px rgba(198,167,107,.34);
+      transform:translateY(-2px);
+    }
+  }
+
+  .detail-opportunities-btn.is-active{
+    background:#C6A76B;
+    color:#241D13;
+  }
+
+  .detail-opportunities-btn:disabled{
+    opacity:.6;
+    cursor:wait;
+  }
+
+  @media (max-width:768px){
+    .detail-sticky-cta{
+      right:10px !important;
+      bottom:max(12px,env(safe-area-inset-bottom)) !important;
+      gap:7px !important;
+    }
+
+    .detail-float-btn{
+      width:122px;
+      min-height:40px;
+      padding:0 11px;
+      font-size:11px;
+      box-shadow:0 7px 22px rgba(25,22,18,.15);
+    }
+
+    .detail-float-btn-icon{
+      width:20px;
+      height:20px;
+      flex-basis:20px;
+      font-size:12px;
+    }
+  }
+</style>
 </head>
 
 <body class="home-mode">
@@ -6132,7 +6267,7 @@ function yntCurrentPushProfile(){
     region:
       clean(
         getValue(
-          "catalogRegion"
+          "catalogRegionSelect"
         ) ||
         params.get("regiao") ||
         (
@@ -6346,8 +6481,25 @@ function refreshPushAlertCTA(){
         profile
       )
     )
-      ? ""
+      ? "block"
       : "none";
+
+  console.log(
+    "YNT_PUSH_CTA_STATE",
+    {
+      hasInventory,
+      profile,
+      hasIntent:
+        yntPushProfileHasIntent(
+          profile
+        ),
+      configured:
+        yntPushConfigured(),
+      visible:
+        wrap.style.display !==
+        "none"
+    }
+  );
 
   if(!yntPushConfigured()){
     btn.disabled=false;
@@ -6561,6 +6713,301 @@ async function initializeYnteligenciaPush(){
 
   return true;
 }
+
+
+function yntPushProfileForProperty(p){
+  /*
+    Se o usuário chegou por uma busca/campanha, preservamos a faixa
+    dessa busca. Caso tenha aberto o detalhe fora de uma busca,
+    usamos bairro + dormitórios + origem do próprio imóvel.
+  */
+  const current=
+    yntCurrentPushProfile();
+
+  return {
+    ...current,
+
+    city:
+      clean(
+        p?.city ||
+        current.city ||
+        "São Paulo"
+      ),
+
+    state:
+      clean(
+        p?.state ||
+        current.state ||
+        "SP"
+      ),
+
+    neighborhood:
+      clean(
+        p?.neighborhood ||
+        current.neighborhood ||
+        ""
+      ),
+
+    type:
+      clean(
+        p?.type ||
+        p?.property_type ||
+        current.type ||
+        ""
+      ),
+
+    source:
+      clean(
+        p?.source ||
+        current.source ||
+        "todos"
+      ) || "todos",
+
+    bedrooms:
+      Number(
+        p?.bedrooms ||
+        current.bedrooms ||
+        0
+      ) || 0,
+
+    /*
+      Mantém preços explícitos da busca.
+      Não inventamos uma faixa de preço a partir do imóvel.
+    */
+    min_price:
+      Number(
+        current.min_price
+      ) || 0,
+
+    max_price:
+      Number(
+        current.max_price
+      ) || 0,
+
+    cadence:
+      "daily",
+
+    max_pushes:
+      30,
+
+    seed_property_id:
+      String(
+        p?.id ||
+        ""
+      ),
+
+    seed_property_name:
+      clean(
+        p?.name ||
+        ""
+      )
+  };
+}
+
+async function activateYnteligenciaPushForProperty(
+  p,
+  btn
+){
+  if(!yntPushConfigured()){
+    showToast(
+      "O alerta ainda não está configurado."
+    );
+    return;
+  }
+
+  if(
+    !YNT_ONESIGNAL_READY ||
+    !YNT_ONESIGNAL_INSTANCE
+  ){
+    showToast(
+      "O serviço de oportunidades ainda está carregando."
+    );
+    return;
+  }
+
+  const OneSignal=
+    YNT_ONESIGNAL_INSTANCE;
+
+  const profile=
+    yntPushProfileForProperty(
+      p
+    );
+
+  if(
+    !yntPushProfileHasIntent(
+      profile
+    )
+  ){
+    showToast(
+      "Não consegui identificar o perfil deste imóvel."
+    );
+    return;
+  }
+
+  try{
+    if(btn){
+      btn.disabled=true;
+      btn.querySelector("span:last-child").textContent=
+        "Ativando...";
+    }
+
+    const granted=
+      OneSignal
+        .Notifications
+        .permission
+        ? true
+        : await OneSignal
+            .Notifications
+            .requestPermission();
+
+    if(!granted){
+      await supabaseTrack(
+        "push_permission_denied",
+        {
+          property_id:
+            String(p?.id||""),
+
+          push_profile:
+            profile,
+
+          push_origin:
+            "property_detail"
+        }
+      );
+
+      showToast(
+        "As notificações não foram autorizadas."
+      );
+      return;
+    }
+
+    await OneSignal
+      .User
+      .PushSubscription
+      .optIn();
+
+    await OneSignal.login(
+      String(
+        YNTELIGENCIA_VISITOR_ID
+      )
+    );
+
+    await OneSignal
+      .User
+      .addTags(
+        yntPushTagsFromProfile(
+          profile
+        )
+      );
+
+    const subscriptionId=
+      clean(
+        OneSignal
+          .User
+          .PushSubscription
+          .id ||
+        ""
+      );
+
+    await supabaseTrack(
+      "push_subscribed",
+      {
+        property_id:
+          String(p?.id||""),
+
+        property_name:
+          p?.name||"",
+
+        push:{
+          enabled:true,
+          provider:"onesignal",
+          subscription_id:
+            subscriptionId,
+          cadence:"daily",
+          max_pushes:30,
+          subscribed_at:
+            new Date().toISOString()
+        },
+
+        push_profile:
+          profile,
+
+        push_origin:
+          "property_detail",
+
+        attribution_at_subscription:{
+          first_touch:{
+            ...YNTELIGENCIA_TOUCHES
+              .first_touch
+          },
+
+          current_touch:{
+            ...YNTELIGENCIA_TOUCHES
+              .current_touch
+          }
+        }
+      }
+    );
+
+    if(btn){
+      btn.classList.add(
+        "is-active"
+      );
+      btn.querySelector("span:last-child").textContent=
+        "Ativado";
+    }
+
+    showToast(
+      "Oportunidades ativadas: até 1 imóvel por dia."
+    );
+
+  }catch(error){
+    console.warn(
+      "PUSH_PROPERTY_OPTIN_ERROR",
+      error
+    );
+
+    await supabaseTrack(
+      "push_subscription_error",
+      {
+        property_id:
+          String(p?.id||""),
+
+        push_origin:
+          "property_detail",
+
+        error:
+          String(
+            error?.message ||
+            error ||
+            ""
+          ),
+
+        push_profile:
+          profile
+      }
+    );
+
+    showToast(
+      "Não foi possível ativar as oportunidades agora."
+    );
+
+  }finally{
+    if(btn){
+      btn.disabled=false;
+
+      if(
+        !btn.classList.contains(
+          "is-active"
+        )
+      ){
+        btn.querySelector("span:last-child").textContent=
+          "Oportunidades";
+      }
+    }
+  }
+}
+
 
 async function activateYnteligenciaPush(){
   const btn=
@@ -13825,29 +14272,64 @@ async function sendAiAssistantMessage(text){
 
 function scheduleAiAssistantForProperty(p,modal){
   clearTimeout(aiAssistantTriggerTimer);
-  document.getElementById("aiAssistantTrigger")?.remove();
-  modal?.querySelector(".detail-sticky-cta")?.classList.remove("ai-ready");
 
+  /*
+    A IA agora já faz parte do conjunto fixo de 3 ações flutuantes.
+    Após 3 segundos apenas damos um destaque sutil no botão,
+    sem criar um quarto botão na tela.
+  */
   aiAssistantTriggerTimer=setTimeout(()=>{
-    if(!document.body.contains(modal))return;
-    modal?.querySelector(".detail-sticky-cta")?.classList.add("ai-ready");
+    if(
+      !document.body.contains(
+        modal
+      )
+    ){
+      return;
+    }
 
-    const trigger=document.createElement("button");
-    trigger.id="aiAssistantTrigger";
-    trigger.type="button";
-    trigger.className="ai-assistant-trigger";
-    trigger.innerHTML=`<span class="ai-orb">✦</span><span>IA + Humano<small>Tire dúvidas ou fale com o Rafael</small></span>`;
-    trigger.addEventListener("click",()=>{
-      trigger.remove();
-      openAiAssistant(p);
-    });
-    document.body.appendChild(trigger);
-    requestAnimationFrame(()=>trigger.classList.add("visible"));
+    const trigger=
+      modal?.querySelector(
+        ".detail-ai-float-btn"
+      );
+
+    trigger
+      ?.classList
+      .add(
+        "ai-pulse"
+      );
+
+    setTimeout(
+      ()=>
+        trigger
+          ?.classList
+          .remove(
+            "ai-pulse"
+          ),
+      3600
+    );
 
     try{
-      gtag("event","ai_assistant_prompt_view",{property_id:String(p.id||""),property_name:p.name||""});
+      gtag(
+        "event",
+        "ai_assistant_prompt_view",
+        {
+          property_id:
+            String(p.id||""),
+          property_name:
+            p.name||""
+        }
+      );
     }catch(error){}
-    supabaseTrack("ai_assistant_prompt_view",{property_id:String(p.id||""),property_name:p.name||""});
+
+    supabaseTrack(
+      "ai_assistant_prompt_view",
+      {
+        property_id:
+          String(p.id||""),
+        property_name:
+          p.name||""
+      }
+    );
   },3000);
 }
 
@@ -15795,8 +16277,34 @@ async function showPhotoModal(id){
       </section>
     </main>
 
-    <div class="detail-sticky-cta">
-      <button class="detail-share-btn" type="button" aria-label="Compartilhar imóvel no WhatsApp">Compartilhar</button>
+    <div
+      class="detail-sticky-cta"
+      aria-label="Ações do imóvel">
+
+      <button
+        class="detail-float-btn detail-share-btn"
+        type="button"
+        aria-label="Compartilhar imóvel">
+        <span class="detail-float-btn-icon">↗</span>
+        <span>Compartilhar</span>
+      </button>
+
+      <button
+        class="detail-float-btn detail-opportunities-btn"
+        type="button"
+        aria-label="Receber oportunidades parecidas">
+        <span class="detail-float-btn-icon">🔔</span>
+        <span>Oportunidades</span>
+      </button>
+
+      <button
+        class="detail-float-btn detail-ai-float-btn"
+        type="button"
+        aria-label="Pedir ajuda à inteligência artificial">
+        <span class="detail-float-btn-icon">✦</span>
+        <span>I.A ajuda</span>
+      </button>
+
     </div>`;
 
   const track=modal.querySelector(".detail-gallery-track");
@@ -15817,6 +16325,28 @@ async function showPhotoModal(id){
     ].filter(Boolean).join("\n");
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
   });
+  modal
+    .querySelector(
+      ".detail-opportunities-btn"
+    )
+    ?.addEventListener(
+      "click",
+      event=>
+        activateYnteligenciaPushForProperty(
+          p,
+          event.currentTarget
+        )
+    );
+
+  modal
+    .querySelector(
+      ".detail-ai-float-btn"
+    )
+    ?.addEventListener(
+      "click",
+      ()=>openAiAssistant(p)
+    );
+
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
   document.body.appendChild(modal);
 
