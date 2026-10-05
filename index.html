@@ -5759,12 +5759,28 @@ async function supabaseTrack(
             Antes vários eventos guardavam o imóvel somente dentro
             de metadata, deixando a coluna property_id como NULL.
           */
-          const resolvedPropertyId=
+          const propertyIdCandidate=
             clean(
+              metadata?.property_uuid ||
+              metadata?.property?.db_id ||
               metadata?.property_id ||
               metadata?.property?.id ||
               ""
             );
+
+          /*
+            public.events.property_id é UUID.
+            IDs como "orulo:51327:78637" continuam no metadata,
+            mas NUNCA são enviados para a coluna UUID.
+          */
+          const isUuid=
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+              .test(propertyIdCandidate);
+
+          const resolvedPropertyId=
+            isUuid
+              ? propertyIdCandidate
+              : "";
 
           const params=
             new URLSearchParams(
@@ -6877,6 +6893,9 @@ async function activateYnteligenciaPushForProperty(
           property_id:
             String(p?.id||""),
 
+          property_uuid:
+            String(p?.db_id||""),
+
           push_profile:
             profile,
 
@@ -6924,6 +6943,9 @@ async function activateYnteligenciaPushForProperty(
       {
         property_id:
           String(p?.id||""),
+
+        property_uuid:
+          String(p?.db_id||""),
 
         property_name:
           p?.name||"",
@@ -8134,8 +8156,15 @@ function mapOruloProperty(row){
 
   return {
 
+    /*
+      id = identificador comercial/provedor usado pelo app
+      db_id = UUID real da linha public.properties no Supabase
+    */
     id:
       String(row.external_id || row.id || ""),
+
+    db_id:
+      String(row.id || ""),
 
     name:
       clean(
@@ -14336,6 +14365,8 @@ function scheduleAiAssistantForProperty(p,modal){
       {
         property_id:
           String(p.id||""),
+        property_uuid:
+          String(p.db_id||""),
         property_name:
           p.name||""
       }
@@ -14777,6 +14808,9 @@ function closePropertyDetail({fromPopState=false}={}){
         property_id:
           activeJourney.property_id,
 
+        property_uuid:
+          activeJourney.property_uuid || "",
+
         property_name:
           activeJourney.property_name ||
           "",
@@ -14813,6 +14847,9 @@ function closePropertyDetail({fromPopState=false}={}){
       {
         from_property_id:
           activeJourney.property_id,
+
+        property_uuid:
+          activeJourney.property_uuid || "",
 
         from_property_name:
           activeJourney.property_name ||
@@ -15922,6 +15959,9 @@ async function showPhotoModal(id){
     property_id:
       String(p.id||""),
 
+    property_uuid:
+      String(p.db_id||""),
+
     property_name:
       p.name||"",
 
@@ -15952,6 +15992,9 @@ async function showPhotoModal(id){
     property_id:
       String(p.id||""),
 
+    property_uuid:
+      String(p.db_id||""),
+
     property_name:
       p.name||"",
 
@@ -15975,6 +16018,7 @@ async function showPhotoModal(id){
 
     property:{
       id:String(p.id||""),
+      db_id:String(p.db_id||""),
       name:p.name||"",
       neighborhood:p.neighborhood||"",
       value:Number(p.value)||0,
@@ -16023,6 +16067,9 @@ async function showPhotoModal(id){
       {
         property_id:
           previous.property_id,
+
+        property_uuid:
+          previous.property_uuid || "",
 
         property_name:
           previous.property_name ||
