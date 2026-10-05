@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -19830,7 +19831,7 @@ if($("catalogState")){
 
 loadInventory()
 .then(
-  ()=>{
+  async ()=>{
 
     /*
       PERFORMANCE:
@@ -19890,12 +19891,135 @@ loadInventory()
       launchParams.get("visitor") || "";
 
     if(sharedPropertyId){
-      const sharedProperty=
+      let sharedProperty=
         properties.find(
           item=>
             String(item.id)===
             String(sharedPropertyId)
         );
+
+      /*
+        O push pode apontar para um imóvel válido que ainda não está
+        carregado no lote inicial do catálogo. Nesse caso, buscamos o
+        registro diretamente no Supabase pelo external_id antes de
+        declarar o imóvel indisponível.
+      */
+      if(!sharedProperty){
+        try{
+          const directUrl=
+            new URL(
+              "https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties"
+            );
+
+          directUrl.searchParams.set(
+            "external_id",
+            `eq.${sharedPropertyId}`
+          );
+
+          directUrl.searchParams.set(
+            "select",
+            "*"
+          );
+
+          directUrl.searchParams.set(
+            "limit",
+            "1"
+          );
+
+          const directResponse=
+            await fetch(
+              directUrl.toString(),
+              {
+                cache:"no-store",
+                headers:{
+                  "apikey":
+                    SUPABASE_PUBLISHABLE_KEY,
+
+                  "Authorization":
+                    `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+                }
+              }
+            );
+
+          if(directResponse.ok){
+            const directRows=
+              await directResponse.json();
+
+            const directRow=
+              Array.isArray(directRows)
+                ? directRows[0]
+                : null;
+
+            if(directRow){
+              sharedProperty=
+                mapOruloProperty(
+                  directRow
+                );
+
+              if(sharedProperty?.id){
+                sharedProperty={
+                  ...sharedProperty,
+                  detailHydrated:true
+                };
+
+                /*
+                  Injeta o imóvel no estado atual para que toda a esteira
+                  existente (detalhe, IA, tracking e navegação) continue
+                  usando as mesmas funções do app.
+                */
+                if(
+                  !properties.some(
+                    item=>
+                      String(item?.id||"")===
+                      String(sharedProperty.id)
+                  )
+                ){
+                  properties.unshift(
+                    sharedProperty
+                  );
+                }
+
+                if(
+                  Array.isArray(
+                    newPropertiesCache
+                  ) &&
+                  !newPropertiesCache.some(
+                    item=>
+                      String(item?.id||"")===
+                      String(sharedProperty.id)
+                  )
+                ){
+                  newPropertiesCache.unshift(
+                    sharedProperty
+                  );
+                }
+
+                console.log(
+                  "YNT_PUSH_PROPERTY_LOADED_DIRECT",
+                  {
+                    property_id:
+                      sharedProperty.id,
+
+                    property_uuid:
+                      sharedProperty.db_id||
+                      ""
+                  }
+                );
+              }
+            }
+          }else{
+            console.warn(
+              "YNT_PUSH_PROPERTY_DIRECT_FETCH_HTTP",
+              directResponse.status
+            );
+          }
+        }catch(error){
+          console.warn(
+            "YNT_PUSH_PROPERTY_DIRECT_FETCH_FAILED",
+            error
+          );
+        }
+      }
 
       if(sharedProperty){
 
