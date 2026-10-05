@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -45,7 +44,7 @@
   Troque YOUR_ONESIGNAL_APP_ID pelo App ID do painel OneSignal.
   A REST API KEY NUNCA entra no HTML; fica somente na Vercel.
 -->
-<meta name="onesignal-app-id" content="53f1f6e4-28ca-46e1-b8a9-4075d4459dd8">
+<meta name="onesignal-app-id" content="YOUR_ONESIGNAL_APP_ID">
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 </script>
@@ -17673,12 +17672,12 @@ async function executeCatalogSearch(){
             ) || 0,
 
           min_price:
-            parseBRLInput(
+            parseBRLCurrencyInput(
               $("catalogMinPrice")?.value
             ) || 0,
 
           max_price:
-            parseBRLInput(
+            parseBRLCurrencyInput(
               $("catalogMaxPrice")?.value
             ) || 0
         },
