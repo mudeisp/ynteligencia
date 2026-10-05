@@ -3815,6 +3815,17 @@ body.match-results-mode #results{
     backdrop-filter:none !important;
     box-shadow:none !important;
 
+    /*
+      FIX FASE 17:
+      uma regra legada deixava o container com opacity:0 e
+      pointer-events:none até receber .ai-ready.
+      Como agora os 3 botões devem existir imediatamente,
+      forçamos visibilidade e interação.
+    */
+    opacity:1 !important;
+    pointer-events:auto !important;
+    visibility:visible !important;
+
     display:flex !important;
     flex-direction:column !important;
     align-items:flex-end !important;
