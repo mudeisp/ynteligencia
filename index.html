@@ -4964,6 +4964,71 @@ const YNTELIGENCIA_SESSION_ID =
 
 
 /*
+  JORNADA DENTRO DA SESSÃO
+  ------------------------
+  Uma única visita pode conter dezenas de ações:
+    catálogo -> imóvel A -> galeria -> volta -> imóvel B -> mapa -> IA
+
+  Não criamos um novo session_id para cada imóvel.
+  Em vez disso, numeramos cada evento dentro da mesma sessão.
+*/
+function yntJourneyKey(suffix){
+  return (
+    `ynteligencia_journey_${YNTELIGENCIA_SESSION_ID}_${suffix}`
+  );
+}
+
+function nextYnteligenciaEventSequence(){
+  const key=
+    yntJourneyKey("sequence");
+
+  const current=
+    Number(
+      sessionStorage.getItem(key) ||
+      0
+    ) || 0;
+
+  const next=
+    current + 1;
+
+  try{
+    sessionStorage.setItem(
+      key,
+      String(next)
+    );
+  }catch{}
+
+  return next;
+}
+
+function getYnteligenciaPreviousEvent(){
+  try{
+    const raw=
+      sessionStorage.getItem(
+        yntJourneyKey("previous_event")
+      );
+
+    return raw
+      ? JSON.parse(raw)
+      : null;
+  }catch{
+    return null;
+  }
+}
+
+function setYnteligenciaPreviousEvent(event){
+  try{
+    sessionStorage.setItem(
+      yntJourneyKey("previous_event"),
+      JSON.stringify(event)
+    );
+  }catch{}
+}
+
+let YNT_ACTIVE_PROPERTY_JOURNEY = null;
+
+
+/*
   Atualiza a atividade sem trocar o session_id.
 */
 function touchYnteligenciaSession(){
@@ -5544,6 +5609,31 @@ async function supabaseTrack(
 
           touchYnteligenciaSession();
 
+          const eventSequence=
+            nextYnteligenciaEventSequence();
+
+          const previousEvent=
+            getYnteligenciaPreviousEvent();
+
+          const currentEventForJourney={
+            sequence:
+              eventSequence,
+
+            event_type:
+              eventType,
+
+            property_id:
+              resolvedPropertyId || "",
+
+            created_at:
+              new Date()
+                .toISOString()
+          };
+
+          setYnteligenciaPreviousEvent(
+            currentEventForJourney
+          );
+
           return {
 
             session_id:
@@ -5573,6 +5663,27 @@ async function supabaseTrack(
 
               visitor_id:
                 YNTELIGENCIA_VISITOR_ID,
+
+              event_sequence:
+                eventSequence,
+
+              journey:{
+                sequence:
+                  eventSequence,
+
+                previous_event_type:
+                  previousEvent?.event_type ||
+                  "",
+
+                previous_property_id:
+                  previousEvent?.property_id ||
+                  "",
+
+                previous_sequence:
+                  Number(
+                    previousEvent?.sequence
+                  ) || 0
+              },
 
               session:{
                 number:
@@ -5726,6 +5837,9 @@ function scheduleYnteligenciaSessionStart(){
             YNTELIGENCIA_SESSION
               .session_number
           ) || 1,
+
+        journey_tracking_version:
+          "v1",
 
         is_returning:
           Boolean(
@@ -13280,11 +13394,120 @@ function closePropertyDetail({fromPopState=false}={}){
   clearTimeout(aiAssistantTriggerTimer);
   document.getElementById("aiAssistantTrigger")?.remove();
   document.getElementById("aiAssistantShell")?.classList.remove("open");
-  const modal=document.getElementById("photoModal");
-  if(modal)modal.remove();
+
+  const modal=
+    document.getElementById(
+      "photoModal"
+    );
+
+  const activeJourney=
+    YNT_ACTIVE_PROPERTY_JOURNEY;
+
+  /*
+    Registra o fechamento UMA vez.
+    Assim a jornada deixa de parecer que terminou no property_view.
+  */
+  if(
+    modal &&
+    activeJourney?.property_id
+  ){
+    const durationSeconds=
+      activeJourney.opened_at_ms
+        ? Math.max(
+            0,
+            Math.round(
+              (
+                Date.now() -
+                activeJourney.opened_at_ms
+              ) / 1000
+            )
+          )
+        : 0;
+
+    try{
+      gtag(
+        "event",
+        "property_close",
+        {
+          property_id:
+            activeJourney.property_id,
+
+          property_name:
+            activeJourney.property_name ||
+            "",
+
+          engagement_time_seconds:
+            durationSeconds
+        }
+      );
+    }catch(error){}
+
+    supabaseTrack(
+      "property_close",
+      {
+        property_id:
+          activeJourney.property_id,
+
+        property_name:
+          activeJourney.property_name ||
+          "",
+
+        neighborhood:
+          activeJourney.neighborhood ||
+          "",
+
+        property_value:
+          Number(
+            activeJourney.property_value
+          ) || 0,
+
+        inventory_source:
+          activeJourney.inventory_source ||
+          "",
+
+        engagement_time_seconds:
+          durationSeconds,
+
+        close_method:
+          fromPopState
+            ? "browser_back"
+            : "ui_close"
+      }
+    );
+
+    /*
+      O retorno ao catálogo também é um passo comercial importante:
+      mostra que o comprador continuou comparando opções.
+    */
+    supabaseTrack(
+      "catalog_return",
+      {
+        from_property_id:
+          activeJourney.property_id,
+
+        from_property_name:
+          activeJourney.property_name ||
+          "",
+
+        engagement_time_seconds:
+          durationSeconds
+      }
+    );
+  }
+
+  YNT_ACTIVE_PROPERTY_JOURNEY=null;
+
+  if(modal){
+    modal.remove();
+  }
+
   document.body.style.overflow="";
 
-  if(!fromPopState && history.state?.ynteligenciaPropertyDetail){
+  if(
+    !fromPopState &&
+    history.state
+      ?.ynteligenciaPropertyDetail
+  ){
     history.back();
   }
 }
@@ -14362,6 +14585,30 @@ async function showPhotoModal(id){
     sessionStorage.setItem("ynt_catalog_url",window.location.href);
   }catch(error){}
 
+  /*
+    Marca o imóvel atualmente aberto para conseguirmos registrar
+    corretamente o fechamento e o tempo de permanência.
+  */
+  YNT_ACTIVE_PROPERTY_JOURNEY={
+    property_id:
+      String(p.id||""),
+
+    property_name:
+      p.name||"",
+
+    neighborhood:
+      p.neighborhood||"",
+
+    property_value:
+      Number(p.value)||0,
+
+    inventory_source:
+      p.source||sourceMode||"todos",
+
+    opened_at_ms:
+      Date.now()
+  };
+
   try{
     gtag("event","property_view",{
       property_id:String(p.id||""),
@@ -14413,6 +14660,60 @@ async function showPhotoModal(id){
   const photos=photoList(p);
 
   const old=document.getElementById("photoModal");
+
+  /*
+    Se algum fluxo abrir outro imóvel sem passar pelo botão voltar,
+    encerramos a jornada anterior antes de substituir o modal.
+  */
+  if(
+    old &&
+    YNT_ACTIVE_PROPERTY_JOURNEY?.property_id &&
+    String(
+      YNT_ACTIVE_PROPERTY_JOURNEY
+        .property_id
+    ) !== String(p.id||"")
+  ){
+    const previous=
+      YNT_ACTIVE_PROPERTY_JOURNEY;
+
+    const durationSeconds=
+      previous.opened_at_ms
+        ? Math.max(
+            0,
+            Math.round(
+              (
+                Date.now() -
+                previous.opened_at_ms
+              ) / 1000
+            )
+          )
+        : 0;
+
+    supabaseTrack(
+      "property_close",
+      {
+        property_id:
+          previous.property_id,
+
+        property_name:
+          previous.property_name ||
+          "",
+
+        neighborhood:
+          previous.neighborhood ||
+          "",
+
+        engagement_time_seconds:
+          durationSeconds,
+
+        close_method:
+          "property_replaced"
+      }
+    );
+
+    YNT_ACTIVE_PROPERTY_JOURNEY=null;
+  }
+
   if(old)old.remove();
 
   // Cria uma etapa de navegação interna para o botão/gesto Voltar do celular.
