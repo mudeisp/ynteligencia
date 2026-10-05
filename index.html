@@ -42,7 +42,9 @@
 
 <!--
   PUSH · ONESIGNAL
- -->
+  Troque YOUR_ONESIGNAL_APP_ID pelo App ID do painel OneSignal.
+  A REST API KEY NUNCA entra no HTML; fica somente na Vercel.
+-->
 <meta name="onesignal-app-id" content="53f1f6e4-28ca-46e1-b8a9-4075d4459dd8">
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -6595,13 +6597,26 @@ async function initializeYnteligenciaPush(){
           appId:
             YNT_ONESIGNAL_APP_ID,
 
+          /*
+            OneSignal Web SDK v16:
+            como este site já possui /sw.js próprio, o worker do
+            OneSignal precisa ficar isolado em /onesignal/.
+          */
           serviceWorkerPath:
-            "/onesignal/OneSignalSDKWorker.js",
+            "onesignal/OneSignalSDKWorker.js",
 
           serviceWorkerParam:{
             scope:
               "/onesignal/"
           },
+
+          /*
+            Força o SDK a respeitar o worker customizado mesmo quando
+            o app OneSignal está configurado como "Typical Site".
+            Sem isso ele tentou /OneSignalSDKWorker.js na raiz.
+          */
+          serviceWorkerOverrideForTypical:
+            true,
 
           notifyButton:{
             enable:false
