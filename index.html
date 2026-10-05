@@ -40,6 +40,20 @@
 
 <link rel="manifest" href="/manifest.json">
 
+<!--
+  PUSH · ONESIGNAL
+  Troque YOUR_ONESIGNAL_APP_ID pelo App ID do painel OneSignal.
+  A REST API KEY NUNCA entra no HTML; fica somente na Vercel.
+-->
+<meta name="onesignal-app-id" content="YOUR_ONESIGNAL_APP_ID">
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+</script>
+<script
+  src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+  defer>
+</script>
+
 <meta name="theme-color" content="#0D0E0E">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3720,6 +3734,66 @@ body.match-results-mode #results{
 }
 </style>
 
+
+<style id="ynt-push-v1">
+  .catalog-push-wrap{
+    display:none;
+    margin-top:12px;
+  }
+
+  .catalog-push-btn{
+    appearance:none;
+    border:1px solid rgba(198,167,107,.55);
+    background:#FCFAF6;
+    color:#4A443C;
+    border-radius:14px;
+    min-height:46px;
+    padding:10px 14px;
+    font:inherit;
+    font-weight:800;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    box-shadow:0 8px 24px rgba(74,68,60,.07);
+  }
+
+  .catalog-push-btn:hover{
+    transform:translateY(-1px);
+  }
+
+  .catalog-push-btn.is-active{
+    background:#F0ECE3;
+    border-color:#C6A76B;
+  }
+
+  .catalog-push-btn:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+    transform:none;
+  }
+
+  .catalog-push-note{
+    margin:7px 0 0;
+    color:#7D776E;
+    font-size:12px;
+    line-height:1.35;
+    max-width:520px;
+  }
+
+  @media (max-width:768px){
+    .catalog-push-wrap{
+      width:100%;
+    }
+
+    .catalog-push-btn{
+      width:100%;
+      min-height:48px;
+    }
+  }
+</style>
+
 </head>
 
 <body class="home-mode">
@@ -4329,6 +4403,24 @@ body.match-results-mode #results{
         <p id="catalogStatus">
           Carregando estoque...
         </p>
+
+        <div
+          class="catalog-push-wrap"
+          id="catalogPushWrap">
+
+          <button
+            type="button"
+            class="catalog-push-btn"
+            id="catalogPushBtn">
+            🔔 Receber 1 imóvel por dia desta busca
+          </button>
+
+          <p
+            class="catalog-push-note"
+            id="catalogPushNote">
+            Só envia opções compatíveis que você ainda não recebeu.
+          </p>
+        </div>
 
       </div>
     </div>
@@ -5919,6 +6011,751 @@ function scheduleYnteligenciaSessionStart(){
 }
 
 scheduleYnteligenciaSessionStart();
+
+
+/* =========================================================
+   PUSH · ONESIGNAL · FASE 14
+   visitor_id -> external_id OneSignal
+========================================================= */
+
+const YNT_ONESIGNAL_APP_ID=
+  clean(
+    document
+      .querySelector(
+        'meta[name="onesignal-app-id"]'
+      )
+      ?.content ||
+    ""
+  );
+
+let YNT_ONESIGNAL_READY=false;
+let YNT_ONESIGNAL_INSTANCE=null;
+
+function yntPushConfigured(){
+  return Boolean(
+    YNT_ONESIGNAL_APP_ID &&
+    YNT_ONESIGNAL_APP_ID !==
+      "YOUR_ONESIGNAL_APP_ID"
+  );
+}
+
+function yntCurrentPushProfile(){
+  const params=
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const getValue=(id)=>{
+    const el=
+      document.getElementById(id);
+
+    return clean(
+      el?.value ||
+      ""
+    );
+  };
+
+  const numberValue=(value)=>{
+    const n=
+      Number(value);
+
+    return Number.isFinite(n)
+      ? n
+      : 0;
+  };
+
+  const minPrice=
+    (
+      typeof parseBRLInput==="function"
+        ? parseBRLInput(
+            getValue(
+              "catalogMinPrice"
+            ) ||
+            getValue(
+              "minPrice"
+            )
+          )
+        : 0
+    ) ||
+    numberValue(
+      params.get("valor_min")
+    );
+
+  const maxPrice=
+    (
+      typeof parseBRLInput==="function"
+        ? parseBRLInput(
+            getValue(
+              "catalogMaxPrice"
+            ) ||
+            getValue(
+              "maxPrice"
+            )
+          )
+        : 0
+    ) ||
+    numberValue(
+      params.get("valor_max")
+    );
+
+  return {
+    city:
+      clean(
+        getValue(
+          "catalogCity"
+        ) ||
+        params.get("cidade") ||
+        params.get("city") ||
+        (
+          typeof activeCity!=="undefined"
+            ? activeCity
+            : ""
+        ) ||
+        "São Paulo"
+      ),
+
+    state:
+      clean(
+        getValue(
+          "catalogState"
+        ) ||
+        params.get("estado") ||
+        params.get("state") ||
+        (
+          typeof activeState!=="undefined"
+            ? activeState
+            : ""
+        ) ||
+        "SP"
+      ),
+
+    region:
+      clean(
+        getValue(
+          "catalogRegion"
+        ) ||
+        params.get("regiao") ||
+        (
+          typeof catalogRegion!=="undefined"
+            ? catalogRegion
+            : ""
+        ) ||
+        ""
+      ),
+
+    neighborhood:
+      clean(
+        getValue(
+          "catalogNeighborhood"
+        ) ||
+        params.get("bairro") ||
+        params.get("busca") ||
+        (
+          typeof adIntent!=="undefined"
+            ? adIntent?.neighborhood
+            : ""
+        ) ||
+        ""
+      ),
+
+    type:
+      clean(
+        getValue(
+          "catalogType"
+        ) ||
+        params.get("tipo") ||
+        ""
+      ),
+
+    source:
+      clean(
+        getValue(
+          "catalogSource"
+        ) ||
+        params.get("source") ||
+        "todos"
+      ) || "todos",
+
+    bedrooms:
+      numberValue(
+        getValue(
+          "catalogBedrooms"
+        ) ||
+        getValue(
+          "bedrooms"
+        ) ||
+        params.get(
+          "dormitorios"
+        ) ||
+        (
+          typeof adIntent!=="undefined"
+            ? adIntent?.bedrooms
+            : 0
+        ) ||
+        0
+      ),
+
+    min_price:
+      Number(minPrice) || 0,
+
+    max_price:
+      Number(maxPrice) || 0,
+
+    cadence:
+      "daily",
+
+    max_pushes:
+      30
+  };
+}
+
+function yntPushProfileHasIntent(
+  profile
+){
+  return Boolean(
+    profile?.neighborhood ||
+    profile?.region ||
+    profile?.type ||
+    Number(profile?.bedrooms)>0 ||
+    Number(profile?.min_price)>0 ||
+    Number(profile?.max_price)>0
+  );
+}
+
+function yntPushTagsFromProfile(
+  profile
+){
+  return {
+    ynt_visitor_id:
+      String(
+        YNTELIGENCIA_VISITOR_ID
+      ),
+
+    ynt_push_enabled:
+      "1",
+
+    ynt_push_cadence:
+      "daily",
+
+    ynt_neighborhood:
+      String(
+        profile.neighborhood ||
+        ""
+      ),
+
+    ynt_region:
+      String(
+        profile.region ||
+        ""
+      ),
+
+    ynt_type:
+      String(
+        profile.type ||
+        ""
+      ),
+
+    ynt_source:
+      String(
+        profile.source ||
+        "todos"
+      ),
+
+    ynt_bedrooms:
+      String(
+        Number(
+          profile.bedrooms
+        ) || 0
+      ),
+
+    ynt_min_price:
+      String(
+        Number(
+          profile.min_price
+        ) || 0
+      ),
+
+    ynt_max_price:
+      String(
+        Number(
+          profile.max_price
+        ) || 0
+      ),
+
+    ynt_city:
+      String(
+        profile.city ||
+        ""
+      ),
+
+    ynt_state:
+      String(
+        profile.state ||
+        ""
+      )
+  };
+}
+
+function refreshPushAlertCTA(){
+  const wrap=
+    document.getElementById(
+      "catalogPushWrap"
+    );
+
+  const btn=
+    document.getElementById(
+      "catalogPushBtn"
+    );
+
+  const note=
+    document.getElementById(
+      "catalogPushNote"
+    );
+
+  if(
+    !wrap ||
+    !btn
+  ){
+    return;
+  }
+
+  const profile=
+    yntCurrentPushProfile();
+
+  const hasInventory=
+    (
+      Number(
+        typeof newCatalogTotal!=="undefined"
+          ? newCatalogTotal
+          : 0
+      ) > 0
+    ) ||
+    (
+      Array.isArray(
+        typeof newPropertiesCache!=="undefined"
+          ? newPropertiesCache
+          : []
+      ) &&
+      newPropertiesCache.length > 0
+    );
+
+  wrap.style.display=
+    (
+      hasInventory &&
+      yntPushProfileHasIntent(
+        profile
+      )
+    )
+      ? ""
+      : "none";
+
+  if(!yntPushConfigured()){
+    btn.disabled=false;
+
+    btn.textContent=
+      "🔔 Ativar alerta diário";
+
+    if(note){
+      note.textContent=
+        "Configuração OneSignal ainda precisa do App ID.";
+    }
+
+    return;
+  }
+
+  if(
+    YNT_ONESIGNAL_READY &&
+    YNT_ONESIGNAL_INSTANCE
+      ?.User
+      ?.PushSubscription
+      ?.optedIn
+  ){
+    btn.classList.add(
+      "is-active"
+    );
+
+    btn.textContent=
+      "✓ Alerta diário ativado";
+
+    if(note){
+      note.textContent=
+        "Você receberá no máximo 1 imóvel por dia desta busca.";
+    }
+
+  }else{
+    btn.classList.remove(
+      "is-active"
+    );
+
+    btn.textContent=
+      "🔔 Receber 1 imóvel por dia desta busca";
+
+    if(note){
+      note.textContent=
+        "Só envia opções compatíveis que você ainda não recebeu.";
+    }
+  }
+}
+
+async function initializeYnteligenciaPush(){
+  if(
+    !yntPushConfigured()
+  ){
+    refreshPushAlertCTA();
+    return false;
+  }
+
+  window.OneSignalDeferred=
+    window.OneSignalDeferred ||
+    [];
+
+  window.OneSignalDeferred.push(
+    async function(
+      OneSignal
+    ){
+      try{
+        await OneSignal.init({
+          appId:
+            YNT_ONESIGNAL_APP_ID,
+
+          serviceWorkerPath:
+            "/onesignal/OneSignalSDKWorker.js",
+
+          serviceWorkerParam:{
+            scope:
+              "/onesignal/"
+          },
+
+          notifyButton:{
+            enable:false
+          }
+        });
+
+        /*
+          visitor_id vira o External ID do OneSignal.
+          Assim o backend consegue mandar push diretamente
+          para este visitante sem conhecer nome/telefone.
+        */
+        await OneSignal.login(
+          String(
+            YNTELIGENCIA_VISITOR_ID
+          )
+        );
+
+        YNT_ONESIGNAL_INSTANCE=
+          OneSignal;
+
+        YNT_ONESIGNAL_READY=
+          true;
+
+        try{
+          OneSignal
+            .User
+            .PushSubscription
+            .addEventListener(
+              "change",
+              async ()=>{
+                refreshPushAlertCTA();
+
+                const optedIn=
+                  Boolean(
+                    OneSignal
+                      .User
+                      .PushSubscription
+                      .optedIn
+                  );
+
+                const subscriptionId=
+                  clean(
+                    OneSignal
+                      .User
+                      .PushSubscription
+                      .id ||
+                    ""
+                  );
+
+                await supabaseTrack(
+                  optedIn
+                    ? "push_subscription_active"
+                    : "push_unsubscribed",
+                  {
+                    push:{
+                      enabled:
+                        optedIn,
+
+                      provider:
+                        "onesignal",
+
+                      subscription_id:
+                        subscriptionId
+                    }
+                  }
+                );
+              }
+            );
+        }catch(error){}
+
+        try{
+          OneSignal
+            .Notifications
+            .addEventListener(
+              "click",
+              async event=>{
+                const notification=
+                  event?.notification ||
+                  {};
+
+                const data=
+                  notification
+                    ?.additionalData ||
+                  notification
+                    ?.data ||
+                  {};
+
+                await supabaseTrack(
+                  "push_notification_click",
+                  {
+                    property_id:
+                      clean(
+                        data
+                          ?.property_id ||
+                        ""
+                      ),
+
+                    push:{
+                      provider:
+                        "onesignal",
+
+                      notification_id:
+                        clean(
+                          notification
+                            ?.notificationId ||
+                          notification
+                            ?.id ||
+                          ""
+                        ),
+
+                      data
+                    }
+                  }
+                );
+              }
+            );
+        }catch(error){}
+
+        refreshPushAlertCTA();
+
+      }catch(error){
+        console.warn(
+          "ONESIGNAL_INIT_ERROR",
+          error
+        );
+
+        YNT_ONESIGNAL_READY=
+          false;
+
+        refreshPushAlertCTA();
+      }
+    }
+  );
+
+  return true;
+}
+
+async function activateYnteligenciaPush(){
+  const btn=
+    document.getElementById(
+      "catalogPushBtn"
+    );
+
+  if(!yntPushConfigured()){
+    showToast(
+      "Falta configurar o OneSignal App ID."
+    );
+
+    return;
+  }
+
+  if(
+    !YNT_ONESIGNAL_READY ||
+    !YNT_ONESIGNAL_INSTANCE
+  ){
+    showToast(
+      "O serviço de alertas ainda está carregando. Tente novamente."
+    );
+
+    return;
+  }
+
+  const OneSignal=
+    YNT_ONESIGNAL_INSTANCE;
+
+  const profile=
+    yntCurrentPushProfile();
+
+  if(
+    !yntPushProfileHasIntent(
+      profile
+    )
+  ){
+    showToast(
+      "Faça uma busca antes de ativar o alerta."
+    );
+
+    return;
+  }
+
+  try{
+    if(btn){
+      btn.disabled=true;
+      btn.textContent=
+        "ATIVANDO ALERTA...";
+    }
+
+    /*
+      A permissão é solicitada SOMENTE após clique do usuário.
+    */
+    const granted=
+      OneSignal
+        .Notifications
+        .permission
+        ? true
+        : await OneSignal
+            .Notifications
+            .requestPermission();
+
+    if(!granted){
+      await supabaseTrack(
+        "push_permission_denied",
+        {
+          push_profile:
+            profile
+        }
+      );
+
+      showToast(
+        "As notificações não foram autorizadas neste navegador."
+      );
+
+      return;
+    }
+
+    await OneSignal
+      .User
+      .PushSubscription
+      .optIn();
+
+    await OneSignal.login(
+      String(
+        YNTELIGENCIA_VISITOR_ID
+      )
+    );
+
+    await OneSignal
+      .User
+      .addTags(
+        yntPushTagsFromProfile(
+          profile
+        )
+      );
+
+    const subscriptionId=
+      clean(
+        OneSignal
+          .User
+          .PushSubscription
+          .id ||
+        ""
+      );
+
+    await supabaseTrack(
+      "push_subscribed",
+      {
+        push:{
+          enabled:true,
+
+          provider:
+            "onesignal",
+
+          subscription_id:
+            subscriptionId,
+
+          cadence:
+            "daily",
+
+          max_pushes:
+            30,
+
+          subscribed_at:
+            new Date()
+              .toISOString()
+        },
+
+        push_profile:
+          profile,
+
+        attribution_at_subscription:{
+          first_touch:{
+            ...YNTELIGENCIA_TOUCHES
+              .first_touch
+          },
+
+          current_touch:{
+            ...YNTELIGENCIA_TOUCHES
+              .current_touch
+          }
+        }
+      }
+    );
+
+    showToast(
+      "Alerta ativado: até 1 imóvel por dia."
+    );
+
+  }catch(error){
+    console.warn(
+      "PUSH_OPTIN_ERROR",
+      error
+    );
+
+    await supabaseTrack(
+      "push_subscription_error",
+      {
+        error:
+          String(
+            error?.message ||
+            error ||
+            ""
+          ),
+
+        push_profile:
+          profile
+      }
+    );
+
+    showToast(
+      "Não foi possível ativar o alerta agora."
+    );
+
+  }finally{
+    if(btn){
+      btn.disabled=false;
+    }
+
+    refreshPushAlertCTA();
+  }
+}
+
+document
+  .getElementById(
+    "catalogPushBtn"
+  )
+  ?.addEventListener(
+    "click",
+    activateYnteligenciaPush
+  );
+
+initializeYnteligenciaPush();
 
 
 async function supabaseCreateLead(lead){
@@ -15662,6 +16499,12 @@ function renderCatalog(){
 
           </div>
           `;
+
+  if(
+    typeof refreshPushAlertCTA==="function"
+  ){
+    refreshPushAlertCTA();
+  }
 }
 
 
