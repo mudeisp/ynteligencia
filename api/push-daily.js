@@ -49,21 +49,13 @@ async function supabaseGet(path, params = {}) {
     );
   }
 
-  const response =
-    await fetch(
-      url,
-      {
-        headers:
-          headersSupabase()
-      }
-    );
+  const response = await fetch(url, {
+    headers: headersSupabase()
+  });
 
-  const data =
-    await response
-      .json()
-      .catch(
-        () => []
-      );
+  const data = await response
+    .json()
+    .catch(() => []);
 
   if (!response.ok) {
     throw new Error(
@@ -74,59 +66,41 @@ async function supabaseGet(path, params = {}) {
   return data;
 }
 
-async function supabaseInsert(
-  path,
-  row
-) {
-  const response =
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/${path}`,
-      {
-        method:
-          "POST",
+async function supabaseInsert(path, row) {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/${path}`,
+    {
+      method: "POST",
 
-        headers: {
-          ...headersSupabase(),
+      headers: {
+        ...headersSupabase(),
+        Prefer: "return=minimal"
+      },
 
-          Prefer:
-            "return=minimal"
-        },
-
-        body:
-          JSON.stringify(row)
-      }
-    );
+      body: JSON.stringify(row)
+    }
+  );
 
   if (!response.ok) {
-    const detail =
-      await response
-        .text()
-        .catch(
-          () => ""
-        );
+    const detail = await response
+      .text()
+      .catch(() => "");
 
     console.warn(
       "PUSH_LOG_INSERT_FAILED",
       response.status,
-      detail.slice(
-        0,
-        800
-      )
+      detail.slice(0, 800)
     );
   }
 }
 
-function latestStateByVisitor(
-  rows
-) {
-  const map =
-    new Map();
+function latestStateByVisitor(rows) {
+  const map = new Map();
 
   for (const row of rows) {
     const visitorId =
       clean(
-        row?.metadata
-          ?.visitor_id
+        row?.metadata?.visitor_id
       );
 
     if (!visitorId) {
@@ -134,43 +108,52 @@ function latestStateByVisitor(
     }
 
     if (!map.has(visitorId)) {
-      map.set(
-        visitorId,
-        row
-      );
+      map.set(visitorId, row);
     }
   }
 
   return map;
 }
 
-function propertyId(
-  property
-) {
+function propertyExternalId(property) {
   return clean(
     property?.external_id ||
-    property?.id ||
     ""
   );
 }
 
-function titleOf(
-  property
-) {
+function propertyUuid(property) {
+  const candidate =
+    clean(
+      property?.id ||
+      ""
+    );
+
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    .test(candidate)
+      ? candidate
+      : "";
+}
+
+function propertyIdentity(property) {
+  return (
+    propertyExternalId(property) ||
+    propertyUuid(property)
+  );
+}
+
+function titleOf(property) {
   return clean(
-    property
-      ?.development_name ||
+    property?.development_name ||
     property?.title ||
     "Imóvel"
   );
 }
 
-function makePropertyQuery(
-  profile
-) {
+function makePropertyQuery(profile) {
   const params = {
     select:
-      "external_id,source,title,development_name,neighborhood,city,state,price,bedrooms,bathrooms,parking_spaces,area,image_url,active,updated_at",
+      "id,external_id,source,title,development_name,neighborhood,city,state,price,bedrooms,bathrooms,parking_spaces,area,image_url,active,updated_at",
 
     active:
       "eq.true",
@@ -182,81 +165,50 @@ function makePropertyQuery(
       "updated_at.desc"
   };
 
-  if (
-    clean(
-      profile.city
-    )
-  ) {
+  if (clean(profile.city)) {
     params.city =
       `ilike.${clean(profile.city)}`;
   }
 
-  if (
-    clean(
-      profile.state
-    )
-  ) {
+  if (clean(profile.state)) {
     params.state =
       `ilike.${clean(profile.state)}`;
   }
 
-  if (
-    clean(
-      profile.neighborhood
-    )
-  ) {
+  if (clean(profile.neighborhood)) {
     params.neighborhood =
       `ilike.${clean(profile.neighborhood)}`;
   }
 
   if (
-    clean(
-      profile.source
-    ) &&
-    clean(
-      profile.source
-    ) !==
-      "todos"
+    clean(profile.source) &&
+    clean(profile.source) !== "todos"
   ) {
     params.source =
       `eq.${clean(profile.source)}`;
   }
 
   if (
-    num(
-      profile.bedrooms
-    ) > 0
+    num(profile.bedrooms) > 0
   ) {
     params.bedrooms =
       `gte.${num(profile.bedrooms)}`;
   }
 
   if (
-    num(
-      profile.min_price
-    ) > 0
+    num(profile.min_price) > 0
   ) {
     params.price =
       `gte.${num(profile.min_price)}`;
   }
 
-  /*
-    Se houver valor máximo,
-    usamos AND para permitir
-    mínimo + máximo juntos.
-  */
   if (
-    num(
-      profile.max_price
-    ) > 0
+    num(profile.max_price) > 0
   ) {
-    const clauses =
-      [];
+    const clauses = [];
 
     if (
-      num(
-        profile.min_price
-      ) > 0
+      num(profile.min_price) > 0
     ) {
       clauses.push(
         `price.gte.${num(profile.min_price)}`
@@ -276,9 +228,7 @@ function makePropertyQuery(
   return params;
 }
 
-async function visitorHistory(
-  visitorId
-) {
+async function visitorHistory(visitorId) {
   return supabaseGet(
     "events",
     {
@@ -300,9 +250,7 @@ async function visitorHistory(
   );
 }
 
-function pushedToday(
-  history
-) {
+function pushedToday(history) {
   const lastPush =
     history.find(
       row =>
@@ -311,8 +259,7 @@ function pushedToday(
     );
 
   if (
-    !lastPush
-      ?.created_at
+    !lastPush?.created_at
   ) {
     return false;
   }
@@ -323,11 +270,6 @@ function pushedToday(
       lastPush.created_at
     ).getTime();
 
-  /*
-    Proteção:
-    evita novo push antes
-    de aproximadamente 20h.
-  */
   return (
     ageMs <
     20 * 60 * 60 * 1000
@@ -340,7 +282,12 @@ async function sendOneSignal({
   profile
 }) {
   const id =
-    propertyId(
+    propertyIdentity(
+      property
+    );
+
+  const propertyDbUuid =
+    propertyUuid(
       property
     );
 
@@ -351,8 +298,7 @@ async function sendOneSignal({
 
   const neighborhood =
     clean(
-      property
-        ?.neighborhood
+      property?.neighborhood
     );
 
   const price =
@@ -415,6 +361,9 @@ async function sendOneSignal({
       property_id:
         id,
 
+      property_uuid:
+        propertyDbUuid,
+
       visitor_id:
         visitorId,
 
@@ -459,9 +408,7 @@ async function sendOneSignal({
   const data =
     await response
       .json()
-      .catch(
-        () => ({})
-      );
+      .catch(() => ({}));
 
   if (
     !response.ok ||
@@ -495,24 +442,15 @@ export default async function handler(
     return res
       .status(405)
       .json({
-        success:
-          false,
-
-        error:
-          "Method not allowed"
+        success: false,
+        error: "Method not allowed"
       });
   }
 
-  /*
-    Opcional:
-    se CRON_SECRET existir,
-    protege o endpoint.
-  */
   if (CRON_SECRET) {
     const authorization =
       clean(
-        req.headers
-          .authorization
+        req.headers.authorization
       );
 
     if (
@@ -522,11 +460,8 @@ export default async function handler(
       return res
         .status(401)
         .json({
-          success:
-            false,
-
-          error:
-            "Unauthorized"
+          success: false,
+          error: "Unauthorized"
         });
     }
   }
@@ -540,8 +475,7 @@ export default async function handler(
     return res
       .status(500)
       .json({
-        success:
-          false,
+        success: false,
 
         error:
           "Configure SUPABASE_URL, SUPABASE_SECRET_KEY (ou SUPABASE_SERVICE_ROLE_KEY), ONESIGNAL_APP_ID e ONESIGNAL_REST_API_KEY."
@@ -549,13 +483,6 @@ export default async function handler(
   }
 
   try {
-    /*
-      Pegamos os eventos mais recentes
-      de subscribe/unsubscribe.
-
-      O mais recente de cada visitor_id
-      define se ele está ativo.
-    */
     const subscriptionEvents =
       await supabaseGet(
         "events",
@@ -580,29 +507,14 @@ export default async function handler(
       );
 
     const summary = {
-      subscribers_considered:
-        0,
-
-      sent:
-        0,
-
-      skipped_today:
-        0,
-
-      skipped_unsubscribed:
-        0,
-
-      skipped_no_profile:
-        0,
-
-      skipped_no_inventory:
-        0,
-
-      skipped_exhausted:
-        0,
-
-      errors:
-        0
+      subscribers_considered: 0,
+      sent: 0,
+      skipped_today: 0,
+      skipped_unsubscribed: 0,
+      skipped_no_profile: 0,
+      skipped_no_inventory: 0,
+      skipped_exhausted: 0,
+      errors: 0
     };
 
     for (
@@ -612,8 +524,7 @@ export default async function handler(
       ] of states
     ) {
       if (
-        stateRow
-          ?.event_type !==
+        stateRow?.event_type !==
         "push_subscribed"
       ) {
         summary
@@ -663,9 +574,6 @@ export default async function handler(
             visitorId
           );
 
-        /*
-          Máximo 1 push por dia.
-        */
         if (
           pushedToday(
             history
@@ -682,20 +590,18 @@ export default async function handler(
             history
               .filter(
                 row =>
-                  row
-                    ?.event_type ===
+                  row?.event_type ===
                   "property_view"
               )
               .map(
                 row =>
                   clean(
-                    row
-                      ?.property_id
+                    row?.metadata?.property_id ||
+                    row?.metadata?.property?.id ||
+                    row?.property_id
                   )
               )
-              .filter(
-                Boolean
-              )
+              .filter(Boolean)
           );
 
         const alreadyPushed =
@@ -703,29 +609,25 @@ export default async function handler(
             history
               .filter(
                 row =>
-                  row
-                    ?.event_type ===
+                  row?.event_type ===
                   "push_sent"
               )
               .map(
                 row =>
                   clean(
-                    row
-                      ?.property_id
+                    row?.metadata?.property_id ||
+                    row?.metadata?.property?.id ||
+                    row?.property_id
                   )
               )
-              .filter(
-                Boolean
-              )
+              .filter(Boolean)
           );
 
         const maxPushes =
           Math.max(
             1,
-
             Math.min(
               30,
-
               num(
                 stateRow
                   ?.metadata
@@ -765,17 +667,11 @@ export default async function handler(
           continue;
         }
 
-        /*
-          Escolhe o próximo imóvel:
-          - compatível
-          - ainda não visto
-          - ainda não enviado
-        */
         const nextProperty =
           properties.find(
             property => {
               const id =
-                propertyId(
+                propertyIdentity(
                   property
                 );
 
@@ -804,17 +700,21 @@ export default async function handler(
             profile
           });
 
-        /*
-          Registra o push enviado
-          dentro do próprio Supabase.
-        */
+        const nextPropertyUuid =
+          propertyUuid(
+            nextProperty
+          );
+
+        const nextPropertyExternalId =
+          propertyIdentity(
+            nextProperty
+          );
+
         await supabaseInsert(
           "events",
           {
             property_id:
-              propertyId(
-                nextProperty
-              ),
+              nextPropertyUuid || null,
 
             event_type:
               "push_sent",
@@ -822,6 +722,12 @@ export default async function handler(
             metadata: {
               visitor_id:
                 visitorId,
+
+              property_id:
+                nextPropertyExternalId,
+
+              property_uuid:
+                nextPropertyUuid,
 
               push: {
                 provider:
@@ -838,8 +744,7 @@ export default async function handler(
                     .toISOString(),
 
                 sequence:
-                  alreadyPushed.size +
-                  1,
+                  alreadyPushed.size + 1,
 
                 max_pushes:
                   maxPushes
@@ -850,9 +755,10 @@ export default async function handler(
 
               property: {
                 id:
-                  propertyId(
-                    nextProperty
-                  ),
+                  nextPropertyExternalId,
+
+                db_id:
+                  nextPropertyUuid,
 
                 name:
                   titleOf(
@@ -861,32 +767,27 @@ export default async function handler(
 
                 neighborhood:
                   clean(
-                    nextProperty
-                      ?.neighborhood
+                    nextProperty?.neighborhood
                   ),
 
                 value:
                   num(
-                    nextProperty
-                      ?.price
+                    nextProperty?.price
                   ),
 
                 bedrooms:
                   num(
-                    nextProperty
-                      ?.bedrooms
+                    nextProperty?.bedrooms
                   ),
 
                 area:
                   num(
-                    nextProperty
-                      ?.area
+                    nextProperty?.area
                   ),
 
                 source:
                   clean(
-                    nextProperty
-                      ?.source
+                    nextProperty?.source
                   )
               },
 
@@ -914,9 +815,7 @@ export default async function handler(
     return res
       .status(200)
       .json({
-        success:
-          true,
-
+        success: true,
         summary
       });
 
@@ -931,8 +830,7 @@ export default async function handler(
     return res
       .status(500)
       .json({
-        success:
-          false,
+        success: false,
 
         error:
           String(
