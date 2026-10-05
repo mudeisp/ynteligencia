@@ -4702,30 +4702,296 @@ function propertyForInteraction(id){
   return property && match ? {...property,match} : property;
 }
 
-function getYnteligenciaSessionId(){
+function yntUuid(){
+  return (
+    typeof crypto!=="undefined" &&
+    crypto.randomUUID
+  )
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`;
+}
 
-  const key="ynteligencia_session_id";
+function safeStorageGetJSON(key){
+  try{
+    const raw=localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  }catch{
+    return null;
+  }
+}
 
-  let id=safeStorageGet(key);
+function safeStorageSetJSON(key,value){
+  try{
+    localStorage.setItem(
+      key,
+      JSON.stringify(value)
+    );
+    return true;
+  }catch{
+    return false;
+  }
+}
+
+/*
+  VISITOR_ID
+  ----------
+  Identifica este navegador ao longo de várias visitas.
+
+  Migração:
+  a versão antiga usava "ynteligencia_session_id" no localStorage
+  sem expiração. Na prática aquele ID já funcionava como visitor_id.
+  Reaproveitamos esse valor para NÃO perder o histórico existente.
+*/
+function getYnteligenciaVisitorId(){
+  const visitorKey=
+    "ynteligencia_visitor_id";
+
+  let id=
+    safeStorageGet(visitorKey);
 
   if(!id){
-
     id=
-      (typeof crypto!=="undefined" && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random()
-            .toString(16)
-            .slice(2)}`;
+      safeStorageGet(
+        "ynteligencia_session_id"
+      ) ||
+      yntUuid();
 
-    safeStorageSet(key,id);
+    safeStorageSet(
+      visitorKey,
+      id
+    );
   }
 
   return id;
 }
 
+const YNTELIGENCIA_VISITOR_ID =
+  getYnteligenciaVisitorId();
+
+
+/*
+  SESSION_ID
+  ----------
+  Uma sessão representa uma visita.
+
+  Nova sessão quando:
+  - não existe sessão anterior; ou
+  - passaram 30 minutos sem atividade.
+
+  Assim conseguimos:
+    visitor_id = mesmo navegador
+    session_id = cada visita
+*/
+const YNT_SESSION_TIMEOUT_MS =
+  30 * 60 * 1000;
+
+function resolveYnteligenciaSession(){
+  const key=
+    "ynteligencia_session_state_v2";
+
+  const now=
+    Date.now();
+
+  const previous=
+    safeStorageGetJSON(key) ||
+    {};
+
+  const previousLastActivity=
+    Number(
+      previous.last_activity_at_ms
+    ) || 0;
+
+  const stillActive=
+    previous.id &&
+    previous.visitor_id ===
+      YNTELIGENCIA_VISITOR_ID &&
+    previousLastActivity > 0 &&
+    (
+      now -
+      previousLastActivity
+    ) < YNT_SESSION_TIMEOUT_MS;
+
+  if(stillActive){
+    const continued={
+      ...previous,
+      last_activity_at_ms:
+        now
+    };
+
+    safeStorageSetJSON(
+      key,
+      continued
+    );
+
+    return continued;
+  }
+
+  const previousSessionId=
+    clean(
+      previous.id ||
+      safeStorageGet(
+        "ynteligencia_last_session_id"
+      ) ||
+      ""
+    );
+
+  const previousSessionStartedAt=
+    clean(
+      previous.started_at ||
+      safeStorageGet(
+        "ynteligencia_last_session_started_at"
+      ) ||
+      ""
+    );
+
+  const previousSessionLastActivity=
+    Number(
+      previous.last_activity_at_ms ||
+      safeStorageGet(
+        "ynteligencia_last_session_last_activity_ms"
+      ) ||
+      0
+    ) || 0;
+
+  const previousNumber=
+    Number(
+      previous.session_number ||
+      safeStorageGet(
+        "ynteligencia_session_number"
+      ) ||
+      0
+    ) || 0;
+
+  const sessionNumber=
+    previousNumber + 1;
+
+  const startedAt=
+    new Date(now)
+      .toISOString();
+
+  const daysSinceLastVisit=
+    previousSessionLastActivity > 0
+      ? Math.max(
+          0,
+          (
+            now -
+            previousSessionLastActivity
+          ) /
+          86400000
+        )
+      : null;
+
+  const current={
+    id:
+      yntUuid(),
+
+    visitor_id:
+      YNTELIGENCIA_VISITOR_ID,
+
+    session_number:
+      sessionNumber,
+
+    is_returning:
+      sessionNumber > 1,
+
+    started_at:
+      startedAt,
+
+    started_at_ms:
+      now,
+
+    last_activity_at_ms:
+      now,
+
+    previous_session_id:
+      previousSessionId,
+
+    previous_session_started_at:
+      previousSessionStartedAt,
+
+    previous_session_last_activity_at_ms:
+      previousSessionLastActivity || null,
+
+    days_since_last_visit:
+      daysSinceLastVisit
+  };
+
+  if(previousSessionId){
+    safeStorageSet(
+      "ynteligencia_last_session_id",
+      previousSessionId
+    );
+  }
+
+  if(previousSessionStartedAt){
+    safeStorageSet(
+      "ynteligencia_last_session_started_at",
+      previousSessionStartedAt
+    );
+  }
+
+  if(previousSessionLastActivity){
+    safeStorageSet(
+      "ynteligencia_last_session_last_activity_ms",
+      String(
+        previousSessionLastActivity
+      )
+    );
+  }
+
+  safeStorageSet(
+    "ynteligencia_session_number",
+    String(
+      sessionNumber
+    )
+  );
+
+  safeStorageSetJSON(
+    key,
+    current
+  );
+
+  return current;
+}
+
+const YNTELIGENCIA_SESSION =
+  resolveYnteligenciaSession();
 
 const YNTELIGENCIA_SESSION_ID =
-  getYnteligenciaSessionId();
+  YNTELIGENCIA_SESSION.id;
+
+
+/*
+  Atualiza a atividade sem trocar o session_id.
+*/
+function touchYnteligenciaSession(){
+  const key=
+    "ynteligencia_session_state_v2";
+
+  const now=
+    Date.now();
+
+  const state=
+    safeStorageGetJSON(key);
+
+  if(
+    !state ||
+    state.id !==
+      YNTELIGENCIA_SESSION_ID
+  ){
+    return;
+  }
+
+  state.last_activity_at_ms=
+    now;
+
+  safeStorageSetJSON(
+    key,
+    state
+  );
+}
 
 
 /* =========================================================
@@ -4786,6 +5052,379 @@ const YNTELIGENCIA_ATTRIBUTION =
   captureYnteligenciaAttribution();
 
 
+/*
+  ATTRIBUTION V2
+  --------------
+  Mantemos YNTELIGENCIA_ATTRIBUTION por compatibilidade com
+  leads/conversões existentes.
+
+  E adicionamos:
+    FIRST_TOUCH   = primeira origem conhecida do visitor
+    CURRENT_TOUCH = origem real DESTA sessão
+
+  Isso permite:
+  "veio do Google Ads há 7 dias e voltou hoje organicamente".
+*/
+function inferYnteligenciaCurrentTouch(){
+  const params=
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const current={
+    gclid:
+      clean(params.get("gclid")),
+
+    gbraid:
+      clean(params.get("gbraid")),
+
+    wbraid:
+      clean(params.get("wbraid")),
+
+    utm_source:
+      clean(params.get("utm_source")),
+
+    utm_medium:
+      clean(params.get("utm_medium")),
+
+    utm_campaign:
+      clean(params.get("utm_campaign")),
+
+    utm_content:
+      clean(params.get("utm_content")),
+
+    utm_term:
+      clean(params.get("utm_term")),
+
+    referrer:
+      document.referrer || "",
+
+    landing_page:
+      window.location.href,
+
+    captured_at:
+      new Date()
+        .toISOString(),
+
+    source:
+      "",
+
+    medium:
+      "",
+
+    campaign:
+      ""
+  };
+
+  const hasPaidClick=
+    Boolean(
+      current.gclid ||
+      current.gbraid ||
+      current.wbraid
+    );
+
+  if(
+    current.utm_source ||
+    current.utm_medium ||
+    current.utm_campaign
+  ){
+    current.source=
+      current.utm_source ||
+      (
+        hasPaidClick
+          ? "google"
+          : "utm"
+      );
+
+    current.medium=
+      current.utm_medium ||
+      (
+        hasPaidClick
+          ? "cpc"
+          : "unknown"
+      );
+
+    current.campaign=
+      current.utm_campaign ||
+      "";
+
+    return current;
+  }
+
+  if(hasPaidClick){
+    current.source=
+      "google";
+
+    current.medium=
+      "cpc";
+
+    return current;
+  }
+
+  let refHost="";
+
+  try{
+    refHost=
+      document.referrer
+        ? new URL(
+            document.referrer
+          ).hostname
+            .toLowerCase()
+        : "";
+  }catch{
+    refHost="";
+  }
+
+  const ownHost=
+    window.location.hostname
+      .toLowerCase();
+
+  if(
+    !refHost ||
+    refHost === ownHost
+  ){
+    current.source=
+      "direct";
+
+    current.medium=
+      "(none)";
+
+    return current;
+  }
+
+  if(
+    /(^|\.)google\./.test(refHost) ||
+    refHost.includes("google.")
+  ){
+    current.source=
+      "google";
+
+    current.medium=
+      "organic";
+
+    return current;
+  }
+
+  if(
+    refHost.includes("bing.") ||
+    refHost.includes("yahoo.") ||
+    refHost.includes("duckduckgo.")
+  ){
+    current.source=
+      refHost.split(".")[0] ||
+      refHost;
+
+    current.medium=
+      "organic";
+
+    return current;
+  }
+
+  current.source=
+    refHost;
+
+  current.medium=
+    "referral";
+
+  return current;
+}
+
+function resolveYnteligenciaTouches(){
+  const firstKey=
+    "ynteligencia_first_touch_v2";
+
+  const previousTouchKey=
+    "ynteligencia_previous_session_touch_v2";
+
+  const current=
+    inferYnteligenciaCurrentTouch();
+
+  let first=
+    safeStorageGetJSON(
+      firstKey
+    );
+
+  if(!first){
+    /*
+      Se já existia atribuição legada, aproveitamos como first touch.
+      Isso preserva usuários que entraram antes desta atualização.
+    */
+    const legacy=
+      YNTELIGENCIA_ATTRIBUTION ||
+      {};
+
+    const hasLegacy=
+      Boolean(
+        legacy.gclid ||
+        legacy.gbraid ||
+        legacy.wbraid ||
+        legacy.utm_source ||
+        legacy.utm_medium ||
+        legacy.utm_campaign
+      );
+
+    first=
+      hasLegacy
+        ? {
+            ...legacy,
+
+            source:
+              legacy.utm_source ||
+              (
+                legacy.gclid ||
+                legacy.gbraid ||
+                legacy.wbraid
+                  ? "google"
+                  : ""
+              ),
+
+            medium:
+              legacy.utm_medium ||
+              (
+                legacy.gclid ||
+                legacy.gbraid ||
+                legacy.wbraid
+                  ? "cpc"
+                  : ""
+              ),
+
+            campaign:
+              legacy.utm_campaign ||
+              "",
+
+            captured_at:
+              safeStorageGet(
+                "ynteligencia_first_seen_at"
+              ) ||
+              new Date()
+                .toISOString(),
+
+            migrated_from_legacy:
+              true
+          }
+        : {
+            ...current
+          };
+
+    safeStorageSetJSON(
+      firstKey,
+      first
+    );
+  }
+
+  if(
+    !safeStorageGet(
+      "ynteligencia_first_seen_at"
+    )
+  ){
+    safeStorageSet(
+      "ynteligencia_first_seen_at",
+      first.captured_at ||
+      new Date()
+        .toISOString()
+    );
+  }
+
+  const previousSessionTouch=
+    safeStorageGetJSON(
+      previousTouchKey
+    );
+
+  /*
+    Grava current touch somente uma vez por session_id.
+    Reload da mesma sessão não deve sobrescrever a origem da visita.
+  */
+  const sessionTouchKey=
+    `ynteligencia_session_touch_${YNTELIGENCIA_SESSION_ID}`;
+
+  let sessionTouch=
+    safeStorageGetJSON(
+      sessionTouchKey
+    );
+
+  if(!sessionTouch){
+    sessionTouch={
+      ...current,
+
+      session_id:
+        YNTELIGENCIA_SESSION_ID,
+
+      session_number:
+        YNTELIGENCIA_SESSION
+          .session_number
+    };
+
+    safeStorageSetJSON(
+      sessionTouchKey,
+      sessionTouch
+    );
+
+    if(
+      previousSessionTouch &&
+      previousSessionTouch.session_id !==
+        YNTELIGENCIA_SESSION_ID
+    ){
+      safeStorageSetJSON(
+        "ynteligencia_last_completed_touch_v2",
+        previousSessionTouch
+      );
+    }
+
+    safeStorageSetJSON(
+      previousTouchKey,
+      sessionTouch
+    );
+  }
+
+  const previous=
+    safeStorageGetJSON(
+      "ynteligencia_last_completed_touch_v2"
+    );
+
+  const sameCampaignAsPrevious=
+    Boolean(
+      previous &&
+      sessionTouch &&
+      clean(previous.campaign) &&
+      clean(sessionTouch.campaign) &&
+      norm(previous.campaign) ===
+        norm(sessionTouch.campaign)
+    );
+
+  const sameSourceAsPrevious=
+    Boolean(
+      previous &&
+      sessionTouch &&
+      clean(previous.source) &&
+      clean(sessionTouch.source) &&
+      norm(previous.source) ===
+        norm(sessionTouch.source) &&
+      norm(previous.medium) ===
+        norm(sessionTouch.medium)
+    );
+
+  return {
+    first_touch:
+      first,
+
+    current_touch:
+      sessionTouch,
+
+    previous_touch:
+      previous,
+
+    same_campaign_as_previous:
+      sameCampaignAsPrevious,
+
+    same_source_as_previous:
+      sameSourceAsPrevious
+  };
+}
+
+const YNTELIGENCIA_TOUCHES =
+  resolveYnteligenciaTouches();
+
+
 async function supabaseTrack(
   eventType,
   metadata={}
@@ -4809,29 +5448,223 @@ async function supabaseTrack(
             "return=minimal"
         },
 
-        body:JSON.stringify({
+        body:JSON.stringify((()=>{
 
-          session_id:
-            YNTELIGENCIA_SESSION_ID,
+          /*
+            EVENTOS DO APP · CONTEXTO PADRÃO
+            --------------------------------
+            A tabela events possui property_id no nível principal.
+            Antes vários eventos guardavam o imóvel somente dentro
+            de metadata, deixando a coluna property_id como NULL.
+          */
+          const resolvedPropertyId=
+            clean(
+              metadata?.property_id ||
+              metadata?.property?.id ||
+              ""
+            );
 
-          event_type:
-            eventType,
+          const params=
+            new URLSearchParams(
+              window.location.search
+            );
 
-          metadata:{
-            ...metadata,
+          const campaignIntent={
+            mode:
+              params.get("modo") || "",
 
-            page:
-              location.pathname,
+            neighborhood:
+              params.get("bairro") ||
+              params.get("busca") ||
+              (
+                typeof adIntent!=="undefined"
+                  ? adIntent?.neighborhood
+                  : ""
+              ) ||
+              "",
 
-            source_mode:
-              sourceMode || "usados",
+            region:
+              params.get("regiao") ||
+              "",
 
-            attribution:{
-              ...YNTELIGENCIA_ATTRIBUTION
+            bedrooms:
+              Number(
+                params.get("dormitorios") ||
+                (
+                  typeof adIntent!=="undefined"
+                    ? adIntent?.bedrooms
+                    : 0
+                ) ||
+                0
+              ) || 0,
+
+            min_price:
+              Number(
+                params.get("valor_min") ||
+                (
+                  typeof adIntent!=="undefined"
+                    ? adIntent?.minPrice
+                    : 0
+                ) ||
+                0
+              ) || 0,
+
+            max_price:
+              Number(
+                params.get("valor_max") ||
+                (
+                  typeof adIntent!=="undefined"
+                    ? adIntent?.maxPrice
+                    : 0
+                ) ||
+                0
+              ) || 0,
+
+            type:
+              params.get("tipo") || "",
+
+            city:
+              params.get("cidade") ||
+              (
+                typeof activeCity!=="undefined"
+                  ? activeCity
+                  : ""
+              ) ||
+              "",
+
+            state:
+              params.get("estado") ||
+              (
+                typeof activeState!=="undefined"
+                  ? activeState
+                  : ""
+              ) ||
+              ""
+          };
+
+          touchYnteligenciaSession();
+
+          return {
+
+            session_id:
+              YNTELIGENCIA_SESSION_ID,
+
+            /*
+              Só enviamos quando existe.
+              Para eventos gerais, fica null.
+            */
+            property_id:
+              resolvedPropertyId || null,
+
+            event_type:
+              eventType,
+
+            metadata:{
+              ...metadata,
+
+              page:
+                location.pathname,
+
+              search:
+                location.search,
+
+              source_mode:
+                sourceMode || "usados",
+
+              visitor_id:
+                YNTELIGENCIA_VISITOR_ID,
+
+              session:{
+                number:
+                  Number(
+                    YNTELIGENCIA_SESSION
+                      .session_number
+                  ) || 1,
+
+                is_returning:
+                  Boolean(
+                    YNTELIGENCIA_SESSION
+                      .is_returning
+                  ),
+
+                started_at:
+                  YNTELIGENCIA_SESSION
+                    .started_at ||
+                  "",
+
+                previous_session_id:
+                  YNTELIGENCIA_SESSION
+                    .previous_session_id ||
+                  "",
+
+                previous_session_started_at:
+                  YNTELIGENCIA_SESSION
+                    .previous_session_started_at ||
+                  "",
+
+                days_since_last_visit:
+                  Number.isFinite(
+                    Number(
+                      YNTELIGENCIA_SESSION
+                        .days_since_last_visit
+                    )
+                  )
+                    ? Number(
+                        YNTELIGENCIA_SESSION
+                          .days_since_last_visit
+                      )
+                    : null
+              },
+
+              campaign_intent:
+                campaignIntent,
+
+              /*
+                Compatibilidade:
+                attribution continua sendo a atribuição legada/última
+                conhecida usada pela esteira atual.
+              */
+              attribution:{
+                ...YNTELIGENCIA_ATTRIBUTION
+              },
+
+              first_touch:{
+                ...YNTELIGENCIA_TOUCHES
+                  .first_touch
+              },
+
+              current_touch:{
+                ...YNTELIGENCIA_TOUCHES
+                  .current_touch
+              },
+
+              previous_touch:
+                YNTELIGENCIA_TOUCHES
+                  .previous_touch
+                  ? {
+                      ...YNTELIGENCIA_TOUCHES
+                        .previous_touch
+                    }
+                  : null,
+
+              attribution_compare:{
+                same_campaign_as_previous:
+                  Boolean(
+                    YNTELIGENCIA_TOUCHES
+                      .same_campaign_as_previous
+                  ),
+
+                same_source_as_previous:
+                  Boolean(
+                    YNTELIGENCIA_TOUCHES
+                      .same_source_as_previous
+                  )
+              }
             }
-          }
 
-        })
+          };
+
+        })())
 
       }
     );
@@ -4863,6 +5696,115 @@ async function supabaseTrack(
     return false;
   }
 }
+
+
+
+function scheduleYnteligenciaSessionStart(){
+  const sentKey=
+    `ynteligencia_session_start_sent_${YNTELIGENCIA_SESSION_ID}`;
+
+  if(
+    safeStorageGet(sentKey)
+  ){
+    return;
+  }
+
+  safeStorageSet(
+    sentKey,
+    "1"
+  );
+
+  const send=()=>{
+    supabaseTrack(
+      "session_start",
+      {
+        visitor_id:
+          YNTELIGENCIA_VISITOR_ID,
+
+        session_number:
+          Number(
+            YNTELIGENCIA_SESSION
+              .session_number
+          ) || 1,
+
+        is_returning:
+          Boolean(
+            YNTELIGENCIA_SESSION
+              .is_returning
+          ),
+
+        previous_session_id:
+          YNTELIGENCIA_SESSION
+            .previous_session_id ||
+          "",
+
+        days_since_last_visit:
+          Number.isFinite(
+            Number(
+              YNTELIGENCIA_SESSION
+                .days_since_last_visit
+            )
+          )
+            ? Number(
+                YNTELIGENCIA_SESSION
+                  .days_since_last_visit
+              )
+            : null,
+
+        first_seen_at:
+          safeStorageGet(
+            "ynteligencia_first_seen_at"
+          ) || "",
+
+        first_touch:{
+          ...YNTELIGENCIA_TOUCHES
+            .first_touch
+        },
+
+        current_touch:{
+          ...YNTELIGENCIA_TOUCHES
+            .current_touch
+        },
+
+        previous_touch:
+          YNTELIGENCIA_TOUCHES
+            .previous_touch
+            ? {
+                ...YNTELIGENCIA_TOUCHES
+                  .previous_touch
+              }
+            : null,
+
+        same_campaign_as_previous:
+          Boolean(
+            YNTELIGENCIA_TOUCHES
+              .same_campaign_as_previous
+          ),
+
+        same_source_as_previous:
+          Boolean(
+            YNTELIGENCIA_TOUCHES
+              .same_source_as_previous
+          )
+      }
+    ).catch(()=>{});
+  };
+
+  /*
+    Espera o script terminar de inicializar sourceMode/adIntent.
+  */
+  if(document.readyState==="complete"){
+    setTimeout(send,0);
+  }else{
+    window.addEventListener(
+      "load",
+      ()=>setTimeout(send,0),
+      {once:true}
+    );
+  }
+}
+
+scheduleYnteligenciaSessionStart();
 
 
 async function supabaseCreateLead(lead){
@@ -4923,12 +5865,69 @@ async function supabaseCreateLead(lead){
             crm:
               "praedium",
 
+            visitor_id:
+              YNTELIGENCIA_VISITOR_ID,
+
+            session:{
+              id:
+                YNTELIGENCIA_SESSION_ID,
+
+              number:
+                Number(
+                  YNTELIGENCIA_SESSION
+                    .session_number
+                ) || 1,
+
+              is_returning:
+                Boolean(
+                  YNTELIGENCIA_SESSION
+                    .is_returning
+                ),
+
+              previous_session_id:
+                YNTELIGENCIA_SESSION
+                  .previous_session_id ||
+                "",
+
+              days_since_last_visit:
+                Number.isFinite(
+                  Number(
+                    YNTELIGENCIA_SESSION
+                      .days_since_last_visit
+                  )
+                )
+                  ? Number(
+                      YNTELIGENCIA_SESSION
+                        .days_since_last_visit
+                    )
+                  : null
+            },
+
             attribution:{
               ...YNTELIGENCIA_ATTRIBUTION,
 
               landing_page:
                 window.location.href
             },
+
+            first_touch:{
+              ...YNTELIGENCIA_TOUCHES
+                .first_touch
+            },
+
+            current_touch:{
+              ...YNTELIGENCIA_TOUCHES
+                .current_touch
+            },
+
+            previous_touch:
+              YNTELIGENCIA_TOUCHES
+                .previous_touch
+                ? {
+                    ...YNTELIGENCIA_TOUCHES
+                      .previous_touch
+                  }
+                : null,
 
             property:{
 
@@ -13374,6 +14373,30 @@ async function showPhotoModal(id){
   }catch(error){}
 
   supabaseTrack("property_view",{
+    property_id:
+      String(p.id||""),
+
+    property_name:
+      p.name||"",
+
+    neighborhood:
+      p.neighborhood||"",
+
+    property_value:
+      Number(p.value)||0,
+
+    property_area:
+      Number(p.area)||0,
+
+    bedrooms:
+      Number(p.bedrooms)||0,
+
+    inventory_source:
+      p.source||sourceMode||"todos",
+
+    match_score:
+      Number(p.match?.score)||0,
+
     property:{
       id:String(p.id||""),
       name:p.name||"",
@@ -13383,6 +14406,7 @@ async function showPhotoModal(id){
       bedrooms:Number(p.bedrooms)||0,
       match_score:Number(p.match?.score)||0
     },
+
     profile:{...profile}
   });
 
@@ -14908,6 +15932,117 @@ async function executeCatalogSearch(){
   renderCatalog();
   updateCatalogUrl();
 
+  /*
+    FUNIL DO APP:
+    registra quais imóveis foram realmente entregues pela busca.
+    Isso substitui a dependência de match_generated para acessos
+    que entram diretamente no catálogo através de campanha.
+  */
+  try{
+    const delivered=
+      Array.isArray(newPropertiesCache)
+        ? newPropertiesCache.slice(0,12)
+        : [];
+
+    supabaseTrack(
+      "catalog_search_results",
+      {
+        filters:{
+          city:
+            activeCity||"",
+
+          state:
+            activeState||"",
+
+          region:
+            catalogRegion||"",
+
+          neighborhood:
+            clean(
+              $("catalogNeighborhood")?.value ||
+              ""
+            ),
+
+          search:
+            clean(
+              $("catalogSearch")?.value ||
+              ""
+            ),
+
+          source:
+            clean(
+              $("catalogSource")?.value ||
+              "todos"
+            ),
+
+          type:
+            clean(
+              $("catalogType")?.value ||
+              ""
+            ),
+
+          bedrooms:
+            Number(
+              $("catalogBedrooms")?.value ||
+              0
+            ) || 0,
+
+          min_price:
+            parseBRLInput(
+              $("catalogMinPrice")?.value
+            ) || 0,
+
+          max_price:
+            parseBRLInput(
+              $("catalogMaxPrice")?.value
+            ) || 0
+        },
+
+        results_count:
+          Number(newCatalogTotal) ||
+          delivered.length,
+
+        delivered_count:
+          delivered.length,
+
+        delivered:
+          delivered.map(
+            (item,index)=>({
+              position:
+                index+1,
+
+              property_id:
+                String(item.id||""),
+
+              property_name:
+                item.name||"",
+
+              neighborhood:
+                item.neighborhood||"",
+
+              value:
+                Number(item.value)||0,
+
+              bedrooms:
+                Number(item.bedrooms)||0,
+
+              area:
+                Number(item.area)||0,
+
+              source:
+                item.source||""
+            })
+          )
+      }
+    );
+
+  }catch(error){
+    console.warn(
+      "CATALOG_SEARCH_TRACKING_ERROR",
+      error
+    );
+  }
+
   $("catalog")?.scrollIntoView({
     behavior:"smooth",
     block:"start"
@@ -14961,8 +16096,59 @@ $("catalogLoadMore")?.addEventListener("click",async()=>{
   const button=$("catalogLoadMore");
   if(button){button.disabled=true;button.textContent="CARREGANDO...";}
   try{
+    const beforeCount=
+      Array.isArray(newPropertiesCache)
+        ? newPropertiesCache.length
+        : 0;
+
     await fetchNewCatalogPage({reset:false});
     renderCatalog();
+
+    const appended=
+      Array.isArray(newPropertiesCache)
+        ? newPropertiesCache.slice(
+            beforeCount,
+            beforeCount+CATALOG_PAGE_SIZE
+          )
+        : [];
+
+    supabaseTrack(
+      "catalog_load_more",
+      {
+        offset_before:
+          beforeCount,
+
+        delivered_count:
+          appended.length,
+
+        total_results:
+          Number(newCatalogTotal)||0,
+
+        delivered:
+          appended.map(
+            (item,index)=>({
+              position:
+                beforeCount+index+1,
+
+              property_id:
+                String(item.id||""),
+
+              property_name:
+                item.name||"",
+
+              neighborhood:
+                item.neighborhood||"",
+
+              value:
+                Number(item.value)||0,
+
+              source:
+                item.source||""
+            })
+          )
+      }
+    );
+
   }catch(error){
     console.error("Erro ao carregar mais imóveis:",error);
     showToast("Não foi possível carregar mais imóveis agora.");
