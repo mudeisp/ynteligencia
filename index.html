@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -19864,15 +19863,191 @@ loadInventory()
       setTimeout(loadPhotosInBackground,700);
     }
 
-    /* Link compartilhado abre diretamente a ficha técnica do imóvel. */
-    const sharedPropertyId=new URLSearchParams(window.location.search).get("imovel");
+    /*
+      Link compartilhado / Push:
+      abre diretamente a ficha técnica do imóvel.
+
+      Quando a URL vier com push=1, registramos push_click ANTES
+      do property_view. Assim a jornada fica:
+
+      push_sent -> push_click -> property_view -> IA -> lead
+
+      O evento é deduplicado por aba/sessão para evitar duplicação
+      causada por reload da mesma URL.
+    */
+    const launchParams=
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const sharedPropertyId=
+      launchParams.get("imovel");
+
+    const cameFromPush=
+      launchParams.get("push")==="1";
+
+    const pushVisitorId=
+      launchParams.get("visitor") || "";
+
     if(sharedPropertyId){
-      const sharedProperty=properties.find(item=>String(item.id)===String(sharedPropertyId));
+      const sharedProperty=
+        properties.find(
+          item=>
+            String(item.id)===
+            String(sharedPropertyId)
+        );
+
       if(sharedProperty){
-        document.body.classList.remove("home-mode");
-        showPhotoModal(String(sharedProperty.id));
+
+        if(cameFromPush){
+          try{
+            const pushClickKey=
+              "ynt_push_click_logged:"+
+              String(sharedProperty.id||"");
+
+            const alreadyLogged=
+              sessionStorage.getItem(
+                pushClickKey
+              )==="1";
+
+            if(!alreadyLogged){
+
+              /*
+                IMPORTANT:
+                - property_id comercial continua no metadata.
+                - property_uuid vai para a coluna UUID via supabaseTrack.
+                - visitor da URL é apenas referência do push; não substitui
+                  a identidade persistente do navegador.
+              */
+              supabaseTrack(
+                "push_click",
+                {
+                  property_id:
+                    String(
+                      sharedProperty.id||
+                      ""
+                    ),
+
+                  property_uuid:
+                    String(
+                      sharedProperty.db_id||
+                      ""
+                    ),
+
+                  property_name:
+                    sharedProperty.name||
+                    "",
+
+                  neighborhood:
+                    sharedProperty.neighborhood||
+                    "",
+
+                  property_value:
+                    Number(
+                      sharedProperty.value
+                    )||0,
+
+                  inventory_source:
+                    sharedProperty.source||
+                    sourceMode||
+                    "todos",
+
+                  push_origin:
+                    "daily_property",
+
+                  push_visitor_id:
+                    String(
+                      pushVisitorId||
+                      ""
+                    ),
+
+                  push:{
+                    provider:
+                      "onesignal",
+
+                    type:
+                      "daily_property",
+
+                    clicked_at:
+                      new Date()
+                        .toISOString()
+                  },
+
+                  property:{
+                    id:
+                      String(
+                        sharedProperty.id||
+                        ""
+                      ),
+
+                    db_id:
+                      String(
+                        sharedProperty.db_id||
+                        ""
+                      ),
+
+                    name:
+                      sharedProperty.name||
+                      "",
+
+                    neighborhood:
+                      sharedProperty.neighborhood||
+                      "",
+
+                    value:
+                      Number(
+                        sharedProperty.value
+                      )||0
+                  }
+                }
+              );
+
+              sessionStorage.setItem(
+                pushClickKey,
+                "1"
+              );
+
+              console.log(
+                "YNT_PUSH_CLICK_TRACKED",
+                {
+                  property_id:
+                    sharedProperty.id,
+
+                  property_uuid:
+                    sharedProperty.db_id||
+                    "",
+
+                  visitor_id:
+                    YNTELIGENCIA_VISITOR_ID,
+
+                  push_visitor_id:
+                    pushVisitorId
+                }
+              );
+            }
+
+          }catch(error){
+            console.warn(
+              "YNT_PUSH_CLICK_TRACK_FAILED",
+              error
+            );
+          }
+        }
+
+        document.body.classList.remove(
+          "home-mode"
+        );
+
+        showPhotoModal(
+          String(
+            sharedProperty.id
+          )
+        );
+
       }else{
-        showToast("Este imóvel não está disponível no estoque atual.");
+        showToast(
+          "Este imóvel não está disponível no estoque atual."
+        );
       }
     }
 
