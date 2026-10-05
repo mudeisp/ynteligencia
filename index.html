@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -44,7 +45,7 @@
   Troque YOUR_ONESIGNAL_APP_ID pelo App ID do painel OneSignal.
   A REST API KEY NUNCA entra no HTML; fica somente na Vercel.
 -->
-<meta name="onesignal-app-id" content="53f1f6e4-28ca-46e1-b8a9-4075d4459dd8">
+<meta name="onesignal-app-id" content="YOUR_ONESIGNAL_APP_ID">
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 </script>
@@ -6610,21 +6611,56 @@ async function initializeYnteligenciaPush(){
         });
 
         /*
-          visitor_id vira o External ID do OneSignal.
-          Assim o backend consegue mandar push diretamente
-          para este visitante sem conhecer nome/telefone.
+          FIX FASE 20:
+          SDK inicializado = serviço pronto para pedir permissão.
+          Antes, READY só virava true DEPOIS do OneSignal.login().
+          Se o login falhasse antes do opt-in, o botão ficava preso
+          para sempre em "serviço ainda está carregando".
         */
-        await OneSignal.login(
-          String(
-            YNTELIGENCIA_VISITOR_ID
-          )
-        );
-
         YNT_ONESIGNAL_INSTANCE=
           OneSignal;
 
         YNT_ONESIGNAL_READY=
           true;
+
+        console.log(
+          "YNT_ONESIGNAL_READY",
+          {
+            ready:true,
+            appId:
+              YNT_ONESIGNAL_APP_ID,
+            permission:
+              OneSignal
+                ?.Notifications
+                ?.permission
+          }
+        );
+
+        refreshPushAlertCTA();
+
+        /*
+          Vincular visitor_id é útil, mas não pode bloquear
+          a inicialização do serviço. Tentamos agora e,
+          se necessário, repetimos depois do opt-in.
+        */
+        try{
+          await OneSignal.login(
+            String(
+              YNTELIGENCIA_VISITOR_ID
+            )
+          );
+
+          console.log(
+            "YNT_ONESIGNAL_LOGIN_OK",
+            YNTELIGENCIA_VISITOR_ID
+          );
+
+        }catch(loginError){
+          console.warn(
+            "YNT_ONESIGNAL_LOGIN_DEFERRED",
+            loginError
+          );
+        }
 
         try{
           OneSignal
@@ -6724,13 +6760,23 @@ async function initializeYnteligenciaPush(){
         refreshPushAlertCTA();
 
       }catch(error){
-        console.warn(
+        console.error(
           "ONESIGNAL_INIT_ERROR",
           error
         );
 
         YNT_ONESIGNAL_READY=
           false;
+
+        YNT_ONESIGNAL_INSTANCE=
+          null;
+
+        window.YNT_ONESIGNAL_LAST_ERROR=
+          String(
+            error?.message ||
+            error ||
+            ""
+          );
 
         refreshPushAlertCTA();
       }
@@ -6845,10 +6891,54 @@ async function activateYnteligenciaPushForProperty(
     !YNT_ONESIGNAL_READY ||
     !YNT_ONESIGNAL_INSTANCE
   ){
-    showToast(
-      "O serviço de oportunidades ainda está carregando."
-    );
-    return;
+    if(btn){
+      btn.disabled=true;
+      btn.querySelector(
+        "span:last-child"
+      ).textContent=
+        "Carregando...";
+    }
+
+    const becameReady=
+      await waitForYnteligenciaPushReady(
+        8000
+      );
+
+    if(btn){
+      btn.disabled=false;
+    }
+
+    if(!becameReady){
+      console.error(
+        "YNT_PUSH_NOT_READY",
+        {
+          configured:
+            yntPushConfigured(),
+          ready:
+            YNT_ONESIGNAL_READY,
+          hasInstance:
+            Boolean(
+              YNT_ONESIGNAL_INSTANCE
+            ),
+          lastError:
+            window
+              .YNT_ONESIGNAL_LAST_ERROR ||
+            ""
+        }
+      );
+
+      if(btn){
+        btn.querySelector(
+          "span:last-child"
+        ).textContent=
+          "Oportunidades";
+      }
+
+      showToast(
+        "Não foi possível iniciar os alertas. Recarregue a página e tente novamente."
+      );
+      return;
+    }
   }
 
   const OneSignal=
@@ -7041,6 +7131,40 @@ async function activateYnteligenciaPushForProperty(
 }
 
 
+
+async function waitForYnteligenciaPushReady(
+  timeoutMs=8000
+){
+  const started=
+    Date.now();
+
+  while(
+    Date.now()-started <
+    timeoutMs
+  ){
+    if(
+      YNT_ONESIGNAL_READY &&
+      YNT_ONESIGNAL_INSTANCE
+    ){
+      return true;
+    }
+
+    await new Promise(
+      resolve=>
+        setTimeout(
+          resolve,
+          200
+        )
+    );
+  }
+
+  return Boolean(
+    YNT_ONESIGNAL_READY &&
+    YNT_ONESIGNAL_INSTANCE
+  );
+}
+
+
 async function activateYnteligenciaPush(){
   const btn=
     document.getElementById(
@@ -7059,11 +7183,47 @@ async function activateYnteligenciaPush(){
     !YNT_ONESIGNAL_READY ||
     !YNT_ONESIGNAL_INSTANCE
   ){
-    showToast(
-      "O serviço de alertas ainda está carregando. Tente novamente."
-    );
+    if(btn){
+      btn.disabled=true;
+      btn.textContent=
+        "CARREGANDO ALERTAS...";
+    }
 
-    return;
+    const becameReady=
+      await waitForYnteligenciaPushReady(
+        8000
+      );
+
+    if(btn){
+      btn.disabled=false;
+    }
+
+    if(!becameReady){
+      console.error(
+        "YNT_PUSH_NOT_READY",
+        {
+          configured:
+            yntPushConfigured(),
+          ready:
+            YNT_ONESIGNAL_READY,
+          hasInstance:
+            Boolean(
+              YNT_ONESIGNAL_INSTANCE
+            ),
+          lastError:
+            window
+              .YNT_ONESIGNAL_LAST_ERROR ||
+            ""
+        }
+      );
+
+      showToast(
+        "Não foi possível iniciar os alertas. Recarregue a página e tente novamente."
+      );
+
+      refreshPushAlertCTA();
+      return;
+    }
   }
 
   const OneSignal=
