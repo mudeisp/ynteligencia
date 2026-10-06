@@ -8221,7 +8221,14 @@ function normalizeOruloType(value){
 
   const t=norm(value || "");
 
-  // CASAS
+  /*
+    IMPORTANTE:
+    O mapper da Órulo pode receber mais de uma pista ao mesmo tempo
+    (ex.: normalized_type="apartment" e title contendo "Casa").
+    Por isso CASAS ficam antes de APARTAMENTOS.
+  */
+
+  // CASAS / CASAS DE CONDOMÍNIO
   if(
     t.includes("condominium_house") ||
     t.includes("condominium house") ||
@@ -8231,7 +8238,7 @@ function normalizeOruloType(value){
     return "casa";
   }
 
-  // SOBRADOS
+  // SOBRADOS / TOWNHOUSES
   if(
     t.includes("townhouse") ||
     t.includes("sobrado")
@@ -8247,7 +8254,7 @@ function normalizeOruloType(value){
     return "cobertura";
   }
 
-  // STUDIOS / LOFTS
+  // STUDIOS / LOFTS / KITNETS
   if(
     t.includes("studio") ||
     t.includes("loft") ||
@@ -8265,7 +8272,6 @@ function normalizeOruloType(value){
     return "apartamento";
   }
 
-  // FALLBACK
   return "apartamento";
 }
 
@@ -8482,10 +8488,18 @@ function mapOruloProperty(row){
 
     type:
       normalizeOruloType(
-        raw.normalized_type ||
-        typology.type ||
-        raw.type ||
-        row.title ||
+        [
+          raw.normalized_type,
+          typology.type,
+          raw.type,
+          raw.property_type,
+          building.type,
+          building.property_type,
+          row.title,
+          row.development_name
+        ]
+          .filter(Boolean)
+          .join(" ") ||
         "apartamento"
       ),
 
