@@ -14489,8 +14489,7 @@ async function sendAiAssistantMessage(text){
    Google Ads -> imóvel específico -> IA proativa -> LISTA V.I.P
 
    REGRAS:
-   - Só abre automaticamente quando a URL contém ?imovel=...
-     E sinais de tráfego pago Google.
+   - Só abre automaticamente quando a sessão veio do Google Ads e o usuário abre um imóvel.
    - Usa apenas dados reais do imóvel/Supabase.
    - Conta outros lançamentos ativos no mesmo bairro.
    - Não altera a IA manual nem a esteira existente.
@@ -14502,12 +14501,20 @@ function yntIsPaidDirectPropertyEntry(){
       window.location.search
     );
 
-  const hasProperty=
-    Boolean(
-      clean(
-        params.get("imovel")
-      )
-    );
+  /*
+    FASE 28:
+    Além dos sinais automáticos do Google Ads, aceitamos um gatilho
+    explícito na URL da campanha:
+      ia_proativa=1
+    ou
+      ia=1
+
+    Isso torna o teste determinístico, inclusive antes do Google
+    anexar gclid/gbraid/wbraid.
+  */
+  const explicitTrigger=
+    clean(params.get("ia_proativa"))==="1" ||
+    clean(params.get("ia"))==="1";
 
   const hasPaidSignal=
     Boolean(
@@ -14518,9 +14525,33 @@ function yntIsPaidDirectPropertyEntry(){
       clean(params.get("gad_campaignid"))
     );
 
+  const shouldMarkSession=
+    explicitTrigger ||
+    hasPaidSignal;
+
+  if(shouldMarkSession){
+    try{
+      sessionStorage.setItem(
+        "ynt_google_paid_session",
+        "1"
+      );
+    }catch(error){}
+  }
+
+  let paidSession=
+    false;
+
+  try{
+    paidSession=
+      sessionStorage.getItem(
+        "ynt_google_paid_session"
+      )==="1";
+  }catch(error){}
+
   return (
-    hasProperty &&
-    hasPaidSignal
+    explicitTrigger ||
+    hasPaidSignal ||
+    paidSession
   );
 }
 
@@ -14984,7 +15015,7 @@ async function yntOpenProactiveAiForProperty(
         ) || 0,
 
       trigger:
-        "google_ads_direct_property"
+        "google_ads_session_property_open"
     }
   );
 }
@@ -15029,7 +15060,7 @@ function scheduleAiAssistantForProperty(
           "",
 
         trigger:
-          "google_ads_direct_property"
+          "google_ads_session_property_open"
       }
     );
 
