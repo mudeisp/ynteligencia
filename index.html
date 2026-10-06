@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -14481,69 +14482,656 @@ async function sendAiAssistantMessage(text){
   }
 }
 
-function scheduleAiAssistantForProperty(p,modal){
-  clearTimeout(aiAssistantTriggerTimer);
+/* =========================================================
+   FASE 26 · IA PROATIVA PARA TRÁFEGO PAGO EM IMÓVEL DIRETO
 
-  /*
-    A IA agora já faz parte do conjunto fixo de 3 ações flutuantes.
-    Após 3 segundos apenas damos um destaque sutil no botão,
-    sem criar um quarto botão na tela.
-  */
-  aiAssistantTriggerTimer=setTimeout(()=>{
-    if(
-      !document.body.contains(
-        modal
-      )
-    ){
-      return;
-    }
+   Objetivo do teste:
+   Google Ads -> imóvel específico -> IA proativa -> LISTA V.I.P
 
-    const trigger=
-      modal?.querySelector(
-        ".detail-ai-float-btn"
-      );
+   REGRAS:
+   - Só abre automaticamente quando a URL contém ?imovel=...
+     E sinais de tráfego pago Google.
+   - Usa apenas dados reais do imóvel/Supabase.
+   - Conta outros lançamentos ativos no mesmo bairro.
+   - Não altera a IA manual nem a esteira existente.
+========================================================= */
 
-    trigger
-      ?.classList
-      .add(
-        "ai-pulse"
-      );
-
-    setTimeout(
-      ()=>
-        trigger
-          ?.classList
-          .remove(
-            "ai-pulse"
-          ),
-      3600
+function yntIsPaidDirectPropertyEntry(){
+  const params=
+    new URLSearchParams(
+      window.location.search
     );
 
-    try{
-      gtag(
-        "event",
-        "ai_assistant_prompt_view",
+  const hasProperty=
+    Boolean(
+      clean(
+        params.get("imovel")
+      )
+    );
+
+  const hasPaidSignal=
+    Boolean(
+      clean(params.get("gclid")) ||
+      clean(params.get("gbraid")) ||
+      clean(params.get("wbraid")) ||
+      clean(params.get("gad_source")) ||
+      clean(params.get("gad_campaignid"))
+    );
+
+  return (
+    hasProperty &&
+    hasPaidSignal
+  );
+}
+
+
+async function yntCountOtherLaunchesInNeighborhood(
+  p
+){
+  const neighborhood=
+    clean(
+      p?.neighborhood ||
+      p?.rawData
+        ?.building
+        ?.address
+        ?.neighborhood ||
+      ""
+    );
+
+  if(!neighborhood){
+    return {
+      count:0,
+      neighborhood:""
+    };
+  }
+
+  try{
+    const url=
+      new URL(
+        `${SUPABASE_URL}/rest/v1/properties`
+      );
+
+    url.searchParams.set(
+      "source",
+      "eq.novos"
+    );
+
+    url.searchParams.set(
+      "active",
+      "eq.true"
+    );
+
+    url.searchParams.set(
+      "neighborhood",
+      `ilike.${neighborhood}`
+    );
+
+    url.searchParams.set(
+      "select",
+      "id,external_id,title,development_name,neighborhood"
+    );
+
+    url.searchParams.set(
+      "limit",
+      "200"
+    );
+
+    const response=
+      await fetch(
+        url.toString(),
         {
-          property_id:
-            String(p.id||""),
-          property_name:
-            p.name||""
+          cache:"no-store",
+          headers:{
+            apikey:
+              SUPABASE_PUBLISHABLE_KEY,
+
+            Authorization:
+              `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+          }
         }
       );
-    }catch(error){}
 
-    supabaseTrack(
-      "ai_assistant_prompt_view",
-      {
-        property_id:
-          String(p.id||""),
-        property_uuid:
-          String(p.db_id||""),
-        property_name:
-          p.name||""
+    if(!response.ok){
+      throw new Error(
+        `Supabase ${response.status}`
+      );
+    }
+
+    const rows=
+      await response.json();
+
+    const currentExternalId=
+      String(
+        p?.id ||
+        ""
+      );
+
+    const currentUuid=
+      String(
+        p?.db_id ||
+        ""
+      );
+
+    /*
+      Um lançamento pode ter várias plantas/unidades.
+      Contamos empreendimentos únicos, não linhas da tabela.
+    */
+    const unique=
+      new Set();
+
+    (
+      Array.isArray(rows)
+        ? rows
+        : []
+    ).forEach(
+      row=>{
+        const rowExternal=
+          String(
+            row?.external_id ||
+            ""
+          );
+
+        const rowUuid=
+          String(
+            row?.id ||
+            ""
+          );
+
+        if(
+          rowExternal===currentExternalId ||
+          rowUuid===currentUuid
+        ){
+          return;
+        }
+
+        const key=
+          norm(
+            row?.development_name ||
+            row?.title ||
+            rowExternal ||
+            rowUuid
+          );
+
+        if(key){
+          unique.add(key);
+        }
       }
     );
-  },3000);
+
+    return {
+      count:
+        unique.size,
+
+      neighborhood
+    };
+
+  }catch(error){
+    console.warn(
+      "YNT_PROACTIVE_AI_COUNT_FAILED",
+      error
+    );
+
+    return {
+      count:0,
+      neighborhood
+    };
+  }
+}
+
+
+function yntAppendProactiveVipActions(
+  p,
+  box
+){
+  if(!box){
+    return;
+  }
+
+  const existing=
+    box.querySelector(
+      ".ynt-ai-vip-actions"
+    );
+
+  existing?.remove();
+
+  const wrap=
+    document.createElement(
+      "div"
+    );
+
+  wrap.className=
+    "ynt-ai-vip-actions";
+
+  const vip=
+    document.createElement(
+      "button"
+    );
+
+  vip.type=
+    "button";
+
+  vip.className=
+    "ynt-ai-vip-primary";
+
+  vip.innerHTML=
+    `<span>🔔</span><span>ENTRAR NA LISTA V.I.P</span>`;
+
+  const no=
+    document.createElement(
+      "button"
+    );
+
+  no.type=
+    "button";
+
+  no.className=
+    "ynt-ai-vip-secondary";
+
+  no.textContent=
+    "AGORA NÃO";
+
+  wrap.append(
+    vip,
+    no
+  );
+
+  box.appendChild(
+    wrap
+  );
+
+  box.scrollTop=
+    box.scrollHeight;
+
+  supabaseTrack(
+    "vip_offer_shown",
+    {
+      property_id:
+        String(
+          p?.id ||
+          ""
+        ),
+
+      property_uuid:
+        String(
+          p?.db_id ||
+          ""
+        ),
+
+      property_name:
+        p?.name ||
+        "",
+
+      neighborhood:
+        p?.neighborhood ||
+        "",
+
+      offer_origin:
+        "ai_proactive_google_ads"
+    }
+  );
+
+  vip.addEventListener(
+    "click",
+    async ()=>{
+      supabaseTrack(
+        "vip_offer_click",
+        {
+          property_id:
+            String(
+              p?.id ||
+              ""
+            ),
+
+          property_uuid:
+            String(
+              p?.db_id ||
+              ""
+            ),
+
+          property_name:
+            p?.name ||
+            "",
+
+          neighborhood:
+            p?.neighborhood ||
+            "",
+
+          offer_origin:
+            "ai_proactive_google_ads"
+        }
+      );
+
+      await activateYnteligenciaPushForProperty(
+        p,
+        vip
+      );
+    }
+  );
+
+  no.addEventListener(
+    "click",
+    ()=>{
+      supabaseTrack(
+        "vip_offer_declined",
+        {
+          property_id:
+            String(
+              p?.id ||
+              ""
+            ),
+
+          property_uuid:
+            String(
+              p?.db_id ||
+              ""
+            ),
+
+          property_name:
+            p?.name ||
+            "",
+
+          offer_origin:
+            "ai_proactive_google_ads"
+        }
+      );
+
+      wrap.remove();
+    }
+  );
+}
+
+
+async function yntOpenProactiveAiForProperty(
+  p
+){
+  if(!p){
+    return;
+  }
+
+  aiAssistantProperty=
+    p;
+
+  aiAssistantHistory=
+    [];
+
+  const shell=
+    ensureAiAssistantShell();
+
+  const box=
+    shell.querySelector(
+      "#aiAssistantMessages"
+    );
+
+  if(box){
+    box.innerHTML=
+      "";
+  }
+
+  shell.classList.add(
+    "open"
+  );
+
+  document.body.style.overflow=
+    "hidden";
+
+  const propertyName=
+    clean(
+      p?.name ||
+      "este lançamento"
+    );
+
+  const neighborhood=
+    clean(
+      p?.neighborhood ||
+      p?.rawData
+        ?.building
+        ?.address
+        ?.neighborhood ||
+      ""
+    );
+
+  appendAiMessage(
+    "assistant",
+    neighborhood
+      ? `Vi que você está olhando o ${propertyName}, em ${neighborhood}.`
+      : `Vi que você está olhando o ${propertyName}.`
+  );
+
+  const result=
+    await yntCountOtherLaunchesInNeighborhood(
+      p
+    );
+
+  if(
+    !document.body.contains(
+      shell
+    ) ||
+    !shell.classList.contains(
+      "open"
+    )
+  ){
+    return;
+  }
+
+  if(result.count>0){
+    appendAiMessage(
+      "assistant",
+      `Sabia que hoje existem mais ${result.count} lançamento${result.count===1?"":"s"} ativo${result.count===1?"":"s"} em ${result.neighborhood} no nosso estoque? Quer entrar na LISTA V.I.P e receber até 1 nova opção por dia?`
+    );
+  }else{
+    appendAiMessage(
+      "assistant",
+      `Quer entrar na LISTA V.I.P e receber até 1 nova opção por dia parecida com este imóvel?`
+    );
+  }
+
+  yntAppendProactiveVipActions(
+    p,
+    box
+  );
+
+  try{
+    gtag(
+      "event",
+      "ai_proactive_shown",
+      {
+        property_id:
+          String(
+            p?.id ||
+            ""
+          ),
+
+        property_name:
+          p?.name ||
+          "",
+
+        neighborhood:
+          neighborhood,
+
+        similar_launches:
+          Number(
+            result.count
+          ) || 0
+      }
+    );
+  }catch(error){}
+
+  supabaseTrack(
+    "ai_proactive_shown",
+    {
+      property_id:
+        String(
+          p?.id ||
+          ""
+        ),
+
+      property_uuid:
+        String(
+          p?.db_id ||
+          ""
+        ),
+
+      property_name:
+        p?.name ||
+        "",
+
+      neighborhood:
+        neighborhood,
+
+      similar_launches:
+        Number(
+          result.count
+        ) || 0,
+
+      trigger:
+        "google_ads_direct_property"
+    }
+  );
+}
+
+
+function scheduleAiAssistantForProperty(
+  p,
+  modal
+){
+  clearTimeout(
+    aiAssistantTriggerTimer
+  );
+
+  const proactive=
+    yntIsPaidDirectPropertyEntry();
+
+  if(proactive){
+    /*
+      Registra a entrada do experimento assim que o detalhe existe.
+    */
+    supabaseTrack(
+      "ad_property_entry",
+      {
+        property_id:
+          String(
+            p?.id ||
+            ""
+          ),
+
+        property_uuid:
+          String(
+            p?.db_id ||
+            ""
+          ),
+
+        property_name:
+          p?.name ||
+          "",
+
+        neighborhood:
+          p?.neighborhood ||
+          "",
+
+        trigger:
+          "google_ads_direct_property"
+      }
+    );
+
+    aiAssistantTriggerTimer=
+      setTimeout(
+        ()=>{
+          if(
+            !document.body.contains(
+              modal
+            )
+          ){
+            return;
+          }
+
+          yntOpenProactiveAiForProperty(
+            p
+          );
+        },
+        3800
+      );
+
+    return;
+  }
+
+  /*
+    Jornada normal:
+    mantém exatamente o comportamento da FASE 25.
+    A IA não abre sozinha; apenas destaca o botão após 3 segundos.
+  */
+  aiAssistantTriggerTimer=
+    setTimeout(
+      ()=>{
+        if(
+          !document.body.contains(
+            modal
+          )
+        ){
+          return;
+        }
+
+        const trigger=
+          modal?.querySelector(
+            ".detail-ai-float-btn"
+          );
+
+        trigger
+          ?.classList
+          .add(
+            "ai-pulse"
+          );
+
+        setTimeout(
+          ()=>
+            trigger
+              ?.classList
+              .remove(
+                "ai-pulse"
+              ),
+          3600
+        );
+
+        try{
+          gtag(
+            "event",
+            "ai_assistant_prompt_view",
+            {
+              property_id:
+                String(
+                  p.id ||
+                  ""
+                ),
+
+              property_name:
+                p.name ||
+                ""
+            }
+          );
+        }catch(error){}
+
+        supabaseTrack(
+          "ai_assistant_prompt_view",
+          {
+            property_id:
+              String(
+                p.id ||
+                ""
+              ),
+
+            property_uuid:
+              String(
+                p.db_id ||
+                ""
+              ),
+
+            property_name:
+              p.name ||
+              ""
+          }
+        );
+      },
+      3000
+    );
 }
 
 
@@ -21211,6 +21799,56 @@ body.ad-match-mode .refine-match-shell{
     margin-bottom:6px !important;
   }
 }
+
+/* =========================================================
+   FASE 26 · CTA LISTA V.I.P DENTRO DA IA PROATIVA
+========================================================= */
+.ynt-ai-vip-actions{
+  display:grid;
+  gap:8px;
+  margin:10px 0 16px;
+  max-width:88%;
+}
+.ynt-ai-vip-primary,
+.ynt-ai-vip-secondary{
+  min-height:48px;
+  border-radius:14px;
+  padding:10px 14px;
+  font:inherit;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.15px;
+  cursor:pointer;
+}
+.ynt-ai-vip-primary{
+  border:1px solid #B99A5E;
+  background:#E4D0A3;
+  color:#171513;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+.ynt-ai-vip-primary:disabled{
+  opacity:.58;
+  cursor:wait;
+}
+.ynt-ai-vip-primary.is-active{
+  background:#171513;
+  color:#fff;
+  border-color:#171513;
+}
+.ynt-ai-vip-secondary{
+  border:1px solid #D8D0C4;
+  background:#FCFAF6;
+  color:#6B655C;
+}
+@media(max-width:640px){
+  .ynt-ai-vip-actions{
+    max-width:100%;
+  }
+}
+
 </style>
 
 <script id="final-ai-mobile-viewport-fix">
