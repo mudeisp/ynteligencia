@@ -14496,63 +14496,23 @@ async function sendAiAssistantMessage(text){
 ========================================================= */
 
 function yntIsPaidDirectPropertyEntry(){
-  const params=
-    new URLSearchParams(
-      window.location.search
-    );
-
   /*
-    FASE 28:
-    Além dos sinais automáticos do Google Ads, aceitamos um gatilho
-    explícito na URL da campanha:
-      ia_proativa=1
-    ou
-      ia=1
+    FASE 29:
+    IA proativa ativa em TODO o app.
 
-    Isso torna o teste determinístico, inclusive antes do Google
-    anexar gclid/gbraid/wbraid.
+    Sempre que o usuário abrir DETALHES de um imóvel,
+    scheduleAiAssistantForProperty() poderá abrir a IA
+    automaticamente após o tempo configurado.
+
+    Não depende mais de:
+    - gclid
+    - gbraid
+    - wbraid
+    - gad_source
+    - gad_campaignid
+    - ia_proativa=1
   */
-  const explicitTrigger=
-    clean(params.get("ia_proativa"))==="1" ||
-    clean(params.get("ia"))==="1";
-
-  const hasPaidSignal=
-    Boolean(
-      clean(params.get("gclid")) ||
-      clean(params.get("gbraid")) ||
-      clean(params.get("wbraid")) ||
-      clean(params.get("gad_source")) ||
-      clean(params.get("gad_campaignid"))
-    );
-
-  const shouldMarkSession=
-    explicitTrigger ||
-    hasPaidSignal;
-
-  if(shouldMarkSession){
-    try{
-      sessionStorage.setItem(
-        "ynt_google_paid_session",
-        "1"
-      );
-    }catch(error){}
-  }
-
-  let paidSession=
-    false;
-
-  try{
-    paidSession=
-      sessionStorage.getItem(
-        "ynt_google_paid_session"
-      )==="1";
-  }catch(error){}
-
-  return (
-    explicitTrigger ||
-    hasPaidSignal ||
-    paidSession
-  );
+  return true;
 }
 
 
@@ -14797,7 +14757,7 @@ function yntAppendProactiveVipActions(
         "",
 
       offer_origin:
-        "ai_proactive_google_ads"
+        "ai_proactive_property_detail"
     }
   );
 
@@ -14828,7 +14788,7 @@ function yntAppendProactiveVipActions(
             "",
 
           offer_origin:
-            "ai_proactive_google_ads"
+            "ai_proactive_property_detail"
         }
       );
 
@@ -14862,7 +14822,7 @@ function yntAppendProactiveVipActions(
             "",
 
           offer_origin:
-            "ai_proactive_google_ads"
+            "ai_proactive_property_detail"
         }
       );
 
@@ -15015,7 +14975,7 @@ async function yntOpenProactiveAiForProperty(
         ) || 0,
 
       trigger:
-        "google_ads_session_property_open"
+        "property_detail_open"
     }
   );
 }
@@ -15060,7 +15020,7 @@ function scheduleAiAssistantForProperty(
           "",
 
         trigger:
-          "google_ads_session_property_open"
+          "property_detail_open"
       }
     );
 
