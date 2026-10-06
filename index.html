@@ -8221,11 +8221,51 @@ function normalizeOruloType(value){
 
   const t=norm(value || "");
 
-  if(t.includes("cobertura")) return "cobertura";
-  if(t.includes("sobrado")) return "sobrado";
-  if(t.includes("casa")) return "casa";
-  if(t.includes("studio") || t.includes("loft") || t.includes("kitnet")) return "studio";
+  // CASAS
+  if(
+    t.includes("condominium_house") ||
+    t.includes("condominium house") ||
+    t.includes("house") ||
+    t.includes("casa")
+  ){
+    return "casa";
+  }
 
+  // SOBRADOS
+  if(
+    t.includes("townhouse") ||
+    t.includes("sobrado")
+  ){
+    return "sobrado";
+  }
+
+  // COBERTURAS
+  if(
+    t.includes("penthouse") ||
+    t.includes("cobertura")
+  ){
+    return "cobertura";
+  }
+
+  // STUDIOS / LOFTS
+  if(
+    t.includes("studio") ||
+    t.includes("loft") ||
+    t.includes("kitnet")
+  ){
+    return "studio";
+  }
+
+  // APARTAMENTOS
+  if(
+    t.includes("apartment") ||
+    t.includes("apartamento") ||
+    t.includes("flat")
+  ){
+    return "apartamento";
+  }
+
+  // FALLBACK
   return "apartamento";
 }
 
