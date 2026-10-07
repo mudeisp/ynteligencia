@@ -3940,6 +3940,10 @@ body.match-results-mode #results{
     }
   }
 </style>
+<style>
+#aiAssistantShell[data-force-choice="1"]{cursor:default}
+#aiAssistantShell[data-force-choice="1"] .ai-assistant-card{cursor:auto}
+</style>
 </head>
 
 <body class="home-mode">
@@ -6682,6 +6686,208 @@ function refreshPushAlertCTA(){
   }
 }
 
+async function yntSyncOneSignalIdentity(
+  OneSignal,
+  reason="init"
+){
+  const expectedId=
+    String(
+      YNTELIGENCIA_VISITOR_ID||
+      ""
+    ).trim();
+
+  if(
+    !yntValidVisitorId(
+      expectedId
+    )
+  ){
+    console.warn(
+      "YNT_ONESIGNAL_IDENTITY_INVALID",
+      expectedId
+    );
+    return false;
+  }
+
+  const syncKey=
+    "ynt_onesignal_identity_sync_v2";
+
+  const syncedVisitor=
+    safeStorageGet(
+      syncKey
+    );
+
+  const needsHardSync=
+    syncedVisitor !== expectedId;
+
+  let logoutAttempted=false;
+  let logoutOk=false;
+
+  try{
+    if(
+      needsHardSync &&
+      typeof OneSignal?.logout==="function"
+    ){
+      logoutAttempted=true;
+      await OneSignal.logout();
+      logoutOk=true;
+    }
+  }catch(error){
+    console.warn(
+      "YNT_ONESIGNAL_LOGOUT_SYNC_FAILED",
+      error
+    );
+  }
+
+  try{
+    await OneSignal.login(
+      expectedId
+    );
+
+    try{
+      await OneSignal
+        .User
+        .addTags({
+          ynt_visitor_id:
+            expectedId,
+
+          ynt_identity_version:
+            "v2"
+        });
+    }catch(tagError){
+      console.warn(
+        "YNT_ONESIGNAL_ID_TAG_FAILED",
+        tagError
+      );
+    }
+
+    const subscriptionId=
+      clean(
+        OneSignal
+          ?.User
+          ?.PushSubscription
+          ?.id ||
+        ""
+      );
+
+    const oneSignalId=
+      clean(
+        OneSignal
+          ?.User
+          ?.onesignalId ||
+        ""
+      );
+
+    const reportedExternalId=
+      clean(
+        OneSignal
+          ?.User
+          ?.externalId ||
+        ""
+      );
+
+    safeStorageSet(
+      syncKey,
+      expectedId
+    );
+
+    console.log(
+      "YNT_ONESIGNAL_IDENTITY_SYNC_OK",
+      {
+        reason,
+        visitor_id:
+          expectedId,
+        external_id_expected:
+          expectedId,
+        external_id_reported:
+          reportedExternalId,
+        onesignal_id:
+          oneSignalId,
+        subscription_id:
+          subscriptionId,
+        hard_sync:
+          needsHardSync,
+        logout_attempted:
+          logoutAttempted,
+        logout_ok:
+          logoutOk
+      }
+    );
+
+    try{
+      await supabaseTrack(
+        "onesignal_identity_sync",
+        {
+          external_id_expected:
+            expectedId,
+
+          external_id_reported:
+            reportedExternalId,
+
+          onesignal_id:
+            oneSignalId,
+
+          subscription_id:
+            subscriptionId,
+
+          hard_sync:
+            needsHardSync,
+
+          logout_attempted:
+            logoutAttempted,
+
+          logout_ok:
+            logoutOk,
+
+          reason
+        }
+      );
+    }catch(trackError){
+      console.warn(
+        "YNT_ONESIGNAL_IDENTITY_TRACK_FAILED",
+        trackError
+      );
+    }
+
+    return true;
+
+  }catch(error){
+    console.warn(
+      "YNT_ONESIGNAL_IDENTITY_SYNC_FAILED",
+      error
+    );
+
+    try{
+      await supabaseTrack(
+        "onesignal_identity_sync_failed",
+        {
+          external_id_expected:
+            expectedId,
+
+          hard_sync:
+            needsHardSync,
+
+          logout_attempted:
+            logoutAttempted,
+
+          logout_ok:
+            logoutOk,
+
+          reason,
+
+          error:
+            clean(
+              error?.message||
+              String(error||"")
+            )
+        }
+      );
+    }catch{}
+
+    return false;
+  }
+}
+
+
 async function initializeYnteligenciaPush(){
   if(
     !yntPushConfigured()
@@ -6757,35 +6963,10 @@ async function initializeYnteligenciaPush(){
 
         refreshPushAlertCTA();
 
-        /*
-          Vincular visitor_id é útil, mas não pode bloquear
-          a inicialização do serviço. Tentamos agora e,
-          se necessário, repetimos depois do opt-in.
-        */
-        try{
-          await OneSignal.login(
-            String(
-              YNTELIGENCIA_VISITOR_ID
-            )
-          );
-
-          console.log(
-            "YNT_ONESIGNAL_LOGIN_OK",
-            {
-              visitor_id:
-                YNTELIGENCIA_VISITOR_ID,
-
-              external_id_expected:
-                YNTELIGENCIA_VISITOR_ID
-            }
-          );
-
-        }catch(loginError){
-          console.warn(
-            "YNT_ONESIGNAL_LOGIN_DEFERRED",
-            loginError
-          );
-        }
+        await yntSyncOneSignalIdentity(
+          OneSignal,
+          "sdk_init"
+        );
 
         try{
           OneSignal
@@ -7125,15 +7306,9 @@ async function activateYnteligenciaPushForProperty(
       return;
     }
 
-    /*
-      IDENTIDADE PRIMEIRO:
-      vincula o usuário OneSignal ao mesmo visitor_id do Supabase
-      antes de criar/ativar a assinatura push.
-    */
-    await OneSignal.login(
-      String(
-        YNTELIGENCIA_VISITOR_ID
-      )
+    await yntSyncOneSignalIdentity(
+      OneSignal,
+      "before_optin"
     );
 
     await OneSignal
@@ -7409,15 +7584,9 @@ async function activateYnteligenciaPush(){
       return;
     }
 
-    /*
-      IDENTIDADE PRIMEIRO:
-      vincula o usuário OneSignal ao mesmo visitor_id do Supabase
-      antes de criar/ativar a assinatura push.
-    */
-    await OneSignal.login(
-      String(
-        YNTELIGENCIA_VISITOR_ID
-      )
+    await yntSyncOneSignalIdentity(
+      OneSignal,
+      "before_optin"
     );
 
     await OneSignal
@@ -10634,8 +10803,30 @@ function ensureAiAssistantShell(){
       </form>
     </div>`;
 
-  shell.querySelector(".ai-assistant-close")?.addEventListener("click",closeAiAssistant);
-  shell.addEventListener("click",e=>{if(e.target===shell)closeAiAssistant()});
+  shell.querySelector(".ai-assistant-close")?.addEventListener(
+    "click",
+    ()=>{
+      if(
+        shell.dataset.forceChoice==="1"
+      ){
+        return;
+      }
+
+      closeAiAssistant();
+    }
+  );
+
+  shell.addEventListener(
+    "click",
+    e=>{
+      if(
+        e.target===shell &&
+        shell.dataset.forceChoice!=="1"
+      ){
+        closeAiAssistant();
+      }
+    }
+  );
   shell.querySelector("#aiAssistantForm")?.addEventListener("submit",e=>{
     e.preventDefault();
     const input=shell.querySelector("#aiAssistantInput");
@@ -14902,6 +15093,26 @@ function yntAppendProactiveVipActions(
     no
   );
 
+  const aiShell=
+    document.getElementById(
+      "aiAssistantShell"
+    );
+
+  if(aiShell){
+    aiShell.dataset.forceChoice=
+      "1";
+
+    const closeBtn=
+      aiShell.querySelector(
+        ".ai-assistant-close"
+      );
+
+    if(closeBtn){
+      closeBtn.style.visibility=
+        "hidden";
+    }
+  }
+
   box.appendChild(
     wrap
   );
@@ -14968,10 +15179,30 @@ function yntAppendProactiveVipActions(
         }
       );
 
+      const aiShell=
+        document.getElementById(
+          "aiAssistantShell"
+        );
+
       await activateYnteligenciaPushForProperty(
         p,
         vip
       );
+
+      if(aiShell){
+        aiShell.dataset.forceChoice=
+          "0";
+
+        const closeBtn=
+          aiShell.querySelector(
+            ".ai-assistant-close"
+          );
+
+        if(closeBtn){
+          closeBtn.style.visibility=
+            "";
+        }
+      }
     }
   );
 
@@ -15001,6 +15232,26 @@ function yntAppendProactiveVipActions(
             "ai_proactive_property_detail"
         }
       );
+
+      const aiShell=
+        document.getElementById(
+          "aiAssistantShell"
+        );
+
+      if(aiShell){
+        aiShell.dataset.forceChoice=
+          "0";
+
+        const closeBtn=
+          aiShell.querySelector(
+            ".ai-assistant-close"
+          );
+
+        if(closeBtn){
+          closeBtn.style.visibility=
+            "";
+        }
+      }
 
       wrap.remove();
     }
