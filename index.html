@@ -4982,24 +4982,168 @@ function safeStorageSetJSON(key,value){
   sem expiração. Na prática aquele ID já funcionava como visitor_id.
   Reaproveitamos esse valor para NÃO perder o histórico existente.
 */
+function yntValidVisitorId(value){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    .test(String(value||"").trim());
+}
+
+function yntReadCookie(name){
+  try{
+    const prefix=encodeURIComponent(name)+"=";
+    const part=document.cookie
+      .split("; ")
+      .find(item=>item.startsWith(prefix));
+
+    return part
+      ? decodeURIComponent(part.slice(prefix.length))
+      : "";
+  }catch{
+    return "";
+  }
+}
+
+function yntWriteSharedVisitorCookie(id){
+  if(!yntValidVisitorId(id))return;
+
+  try{
+    const host=String(location.hostname||"").toLowerCase();
+
+    /*
+      Compartilha a identidade entre:
+      www.yincorp.com.br
+      app.yincorp.com.br
+    */
+    if(
+      host==="yincorp.com.br" ||
+      host.endsWith(".yincorp.com.br")
+    ){
+      document.cookie=
+        "ynt_visitor_id="+
+        encodeURIComponent(id)+
+        "; Max-Age=31536000; Path=/; Domain=.yincorp.com.br; SameSite=Lax; Secure";
+    }
+  }catch{}
+}
+
+function yntIncomingVisitorId(){
+  try{
+    const params=
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const candidates=[
+      params.get("visitor"),
+      params.get("visitor_id")
+    ];
+
+    return candidates.find(
+      yntValidVisitorId
+    ) || "";
+  }catch{
+    return "";
+  }
+}
+
+function yntCleanVisitorFromUrl(){
+  try{
+    const url=
+      new URL(
+        window.location.href
+      );
+
+    const had=
+      url.searchParams.has("visitor") ||
+      url.searchParams.has("visitor_id");
+
+    if(!had)return;
+
+    url.searchParams.delete("visitor");
+    url.searchParams.delete("visitor_id");
+
+    history.replaceState(
+      history.state||{},
+      "",
+      url.pathname+
+      url.search+
+      url.hash
+    );
+  }catch{}
+}
+
 function getYnteligenciaVisitorId(){
   const visitorKey=
     "ynteligencia_visitor_id";
 
-  let id=
-    safeStorageGet(visitorKey);
+  const incoming=
+    yntIncomingVisitorId();
 
-  if(!id){
-    id=
-      safeStorageGet(
-        "ynteligencia_session_id"
-      ) ||
-      yntUuid();
-
-    safeStorageSet(
-      visitorKey,
-      id
+  const sharedCookie=
+    yntReadCookie(
+      "ynt_visitor_id"
     );
+
+  const stored=
+    safeStorageGet(
+      visitorKey
+    );
+
+  const legacy=
+    safeStorageGet(
+      "ynteligencia_session_id"
+    );
+
+  /*
+    PRIORIDADE DA IDENTIDADE
+    ------------------------
+    1. visitor vindo da LP pela URL
+    2. cookie compartilhado .yincorp.com.br
+    3. visitor já salvo no app
+    4. ID legado
+    5. novo UUID
+
+    Assim LP -> APP -> OneSignal passam a usar o mesmo visitor_id.
+  */
+  const id=
+    [
+      incoming,
+      sharedCookie,
+      stored,
+      legacy
+    ].find(
+      yntValidVisitorId
+    ) ||
+    yntUuid();
+
+  /*
+    Se havia um ID antigo diferente no app, guardamos só para auditoria.
+    Não usamos como identidade principal.
+  */
+  if(
+    yntValidVisitorId(stored) &&
+    stored!==id
+  ){
+    safeStorageSet(
+      "ynteligencia_previous_visitor_id",
+      stored
+    );
+  }
+
+  safeStorageSet(
+    visitorKey,
+    id
+  );
+
+  yntWriteSharedVisitorCookie(
+    id
+  );
+
+  /*
+    Captura o visitor da LP e limpa da barra de endereço.
+    GCLID/UTMs e filtros do app permanecem intactos.
+  */
+  if(incoming){
+    yntCleanVisitorFromUrl();
   }
 
   return id;
