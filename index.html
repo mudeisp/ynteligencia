@@ -7179,6 +7179,80 @@ function yntPushProfileForProperty(p){
   };
 }
 
+async function yntWaitForConfirmedPushSubscription(
+  OneSignal,
+  {
+    timeoutMs=5000,
+    intervalMs=250
+  }={}
+){
+  const startedAt=
+    Date.now();
+
+  while(
+    Date.now()-startedAt <
+    timeoutMs
+  ){
+    const optedIn=
+      Boolean(
+        OneSignal
+          ?.User
+          ?.PushSubscription
+          ?.optedIn
+      );
+
+    const subscriptionId=
+      clean(
+        OneSignal
+          ?.User
+          ?.PushSubscription
+          ?.id ||
+        ""
+      );
+
+    if(
+      optedIn &&
+      subscriptionId
+    ){
+      return {
+        confirmed:true,
+        optedIn:true,
+        subscriptionId
+      };
+    }
+
+    await new Promise(
+      resolve=>
+        setTimeout(
+          resolve,
+          intervalMs
+        )
+    );
+  }
+
+  return {
+    confirmed:false,
+
+    optedIn:
+      Boolean(
+        OneSignal
+          ?.User
+          ?.PushSubscription
+          ?.optedIn
+      ),
+
+    subscriptionId:
+      clean(
+        OneSignal
+          ?.User
+          ?.PushSubscription
+          ?.id ||
+        ""
+      )
+  };
+}
+
+
 async function activateYnteligenciaPushForProperty(
   p,
   btn
@@ -7313,6 +7387,68 @@ async function activateYnteligenciaPushForProperty(
       .PushSubscription
       .optIn();
 
+    const pushConfirmation=
+      await yntWaitForConfirmedPushSubscription(
+        OneSignal
+      );
+
+    if(
+      !pushConfirmation.confirmed
+    ){
+      await supabaseTrack(
+        "push_subscription_failed",
+        {
+          property_id:
+            String(p?.id||""),
+
+          property_uuid:
+            String(p?.db_id||""),
+
+          property_name:
+            p?.name||"",
+
+          push:{
+            enabled:false,
+            provider:"onesignal",
+            permission:
+              Boolean(
+                OneSignal
+                  ?.Notifications
+                  ?.permission
+              ),
+            opted_in:
+              pushConfirmation.optedIn,
+            subscription_id:
+              pushConfirmation.subscriptionId
+          },
+
+          visitor_id:
+            YNTELIGENCIA_VISITOR_ID,
+
+          push_profile:
+            profile,
+
+          push_origin:
+            "property_detail"
+        }
+      );
+
+      if(btn){
+        btn.classList.remove(
+          "is-active"
+        );
+
+        btn.querySelector("span:last-child").textContent=
+          "Tentar novamente";
+      }
+
+      showToast(
+        "A permissão foi aceita, mas o alerta ainda não foi confirmado."
+      );
+
+      return;
+    }
+
     await OneSignal
       .User
       .addTags(
@@ -7322,13 +7458,8 @@ async function activateYnteligenciaPushForProperty(
       );
 
     const subscriptionId=
-      clean(
-        OneSignal
-          .User
-          .PushSubscription
-          .id ||
-        ""
-      );
+      pushConfirmation
+        .subscriptionId;
 
     await supabaseTrack(
       "push_subscribed",
@@ -7345,6 +7476,8 @@ async function activateYnteligenciaPushForProperty(
         push:{
           enabled:true,
           provider:"onesignal",
+          permission:true,
+          opted_in:true,
           subscription_id:
             subscriptionId,
           cadence:"daily",
@@ -7352,6 +7485,9 @@ async function activateYnteligenciaPushForProperty(
           subscribed_at:
             new Date().toISOString()
         },
+
+        visitor_id:
+          YNTELIGENCIA_VISITOR_ID,
 
         push_profile:
           profile,
@@ -7591,6 +7727,55 @@ async function activateYnteligenciaPush(){
       .PushSubscription
       .optIn();
 
+    const pushConfirmation=
+      await yntWaitForConfirmedPushSubscription(
+        OneSignal
+      );
+
+    if(
+      !pushConfirmation.confirmed
+    ){
+      await supabaseTrack(
+        "push_subscription_failed",
+        {
+          push:{
+            enabled:false,
+
+            provider:
+              "onesignal",
+
+            permission:
+              Boolean(
+                OneSignal
+                  ?.Notifications
+                  ?.permission
+              ),
+
+            opted_in:
+              pushConfirmation.optedIn,
+
+            subscription_id:
+              pushConfirmation.subscriptionId
+          },
+
+          visitor_id:
+            YNTELIGENCIA_VISITOR_ID,
+
+          push_profile:
+            profile,
+
+          push_origin:
+            "catalog"
+        }
+      );
+
+      showToast(
+        "A permissão foi aceita, mas o alerta ainda não foi confirmado."
+      );
+
+      return;
+    }
+
     await OneSignal
       .User
       .addTags(
@@ -7600,13 +7785,8 @@ async function activateYnteligenciaPush(){
       );
 
     const subscriptionId=
-      clean(
-        OneSignal
-          .User
-          .PushSubscription
-          .id ||
-        ""
-      );
+      pushConfirmation
+        .subscriptionId;
 
     await supabaseTrack(
       "push_subscribed",
@@ -7616,6 +7796,10 @@ async function activateYnteligenciaPush(){
 
           provider:
             "onesignal",
+
+          permission:true,
+
+          opted_in:true,
 
           subscription_id:
             subscriptionId,
@@ -7630,6 +7814,9 @@ async function activateYnteligenciaPush(){
             new Date()
               .toISOString()
         },
+
+        visitor_id:
+          YNTELIGENCIA_VISITOR_ID,
 
         push_profile:
           profile,
