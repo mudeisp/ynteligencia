@@ -14759,7 +14759,7 @@ function yntAppendProactiveVipActions(
     "ynt-ai-vip-primary";
 
   vip.innerHTML=
-    `<span>🔔</span><span>ENTRAR NA LISTA V.I.P</span>`;
+    `<span>🔔</span><span>SIM</span>`;
 
   const no=
     document.createElement(
@@ -14919,11 +14919,20 @@ async function yntOpenProactiveAiForProperty(
   document.body.style.overflow=
     "hidden";
 
-  const propertyName=
-    clean(
-      p?.name ||
-      "este lançamento"
-    );
+  /*
+    Oferta simples:
+    não pede e-mail nem WhatsApp.
+    O botão SIM chama exatamente a mesma inscrição OneSignal já existente.
+  */
+  appendAiMessage(
+    "assistant",
+    "Quer que te mando outras opções por dia sem deixar email ou whatsapp?"
+  );
+
+  yntAppendProactiveVipActions(
+    p,
+    box
+  );
 
   const neighborhood=
     clean(
@@ -14934,46 +14943,6 @@ async function yntOpenProactiveAiForProperty(
         ?.neighborhood ||
       ""
     );
-
-  appendAiMessage(
-    "assistant",
-    neighborhood
-      ? `Vi que você está olhando o ${propertyName}, em ${neighborhood}.`
-      : `Vi que você está olhando o ${propertyName}.`
-  );
-
-  const result=
-    await yntCountOtherLaunchesInNeighborhood(
-      p
-    );
-
-  if(
-    !document.body.contains(
-      shell
-    ) ||
-    !shell.classList.contains(
-      "open"
-    )
-  ){
-    return;
-  }
-
-  if(result.count>0){
-    appendAiMessage(
-      "assistant",
-      `Sabia que hoje existem mais ${result.count} lançamento${result.count===1?"":"s"} ativo${result.count===1?"":"s"} em ${result.neighborhood} no nosso estoque? Quer entrar na LISTA V.I.P e receber até 1 nova opção por dia?`
-    );
-  }else{
-    appendAiMessage(
-      "assistant",
-      `Quer entrar na LISTA V.I.P e receber até 1 nova opção por dia parecida com este imóvel?`
-    );
-  }
-
-  yntAppendProactiveVipActions(
-    p,
-    box
-  );
 
   try{
     gtag(
@@ -14991,12 +14960,7 @@ async function yntOpenProactiveAiForProperty(
           "",
 
         neighborhood:
-          neighborhood,
-
-        similar_launches:
-          Number(
-            result.count
-          ) || 0
+          neighborhood
       }
     );
   }catch(error){}
@@ -15023,17 +14987,11 @@ async function yntOpenProactiveAiForProperty(
       neighborhood:
         neighborhood,
 
-      similar_launches:
-        Number(
-          result.count
-        ) || 0,
-
       trigger:
         "property_detail_open"
     }
   );
 }
-
 
 function scheduleAiAssistantForProperty(
   p,
@@ -15093,7 +15051,7 @@ function scheduleAiAssistantForProperty(
             p
           );
         },
-        3800
+        5000
       );
 
     return;
