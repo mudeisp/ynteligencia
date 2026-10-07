@@ -6708,35 +6708,19 @@ async function yntSyncOneSignalIdentity(
     return false;
   }
 
+  /*
+    IDENTIDADE SEM LOGOUT
+    ---------------------
+    Não encerramos o usuário OneSignal durante a inicialização.
+    Reforçamos apenas login(expectedId), preservando a assinatura atual.
+  */
   const syncKey=
-    "ynt_onesignal_identity_sync_v2";
+    "ynt_onesignal_identity_sync_v3";
 
-  const syncedVisitor=
+  const needsIdentityRefresh=
     safeStorageGet(
       syncKey
-    );
-
-  const needsHardSync=
-    syncedVisitor !== expectedId;
-
-  let logoutAttempted=false;
-  let logoutOk=false;
-
-  try{
-    if(
-      needsHardSync &&
-      typeof OneSignal?.logout==="function"
-    ){
-      logoutAttempted=true;
-      await OneSignal.logout();
-      logoutOk=true;
-    }
-  }catch(error){
-    console.warn(
-      "YNT_ONESIGNAL_LOGOUT_SYNC_FAILED",
-      error
-    );
-  }
+    ) !== expectedId;
 
   try{
     await OneSignal.login(
@@ -6804,12 +6788,8 @@ async function yntSyncOneSignalIdentity(
           oneSignalId,
         subscription_id:
           subscriptionId,
-        hard_sync:
-          needsHardSync,
-        logout_attempted:
-          logoutAttempted,
-        logout_ok:
-          logoutOk
+        identity_refresh:
+          needsIdentityRefresh
       }
     );
 
@@ -6829,14 +6809,8 @@ async function yntSyncOneSignalIdentity(
           subscription_id:
             subscriptionId,
 
-          hard_sync:
-            needsHardSync,
-
-          logout_attempted:
-            logoutAttempted,
-
-          logout_ok:
-            logoutOk,
+          identity_refresh:
+            needsIdentityRefresh,
 
           reason
         }
@@ -6863,14 +6837,8 @@ async function yntSyncOneSignalIdentity(
           external_id_expected:
             expectedId,
 
-          hard_sync:
-            needsHardSync,
-
-          logout_attempted:
-            logoutAttempted,
-
-          logout_ok:
-            logoutOk,
+          identity_refresh:
+            needsIdentityRefresh,
 
           reason,
 
@@ -6994,23 +6962,52 @@ async function initializeYnteligenciaPush(){
                     ""
                   );
 
-                await supabaseTrack(
-                  optedIn
-                    ? "push_subscription_active"
-                    : "push_unsubscribed",
-                  {
-                    push:{
-                      enabled:
-                        optedIn,
+                const pushStateKey=
+                  "ynt_push_last_opted_in";
 
-                      provider:
-                        "onesignal",
+                const previousOptedIn=
+                  safeStorageGet(
+                    pushStateKey
+                  );
 
-                      subscription_id:
-                        subscriptionId
+                if(optedIn){
+                  await supabaseTrack(
+                    "push_subscription_active",
+                    {
+                      push:{
+                        enabled:true,
+                        provider:"onesignal",
+                        subscription_id:
+                          subscriptionId
+                      }
                     }
-                  }
-                );
+                  );
+
+                  safeStorageSet(
+                    pushStateKey,
+                    "1"
+                  );
+
+                }else if(
+                  previousOptedIn==="1"
+                ){
+                  await supabaseTrack(
+                    "push_unsubscribed",
+                    {
+                      push:{
+                        enabled:false,
+                        provider:"onesignal",
+                        subscription_id:
+                          subscriptionId
+                      }
+                    }
+                  );
+
+                  safeStorageSet(
+                    pushStateKey,
+                    "0"
+                  );
+                }
               }
             );
         }catch(error){}
