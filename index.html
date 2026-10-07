@@ -20179,7 +20179,13 @@ function catalogServerQuery(offset=0){
     Agora restringimos CASAS no Supabase antes de limit/offset.
   */
   if(catalogType==="casa"){
-    url.searchParams.set("title","ilike.*Casa*");
+    /*
+      Evita falso positivo como "Metrocasa".
+      Procuramos " Casa " como palavra isolada no título,
+      padrão usado pelos registros de casas da Órulo
+      (ex.: "JLEDM 121 Casa 601241007-41").
+    */
+    url.searchParams.set("title","ilike.* Casa *");
   }
 
   if(neighborhood){
