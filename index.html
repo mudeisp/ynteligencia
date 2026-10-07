@@ -20156,12 +20156,31 @@ function catalogServerQuery(offset=0){
 
   const neighborhood=$("catalogNeighborhood")?.value || "";
   const search=clean($("catalogSearch")?.value || "");
+  const catalogType=clean($("catalogType")?.value || "").toLowerCase();
   const minPrice=numberBR($("minPrice")?.value || "");
   const maxPrice=numberBR($("maxPrice")?.value || "");
   const bedrooms=$("catalogBedrooms")?.value || "";
   const minArea=numberBR($("minArea")?.value || "");
   const parking=$("catalogParking")?.value || "";
   const sort=$("catalogSort")?.value || "price_asc";
+
+  /*
+    TIPO ANTES DA PAGINAÇÃO
+    -----------------------
+    A tabela public.properties não possui coluna "type".
+    Para casas da Órulo, os registros sincronizados trazem "Casa"
+    no title (ex.: "... Casa ...").
+
+    Antes, o Supabase retornava primeiro 30 imóveis de todos os tipos
+    e só DEPOIS o navegador aplicava p.type==="casa". Se nenhuma casa
+    estivesse entre os 30 primeiros, o app mostrava zero mesmo com
+    casas existentes no banco.
+
+    Agora restringimos CASAS no Supabase antes de limit/offset.
+  */
+  if(catalogType==="casa"){
+    url.searchParams.set("title","ilike.*Casa*");
+  }
 
   if(neighborhood){
     url.searchParams.set("neighborhood",`eq.${neighborhood}`);
