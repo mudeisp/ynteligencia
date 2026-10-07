@@ -5075,75 +5075,37 @@ function getYnteligenciaVisitorId(){
   const visitorKey=
     "ynteligencia_visitor_id";
 
-  const incoming=
-    yntIncomingVisitorId();
+  /*
+    IDENTIDADE CANÔNICA DO APP
+    -------------------------
+    O visitor_id usado pelo Supabase e o External ID usado pelo
+    OneSignal nascem exatamente deste mesmo valor.
 
-  const sharedCookie=
-    yntReadCookie(
-      "ynt_visitor_id"
-    );
-
-  const stored=
+    Não herdamos ID de LP, cookie de www.yincorp.com.br ou parâmetro
+    visitor da URL. Assim APP e OneSignal ficam 1:1.
+  */
+  let id=
     safeStorageGet(
       visitorKey
     );
 
-  const legacy=
-    safeStorageGet(
-      "ynteligencia_session_id"
-    );
-
-  /*
-    PRIORIDADE DA IDENTIDADE
-    ------------------------
-    1. visitor vindo da LP pela URL
-    2. cookie compartilhado .yincorp.com.br
-    3. visitor já salvo no app
-    4. ID legado
-    5. novo UUID
-
-    Assim LP -> APP -> OneSignal passam a usar o mesmo visitor_id.
-  */
-  const id=
-    [
-      incoming,
-      sharedCookie,
-      stored,
-      legacy
-    ].find(
-      yntValidVisitorId
-    ) ||
-    yntUuid();
-
-  /*
-    Se havia um ID antigo diferente no app, guardamos só para auditoria.
-    Não usamos como identidade principal.
-  */
   if(
-    yntValidVisitorId(stored) &&
-    stored!==id
+    !yntValidVisitorId(id)
   ){
+    const legacy=
+      safeStorageGet(
+        "ynteligencia_session_id"
+      );
+
+    id=
+      yntValidVisitorId(legacy)
+        ? legacy
+        : yntUuid();
+
     safeStorageSet(
-      "ynteligencia_previous_visitor_id",
-      stored
+      visitorKey,
+      id
     );
-  }
-
-  safeStorageSet(
-    visitorKey,
-    id
-  );
-
-  yntWriteSharedVisitorCookie(
-    id
-  );
-
-  /*
-    Captura o visitor da LP e limpa da barra de endereço.
-    GCLID/UTMs e filtros do app permanecem intactos.
-  */
-  if(incoming){
-    yntCleanVisitorFromUrl();
   }
 
   return id;
@@ -6809,7 +6771,13 @@ async function initializeYnteligenciaPush(){
 
           console.log(
             "YNT_ONESIGNAL_LOGIN_OK",
-            YNTELIGENCIA_VISITOR_ID
+            {
+              visitor_id:
+                YNTELIGENCIA_VISITOR_ID,
+
+              external_id_expected:
+                YNTELIGENCIA_VISITOR_ID
+            }
           );
 
         }catch(loginError){
@@ -7157,16 +7125,21 @@ async function activateYnteligenciaPushForProperty(
       return;
     }
 
-    await OneSignal
-      .User
-      .PushSubscription
-      .optIn();
-
+    /*
+      IDENTIDADE PRIMEIRO:
+      vincula o usuário OneSignal ao mesmo visitor_id do Supabase
+      antes de criar/ativar a assinatura push.
+    */
     await OneSignal.login(
       String(
         YNTELIGENCIA_VISITOR_ID
       )
     );
+
+    await OneSignal
+      .User
+      .PushSubscription
+      .optIn();
 
     await OneSignal
       .User
@@ -7436,16 +7409,21 @@ async function activateYnteligenciaPush(){
       return;
     }
 
-    await OneSignal
-      .User
-      .PushSubscription
-      .optIn();
-
+    /*
+      IDENTIDADE PRIMEIRO:
+      vincula o usuário OneSignal ao mesmo visitor_id do Supabase
+      antes de criar/ativar a assinatura push.
+    */
     await OneSignal.login(
       String(
         YNTELIGENCIA_VISITOR_ID
       )
     );
+
+    await OneSignal
+      .User
+      .PushSubscription
+      .optIn();
 
     await OneSignal
       .User
