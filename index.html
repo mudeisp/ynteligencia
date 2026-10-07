@@ -10734,6 +10734,61 @@ let aiAssistantProperty=null;
 let aiPendingDisambiguationChoice=null;
 
 let aiAssistantHistory=[];
+
+/* Histórico comercial completo para anexar ao lead. */
+let aiLeadConversation=[];
+
+function resetAiLeadConversation(){
+  aiLeadConversation=[];
+}
+
+function registerAiLeadConversation(role,content){
+  const text=clean(content||"");
+  if(!text)return;
+
+  aiLeadConversation.push({
+    role: role==="user" ? "user" : "assistant",
+    content:text,
+    at:new Date().toISOString()
+  });
+
+  if(aiLeadConversation.length>200){
+    aiLeadConversation=aiLeadConversation.slice(-200);
+  }
+}
+
+function aiLeadConversationText(){
+  return aiLeadConversation
+    .map(item=>`${item.role==="user" ? "Cliente" : "IA"}: ${item.content}`)
+    .join("\n");
+}
+
+function aiLeadSummary(){
+  const lastUserMessages=
+    aiLeadConversation
+      .filter(item=>item.role==="user")
+      .map(item=>item.content)
+      .slice(-4)
+      .join(" | ");
+
+  return lastUserMessages
+    ? `Últimas intenções do cliente: ${lastUserMessages}`
+    : "";
+}
+
+function aiSanitizeHandoffPromise(value){
+  const text=clean(value||"");
+  if(!text)return text;
+
+  const promisesHandoff=
+    /\b(vou|irei)\s+(encaminhar|enviar|passar)\b.*\b(rafael|corretor|especialista)\b/i.test(text) ||
+    /\b(encaminhado|enviado)\b.*\b(rafael|corretor|especialista)\b/i.test(text);
+
+  if(!promisesHandoff)return text;
+
+  return "Perfeito. Toque em “Falar com Rafael no WhatsApp” para confirmar seus dados e eu encaminho sua solicitação.";
+}
+
 let aiAssistantSending=false;
 let aiAssistantTriggerTimer=null;
 
@@ -11713,11 +11768,19 @@ function appendAiMessage(role,text){
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
   if(!box)return;
+
+  const finalText=
+    role==="assistant"
+      ? aiSanitizeHandoffPromise(text)
+      : clean(text||"");
+
   const div=document.createElement("div");
   div.className=`ai-msg ${role}`;
-  div.textContent=text;
+  div.textContent=finalText;
   box.appendChild(div);
   box.scrollTop=box.scrollHeight;
+
+  registerAiLeadConversation(role,finalText);
 }
 
 
@@ -12583,6 +12646,7 @@ function aiOruloContext(message){
 function openHomeAiSearch(){
   resetAiSearchState();
   aiResetConversationSearchMemory();
+  resetAiLeadConversation();
 
   aiAssistantProperty={
     id:"__orulo_search__",
@@ -12624,6 +12688,7 @@ function openAiAssistant(p){
   if(!p)return;
   aiAssistantProperty=p;
   aiAssistantHistory=[];
+  resetAiLeadConversation();
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
   if(box)box.innerHTML="";
@@ -14455,10 +14520,15 @@ async function sendAiAssistantMessage(text){
           );
         }
 
-        const reply=
+        let reply=
           stripExternalProviderLinks(
             clean(data.reply||"") ||
             "Posso continuar te ajudando com esse imóvel."
+          );
+
+        reply=
+          aiSanitizeHandoffPromise(
+            reply
           );
 
         appendAiMessage(
@@ -14577,6 +14647,11 @@ async function sendAiAssistantMessage(text){
     */
     reply=
       stripExternalProviderLinks(
+        reply
+      );
+
+    reply=
+      aiSanitizeHandoffPromise(
         reply
       );
 
@@ -15271,6 +15346,8 @@ async function yntOpenProactiveAiForProperty(
 
   aiAssistantHistory=
     [];
+
+  resetAiLeadConversation();
 
   const shell=
     ensureAiAssistantShell();
@@ -19814,6 +19891,19 @@ function openLeadCapture(p,prefill={}){
             ...profile
           },
 
+          lead_summary:
+            aiLeadSummary(),
+
+          conversation:
+            aiLeadConversation.map(item=>({
+              role:item.role,
+              content:item.content,
+              at:item.at
+            })),
+
+          conversation_text:
+            aiLeadConversationText(),
+
           created_at:
             new Date()
               .toISOString()
@@ -19889,6 +19979,33 @@ function openLeadCapture(p,prefill={}){
 
                   empreendimento:
                     lead.property_name,
+
+                  property_id:
+                    lead.property_id,
+
+                  neighborhood:
+                    lead.neighborhood,
+
+                  property_value:
+                    lead.property_value,
+
+                  match_score:
+                    lead.match_score,
+
+                  session_id:
+                    YNTELIGENCIA_SESSION_ID,
+
+                  visitor_id:
+                    YNTELIGENCIA_VISITOR_ID,
+
+                  lead_summary:
+                    lead.lead_summary,
+
+                  conversation:
+                    lead.conversation,
+
+                  conversation_text:
+                    lead.conversation_text,
 
                   mensagem:
 
