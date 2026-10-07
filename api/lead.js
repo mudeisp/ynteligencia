@@ -368,13 +368,46 @@ export default async function handler(req, res) {
       );
 
 
+    const visitorId =
+      clean(
+        body.visitor_id ||
+        ""
+      );
+
+
+    const leadSummary =
+      clean(
+        body.lead_summary ||
+        ""
+      );
+
+
+    const conversation =
+      normalizeConversation(
+        body.conversation
+      );
+
+
+    const conversationText =
+      conversation.length
+        ? conversation
+            .map(item =>
+              `${item.role === "user" ? "Cliente" : "IA"}: ${item.content}`
+            )
+            .join("\n")
+        : cleanMultiline(
+            body.conversation_text ||
+            ""
+          );
+
+
     /*
      * =======================================================
      * MENSAGEM / JORNADA
      * =======================================================
      */
 
-    const mensagem =
+    const mensagemBase =
       clean(
 
         body.mensagem ||
@@ -412,6 +445,23 @@ export default async function handler(req, res) {
           .join(" | ")
 
       );
+
+
+    const mensagem =
+      [
+        mensagemBase,
+
+        leadSummary
+          ? `RESUMO MATCH IA: ${leadSummary}`
+          : "",
+
+        conversationText
+          ? `CONVERSA MATCH IA:\n${conversationText}`
+          : ""
+
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
 
     /*
@@ -470,6 +520,17 @@ export default async function handler(req, res) {
 
       session_id:
         sessionId,
+
+      visitor_id:
+        visitorId,
+
+      lead_summary:
+        leadSummary,
+
+      conversation,
+
+      conversation_text:
+        conversationText,
 
       ...tracking
 
@@ -531,6 +592,20 @@ export default async function handler(req, res) {
           perfil,
 
           mensagem,
+
+          lead_summary:
+            leadSummary,
+
+          conversation,
+
+          conversation_text:
+            conversationText,
+
+          visitor_id:
+            visitorId,
+
+          session_id:
+            sessionId,
 
           pagina,
 
@@ -721,13 +796,6 @@ export default async function handler(req, res) {
       process.env.SUPABASE_URL;
 
 
-    /*
-     * ACEITA OS DOIS NOMES
-     *
-     * Na sua Vercel hoje:
-     * SUPABASE_SECRET_KEY
-     */
-
     const supabaseKey =
 
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -793,6 +861,17 @@ export default async function handler(req, res) {
 
             profile:
               perfil,
+
+            visitor_id:
+              visitorId,
+
+            lead_summary:
+              leadSummary,
+
+            conversation,
+
+            conversation_text:
+              conversationText,
 
             attribution: {
 
@@ -1035,6 +1114,10 @@ export default async function handler(req, res) {
                       perfil,
 
                       mensagem,
+
+                      leadSummary,
+
+                      conversationText,
 
                       pagina,
 
@@ -1475,6 +1558,59 @@ function clean(value) {
 }
 
 
+function cleanMultiline(value) {
+
+  return String(
+    value ?? ""
+  )
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+}
+
+
+function normalizeConversation(value) {
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .slice(-200)
+    .map(item => {
+
+      const role =
+        item?.role === "user"
+          ? "user"
+          : "assistant";
+
+      const content =
+        clean(
+          item?.content ||
+          ""
+        );
+
+      const at =
+        clean(
+          item?.at ||
+          ""
+        );
+
+      return {
+        role,
+        content,
+        at
+      };
+
+    })
+    .filter(item => item.content);
+
+}
+
+
 function cleanPhone(value) {
 
   return String(
@@ -1544,6 +1680,10 @@ function buildEmail({
   perfil,
 
   mensagem,
+
+  leadSummary,
+
+  conversationText,
 
   pagina,
 
@@ -1681,6 +1821,41 @@ function buildEmail({
           )}
 
         </p>
+
+
+        ${
+          conversationText
+            ? `
+              <hr>
+
+              <h3>
+                Conversa Match IA
+              </h3>
+
+              ${
+                leadSummary
+                  ? `
+                    <p>
+                      <strong>Resumo:</strong><br>
+                      ${escapeHtml(leadSummary)}
+                    </p>
+                  `
+                  : ""
+              }
+
+              <pre style="
+                white-space:pre-wrap;
+                font-family:Arial,sans-serif;
+                font-size:13px;
+                line-height:1.55;
+                background:#f7f4ed;
+                border:1px solid #e4ded3;
+                border-radius:10px;
+                padding:14px;
+              ">${escapeHtml(conversationText)}</pre>
+            `
+            : ""
+        }
 
 
         <hr>
