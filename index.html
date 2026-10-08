@@ -11146,6 +11146,7 @@ function aiLeadContext(primary){
       min_price:facts.minPrice,
       max_price:facts.maxPrice,
       bedrooms:facts.bedrooms,
+      inventory:aiSearchState?.inventorySource||"",
       reason:facts.lastSearchReason
     },
     recommended:facts.recommended,
@@ -12753,7 +12754,8 @@ let aiSearchState={
   exactName:"",
   bedrooms:0,
   minPrice:0,
-  maxPrice:0
+  maxPrice:0,
+  inventorySource:""
 };
 
 let aiLastRoutingTurn=null;
@@ -12765,7 +12767,8 @@ function resetAiSearchState(){
     exactName:"",
     bedrooms:0,
     minPrice:0,
-    maxPrice:0
+    maxPrice:0,
+    inventorySource:""
   };
 }
 
@@ -13713,7 +13716,17 @@ async function searchPropertiesForAi(message){
     min_price:Number(state.minPrice)||0,
     max_price:Number(state.maxPrice)||0,
 
-    source:"todos",
+    source:(
+      state.inventorySource==="novos" ||
+      state.inventorySource==="usados"
+    )
+      ? state.inventorySource
+      : (
+        aiSearchState?.inventorySource==="novos" ||
+        aiSearchState?.inventorySource==="usados"
+      )
+        ? aiSearchState.inventorySource
+        : "todos",
     limit:12,
     neighborhoodMode: neighborhoodScope ? neighborhoodScope.mode : "",
     neighborhoods: neighborhoodScope ? neighborhoodScope.names : [],
@@ -20694,7 +20707,7 @@ function openLeadCapture(p,prefill={}){
 
                     `Bairro: ${lead.neighborhood} | ` +
 
-                    `Valor: ${lead.property_value} | ` +
+                    `${money(lead.property_value)==="Valor sob consulta" ? "Valor sob consulta" : "Valor: "+money(lead.property_value)} | ` +
 
                     `MATCH: ${lead.match_score}% | ` +
 
@@ -20713,15 +20726,23 @@ function openLeadCapture(p,prefill={}){
 
 
           const delivery=await praediumResponse.json().catch(()=>null);
+          const leadPersisted=delivery?.supabase===true;
+          const leadNotified=delivery?.email_sent===true;
           if(
             !praediumResponse.ok ||
             delivery?.success!==true ||
-            (delivery?.praedium!==true && delivery?.supabase!==true)
+            (!leadPersisted && !leadNotified)
           ){
 
             throw new Error(
               delivery?.error ||
               "A API não confirmou o armazenamento do lead."
+            );
+          }
+
+          if(!leadPersisted){
+            throw new Error(
+              "O aviso foi enviado, mas o registro do lead não foi confirmado."
             );
           }
 
@@ -20965,7 +20986,9 @@ function openLeadCapture(p,prefill={}){
             `Olá, meu nome é ${lead.name}.`,
             `Vim pela Ynteligencia e quero conhecer este imóvel: ${lead.property_name || "imóvel selecionado"}.`,
             lead.neighborhood ? `Bairro: ${lead.neighborhood}.` : "",
-            lead.property_value ? `Valor: ${money(lead.property_value)}.` : "",
+            money(lead.property_value)==="Valor sob consulta"
+              ? "Valor sob consulta."
+              : `Valor: ${money(lead.property_value)}.`,
             lead.property_id ? `Código: ${lead.property_id}.` : "",
             lead.match_score ? `MATCH: ${lead.match_score}%.` : ""
           ]
