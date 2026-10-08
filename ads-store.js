@@ -1,4 +1,5 @@
-import ads from "../ads-intelligence.js";
+import crypto from "node:crypto";
+import ads from "./ads-intelligence.js";
 
 export function supabaseConfigured() {
   return Boolean(
@@ -74,6 +75,16 @@ export function readBody(req) {
   if (!req.body) return {};
   if (typeof req.body === "string") return JSON.parse(req.body);
   return req.body;
+}
+
+export function authorizedExport(req) {
+  const expected = process.env.ADS_EXPORT_TOKEN || "";
+  const header = String(req.headers.authorization || "");
+  const provided = header.toLowerCase().startsWith("bearer ")
+    ? header.slice(7).trim()
+    : "";
+  if (!expected || !provided || provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
 export { ads };

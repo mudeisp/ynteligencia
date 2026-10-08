@@ -6269,7 +6269,7 @@ function yntAdsTrack(eventName, detail){
     const recent = window.__yntAdsRecent || (window.__yntAdsRecent = {});
     if(recent[dedupeKey] && now - recent[dedupeKey] < 15000) return;
     recent[dedupeKey] = now;
-    fetch("/api/ads-event", {
+    fetch("/api/ads?action=event", {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       keepalive:true,

@@ -370,6 +370,8 @@ test("a YNTELIGENCIA reutiliza visitor e sessão e aceita property_id na URL", (
   assert.match(html, /launchParams\.get\("property_id"\)/);
   assert.match(html, /params\.get\("vid"\)/);
   assert.match(html, /yntValidVisitorId\(vid\)/);
+  assert.match(html, /fetch\("\/api\/ads\?action=event"/);
+  assert.equal(html.includes("/api/ads-event"), false);
   assert.match(html, /yntAdsTrack\("ai_search"/);
   assert.match(html, /yntAdsTrack\("property_view"/);
   assert.match(html, /yntAdsTrack\("lead_created"/);
@@ -380,49 +382,61 @@ test("a YNTELIGENCIA reutiliza visitor e sessão e aceita property_id na URL", (
   assert.ok(lead > 0 && persisted > lead && adsLead > persisted && whatsapp > adsLead);
 });
 
+function invokeAds(handler, req) {
+  return new Promise(resolve => {
+    const res = {
+      setHeader() {},
+      status(code) { this.statusCode = code; return this; },
+      json(body) { resolve({ code: this.statusCode, body }); },
+      end() { resolve({ code: this.statusCode }); }
+    };
+    handler(req, res);
+  });
+}
+
 test("POST externo continua bloqueado e a planilha exige token", async () => {
   process.env.SUPABASE_URL = "https://supabase.test";
   process.env.SUPABASE_SERVICE_ROLE_KEY = "service-test";
   delete process.env.ADS_EXPORT_TOKEN;
-  const { default: eventHandler } = await import(`./api/ads-event.js?t=${Date.now()}`);
-  const blocked = await new Promise(resolve => {
-    const res = {
-      setHeader() {},
-      status(code) { this.statusCode = code; return this; },
-      json(body) { resolve({ code: this.statusCode, body }); },
-      end() { resolve({ code: this.statusCode }); }
-    };
-    eventHandler({
-      method: "POST",
-      headers: { origin: "https://exemplo.com" },
-      body: { product: "ynteligencia", event_name: "ad_entry" }
-    }, res);
+  const { default: adsHandler } = await import(`./api/ads.js?t=${Date.now()}`);
+  const blocked = await invokeAds(adsHandler, {
+    method: "POST",
+    query: { action: "event" },
+    headers: { origin: "https://exemplo.com" },
+    body: { product: "ynteligencia", event_name: "ad_entry" }
   });
   assert.equal(blocked.code, 403);
 
-  const { default: sheetHandler } = await import(`./api/ads-sheet.js?t=${Date.now()}`);
-  const sheet = await new Promise(resolve => {
-    const res = {
-      setHeader() {},
-      status(code) { this.statusCode = code; return this; },
-      json(body) { resolve({ code: this.statusCode, body }); },
-      end() { resolve({ code: this.statusCode }); }
-    };
-    sheetHandler({ method: "GET", headers: {} }, res);
+  const sheet = await invokeAds(adsHandler, {
+    method: "GET",
+    query: { action: "sheet" },
+    headers: {}
   });
   assert.equal(sheet.code, 503);
 
-  const { default: conversionHandler } = await import(`./api/google-ads-conversions.js?t=${Date.now()}`);
-  const conversions = await new Promise(resolve => {
-    const res = {
-      setHeader() {},
-      status(code) { this.statusCode = code; return this; },
-      json(body) { resolve({ code: this.statusCode, body }); },
-      end() { resolve({ code: this.statusCode }); }
-    };
-    conversionHandler({ method: "GET", headers: {} }, res);
+  const conversions = await invokeAds(adsHandler, {
+    method: "GET",
+    url: "/api/ads?action=google-conversions",
+    headers: {}
   });
   assert.equal(conversions.code, 503);
+
+  const unknown = await invokeAds(adsHandler, {
+    method: "GET",
+    query: { action: "outra" },
+    headers: {}
+  });
+  assert.equal(unknown.code, 404);
+});
+
+test("a camada de anúncios ocupa uma única Serverless Function", () => {
+  const files = fs.readdirSync(path.join(__dirname, "api"))
+    .filter(name => name.endsWith(".js"));
+  const adsFiles = files.filter(name =>
+    name.startsWith("ads") || name.startsWith("google-ads")
+  );
+  assert.deepEqual(adsFiles, ["ads.js"]);
+  assert.equal(files.length, 12);
 });
 
 test("primeira busca grava first e current e a busca seguinte só move current", async () => {
