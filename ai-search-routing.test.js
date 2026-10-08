@@ -753,3 +753,62 @@ test("nome de empreendimento vem antes do bairro que faz parte do nome", () => {
   assert.equal(routing.aiProjectLookupToken("apartamento em Perdizes até 900 mil", names), "");
   assert.equal(routing.aiProjectLookupToken("Marka Perdizes", names), "marka");
 });
+
+test("intenção explícita de usados ou novos vira filtro de estoque", () => {
+  const projects = [
+    "Marka Perdizes",
+    "Well Perdizes",
+    "Well Perdizes - Residencial"
+  ];
+
+  function route(phrase, previous) {
+    return routing.aiNextSearchState(previous || {}, phrase, names, projects);
+  }
+
+  const used = route("usados em Perdizes 2 dormitórios");
+  assert.equal(used.state.neighborhood, "Perdizes");
+  assert.equal(used.state.bedrooms, 2);
+  assert.equal(used.state.inventorySource, "usados");
+  assert.equal(used.state.exactName, "");
+
+  const apartment = route("apartamento usado em Pinheiros até 800 mil");
+  assert.equal(apartment.state.neighborhood, "Pinheiros");
+  assert.equal(apartment.state.maxPrice, 800000);
+  assert.equal(apartment.state.inventorySource, "usados");
+
+  const launches = route("lançamentos em Perdizes");
+  assert.equal(launches.state.neighborhood, "Perdizes");
+  assert.equal(launches.state.inventorySource, "novos");
+
+  const fresh = route("novos em Pinheiros até 1 milhão");
+  assert.equal(fresh.state.neighborhood, "Pinheiros");
+  assert.equal(fresh.state.maxPrice, 1000000);
+  assert.equal(fresh.state.inventorySource, "novos");
+
+  const open = route("Perdizes 2 dormitórios");
+  assert.equal(open.state.neighborhood, "Perdizes");
+  assert.equal(open.state.bedrooms, 2);
+  assert.equal(open.state.inventorySource, "");
+
+  const marka = route("Marka Perdizes");
+  assert.equal(marka.state.exactName, "Marka Perdizes");
+  assert.equal(marka.state.inventorySource, "");
+
+  const well = route("Well Perdizes");
+  assert.equal(well.state.exactName, "Well Perdizes");
+  assert.equal(well.state.inventorySource, "");
+
+  const usedProject = route("usado no Marka Perdizes");
+  assert.equal(usedProject.state.exactName, "Marka Perdizes");
+  assert.equal(usedProject.state.inventorySource, "usados");
+
+  const kept = routing.aiNextSearchState(
+    used.state,
+    "até 900 mil",
+    names,
+    projects
+  );
+  assert.equal(kept.state.inventorySource, "usados");
+  assert.equal(kept.state.neighborhood, "Perdizes");
+  assert.equal(kept.state.maxPrice, 900000);
+});

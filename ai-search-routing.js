@@ -196,8 +196,19 @@
       exactName: "",
       bedrooms: 0,
       minPrice: 0,
-      maxPrice: 0
+      maxPrice: 0,
+      inventorySource: ""
     };
+  }
+
+  function aiExplicitInventorySource(message) {
+    const text = aiNormalizeText(message).replace(/\bde novo\b/g, " ");
+    const used = /\b(usados|usado)\b/.test(text);
+    const fresh = /\b(lancamentos|lancamento|novos|novo)\b/.test(text);
+    if (used && fresh) return "";
+    if (used) return "usados";
+    if (fresh) return "novos";
+    return "";
   }
 
   function aiHasSearchContext(state) {
@@ -1092,6 +1103,13 @@
       state.region = "";
     }
 
+    const explicitInventory = aiExplicitInventorySource(message);
+    if (explicitInventory) {
+      state.inventorySource = explicitInventory;
+    } else if (turn.kind === "reset") {
+      state.inventorySource = "";
+    }
+
     return { turn, state };
   }
 
@@ -1113,6 +1131,7 @@
     aiResolveKnownProjects,
     aiProjectLookupToken,
     aiNeighborhoodScope,
+    aiExplicitInventorySource,
     aiQueryTokens,
     aiDetectProjectNeighborhoodAmbiguity,
     aiInventoryQueryPlan

@@ -20,7 +20,8 @@ export default async function handler(req, res) {
   const allowedOrigins = new Set([
     "https://app.yincorp.com.br",
     "https://www.yincorp.com.br",
-    "https://yincorp.com.br"
+    "https://yincorp.com.br",
+    ...currentDeploymentOrigins()
   ]);
 
 
@@ -353,6 +354,11 @@ export default async function handler(req, res) {
         0
       ) || 0;
 
+    const commercialValue =
+      commercialValueClause(
+        body.property_value
+      );
+
 
     const matchScore =
       Number(
@@ -452,9 +458,7 @@ export default async function handler(req, res) {
             ? `Bairro: ${neighborhood}`
             : "",
 
-          propertyValue
-            ? `Valor: ${propertyValue}`
-            : "",
+          commercialValue,
 
           matchScore
             ? `MATCH: ${matchScore}%`
@@ -471,7 +475,10 @@ export default async function handler(req, res) {
 
     const mensagem =
       [
-        mensagemBase,
+        withCommercialValue(
+          mensagemBase,
+          body.property_value
+        ),
 
         leadSummary
           ? `RESUMO MATCH IA: ${leadSummary}`
@@ -579,8 +586,13 @@ export default async function handler(req, res) {
     let praediumStatus =
       null;
 
+    const ynteligenciaLead =
+      isYnteligenciaV2Lead(
+        origem
+      );
 
-    if (praediumUrl) {
+
+    if (!ynteligenciaLead && praediumUrl) {
 
       try {
 
@@ -804,7 +816,7 @@ export default async function handler(req, res) {
       }
 
 
-    } else {
+    } else if (!ynteligenciaLead) {
 
       console.warn(
 
@@ -1098,6 +1110,9 @@ export default async function handler(req, res) {
     let emailSent =
       false;
 
+    let emailStatus =
+      "missing_api_key";
+
 
     if (resendApiKey) {
 
@@ -1137,42 +1152,72 @@ export default async function handler(req, res) {
 
                   subject:
 
-                    `Novo lead | ${
-                      empreendimento ||
-                      origem
-                    }`,
+                    ynteligenciaLead
+
+                      ? `Novo lead Match IA — ${
+                          neighborhood ||
+                          empreendimento ||
+                          "Ynteligencia"
+                        }`
+
+                      : `Novo lead | ${
+                          empreendimento ||
+                          origem
+                        }`,
 
                   html:
 
-                    buildEmail({
+                    ynteligenciaLead
 
-                      nome,
+                      ? buildMatchIaEmail({
 
-                      telefone,
+                          nome,
+                          telefone,
+                          email,
+                          empreendimento,
+                          neighborhood,
+                          propertyId,
+                          propertyValue:
+                            body.property_value,
+                          bedrooms,
+                          inventorySource,
+                          leadSummary,
+                          aiContext,
+                          sessionId,
+                          visitorId,
+                          tracking
 
-                      email,
+                        })
 
-                      origem,
+                      : buildEmail({
 
-                      empreendimento,
+                          nome,
 
-                      perfil,
+                          telefone,
 
-                      mensagem,
+                          email,
 
-                      leadSummary,
+                          origem,
 
-                      conversationText,
+                          empreendimento,
 
-                      pagina,
+                          perfil,
 
-                      tracking,
+                          mensagem,
 
-                      praediumOk,
+                          leadSummary,
 
-                      supabaseOk
+                          conversationText,
 
-                    })
+                          pagina,
+
+                          tracking,
+
+                          praediumOk,
+
+                          supabaseOk
+
+                        })
 
                 })
 
@@ -1192,13 +1237,18 @@ export default async function handler(req, res) {
 
         if (!emailResponse.ok) {
 
+          emailStatus =
+            "provider_rejected";
+
           console.error(
 
             "RESEND_ERROR",
 
             emailResponse.status,
 
-            emailResponseText
+            safeProviderMessage(
+              emailResponseText
+            )
 
           );
 
@@ -1206,6 +1256,9 @@ export default async function handler(req, res) {
 
           emailSent =
             true;
+
+          emailStatus =
+            "sent";
 
 
           console.log(
@@ -1217,11 +1270,16 @@ export default async function handler(req, res) {
 
       } catch (error) {
 
+        emailStatus =
+          "network_error";
+
         console.error(
 
           "RESEND_CONNECTION_ERROR",
 
-          error
+          error && error.name
+            ? error.name
+            : "Error"
 
         );
 
@@ -1486,12 +1544,21 @@ export default async function handler(req, res) {
      * =======================================================
      */
 
+    const leadCaptured =
+      supabaseOk ||
+      emailSent;
+
+    const success =
+      ynteligenciaLead
+        ? leadCaptured
+        : true;
+
+
     return res
       .status(200)
       .json({
 
-        success:
-          true,
+        success,
 
         source:
           origem,
@@ -1518,6 +1585,9 @@ export default async function handler(req, res) {
 
         email_sent:
           emailSent,
+
+        email_status:
+          emailStatus,
 
         meta:
           metaOk,
@@ -1667,6 +1737,176 @@ function cleanPhone(value) {
       ""
     );
 
+}
+
+
+function currentDeploymentOrigins() {
+  const hosts = [
+    process.env.VERCEL_URL,
+    process.env.VERCEL_BRANCH_URL
+  ];
+
+  return hosts
+    .map(host => String(host || "").trim())
+    .map(host => host.replace(/^https?:\/\//, "").replace(/\/$/, ""))
+    .filter(Boolean)
+    .map(host => `https://${host}`);
+}
+
+
+function isYnteligenciaV2Lead(origem) {
+  const value = String(origem || "").trim().toLowerCase();
+  return value === "ynteligencia" || value.startsWith("ynteligencia_");
+}
+
+
+function commercialValueLabel(value) {
+  if (value === null || value === undefined) {
+    return "Valor sob consulta";
+  }
+
+  const text = String(value).trim();
+  if (!text || text === "0" || text === "0.1" || text === "0,1") {
+    return "Valor sob consulta";
+  }
+
+  const amount = Number(text.replace(",", "."));
+  if (!Number.isFinite(amount) || amount < 1) {
+    return "Valor sob consulta";
+  }
+
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0
+  }).format(amount);
+}
+
+
+function commercialValueClause(value) {
+  const label = commercialValueLabel(value);
+  if (label === "Valor sob consulta") return label;
+  return `Valor: ${label}`;
+}
+
+
+function withCommercialValue(message, value) {
+  const clause = commercialValueClause(value);
+  const text = String(message || "");
+  if (!text) return clause;
+  if (/Valor:\s*[^|\n]+/.test(text)) {
+    return text.replace(/Valor:\s*[^|\n]+/, clause);
+  }
+  return text;
+}
+
+
+function safeProviderMessage(text) {
+  return String(text || "")
+    .replace(/re_[A-Za-z0-9]+/g, "[redacted]")
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .slice(0, 300);
+}
+
+
+function readableLine(label, value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(text)}</p>`;
+}
+
+
+function buildMatchIaEmail({
+  nome,
+  telefone,
+  email,
+  empreendimento,
+  neighborhood,
+  propertyId,
+  propertyValue,
+  bedrooms,
+  inventorySource,
+  leadSummary,
+  aiContext,
+  sessionId,
+  visitorId,
+  tracking
+}) {
+  const search = aiContext && aiContext.search ? aiContext.search : {};
+  const opened = Array.isArray(aiContext && aiContext.opened)
+    ? aiContext.opened
+    : [];
+  const others = opened.filter(item =>
+    String(item && item.id || "") !== String(propertyId || "")
+  );
+  const priceLabel = value => {
+    if (value === null || value === undefined || value === "") return "";
+    return commercialValueLabel(value);
+  };
+  const range = [
+    Number(search.min_price) >= 1
+      ? `mínimo ${commercialValueLabel(search.min_price)}`
+      : "",
+    Number(search.max_price) >= 1
+      ? `máximo ${commercialValueLabel(search.max_price)}`
+      : ""
+  ].filter(Boolean).join(", ");
+  const searchInventory = String(search.inventory || "").trim();
+  const searchSourceLabel = searchInventory === "novos" || searchInventory === "usados"
+    ? searchInventory
+    : "";
+  const sourceLabel = inventorySource === "novos"
+    ? "novos"
+    : inventorySource === "usados"
+      ? "usados"
+      : "";
+
+  const otherLines = others.map(item => {
+    const bits = [
+      item.name || "Imóvel",
+      item.id || "",
+      priceLabel(item.value),
+      item.neighborhood || "",
+      Number(item.bedrooms) > 0 ? `${item.bedrooms} dormitórios` : "",
+      item.source || ""
+    ].filter(Boolean);
+    return `<li>${escapeHtml(bits.join(" · "))}</li>`;
+  }).join("");
+
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#222;line-height:1.55">
+      <h2 style="margin:0 0 16px">Novo lead Match IA</h2>
+      ${readableLine("Nome", nome)}
+      ${readableLine("Telefone", telefone)}
+      ${readableLine("E-mail", email)}
+      <h3>RESUMO MATCH IA</h3>
+      <p>${escapeHtml(leadSummary || "Sem resumo adicional.")}</p>
+      <h3>Busca</h3>
+      ${readableLine("Bairro", search.neighborhood || neighborhood)}
+      ${readableLine("Empreendimento", search.development || "")}
+      ${readableLine("Preço", range)}
+      ${readableLine("Dormitórios", Number(search.bedrooms) > 0 ? String(search.bedrooms) : (Number(bedrooms) > 0 ? String(bedrooms) : ""))}
+      ${readableLine("Origem", searchSourceLabel)}
+      <h3>Imóvel principal</h3>
+      ${readableLine("Nome", empreendimento)}
+      ${readableLine("Código", propertyId)}
+      ${readableLine("Valor", commercialValueLabel(propertyValue))}
+      ${readableLine("Bairro", neighborhood)}
+      ${readableLine("Dormitórios", Number(bedrooms) > 0 ? String(bedrooms) : "")}
+      ${readableLine("Origem", sourceLabel)}
+      ${otherLines ? `<h3>Outros imóveis abertos</h3><ul>${otherLines}</ul>` : ""}
+      <h3>Origem</h3>
+      ${readableLine("utm_source", tracking && tracking.utm_source)}
+      ${readableLine("utm_medium", tracking && tracking.utm_medium)}
+      ${readableLine("utm_campaign", tracking && tracking.utm_campaign)}
+      ${readableLine("utm_term", tracking && tracking.utm_term)}
+      ${readableLine("utm_content", tracking && tracking.utm_content)}
+      ${readableLine("gclid", tracking && tracking.gclid)}
+      <h3>Sessão</h3>
+      ${readableLine("session_id", sessionId)}
+      ${readableLine("visitor_id", visitorId)}
+    </div>
+  `;
 }
 
 
