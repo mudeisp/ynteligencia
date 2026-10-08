@@ -4762,6 +4762,7 @@ body.match-results-mode #results{
   </div>
 </div>
 
+<script src="ai-search-routing.js"></script>
 <script>
 
 const CSV_FILE="Remax.teste.2.csv";
@@ -11999,107 +12000,18 @@ function aiKnownNeighborhoodNames(){
 }
 
 function aiDetectSearchAmbiguity(message){
-  const original=clean(message);
-  const t=norm(original);
-
-  if(!original || !t){
-    return null;
-  }
-
-  /*
-    Bairro explícito.
-    Usamos a mesma base de bairros do app + bairros já vistos
-    no inventário, sem consultar backend extra.
-  */
-  const neighborhood=
-    aiKnownNeighborhoodNames()
-      .find(name=>{
-        const key=norm(name);
-        return key && (
-          t===key ||
-          t.includes(` ${key} `) ||
-          t.startsWith(`${key} `) ||
-          t.endsWith(` ${key}`)
-        );
-      }) || "";
-
-  if(!neighborhood){
-    return null;
-  }
-
-  /*
-    Remove do texto:
-    - o bairro identificado;
-    - verbos de busca/conversa;
-    - filtros claros (preço, dormitórios etc.);
-    O que sobra precisa parecer nome de empreendimento/condomínio.
-  */
-  let candidate=
-    ` ${t} `
-      .replace(
-        new RegExp(
-          `\\s${norm(neighborhood)
-            .replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\s`,
-          "g"
-        ),
-        " "
-      )
-      .replace(
-        /\b(quero|queria|gostaria|saber|sobre|busca|buscar|busque|procura|procurar|procure|mostra|mostrar|mostre|ver|comparar|compare|comparacao|comparação|imovel|imoveis|apartamento|apartamentos|casa|casas|empreendimento|empreendimentos|condominio|condominios|no|na|em|do|da|de|para|por|com|um|uma|o|a|os|as)\b/g,
-        " "
-      )
-      .replace(
-        /\b\d+\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos|m2|m²)?\b/g,
-        " "
-      )
-      .replace(
-        /\b(?:ate|até|acima|abaixo|entre|mil|milhao|milhoes|reais|r\$)\b/g,
-        " "
-      )
-      .replace(/\s+/g," ")
-      .trim();
-
-  /*
-    Evita oferecer "empreendimento" para palavras genéricas.
-  */
-  const generic=
-    new Set([
-      "novo","novos","usado","usados","studio","studios",
-      "cobertura","garden","duplex","triplex","lancamento",
-      "lancamentos","residencial","comercial","perto",
-      "proximo","proxima","metro","estacao"
-    ]);
-
-  const candidateTokens=
-    candidate
-      .split(/\s+/)
-      .filter(Boolean)
-      .filter(token=>!generic.has(token));
-
-  if(
-    !candidateTokens.length ||
-    candidateTokens.join("").length < 3
-  ){
-    return null;
-  }
-
-  /*
-    Para não transformar frases longas em "nome de condomínio",
-    limitamos a hipótese a até 4 palavras úteis.
-  */
-  if(candidateTokens.length>4){
-    return null;
-  }
-
-  const project=
-    aiTitleCase(
-      candidateTokens.join(" ")
+  const found=
+    AiSearchRouting.aiDetectProjectNeighborhoodAmbiguity(
+      message,
+      aiRoutingNeighborhoodCatalog()
     );
+
+  if(!found)return null;
 
   return {
     ambiguous:true,
-    project,
-    neighborhood
+    project:found.project,
+    neighborhood:found.neighborhood
   };
 }
 
@@ -12315,135 +12227,15 @@ async function ensureAiOruloInventory(){
 }
 
 function aiNormalizeMoneyNumber(raw){
-  let s=String(raw||"")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g,"");
-
-  if(!s)return 0;
-
-  /*
-    pt-BR:
-      800.000,00 -> 800000
-      1.200.000   -> 1200000
-      800,000.00  -> 800000
-      800000       -> 800000
-      800          -> handled with suffix/default rule
-  */
-  if(s.includes(",") && s.includes(".")){
-    if(s.lastIndexOf(",") > s.lastIndexOf(".")){
-      s=s.replace(/\./g,"").replace(",",".");
-    }else{
-      s=s.replace(/,/g,"");
-    }
-  }else if(s.includes(",")){
-    const parts=s.split(",");
-    if(parts.length===2 && parts[1].length<=2){
-      s=parts[0].replace(/\./g,"")+"."+parts[1];
-    }else{
-      s=s.replace(/,/g,"");
-    }
-  }else if(s.includes(".")){
-    const parts=s.split(".");
-    if(parts.length>2){
-      s=s.replace(/\./g,"");
-    }else if(parts.length===2 && parts[1].length===3 && parts[0].length<=3){
-      /* 800.000 / 1.200 */
-      s=parts[0]+parts[1];
-    }
-  }
-
-  const n=Number(s);
-  return Number.isFinite(n)?n:0;
+  return AiSearchRouting.aiNormalizeMoneyNumber(raw);
 }
 
 function aiApplyMoneyUnit(value,unit=""){
-  let v=Number(value)||0;
-  const u=norm(unit||"");
-
-  if(/\b(milhao|milhoes|milhao|mi)\b/.test(u)){
-    v*=1000000;
-  }else if(/\b(mil|k)\b/.test(u)){
-    v*=1000;
-  }else if(v>0 && v<10000){
-    /*
-      Em contexto imobiliário, "800" normalmente significa 800 mil.
-      "1.2" normalmente significa 1,2 milhão quando acompanhado de "mi/milhão";
-      sem unidade, valores curtos acima de 100 são tratados como milhares.
-    */
-    v*=1000;
-  }
-
-  return Math.round(v);
+  return AiSearchRouting.aiApplyMoneyUnit(value,unit);
 }
 
 function aiOruloParseMoney(text){
-  const original=String(text||"");
-  const t=norm(original);
-
-  const parse=(num,unit)=>{
-    const base=aiNormalizeMoneyNumber(num);
-    return aiApplyMoneyUnit(base,unit||"");
-  };
-
-  let min=0;
-  let max=0;
-  let m;
-
-  /* entre 600 e 900 mil */
-  m=t.match(
-    /(?:entre|de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?\s*(?:a|e|-)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/
-  );
-  if(m){
-    const sharedUnit=m[4]||m[2]||"";
-    min=parse(m[1],m[2]||sharedUnit);
-    max=parse(m[3],m[4]||sharedUnit);
-    return {min,max};
-  }
-
-  /* até / no máximo */
-  m=t.match(
-    /(?:ate|maximo|max|no maximo|teto de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/
-  );
-  if(m){
-    max=parse(m[1],m[2]||"");
-  }
-
-  /* a partir de / acima de */
-  m=t.match(
-    /(?:a partir de|minimo|min|acima de|mais de)\s*(?:r\$)?\s*([\d.,]+)\s*(milhoes?|milhao|mi|mil|k)?/
-  );
-  if(m){
-    min=parse(m[1],m[2]||"");
-  }
-
-  /*
-    Valor solto:
-      "Brooklin R$ 800.000,00 2 dormitórios"
-      "Brooklin 800 mil 2 dorms"
-      "Pinheiros 1.2 mi 3 quartos"
-
-    Quando não há "até/a partir", tratamos como teto de busca.
-  */
-  if(!min && !max){
-    m=t.match(
-      /(?:r\$\s*)?([\d][\d.,]*)\s*(milhoes?|milhao|mi|mil|k)?(?=\s|$)/
-    );
-
-    if(m){
-      const candidate=parse(m[1],m[2]||"");
-
-      /*
-        Evita confundir "2 dormitórios" com preço.
-        Só aceita candidato razoável para imóvel.
-      */
-      if(candidate>=100000){
-        max=candidate;
-      }
-    }
-  }
-
-  return {min,max};
+  return AiSearchRouting.aiOruloParseMoney(text);
 }
 
 function aiGetRawProperty(p){
@@ -12516,6 +12308,8 @@ let aiSearchState={
   maxPrice:0
 };
 
+let aiLastRoutingTurn=null;
+
 function resetAiSearchState(){
   aiSearchState={
     region:"",
@@ -12527,86 +12321,112 @@ function resetAiSearchState(){
   };
 }
 
+function aiNeighborhoodsFromInventory(inventory){
+  const list=Array.isArray(inventory)
+    ? inventory
+    : (Array.isArray(newPropertiesCache) ? newPropertiesCache : []);
+
+  return list.flatMap(p=>{
+    const raw=aiGetRawProperty(p);
+    const building=raw?.building && typeof raw.building==="object" ? raw.building : {};
+    return [
+      p?.neighborhood,
+      building?.address?.neighborhood,
+      raw?.neighborhood
+    ];
+  });
+}
+
+function aiRoutingNeighborhoodCatalog(inventory){
+  return [
+    ...aiKnownNeighborhoodNames(),
+    ...aiNeighborhoodsFromInventory(inventory)
+  ];
+}
+
+function aiKnownProjectNames(inventory){
+  const list=Array.isArray(inventory)
+    ? inventory
+    : (Array.isArray(newPropertiesCache) ? newPropertiesCache : []);
+
+  return list.flatMap(p=>{
+    const raw=aiGetRawProperty(p);
+    const building=raw?.building && typeof raw.building==="object" ? raw.building : {};
+    return [
+      p?.name,
+      raw?.name,
+      raw?.title,
+      raw?.project_name,
+      raw?.development_name,
+      raw?.building_name,
+      building?.name,
+      building?.title,
+      building?.commercial_name,
+      building?.development_name
+    ];
+  });
+}
+
+function aiCurrentRoutingContext(){
+  const propertyNeighborhood=
+    typeof aiIsPropertyMode==="function" && aiIsPropertyMode()
+      ? (aiAssistantProperty?.neighborhood || "")
+      : "";
+
+  return {
+    region:aiSearchState?.region || "",
+    neighborhood:aiSearchState?.neighborhood || propertyNeighborhood,
+    exactName:aiSearchState?.exactName || "",
+    bedrooms:Number(aiSearchState?.bedrooms)||0,
+    minPrice:Number(aiSearchState?.minPrice)||0,
+    maxPrice:Number(aiSearchState?.maxPrice)||0,
+    hasProperty:typeof aiIsPropertyMode==="function" ? aiIsPropertyMode() : false
+  };
+}
+
+function aiCanonicalNeighborhood(message,knownNeighborhoods){
+  return AiSearchRouting.aiCanonicalNeighborhood(
+    message,
+    knownNeighborhoods || aiRoutingNeighborhoodCatalog()
+  );
+}
+
+function aiClassifySearchTurn(message,context,knownNeighborhoods,knownProjects){
+  return AiSearchRouting.aiClassifySearchTurn(
+    message,
+    context || aiCurrentRoutingContext(),
+    knownNeighborhoods || aiRoutingNeighborhoodCatalog(),
+    knownProjects || aiKnownProjectNames()
+  );
+}
+
 function aiExtractExplicitRegion(message){
-  const t=norm(message||"");
-
-  if(/\b(zona oeste|regiao oeste|região oeste|oeste)\b/.test(t)){
-    return "oeste";
-  }
-
-  if(/\b(zona sul|regiao sul|região sul|sul)\b/.test(t)){
-    return "sul";
-  }
-
-  if(/\b(zona norte|regiao norte|região norte|norte)\b/.test(t)){
-    return "norte";
-  }
-
-  if(/\b(zona leste|regiao leste|região leste|leste)\b/.test(t)){
-    return "leste";
-  }
-
-  return "";
+  return AiSearchRouting.aiExtractExplicitRegion(message);
 }
 
 function aiMessageStartsNewSearch(text){
-  const t=norm(text||"");
+  return aiClassifySearchTurn(
+    text,
+    aiCurrentRoutingContext(),
+    aiRoutingNeighborhoodCatalog()
+  ).kind==="reset";
+}
 
-  return Boolean(
-    aiExtractExplicitRegion(t) ||
-    /\b(nova busca|outra busca|outro bairro|outro empreendimento|agora quero|agora procure|agora busca|tem lancamentos|tem lancamento|voces tem|voce tem)\b/.test(t)
-  );
+function aiMessageClearlyStartsNewSearch(message){
+  const kind=aiClassifySearchTurn(
+    message,
+    aiCurrentRoutingContext(),
+    aiRoutingNeighborhoodCatalog()
+  ).kind;
+
+  return kind==="reset" || kind==="alternatives";
 }
 
 function aiExtractExplicitNeighborhood(message,inventory){
-  const t=norm(message||"");
-
-  const neighborhoods=[...new Set(
-    inventory
-      .map(p=>{
-        const raw=aiGetRawProperty(p);
-        const building=raw?.building && typeof raw.building==="object" ? raw.building : {};
-        return clean(
-          p?.neighborhood ||
-          building?.address?.neighborhood ||
-          raw?.neighborhood ||
-          ""
-        );
-      })
-      .filter(Boolean)
-  )].sort((a,b)=>b.length-a.length);
-
-  for(const value of neighborhoods){
-    const key=norm(value);
-    if(!key)continue;
-
-    if(t.includes(key)){
-      return value;
-    }
-
-    const keyTokens=key.split(/\s+/).filter(Boolean);
-    const msgTokens=t.split(/\s+/).filter(Boolean);
-
-    if(msgTokens.some(mt=>keyTokens.includes(mt) || key.includes(mt))){
-      return value;
-    }
-  }
-
-  /*
-    fallback controlado: só considera token de localidade quando
-    a frase tem estrutura de bairro/região.
-  */
-  const m=t.match(
-    /(?:no|na|em|bairro|regiao|zona)\s+([a-záàâãéèêíïóôõöúçñ][a-záàâãéèêíïóôõöúçñ\s-]{2,40})/
+  return aiCanonicalNeighborhood(
+    message,
+    aiRoutingNeighborhoodCatalog(inventory)
   );
-
-  if(m){
-    return clean(m[1])
-      .replace(/\b(?:ate|com|de|por|r\$|dorm|dorms|dormitorios?)\b.*$/i,"")
-      .trim();
-  }
-
-  return "";
 }
 
 function aiExtractExplicitProject(message,inventory){
@@ -12645,74 +12465,42 @@ function aiExtractExplicitProject(message,inventory){
 }
 
 function aiUpdateSearchState(message,inventory){
-  const t=norm(message||"");
-  const explicitRegion=aiExtractExplicitRegion(message);
-  const isNew=aiMessageStartsNewSearch(t);
-
-  if(isNew){
-    resetAiSearchState();
-  }
-
-  const explicitProject=aiExtractExplicitProject(message,inventory);
-  const explicitNeighborhood=aiExtractExplicitNeighborhood(message,inventory);
-
-  if(explicitRegion){
-    aiSearchState.region=explicitRegion;
-
-    /*
-      Região explícita significa nova intenção geográfica.
-      Nunca reaproveitamos bairro/empreendimento anteriores.
-    */
-    aiSearchState.neighborhood="";
-    aiSearchState.exactName="";
-  }else if(isNew){
-    aiSearchState.region="";
-  }
-
-  const bedroomsMatch=t.match(
-    /(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/
+  const applied=AiSearchRouting.aiNextSearchState(
+    aiSearchState,
+    message,
+    aiRoutingNeighborhoodCatalog(inventory),
+    aiKnownProjectNames(inventory)
   );
 
-  const money=aiOruloParseMoney(message);
+  const turn=applied.turn;
+  const state={...applied.state};
+  const explicitProject=
+    turn.kind==="vague" || turn.kind==="follow_up"
+      ? state.exactName
+      : aiExtractExplicitProject(message,inventory);
+
+  if(turn.kind!=="vague" && turn.kind!=="follow_up"){
+    if(explicitProject){
+      state.exactName=explicitProject;
+    }else if(turn.kind==="reset" || turn.kind==="alternatives"){
+      state.exactName="";
+    }
+  }
+
+  aiSearchState=state;
+  aiLastRoutingTurn=turn;
 
   /*
-    Se há empreendimento explícito, ele substitui empreendimento anterior.
-    Bairro só entra se vier explicitamente ou se não houver empreendimento.
-  */
-  if(explicitProject){
-    aiSearchState.exactName=explicitProject;
-  }else if(isNew){
-    aiSearchState.exactName="";
-  }
-
-  if(!explicitRegion && explicitNeighborhood){
-    aiSearchState.neighborhood=explicitNeighborhood;
-  }else if(isNew){
-    aiSearchState.neighborhood="";
-  }
-
-  if(bedroomsMatch){
-    aiSearchState.bedrooms=Number(bedroomsMatch[1])||0;
-  }else if(isNew){
-    aiSearchState.bedrooms=0;
-  }
-
-  if(money.min || money.max){
-    aiSearchState.minPrice=money.min||0;
-    aiSearchState.maxPrice=money.max||0;
-  }else if(isNew){
-    aiSearchState.minPrice=0;
-    aiSearchState.maxPrice=0;
-  }
-
-  /*
-    Complementos curtos:
-    "2 dorms" mantém bairro/empreendimento anterior.
-    "até 900 mil" mantém bairro/dormitórios anteriores.
+    Complementos curtos continuam em refine:
+    "2 dorms" mantém bairro.
+    "até 900 mil" mantém bairro e dormitórios.
+    Local novo ou frase de recomeço zera o que a frase não repetiu.
   */
 
   console.log("MATCH_IA_SEARCH_STATE",{
-    isNew,
+    isNew:turn.kind==="reset",
+    kind:turn.kind,
+    reason:turn.reason,
     message,
     state:{...aiSearchState}
   });
@@ -12933,15 +12721,6 @@ function aiIsFollowUpMessage(message){
 
   return Boolean(
     /\b(link|url|endereco|endereço|metragem|area|área|preco|preço|valor|dormitorios|dormitórios|quartos|vagas|suite|suíte|varanda|detalhes|mais sobre|fale mais|esse|essa|desse|dessa|primeiro|segundo|terceiro|unidade|unidades|estoque|quantas|quantos|disponibilidade|disponiveis|disponíveis)\b/.test(t)
-  );
-}
-
-function aiMessageClearlyStartsNewSearch(message){
-  const t = norm(message || "");
-
-  return Boolean(
-    aiIsRequestForAlternatives(message) ||
-    /\b(agora quero|nova busca|outra busca|outro bairro|outro empreendimento|procure|buscar|busca por|tem lancamento|tem lancamentos|tem imovel|tem imoveis|em perdizes|em pinheiros|em brooklin|em pompeia|em vila|em moema|em jardins|em tatuape|em santana)\b/.test(t)
   );
 }
 
@@ -13394,6 +13173,8 @@ async function searchPropertiesForAi(message){
         )
       : override
       ? String(override.query||"").trim()
+      : (aiLastRoutingTurn && aiLastRoutingTurn.keepQueryText===false)
+      ? ""
       : String(message||"").trim(),
 
     neighborhood:state.neighborhood||"",
@@ -13612,70 +13393,27 @@ function aiSwitchToFreshSearchMode(){
 }
 
 function aiIsRequestForAlternatives(message){
-  const t=norm(message||"");
-
-  return Boolean(
-    /\b(outra opcao|outra opção|outras opcoes|outras opções|mais opcoes|mais opções|outro imovel|outro imóvel|outros imoveis|outros imóveis|outro empreendimento|outros empreendimentos|me mostra outro|me mostra outra|me mostre outro|me mostre outra|mostra outro|mostra outra|procura outro|procure outro|buscar outro|busca outro|ver outro|quero outro|quero outra|mais imoveis|mais imóveis|tem outro|tem outra|tem mais|algo parecido|outra alternativa|outras alternativas)\b/.test(t)
-  );
+  return AiSearchRouting.aiIsRequestForAlternatives(message);
 }
 
 function aiExtractSearchHintFromMessage(message){
-  const t=norm(message||"");
+  const money=aiOruloParseMoney(message);
+  const neighborhood=aiCanonicalNeighborhood(message);
 
-  const hint={
+  return {
     query:String(message||"").trim(),
-    region:aiExtractExplicitRegion(message),
-    neighborhood:"",
-    bedrooms:0,
-    min_price:0,
-    max_price:0
+    region:neighborhood ? "" : aiExtractExplicitRegion(message),
+    neighborhood,
+    bedrooms:AiSearchRouting.aiExtractBedrooms(message),
+    min_price:Number(money?.min)||0,
+    max_price:Number(money?.max)||0
   };
-
-  /*
-    Aproveita apenas o que o usuário explicitou na NOVA frase.
-    Não reaproveita bairro/preço/dormitórios antigos silenciosamente.
-  */
-  const knownNeighborhoods=[
-    "brooklin paulista",
-    "brooklin",
-    "perdizes",
-    "pompeia",
-    "pompéia",
-    "pinheiros",
-    "moema",
-    "vila mariana",
-    "vila madalena",
-    "campo belo",
-    "itaim bibi",
-    "jardins",
-    "paraiso",
-    "paraíso",
-    "santana",
-    "tatuape",
-    "tatuapé"
-  ];
-
-  for(const bairro of knownNeighborhoods){
-    if(t.includes(norm(bairro))){
-      hint.neighborhood=bairro;
-      break;
-    }
-  }
-
-  const dormMatch=t.match(/\b([1-5])\s*(?:dorm|dorms|dormitorio|dormitório|dormitorios|dormitórios|quarto|quartos)\b/);
-  if(dormMatch){
-    hint.bedrooms=Number(dormMatch[1])||0;
-  }
-
-  const parsedMoney=aiOruloParseMoney(message);
-  hint.min_price=Number(parsedMoney?.min)||0;
-  hint.max_price=Number(parsedMoney?.max)||0;
-
-
-  return hint;
 }
 
-function aiSwitchToSearchMode(message){
+function aiSwitchToSearchMode(message,options){
+  const preserveSelectedProperty=Boolean(
+    options && options.preserveSelectedProperty
+  );
   const hint=
     aiExtractSearchHintFromMessage(
       message
@@ -13782,7 +13520,16 @@ function aiSwitchToSearchMode(message){
     generic_search:true
   };
 
-  aiLastSelectedProperty=null;
+  /*
+    Comparar com outro ainda não é comparação real.
+    preserveSelectedProperty guarda o imóvel atual para uma comparação futura.
+    O fluxo abaixo continua sendo o de alternativas.
+  */
+  if(preserveSelectedProperty && previousProperty){
+    aiLastSelectedProperty={...previousProperty};
+  }else if(!preserveSelectedProperty){
+    aiLastSelectedProperty=null;
+  }
 
   console.log(
     "MATCH_IA_SWITCH_TO_SEARCH",
@@ -14112,36 +13859,81 @@ async function sendAiAssistantMessage(text){
   const wasPropertyMode=
     aiIsPropertyMode();
 
-  /*
-    "Outro imóvel", "mais opções", "algo parecido" etc.
-    sempre saem de DETAIL e entram em SEARCH.
+  const routingTurn=
+    aiClassifySearchTurn(
+      text,
+      aiCurrentRoutingContext(),
+      aiRoutingNeighborhoodCatalog()
+    );
 
-    Se a conversa acabou de voltar para a home por falta de
-    informação, mantemos só a referência do imóvel anterior
-    para buscar alternativas — sem voltar ao detalhe.
+  aiLastRoutingTurn=routingTurn;
+
+  /*
+    "comparar X com Y", "vs" e "versus" são comparação de termos,
+    não desambiguação empreendimento/bairro e não comparação de imóveis.
+    realComparison permanece false. Os dois lados ficam no turno.
   */
-  if(
-    aiIsRequestForAlternatives(text) &&
+  if(routingTurn.kind==="comparison"){
+    const left=routingTurn.compare_left?.name || "";
+    const right=routingTurn.compare_right?.name || "";
+    const reply=
+      `Entendi que você quer comparar ${left} com ${right}. A comparação lado a lado ainda não está pronta.`;
+
+    appendAiMessage("assistant", reply);
+
+    aiAssistantHistory.push({
+      role:"assistant",
+      content:reply
+    });
+
+    aiAssistantHistory=
+      aiAssistantHistory.slice(-12);
+
+    aiAssistantSending=false;
+
+    if(send){
+      send.disabled=false;
+    }
+
+    return;
+  }
+
+  /*
+    "Outro imóvel", "mais opções", "me mostra outros" saem do detalhe
+    e entram em SEARCH.
+
+    "quero comparar com outro" usa esse mesmo fallback de alternativas.
+    Não é comparação real: o imóvel atual permanece em
+    aiLastPropertyBeforeHome e, com preserveSelectedProperty,
+    também em aiLastSelectedProperty.
+  */
+  if(routingTurn.kind==="reset" && wasPropertyMode){
+    aiSwitchToFreshSearchMode();
+
+  }else if(
+    routingTurn.kind==="alternatives" &&
     (
       wasPropertyMode ||
       aiLastPropertyBeforeHome
     )
   ){
-    aiSwitchToSearchMode(text);
+    aiSwitchToSearchMode(text,{
+      preserveSelectedProperty:
+        routingTurn.preservePropertyForComparison===true
+    });
 
   }else if(
     wasPropertyMode &&
-    aiIsExplicitInventorySearch(text)
+    aiIsExplicitInventorySearch(text) &&
+    routingTurn.preservePropertyForComparison!==true
   ){
     /*
       Ex.:
       "tem algum Maskan no estoque"
       "busca Well"
       "quero saber sobre Marka Perdizes"
-      "comparar com o Marka Perdizes"
 
-      Isso é uma NOVA BUSCA, não uma pergunta sobre o imóvel atual.
-      Se houver bairro + provável empreendimento, entra na desambiguação.
+      Nova busca a partir do imóvel, sem herdar o bairro dele.
     */
     aiSwitchToFreshSearchMode();
   }
@@ -14192,6 +13984,34 @@ async function sendAiAssistantMessage(text){
     aiAssistantSending=false;
 
     if(send)send.disabled=false;
+
+    return;
+  }
+
+  /*
+    "vocês tem" / "você tem" sem bairro, preço, dormitórios ou empreendimento
+    não dispara busca vazia. A conversa fica aguardando um critério.
+    Telefone e saudação continuam sendo resolvidos antes desta resposta.
+  */
+  if(routingTurn.kind==="vague"){
+    const reply=
+      "Me diga um bairro, uma faixa de preço, a quantidade de dormitórios ou o nome de um empreendimento para eu buscar.";
+
+    appendAiMessage("assistant", reply);
+
+    aiAssistantHistory.push({
+      role:"assistant",
+      content:reply
+    });
+
+    aiAssistantHistory=
+      aiAssistantHistory.slice(-12);
+
+    aiAssistantSending=false;
+
+    if(send){
+      send.disabled=false;
+    }
 
     return;
   }
