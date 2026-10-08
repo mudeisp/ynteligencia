@@ -1,7 +1,4 @@
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-const neighborhoodCatalog = require("../ai-neighborhood-catalog.js");
+import neighborhoodCatalog from "../ai-neighborhood-catalog.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {

@@ -13063,6 +13063,23 @@ async function aiSearchRegionFromSupabase(state){
   };
 }
 
+function aiApiErrorText(error, fallback){
+  if(typeof error==="string" && error.trim()){
+    return error.trim();
+  }
+
+  if(
+    error &&
+    typeof error==="object" &&
+    typeof error.message==="string" &&
+    error.message.trim()
+  ){
+    return error.message.trim();
+  }
+
+  return fallback;
+}
+
 async function searchPropertiesForAi(message){
   const inventoryForParsing=
     Array.isArray(newPropertiesCache)
@@ -13245,8 +13262,10 @@ async function searchPropertiesForAi(message){
 
   if(!response.ok || data?.success!==true){
     throw new Error(
-      data?.error ||
-      "Não foi possível consultar o estoque agora."
+      aiApiErrorText(
+        data?.error,
+        "Não foi possível consultar o estoque agora."
+      )
     );
   }
 
@@ -14590,8 +14609,10 @@ async function sendAiAssistantMessage(text){
           data.success !== true
         ){
           throw new Error(
-            data.error ||
-            "Não foi possível consultar este imóvel agora."
+            aiApiErrorText(
+              data.error,
+              "Não foi possível consultar este imóvel agora."
+            )
           );
         }
 
@@ -14699,8 +14720,10 @@ async function sendAiAssistantMessage(text){
       data.success !== true
     ){
       throw new Error(
-        data.error ||
-        "Não foi possível falar com a assistente agora."
+        aiApiErrorText(
+          data.error,
+          "Não foi possível falar com a assistente agora."
+        )
       );
     }
 
@@ -14965,10 +14988,8 @@ async function sendAiAssistantMessage(text){
 
     appendAiMessage(
       "assistant",
-      "Não consegui consultar os dados agora. Tente novamente em alguns instantes ou fale com o Rafael para confirmar a informação."
+      "Não consegui consultar os imóveis agora. Tente novamente em alguns instantes."
     );
-
-    aiSetHumanHandoffVisible(true);
 
     console.error(
       "MATCH_IA_ERROR",
