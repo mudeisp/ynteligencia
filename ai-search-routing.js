@@ -415,14 +415,46 @@
     return "";
   }
 
+  function neighborhoodCatalog() {
+    if (typeof require === "function") {
+      try {
+        return require("./ai-neighborhood-catalog.js");
+      } catch (error) {
+        return null;
+      }
+    }
+
+    const globalRoot = typeof globalThis !== "undefined" ? globalThis : null;
+    return globalRoot && globalRoot.AiNeighborhoodCatalog
+      ? globalRoot.AiNeighborhoodCatalog
+      : null;
+  }
+
   /*
-    "Brooklin" é família quando o catálogo tem formas qualificadas.
-    "Brooklin Paulista" e "Brooklin Novo" são exatos.
-    A mesma regra vale para outro nome curto com qualificados conhecidos.
+    O catálogo canônico decide família e grafia.
+    Brooklin inclui Paulista e Novo.
+    Butanta vira Butantã.
+    Fora do catálogo, o prefixo do estoque ainda distingue
+    um nome curto de uma forma qualificada.
   */
   function aiNeighborhoodScope(matchedName, knownNeighborhoods) {
+    const catalog = neighborhoodCatalog();
+    const resolved = catalog && catalog.resolveNeighborhood
+      ? catalog.resolveNeighborhood(matchedName)
+      : null;
+
+    if (resolved) {
+      return {
+        mode: resolved.mode,
+        names: resolved.search_names,
+        canonical_name: resolved.canonical_name,
+        city: resolved.city,
+        state: resolved.state
+      };
+    }
+
     const matchedKey = aiNormalizeText(matchedName || "");
-    if (!matchedKey) return { mode: "", names: [] };
+    if (!matchedKey) return { mode: "", names: [], canonical_name: "", city: "", state: "" };
 
     const entries = [];
     const seen = new Set();
@@ -444,7 +476,7 @@
     const label = own ? own.name : String(matchedName).trim();
 
     if (isQualified) {
-      return { mode: "exact", names: [label] };
+      return { mode: "exact", names: [label], canonical_name: label, city: "", state: "" };
     }
 
     const family = entries.filter(entry =>
@@ -455,11 +487,14 @@
     if (family.length > 1) {
       return {
         mode: "family",
-        names: family.map(entry => entry.name)
+        names: family.map(entry => entry.name),
+        canonical_name: label,
+        city: "",
+        state: ""
       };
     }
 
-    return { mode: "exact", names: [label] };
+    return { mode: "exact", names: [label], canonical_name: label, city: "", state: "" };
   }
 
   function aiQueryTokens(value) {
@@ -510,16 +545,18 @@
     const recognizedProject = projectIsNeighborhood ? "" : project;
     const scope = neighborhood
       ? aiNeighborhoodScope(neighborhood, knownNeighborhoods)
-      : { mode: "", names: [] };
+      : { mode: "", names: [], canonical_name: "", city: "", state: "" };
     const query = neighborhood || recognizedProject
       ? ""
       : String(message || "").trim();
 
     return {
       kind: turn.kind,
-      neighborhood,
+      neighborhood: scope.canonical_name || neighborhood,
       neighborhoodMode: scope.mode,
       neighborhoods: scope.names,
+      city: scope.city || "",
+      state: scope.state || "",
       bedrooms: aiExtractBedrooms(message),
       project: recognizedProject,
       query,
@@ -777,7 +814,8 @@
     }
 
     if (turn.neighborhood) {
-      state.neighborhood = turn.neighborhood;
+      const scope = aiNeighborhoodScope(turn.neighborhood, knownNeighborhoods);
+      state.neighborhood = scope.canonical_name || turn.neighborhood;
       state.region = "";
     } else if (turn.region) {
       state.region = turn.region;

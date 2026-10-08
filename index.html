@@ -4762,6 +4762,7 @@ body.match-results-mode #results{
   </div>
 </div>
 
+<script src="ai-neighborhood-catalog.js"></script>
 <script src="ai-search-routing.js"></script>
 <script src="ai-commercial-intent.js"></script>
 <script>
@@ -13178,6 +13179,13 @@ async function searchPropertiesForAi(message){
     return regionContext;
   }
 
+  const neighborhoodScope=state.neighborhood
+    ? AiSearchRouting.aiNeighborhoodScope(
+        state.neighborhood,
+        aiRoutingNeighborhoodCatalog(inventoryForParsing)
+      )
+    : null;
+
   const payload={
     /*
       Busca normal:
@@ -13199,7 +13207,7 @@ async function searchPropertiesForAi(message){
       ? ""
       : String(message||"").trim(),
 
-    neighborhood:state.neighborhood||"",
+    neighborhood:(neighborhoodScope && neighborhoodScope.canonical_name) || state.neighborhood||"",
     project:state.exactName||"",
     bedrooms:Number(state.bedrooms)||0,
     min_price:Number(state.minPrice)||0,
@@ -13207,18 +13215,10 @@ async function searchPropertiesForAi(message){
 
     source:"todos",
     limit:12,
-    neighborhoodMode: state.neighborhood
-      ? AiSearchRouting.aiNeighborhoodScope(
-          state.neighborhood,
-          aiRoutingNeighborhoodCatalog(inventoryForParsing)
-        ).mode
-      : "",
-    neighborhoods: state.neighborhood
-      ? AiSearchRouting.aiNeighborhoodScope(
-          state.neighborhood,
-          aiRoutingNeighborhoodCatalog(inventoryForParsing)
-        ).names
-      : []
+    neighborhoodMode: neighborhoodScope ? neighborhoodScope.mode : "",
+    neighborhoods: neighborhoodScope ? neighborhoodScope.names : [],
+    city: neighborhoodScope ? neighborhoodScope.city : "",
+    state: neighborhoodScope ? neighborhoodScope.state : ""
   };
 
   console.log(
