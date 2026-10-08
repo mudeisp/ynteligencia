@@ -29,6 +29,7 @@ export default async function handler(req, res) {
     success: true,
     count: items.length,
     development_urls_open_in_app: false,
+    development_urls_emitted: false,
     items
   });
 }

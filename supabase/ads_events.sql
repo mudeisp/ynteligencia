@@ -1,7 +1,11 @@
 /*
   Camada de anúncios. Não altera leads, events, behavior_events nem properties.
 
-  Aplicar no Supabase antes de usar /api/ads-event.
+  Banco novo: aplique somente este arquivo.
+  Banco que já rodou a versão com declared_intent:
+  aplique depois supabase/ads_visitors_declared_split.sql.
+  CREATE IF NOT EXISTS não adiciona coluna em tabela existente.
+
   RLS fica ligado e sem policy pública. Só a service role grava e lê.
 */
 
@@ -56,14 +60,17 @@ create table if not exists public.ads_visitors (
   first_wbraid text not null default '',
   first_utm_source text not null default '',
   first_utm_campaign text not null default '',
+  first_product text not null default '',
   first_seen timestamptz not null,
   last_gclid text not null default '',
   last_gbraid text not null default '',
   last_wbraid text not null default '',
   last_utm_source text not null default '',
   last_utm_campaign text not null default '',
+  last_product text not null default '',
   last_seen timestamptz not null,
-  declared_intent jsonb,
+  first_declared_intent jsonb,
+  current_declared_intent jsonb,
   observed_intent jsonb,
   observed_confidence numeric not null default 0,
   created_at timestamptz not null default now(),

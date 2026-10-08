@@ -5039,6 +5039,44 @@ function yntWriteSharedVisitorCookie(id){
   }catch{}
 }
 
+function yntIncomingSharedVisitorId(){
+  try{
+    const params=
+      new URLSearchParams(
+        window.location.search
+      );
+    const vid=
+      params.get("vid");
+
+    return yntValidVisitorId(vid)
+      ? String(vid).trim()
+      : "";
+  }catch{
+    return "";
+  }
+}
+
+function yntCleanSharedVisitorFromUrl(){
+  try{
+    const url=
+      new URL(
+        window.location.href
+      );
+
+    if(!url.searchParams.has("vid"))return;
+
+    url.searchParams.delete("vid");
+
+    history.replaceState(
+      history.state||{},
+      "",
+      url.pathname+
+      url.search+
+      url.hash
+    );
+  }catch{}
+}
+
 function yntIncomingVisitorId(){
   try{
     const params=
@@ -5095,9 +5133,23 @@ function getYnteligenciaVisitorId(){
     O visitor_id usado pelo Supabase e o External ID usado pelo
     OneSignal nascem exatamente deste mesmo valor.
 
-    Não herdamos ID de LP, cookie de www.yincorp.com.br ou parâmetro
-    visitor da URL. Assim APP e OneSignal ficam 1:1.
+    ?vid= é o contrato entre YNTELIGENCIA e agente-yincorp.
+    Só um UUID válido substitui a identidade local.
+    Parâmetro visitor, visitor_id, cookie de LP e valor inválido
+    continuam ignorados.
   */
+  const sharedVisitorId=
+    yntIncomingSharedVisitorId();
+
+  if(sharedVisitorId){
+    safeStorageSet(
+      visitorKey,
+      sharedVisitorId
+    );
+    yntCleanSharedVisitorFromUrl();
+    return sharedVisitorId;
+  }
+
   let id=
     safeStorageGet(
       visitorKey

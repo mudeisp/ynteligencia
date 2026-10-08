@@ -81,7 +81,10 @@ test("entrada com GCLID grava o clique e a primeira origem", async () => {
   assert.equal(result.body.success, true);
   assert.equal(store.visitors[0].first_gclid, "gclid-perdizes");
   assert.equal(store.visitors[0].first_utm_campaign, "perdizes-2-dorms");
-  assert.equal(store.visitors[0].declared_intent.neighborhood, "Perdizes");
+  assert.equal(store.visitors[0].first_declared_intent.neighborhood, "Perdizes");
+  assert.equal(store.visitors[0].current_declared_intent.neighborhood, "Perdizes");
+  assert.equal(store.visitors[0].first_declared_intent.bedrooms, 2);
+  assert.equal(store.visitors[0].first_declared_intent.max_price, 900000);
   assert.equal(store.events[0].event_name, "ad_entry");
 });
 
@@ -137,8 +140,8 @@ test("busca, dois imóveis e high_intent_buyer seguem a regra central", async ()
 
   assert.equal(secondView.body.high_intent_buyer, true);
   assert.equal(secondView.body.property_view_multiple, true);
-  assert.equal(store.visitors[0].declared_intent.bedrooms, 2);
-  assert.equal(store.visitors[0].declared_intent.max_price, 900000);
+  assert.equal(store.visitors[0].first_declared_intent.bedrooms, 2);
+  assert.equal(store.visitors[0].current_declared_intent.max_price, 900000);
   const names = store.events.map(item => item.event_name);
   assert.deepEqual(names, [
     "ai_search",
@@ -222,7 +225,8 @@ test("retorno orgânico preserva a primeira origem e atualiza a última visita",
   assert.equal(store.visitors[0].first_utm_campaign, "campanha-a");
   assert.equal(store.visitors[0].last_gclid, "gclid-primeiro");
   assert.equal(store.visitors[0].last_seen, "2026-10-09T10:00:00.000Z");
-  assert.equal(store.visitors[0].declared_intent.neighborhood, "Aclimação");
+  assert.equal(store.visitors[0].first_declared_intent.neighborhood, "Aclimação");
+  assert.equal(store.visitors[0].current_declared_intent.neighborhood, "Aclimação");
   assert.equal(store.events.filter(item => item.visitor_id === visitor).length, 2);
   assert.equal(store.events[1].session_id, laterSession);
 });
@@ -295,13 +299,30 @@ test("feed de intenção usa só combinação real do inventário", () => {
   ], [
     { neighborhood: "Perdizes", development_name: "Marka Perdizes" }
   ]);
-  assert.equal(items.length, 3);
+  assert.equal(items.length, 2);
   assert.equal(items.some(item => item.url.includes("bairro=perdizes")), true);
   assert.equal(items.some(item => item.url.includes("dormitorios=2")), true);
   assert.equal(items.some(item => item.url.includes("valor_max=900000")), true);
-  assert.equal(items.some(item => item.url.includes("empreendimento=marka-perdizes")), true);
-  assert.equal(items.some(item => item.development_routed), false);
+  assert.equal(items.some(item => item.url.includes("empreendimento=")), false);
   assert.equal(items.some(item => item.url.includes("inexistente")), false);
+  assert.equal(ads.intentUrl({
+    neighborhood: "Perdizes",
+    development: "",
+    bedrooms: 0,
+    max_price: 0
+  }), "https://app.yincorp.com.br/?bairro=perdizes");
+  assert.equal(ads.intentUrl({
+    neighborhood: "Perdizes",
+    development: "",
+    bedrooms: 2,
+    max_price: 900000
+  }), "https://app.yincorp.com.br/?bairro=perdizes&dormitorios=2&valor_max=900000");
+  assert.equal(ads.intentUrl({
+    neighborhood: "",
+    development: "Marka Perdizes",
+    bedrooms: 2,
+    max_price: 0
+  }), "");
 });
 
 test("planilha única traz os dois produtos e não tem contato", () => {
@@ -347,6 +368,8 @@ test("a YNTELIGENCIA reutiliza visitor e sessão e aceita property_id na URL", (
   assert.match(html, /visitor_id:YNTELIGENCIA_VISITOR_ID/);
   assert.match(html, /session_id:YNTELIGENCIA_SESSION_ID/);
   assert.match(html, /launchParams\.get\("property_id"\)/);
+  assert.match(html, /params\.get\("vid"\)/);
+  assert.match(html, /yntValidVisitorId\(vid\)/);
   assert.match(html, /yntAdsTrack\("ai_search"/);
   assert.match(html, /yntAdsTrack\("property_view"/);
   assert.match(html, /yntAdsTrack\("lead_created"/);
@@ -388,4 +411,241 @@ test("POST externo continua bloqueado e a planilha exige token", async () => {
     sheetHandler({ method: "GET", headers: {} }, res);
   });
   assert.equal(sheet.code, 503);
+
+  const { default: conversionHandler } = await import(`./api/google-ads-conversions.js?t=${Date.now()}`);
+  const conversions = await new Promise(resolve => {
+    const res = {
+      setHeader() {},
+      status(code) { this.statusCode = code; return this; },
+      json(body) { resolve({ code: this.statusCode, body }); },
+      end() { resolve({ code: this.statusCode }); }
+    };
+    conversionHandler({ method: "GET", headers: {} }, res);
+  });
+  assert.equal(conversions.code, 503);
+});
+
+test("primeira busca grava first e current e a busca seguinte só move current", async () => {
+  const store = memory();
+  const start = new Date("2026-10-08T12:00:00.000Z");
+  await ads.recordAdsEvent(base({
+    event_name: "ai_search",
+    gclid: "gclid-perdizes",
+    utm_source: "google",
+    utm_campaign: "perdizes-2-dorms",
+    intent: { neighborhood: "Perdizes", bedrooms: 2, max_price: 900000 }
+  }), store.rest, start);
+
+  const prices = [950000, 980000, 1020000];
+  for (let index = 0; index < prices.length; index += 1) {
+    await ads.recordAdsEvent(base({
+      event_name: "property_view",
+      gclid: "gclid-perdizes",
+      property: {
+        property_id: `nonstop:${index}`,
+        neighborhood: "Perdizes",
+        bedrooms: 3,
+        price: prices[index]
+      }
+    }), store.rest, new Date(start.getTime() + ((index + 1) * 20000)));
+  }
+
+  await ads.recordAdsEvent(base({
+    event_name: "ai_search",
+    session_id: laterSession,
+    declared_intent: { neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 },
+    observed_intent: { neighborhood: "Moema", bedrooms: 1, price_min: 1, price_max: 2 }
+  }), store.rest, new Date("2026-10-09T15:00:00.000Z"));
+
+  await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    session_id: "session-ads-3"
+  }), store.rest, new Date("2026-10-10T15:00:00.000Z"));
+
+  const row = store.visitors[0];
+  assert.equal(row.first_declared_intent.neighborhood, "Perdizes");
+  assert.equal(row.first_declared_intent.bedrooms, 2);
+  assert.equal(row.first_declared_intent.max_price, 900000);
+  assert.equal(row.current_declared_intent.neighborhood, "Brooklin");
+  assert.equal(row.current_declared_intent.bedrooms, 3);
+  assert.equal(row.current_declared_intent.max_price, 1100000);
+  assert.equal(row.observed_intent.neighborhood, "Perdizes");
+  assert.equal(row.observed_intent.bedrooms, 3);
+  assert.equal(row.observed_intent.price_min, 900000);
+  assert.equal(row.observed_intent.price_max, 1050000);
+  assert.equal(row.observed_confidence, 0.75);
+  assert.equal(row.first_gclid, "gclid-perdizes");
+  assert.equal(row.first_utm_source, "google");
+  assert.equal(row.first_utm_campaign, "perdizes-2-dorms");
+});
+
+test("high intent e lead com clique entram na exportação e evento sem clique fica de fora", async () => {
+  const store = memory();
+  const start = new Date("2026-10-08T18:00:00.000Z");
+  await ads.recordAdsEvent(base({
+    event_name: "ai_search",
+    gclid: "gclid-perdizes",
+    intent: { neighborhood: "Perdizes", bedrooms: 2, max_price: 900000 }
+  }), store.rest, start);
+  await ads.recordAdsEvent(base({
+    event_name: "property_view",
+    gclid: "gclid-perdizes",
+    property: { property_id: "nonstop:a", neighborhood: "Perdizes", bedrooms: 2, price: 800000 }
+  }), store.rest, new Date(start.getTime() + 20000));
+  await ads.recordAdsEvent(base({
+    event_name: "property_view",
+    gclid: "gclid-perdizes",
+    property: { property_id: "nonstop:b", neighborhood: "Perdizes", bedrooms: 2, price: 850000 }
+  }), store.rest, new Date(start.getTime() + 40000));
+  await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    gclid: "gclid-perdizes",
+    email: "ana@example.com",
+    telefone: "11999999999",
+    property: { property_id: "nonstop:b", name: "Ed. Vizinho" }
+  }), store.rest, new Date("2026-10-08T18:41:03.000Z"));
+
+  const other = "22222222-2222-4222-8222-222222222222";
+  await ads.recordAdsEvent({
+    product: "ynteligencia",
+    visitor_id: other,
+    session_id: "session-sem-clique",
+    event_name: "ai_search",
+    intent: { neighborhood: "Pinheiros", bedrooms: 1 }
+  }, store.rest, new Date("2026-10-08T19:00:00.000Z"));
+  await ads.recordAdsEvent({
+    product: "ynteligencia",
+    visitor_id: other,
+    session_id: "session-sem-clique",
+    event_name: "property_view",
+    property: { property_id: "orulo:1", neighborhood: "Pinheiros", bedrooms: 1, price: 700000 }
+  }, store.rest, new Date("2026-10-08T19:01:00.000Z"));
+  const quiet = await ads.recordAdsEvent({
+    product: "ynteligencia",
+    visitor_id: other,
+    session_id: "session-sem-clique",
+    event_name: "property_view",
+    property: { property_id: "orulo:2", neighborhood: "Pinheiros", bedrooms: 1, price: 720000 }
+  }, store.rest, new Date("2026-10-08T19:02:00.000Z"));
+  assert.equal(quiet.body.high_intent_buyer, true);
+
+  const high = store.events.find(item => item.event_name === "high_intent_buyer" && item.gclid === "gclid-perdizes");
+  const lead = store.events.find(item => item.event_name === "lead_created");
+  const hidden = store.events.find(item => item.event_name === "high_intent_buyer" && item.visitor_id === other);
+  assert.ok(high.event_id);
+  assert.ok(hidden.event_id);
+
+  const csv = ads.googleAdsConversionsCsv(store.events);
+  assert.match(csv, /^Google Click ID,GBRAID,WBRAID,Conversion Name,/);
+  assert.match(csv, /High Intent Buyer/);
+  assert.match(csv, /Lead Created/);
+  assert.match(csv, /2026-10-08 15:41:03-0300/);
+  assert.match(csv, new RegExp(high.event_id));
+  assert.match(csv, new RegExp(lead.event_id));
+  assert.equal(csv.includes(hidden.event_id), false);
+  assert.equal(csv.includes("ai_search"), false);
+  assert.equal(csv.includes(visitor), false);
+  assert.equal(csv.includes("ana@example.com"), false);
+  assert.equal(csv.includes("11999999999"), false);
+  assert.equal(ads.HIGH_INTENT_CONVERSION_VALUE, 1);
+  assert.equal(ads.LEAD_CONVERSION_VALUE, 10);
+  assert.match(csv, /"1","BRL"/);
+  assert.match(csv, /"10","BRL"/);
+
+  const sheet = ads.sheetCsv(store.events);
+  assert.match(sheet, /^event_time,event_name,product,visitor_id,session_id,/);
+  assert.match(sheet, new RegExp(other));
+  assert.match(sheet, /session-sem-clique/);
+  assert.match(sheet, /high_intent_buyer/);
+  assert.match(sheet, /gclid-perdizes/);
+  assert.match(sheet, /ynteligencia/);
+});
+
+test("exportação deduplica pelo event_id e aceita gbraid ou wbraid", () => {
+  const csv = ads.googleAdsConversionsCsv([
+    {
+      event_id: "evt-1",
+      event_name: "high_intent_buyer",
+      event_time: "2026-10-08T18:32:11.000Z",
+      product: "ynteligencia",
+      gclid: "gclid-perdizes",
+      visitor_id: visitor,
+      session_id: session
+    },
+    {
+      event_id: "evt-1",
+      event_name: "lead_created",
+      event_time: "2026-10-08T18:40:00.000Z",
+      product: "ynteligencia",
+      gclid: "gclid-perdizes"
+    },
+    {
+      event_id: "evt-gbraid",
+      event_name: "lead_created",
+      event_time: "2026-10-08T18:41:03.000Z",
+      product: "agente_yincorp",
+      gbraid: "gbraid-brooklin"
+    },
+    {
+      event_id: "evt-wbraid",
+      event_name: "high_intent_buyer",
+      event_time: "2026-10-08T18:42:00.000Z",
+      product: "agente_yincorp",
+      wbraid: "wbraid-brooklin"
+    },
+    {
+      event_id: "evt-sem-clique",
+      event_name: "lead_created",
+      event_time: "2026-10-08T18:43:00.000Z",
+      product: "ynteligencia"
+    }
+  ]);
+  assert.equal(csv.split("evt-1").length - 1, 1);
+  assert.match(csv, /2026-10-08 15:32:11-0300/);
+  assert.match(csv, /gbraid-brooklin/);
+  assert.match(csv, /wbraid-brooklin/);
+  assert.equal(csv.includes("evt-sem-clique"), false);
+  assert.equal(csv.includes(visitor), false);
+  assert.equal(csv.includes("session-ads"), false);
+});
+
+test("retorno no outro produto preserva a primeira origem e atualiza o último toque", async () => {
+  const store = memory();
+  await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    gclid: "gclid-original",
+    utm_source: "google",
+    utm_campaign: "campanha-original",
+    intent: { neighborhood: "Perdizes", bedrooms: 2, max_price: 900000 }
+  }), store.rest, new Date("2026-10-08T12:00:00.000Z"));
+
+  await ads.recordAdsEvent({
+    product: "agente_yincorp",
+    event_name: "ad_entry",
+    visitor_id: visitor,
+    session_id: laterSession
+  }, store.rest, new Date("2026-10-10T12:00:00.000Z"));
+
+  const row = store.visitors[0];
+  assert.equal(row.first_product, "ynteligencia");
+  assert.equal(row.first_gclid, "gclid-original");
+  assert.equal(row.first_utm_source, "google");
+  assert.equal(row.first_utm_campaign, "campanha-original");
+  assert.equal(row.last_gclid, "gclid-original");
+  assert.equal(row.last_utm_source, "organic");
+  assert.equal(row.last_product, "agente_yincorp");
+  assert.equal(row.last_seen, "2026-10-10T12:00:00.000Z");
+  assert.equal(row.first_declared_intent.neighborhood, "Perdizes");
+  assert.equal(row.current_declared_intent.neighborhood, "Perdizes");
+});
+
+test("vid válido atravessa produtos e vid inválido não substitui o local", () => {
+  const shared = "33333333-3333-4333-8333-333333333333";
+  assert.equal(ads.acceptVisitorId(shared, visitor), shared);
+  assert.equal(ads.acceptVisitorId("nao-e-uuid", visitor), visitor);
+  assert.equal(ads.acceptVisitorId("", ""), "");
+  assert.equal(ads.validVisitorId("vid-perdizes"), false);
+  const handoff = ads.visitorHandoffUrl("https://agente.example/chat", visitor);
+  assert.equal(handoff, `https://agente.example/chat?vid=${visitor}`);
+  assert.equal(ads.visitorHandoffUrl("https://agente.example/chat", "invalido"), "https://agente.example/chat");
 });

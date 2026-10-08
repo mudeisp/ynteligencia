@@ -40,6 +40,32 @@
     "notes"
   ];
   const APP_ORIGIN = "https://app.yincorp.com.br";
+  const HIGH_INTENT_CONVERSION_VALUE = 1;
+  const LEAD_CONVERSION_VALUE = 10;
+  const CONVERSION_CURRENCY = "BRL";
+  const VISITOR_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const EXPLICIT_SEARCH_EVENTS = new Set(["ai_search", "ad_entry"]);
+  const GOOGLE_CONVERSIONS = {
+    high_intent_buyer: {
+      name: "High Intent Buyer",
+      value: HIGH_INTENT_CONVERSION_VALUE
+    },
+    lead_created: {
+      name: "Lead Created",
+      value: LEAD_CONVERSION_VALUE
+    }
+  };
+  const GOOGLE_CONVERSION_COLUMNS = [
+    "Google Click ID",
+    "GBRAID",
+    "WBRAID",
+    "Conversion Name",
+    "Conversion Time",
+    "Conversion Value",
+    "Conversion Currency",
+    "Order ID",
+    "Product"
+  ];
 
   function clean(value) {
     return String(value ?? "").replace(/\s+/g, " ").trim();
@@ -138,6 +164,16 @@
       return { error: "event_time inválido" };
     }
 
+    if (!validVisitorId(visitorId)) {
+      return { error: "visitor_id inválido" };
+    }
+
+    const metadata = omitPii(body.metadata && typeof body.metadata === "object" ? body.metadata : {});
+    delete metadata.observed_intent;
+    delete metadata.declared_intent;
+    delete metadata.first_declared_intent;
+    delete metadata.current_declared_intent;
+
     return {
       event: {
         event_id: clean(body.event_id) || "",
@@ -154,11 +190,34 @@
         utm_campaign: clean(body.utm_campaign),
         utm_term: clean(body.utm_term),
         utm_content: clean(body.utm_content),
-        intent: normalizeIntent(body.intent),
+        intent: normalizeIntent(body.intent || body.declared_intent),
         property: normalizeProperty(body.property),
-        metadata: omitPii(body.metadata && typeof body.metadata === "object" ? body.metadata : {})
+        metadata
       }
     };
+  }
+
+  function validVisitorId(value) {
+    return VISITOR_ID_PATTERN.test(clean(value));
+  }
+
+  function acceptVisitorId(candidate, localId) {
+    if (validVisitorId(candidate)) return clean(candidate);
+    if (validVisitorId(localId)) return clean(localId);
+    return "";
+  }
+
+  function visitorHandoffUrl(baseUrl, visitorId) {
+    const base = clean(baseUrl);
+    if (!base || !validVisitorId(visitorId)) return base;
+    try {
+      const url = new URL(base);
+      url.searchParams.set("vid", clean(visitorId));
+      return url.toString();
+    } catch (error) {
+      const joiner = base.includes("?") ? "&" : "?";
+      return `${base}${joiner}vid=${encodeURIComponent(clean(visitorId))}`;
+    }
   }
 
   function samePlace(left, right) {
@@ -358,39 +417,62 @@
     }) || null;
   }
 
+  function explicitDeclaredIntent(event) {
+    if (!event || !EXPLICIT_SEARCH_EVENTS.has(event.event_name)) return null;
+    if (!isValidSearch(event.intent)) return null;
+    return event.intent;
+  }
+
+  function organicArrival(event) {
+    return event.event_name === "ad_entry" &&
+      !event.gclid &&
+      !event.gbraid &&
+      !event.wbraid &&
+      !event.utm_source;
+  }
+
   function touchPatch(current, event) {
     const seen = event.event_time;
+    const declared = explicitDeclaredIntent(event);
     const next = {
       visitor_id: event.visitor_id,
       last_seen: seen,
+      last_product: event.product || "",
       updated_at: seen
     };
     if (event.gclid) next.last_gclid = event.gclid;
     if (event.gbraid) next.last_gbraid = event.gbraid;
     if (event.wbraid) next.last_wbraid = event.wbraid;
     if (event.utm_source) next.last_utm_source = event.utm_source;
+    else if (organicArrival(event)) next.last_utm_source = "organic";
     if (event.utm_campaign) next.last_utm_campaign = event.utm_campaign;
 
     if (!current) {
+      const paid = Boolean(event.gclid || event.gbraid || event.wbraid);
       return {
         ...next,
         first_seen: seen,
+        first_product: event.product || "",
         first_gclid: event.gclid || "",
         first_gbraid: event.gbraid || "",
         first_wbraid: event.wbraid || "",
-        first_utm_source: event.utm_source || "",
+        first_utm_source: event.utm_source || (paid ? "" : (organicArrival(event) ? "organic" : "")),
         first_utm_campaign: event.utm_campaign || "",
         last_gclid: event.gclid || "",
         last_gbraid: event.gbraid || "",
         last_wbraid: event.wbraid || "",
-        last_utm_source: event.utm_source || "",
+        last_utm_source: event.utm_source || (organicArrival(event) ? "organic" : ""),
         last_utm_campaign: event.utm_campaign || "",
-        declared_intent: isValidSearch(event.intent) ? event.intent : null
+        first_declared_intent: declared,
+        current_declared_intent: declared
       };
     }
 
-    if (!current.declared_intent && isValidSearch(event.intent)) {
-      next.declared_intent = event.intent;
+    if (!current.first_declared_intent && declared) {
+      next.first_declared_intent = declared;
+    }
+    if (declared) {
+      next.current_declared_intent = declared;
     }
     return next;
   }
@@ -427,13 +509,17 @@
   }
 
   function intentUrl(intent) {
+    /*
+      O app ainda não consome ?empreendimento=.
+      Intenção que depende do empreendimento não vira URL.
+    */
+    if (intent.development) return "";
     const params = new URLSearchParams();
     if (intent.neighborhood) params.set("bairro", slug(intent.neighborhood));
     if (intent.bedrooms > 0) params.set("dormitorios", String(intent.bedrooms));
     if (intent.max_price >= 100000) {
       params.set("valor_max", String(Math.round(intent.max_price / 100000) * 100000));
     }
-    if (intent.development) params.set("empreendimento", slug(intent.development));
     const query = params.toString();
     return query ? `${APP_ORIGIN}/?${query}` : "";
   }
@@ -492,8 +578,7 @@
         max_price: item.intent.max_price >= 100000
           ? Math.round(item.intent.max_price / 100000) * 100000
           : 0,
-        signals: item.count,
-        development_routed: false
+        signals: item.count
       }))
       .filter(item => item.url);
   }
@@ -533,6 +618,54 @@
     const lines = [SHEET_COLUMNS.join(",")];
     for (const row of rows || []) {
       lines.push(SHEET_COLUMNS.map(column => csvCell(row[column])).join(","));
+    }
+    return `${lines.join("\n")}\n`;
+  }
+
+  function hasClickId(row) {
+    return Boolean(clean(row && row.gclid) || clean(row && row.gbraid) || clean(row && row.wbraid));
+  }
+
+  function googleAdsConversionTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const shifted = new Date(date.getTime() - (3 * 60 * 60 * 1000));
+    const pad = number => String(number).padStart(2, "0");
+    return [
+      shifted.getUTCFullYear(),
+      pad(shifted.getUTCMonth() + 1),
+      pad(shifted.getUTCDate())
+    ].join("-") + ` ${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}:${pad(shifted.getUTCSeconds())}-0300`;
+  }
+
+  function googleAdsConversionRows(rows) {
+    const seen = new Set();
+    const exported = [];
+    for (const row of rows || []) {
+      const spec = GOOGLE_CONVERSIONS[clean(row.event_name)];
+      const orderId = clean(row.event_id);
+      if (!spec || !orderId || seen.has(orderId) || !hasClickId(row)) continue;
+      seen.add(orderId);
+      exported.push({
+        "Google Click ID": clean(row.gclid),
+        GBRAID: clean(row.gbraid),
+        WBRAID: clean(row.wbraid),
+        "Conversion Name": spec.name,
+        "Conversion Time": googleAdsConversionTime(row.event_time),
+        "Conversion Value": spec.value,
+        "Conversion Currency": CONVERSION_CURRENCY,
+        "Order ID": orderId,
+        Product: clean(row.product)
+      });
+    }
+    return exported;
+  }
+
+  function googleAdsConversionsCsv(rows) {
+    const exported = googleAdsConversionRows(rows);
+    const lines = [GOOGLE_CONVERSION_COLUMNS.join(",")];
+    for (const row of exported) {
+      lines.push(GOOGLE_CONVERSION_COLUMNS.map(column => csvCell(row[column])).join(","));
     }
     return `${lines.join("\n")}\n`;
   }
@@ -702,11 +835,18 @@
     PRODUCTS,
     CLIENT_EVENTS,
     SHEET_COLUMNS,
+    GOOGLE_CONVERSION_COLUMNS,
+    HIGH_INTENT_CONVERSION_VALUE,
+    LEAD_CONVERSION_VALUE,
+    CONVERSION_CURRENCY,
     APP_ORIGIN,
     clean,
     normalizeText,
     slug,
     omitPii,
+    validVisitorId,
+    acceptVisitorId,
+    visitorHandoffUrl,
     normalizeIntent,
     normalizeProperty,
     isValidSearch,
@@ -721,6 +861,9 @@
     intentFeedItems,
     intentUrl,
     sheetCsv,
+    googleAdsConversionTime,
+    googleAdsConversionRows,
+    googleAdsConversionsCsv,
     recordAdsEvent
   };
 });
