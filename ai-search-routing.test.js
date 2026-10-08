@@ -668,3 +668,88 @@ test("matriz de bairro, dormitório e empreendimento conhecido", () => {
   assert.equal(api.includes('neighborhoodMode === "family"'), true);
   assert.equal(api.includes("key.startsWith(`${familyRoot} `)"), true);
 });
+
+test("nome de empreendimento vem antes do bairro que faz parte do nome", () => {
+  const projects = [
+    "Marka Perdizes",
+    "Marka Cantídio",
+    "Marka Curuçá",
+    "Marka Tucuruvi",
+    "Marka Unik",
+    "Marka Vila Ré",
+    "Well Perdizes - NR",
+    "Well Perdizes - Residencial",
+    "Well Home",
+    "Rooftop Perdizes - Breve Lançamento",
+    "Upper Brooklin",
+    "Nurban Venâncio - Residencial - Breve Lançamento",
+    "Welconx Pinheiros - Residencial",
+    "Welconx Perdizes"
+  ];
+
+  function route(phrase) {
+    return routing.aiNextSearchState({}, phrase, names, projects);
+  }
+
+  const marka = route("Marka Perdizes");
+  assert.equal(marka.turn.reason, "known_project");
+  assert.equal(marka.state.exactName, "Marka Perdizes");
+  assert.equal(marka.state.neighborhood, "");
+
+  const markaPrice = route("Marka Perdizes até 900 mil");
+  assert.equal(markaPrice.state.exactName, "Marka Perdizes");
+  assert.equal(markaPrice.state.neighborhood, "");
+  assert.equal(markaPrice.state.maxPrice, 900000);
+
+  const well = route("Well Perdizes");
+  assert.equal(well.state.exactName, "Well Perdizes");
+  assert.equal(well.state.neighborhood, "");
+
+  const rooftop = route("Rooftop Perdizes");
+  assert.equal(rooftop.state.exactName, "Rooftop Perdizes");
+  assert.equal(rooftop.state.neighborhood, "");
+
+  const upper = route("Upper Brooklin");
+  assert.equal(upper.state.exactName, "Upper Brooklin");
+  assert.equal(upper.state.neighborhood, "");
+
+  const nurban = route("Nurban Venâncio");
+  assert.equal(nurban.state.exactName, "Nurban Venâncio");
+
+  const welconx = route("Welconx Pinheiros");
+  assert.equal(welconx.state.exactName, "Welconx Pinheiros");
+  assert.equal(welconx.state.neighborhood, "");
+
+  const short = route("Marka");
+  assert.equal(short.turn.kind, "project_options");
+  assert.equal(short.state.exactName, "");
+  assert.equal(short.state.neighborhood, "");
+  assert.equal(short.turn.projectOptions.includes("Marka Perdizes"), true);
+  assert.equal(short.turn.projectOptions.includes("Marka Cantídio"), true);
+  assert.equal(new Set(short.turn.projectOptions).size, short.turn.projectOptions.length);
+
+  const perdizes = route("Perdizes");
+  assert.equal(perdizes.state.neighborhood, "Perdizes");
+  assert.equal(perdizes.state.exactName, "");
+
+  const dorms = route("Perdizes 2 dormitórios");
+  assert.equal(dorms.state.neighborhood, "Perdizes");
+  assert.equal(dorms.state.exactName, "");
+  assert.equal(dorms.state.bedrooms, 2);
+
+  const pinheiros = route("Pinheiros até 800 mil");
+  assert.equal(pinheiros.state.neighborhood, "Pinheiros");
+  assert.equal(pinheiros.state.exactName, "");
+  assert.equal(pinheiros.state.maxPrice, 800000);
+
+  const apartment = route("apartamento em Perdizes até 900 mil");
+  assert.equal(apartment.state.neighborhood, "Perdizes");
+  assert.equal(apartment.state.exactName, "");
+  assert.equal(apartment.state.maxPrice, 900000);
+
+  assert.equal(routing.aiProjectLookupToken("Perdizes", names), "");
+  assert.equal(routing.aiProjectLookupToken("Perdizes 2 dormitórios", names), "");
+  assert.equal(routing.aiProjectLookupToken("Pinheiros até 800 mil", names), "");
+  assert.equal(routing.aiProjectLookupToken("apartamento em Perdizes até 900 mil", names), "");
+  assert.equal(routing.aiProjectLookupToken("Marka Perdizes", names), "marka");
+});

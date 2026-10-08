@@ -705,6 +705,33 @@ export default async function handler(req, res) {
         : tokens;
 
     if (
+      projectTokens.length
+    ) {
+      const projectPhrase =
+        normalize(project)
+          .replace(/\s+/g, " ")
+          .trim();
+
+      candidates =
+        candidates.filter(
+          property => {
+            const name =
+              normalize(
+                propertyName(
+                  property
+                )
+              )
+                .replace(/\s+/g, " ");
+
+            return (
+              projectPhrase &&
+              name.includes(
+                projectPhrase
+              )
+            );
+          }
+        );
+    } else if (
       finalTokens.length
     ) {
       candidates =
