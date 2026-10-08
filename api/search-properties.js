@@ -1,3 +1,8 @@
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const neighborhoodCatalog = require("../ai-neighborhood-catalog.js");
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -232,6 +237,30 @@ export default async function handler(req, res) {
       );
     }
 
+    function propertyCity(property) {
+      const raw = rawOf(property);
+      const building = buildingOf(property);
+
+      return (
+        property?.city ||
+        building?.address?.city ||
+        raw?.city ||
+        ""
+      );
+    }
+
+    function propertyState(property) {
+      const raw = rawOf(property);
+      const building = buildingOf(property);
+
+      return (
+        property?.state ||
+        building?.address?.state ||
+        raw?.state ||
+        ""
+      );
+    }
+
     function propertyValue(property) {
       const typology =
         typologyOf(property);
@@ -368,6 +397,10 @@ export default async function handler(req, res) {
       neighborhood
     ]);
 
+    const resolvedNeighborhood = neighborhoodCatalog.resolveNeighborhood(
+      neighborhood || wantedNeighborhoods[0] || ""
+    );
+
     function createBaseParams() {
       const params =
         new URLSearchParams();
@@ -396,7 +429,22 @@ export default async function handler(req, res) {
         );
       }
 
-      if (neighborhoodMode === "family" && neighborhood) {
+      if (resolvedNeighborhood) {
+        const filters = neighborhoodCatalog.postgrestNeighborhoodFilters(
+          resolvedNeighborhood
+        );
+
+        if (filters.neighborhood) {
+          params.set("neighborhood", filters.neighborhood);
+        }
+
+        if (filters.or) {
+          params.set("or", filters.or);
+        }
+
+        params.set("city", filters.city);
+        params.set("state", filters.state);
+      } else if (neighborhoodMode === "family" && neighborhood) {
         const familyRoot = String(neighborhood).replace(/["*,()]/g, "");
         const familyNames = wantedNeighborhoods.length
           ? wantedNeighborhoods
@@ -680,7 +728,18 @@ export default async function handler(req, res) {
         );
     }
 
-    if (neighborhood || wantedNeighborhoods.length) {
+    if (resolvedNeighborhood) {
+      candidates = candidates.filter(property =>
+        neighborhoodCatalog.propertyMatchesNeighborhood(
+          {
+            neighborhood: propertyNeighborhood(property),
+            city: propertyCity(property),
+            state: propertyState(property)
+          },
+          resolvedNeighborhood
+        )
+      );
+    } else if (neighborhood || wantedNeighborhoods.length) {
       const familyRoot = normalize(neighborhood);
       const wanted = new Set(
         wantedNeighborhoods.map(name => normalize(name))
