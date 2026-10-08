@@ -5039,6 +5039,44 @@ function yntWriteSharedVisitorCookie(id){
   }catch{}
 }
 
+function yntIncomingSharedVisitorId(){
+  try{
+    const params=
+      new URLSearchParams(
+        window.location.search
+      );
+    const vid=
+      params.get("vid");
+
+    return yntValidVisitorId(vid)
+      ? String(vid).trim()
+      : "";
+  }catch{
+    return "";
+  }
+}
+
+function yntCleanSharedVisitorFromUrl(){
+  try{
+    const url=
+      new URL(
+        window.location.href
+      );
+
+    if(!url.searchParams.has("vid"))return;
+
+    url.searchParams.delete("vid");
+
+    history.replaceState(
+      history.state||{},
+      "",
+      url.pathname+
+      url.search+
+      url.hash
+    );
+  }catch{}
+}
+
 function yntIncomingVisitorId(){
   try{
     const params=
@@ -5095,9 +5133,23 @@ function getYnteligenciaVisitorId(){
     O visitor_id usado pelo Supabase e o External ID usado pelo
     OneSignal nascem exatamente deste mesmo valor.
 
-    Não herdamos ID de LP, cookie de www.yincorp.com.br ou parâmetro
-    visitor da URL. Assim APP e OneSignal ficam 1:1.
+    ?vid= é o contrato entre YNTELIGENCIA e agente-yincorp.
+    Só um UUID válido substitui a identidade local.
+    Parâmetro visitor, visitor_id, cookie de LP e valor inválido
+    continuam ignorados.
   */
+  const sharedVisitorId=
+    yntIncomingSharedVisitorId();
+
+  if(sharedVisitorId){
+    safeStorageSet(
+      visitorKey,
+      sharedVisitorId
+    );
+    yntCleanSharedVisitorFromUrl();
+    return sharedVisitorId;
+  }
+
   let id=
     safeStorageGet(
       visitorKey
@@ -6184,6 +6236,67 @@ async function supabaseTrack(
 
 
 
+function yntAdsAttribution(){
+  const source = typeof YNTELIGENCIA_ATTRIBUTION==="object" && YNTELIGENCIA_ATTRIBUTION
+    ? YNTELIGENCIA_ATTRIBUTION
+    : {};
+  return {
+    gclid: source.gclid || "",
+    gbraid: source.gbraid || "",
+    wbraid: source.wbraid || "",
+    utm_source: source.utm_source || "",
+    utm_medium: source.utm_medium || "",
+    utm_campaign: source.utm_campaign || "",
+    utm_term: source.utm_term || "",
+    utm_content: source.utm_content || ""
+  };
+}
+
+function yntAdsTrack(eventName, detail){
+  try{
+    const property = detail && detail.property ? detail.property : null;
+    const intent = detail && detail.intent ? detail.intent : null;
+    const dedupeKey = [
+      eventName,
+      YNTELIGENCIA_SESSION_ID,
+      property && property.property_id || "",
+      intent && intent.neighborhood || "",
+      intent && intent.development || "",
+      intent && intent.bedrooms || "",
+      intent && intent.max_price || ""
+    ].join("|");
+    const now = Date.now();
+    const recent = window.__yntAdsRecent || (window.__yntAdsRecent = {});
+    if(recent[dedupeKey] && now - recent[dedupeKey] < 15000) return;
+    recent[dedupeKey] = now;
+    fetch("/api/ads-event", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      keepalive:true,
+      body:JSON.stringify({
+        product:"ynteligencia",
+        event_name:eventName,
+        visitor_id:YNTELIGENCIA_VISITOR_ID,
+        session_id:YNTELIGENCIA_SESSION_ID,
+        ...yntAdsAttribution(),
+        intent,
+        property
+      })
+    }).catch(()=>{});
+  }catch(error){}
+}
+
+function yntAdsIntentFromState(){
+  return {
+    neighborhood:(aiSearchState && aiSearchState.neighborhood) || (typeof adIntent!=="undefined" && adIntent.neighborhood) || "",
+    development:(aiSearchState && aiSearchState.exactName) || "",
+    bedrooms:Number((aiSearchState && aiSearchState.bedrooms) || (typeof adIntent!=="undefined" && adIntent.bedrooms) || 0) || 0,
+    min_price:Number((aiSearchState && aiSearchState.minPrice) || (typeof adIntent!=="undefined" && adIntent.minPrice) || 0) || 0,
+    max_price:Number((aiSearchState && aiSearchState.maxPrice) || (typeof adIntent!=="undefined" && adIntent.maxPrice) || 0) || 0,
+    inventory_source:(aiSearchState && aiSearchState.inventorySource) || "todos"
+  };
+}
+
 function scheduleYnteligenciaSessionStart(){
   const sentKey=
     `ynteligencia_session_start_sent_${YNTELIGENCIA_SESSION_ID}`;
@@ -6276,6 +6389,26 @@ function scheduleYnteligenciaSessionStart(){
           )
       }
     ).catch(()=>{});
+
+    const adsEntry = yntAdsAttribution();
+    if(
+      adsEntry.gclid ||
+      adsEntry.gbraid ||
+      adsEntry.wbraid ||
+      adsEntry.utm_source ||
+      adsEntry.utm_campaign
+    ){
+      yntAdsTrack("ad_entry", {
+        intent:{
+          neighborhood: typeof adIntent!=="undefined" ? adIntent.neighborhood || "" : "",
+          development:"",
+          bedrooms:Number(typeof adIntent!=="undefined" ? adIntent.bedrooms : 0) || 0,
+          min_price:Number(typeof adIntent!=="undefined" ? adIntent.minPrice : 0) || 0,
+          max_price:Number(typeof adIntent!=="undefined" ? adIntent.maxPrice : 0) || 0,
+          inventory_source:"todos"
+        }
+      });
+    }
   };
 
   /*
@@ -13863,6 +13996,17 @@ async function searchPropertiesForAi(message){
     inventoryContext
   );
 
+  yntAdsTrack("ai_search", {
+    intent:{
+      neighborhood: payload.neighborhood || "",
+      development: payload.project || "",
+      bedrooms: Number(payload.bedrooms)||0,
+      min_price: Number(payload.min_price)||0,
+      max_price: Number(payload.max_price)||0,
+      inventory_source: payload.source || "todos"
+    }
+  });
+
   aiStoreSearchContext(inventoryContext);
 
   return inventoryContext;
@@ -17846,6 +17990,19 @@ async function showPhotoModal(id){
     });
   }catch(error){}
 
+  yntAdsTrack("property_view", {
+    intent: yntAdsIntentFromState(),
+    property:{
+      property_id: String(p.id||""),
+      name: p.name||"",
+      neighborhood: p.neighborhood||"",
+      development: p.development || "",
+      bedrooms: Number(p.bedrooms)||0,
+      price: Number(p.value)||0,
+      inventory_source: p.source || ""
+    }
+  });
+
   supabaseTrack("property_view",{
     property_id:
       String(p.id||""),
@@ -20325,6 +20482,18 @@ $("specialistFloat")?.addEventListener(
 
 
 function openLeadCapture(p,prefill={}){
+  yntAdsTrack("specialist_cta_opened", {
+    intent: yntAdsIntentFromState(),
+    property:{
+      property_id: String(p && (p.id || p.property_id) || ""),
+      name: p && (p.name || p.property_name) || "",
+      neighborhood: p && p.neighborhood || "",
+      bedrooms: Number(p && p.bedrooms)||0,
+      price: Number(p && (p.value || p.property_value))||0,
+      inventory_source: p && (p.source || p.inventory_source) || ""
+    }
+  });
+
   const selectedProperty=aiSelectLeadProperty(p, aiOpenedProperties);
   if(selectedProperty.primary && aiSyntheticPropertyId(p?.id)){
     p=selectedProperty.primary;
@@ -20751,6 +20920,18 @@ function openLeadCapture(p,prefill={}){
               property_id:lead.property_id
             });
           }
+
+          yntAdsTrack("lead_created", {
+            intent: yntAdsIntentFromState(),
+            property:{
+              property_id: lead.property_id || "",
+              name: lead.property_name || "",
+              neighborhood: lead.neighborhood || "",
+              bedrooms: Number(lead.bedrooms)||0,
+              price: Number(lead.property_value)||0,
+              inventory_source: lead.inventory_source || ""
+            }
+          });
 
 
             /* =================================================
@@ -21702,7 +21883,8 @@ loadInventory()
       );
 
     const sharedPropertyId=
-      launchParams.get("imovel");
+      launchParams.get("imovel") ||
+      launchParams.get("property_id");
 
     const cameFromPush=
       launchParams.get("push")==="1";
