@@ -2605,6 +2605,13 @@ body.campaign-catalog-mode .specialist-float{
 .ai-msg.assistant{background:#fff;border:1px solid #E4DED3;border-bottom-left-radius:5px}.ai-msg.user{margin-left:auto;background:#171717;color:#fff;border-bottom-right-radius:5px}
 .ai-quick-actions{display:flex;gap:7px;overflow-x:auto;padding:0 15px 10px;background:#F7F4ED;scrollbar-width:none}.ai-quick-actions::-webkit-scrollbar{display:none}
 .ai-quick-actions button{flex:0 0 auto;min-height:36px;padding:0 12px;border:1px solid #D7CFBF;border-radius:999px;background:#fff;color:#5A4728;font-size:12px;font-weight:850}
+.ai-result-list{display:grid;gap:8px;margin:8px 0 12px}
+.ai-result-card{padding:12px 14px;border:1px solid #E4DED3;border-radius:16px;background:#fff}
+.ai-result-name{font-size:15px;font-weight:850;letter-spacing:-.02em}
+.ai-result-source{margin-left:6px;color:#8A8175;font-size:10px;font-weight:850;letter-spacing:.08em}
+.ai-result-meta,.ai-result-facts{margin-top:4px;color:#5C564E;font-size:13px}
+.ai-result-price{margin-top:6px;font-size:16px;font-weight:850}
+.ai-result-card .view{width:100%;margin-top:10px}
 .ai-assistant-input{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #E7E0D5;background:#FCFAF6}
 .ai-assistant-input textarea{resize:none;min-height:48px;max-height:110px;padding:13px 14px;border:1px solid #D8D0C4;border-radius:15px;background:#fff;color:#171513;font:inherit;outline:0}
 .ai-assistant-input textarea:focus{border-color:#C6A76B;box-shadow:0 0 0 3px rgba(198,167,107,.13)}
@@ -8134,18 +8141,24 @@ function numberBR(v){
 
 
 function money(v){
+  const amount=Number(v);
 
-  return v
-    ? new Intl.NumberFormat(
-        "pt-BR",
-        {
-          style:"currency",
-          currency:"BRL",
-          maximumFractionDigits:0
-        }
-      ).format(v)
+  /*
+    0 e o marcador 0.1 dos lançamentos sem preço
+    apareciam como "R$ 0". O valor no inventário não muda.
+  */
+  if(!Number.isFinite(amount) || amount<1){
+    return "Valor sob consulta";
+  }
 
-    : "Valor sob consulta";
+  return new Intl.NumberFormat(
+    "pt-BR",
+    {
+      style:"currency",
+      currency:"BRL",
+      maximumFractionDigits:0
+    }
+  ).format(amount);
 }
 
 
@@ -11927,6 +11940,157 @@ function appendAiGoogleMapsButton(property){
   box.scrollTop=box.scrollHeight;
 }
 
+function aiDisplayPrice(value){
+  if(value===null || value===undefined){
+    return "Preço sob consulta";
+  }
+
+  const text=String(value).trim();
+  if(!text || text==="0"){
+    return "Preço sob consulta";
+  }
+
+  const amount=Number(text);
+  if(!Number.isFinite(amount) || amount<1){
+    return "Preço sob consulta";
+  }
+
+  return money(amount);
+}
+
+function aiSelectableSearchCards(assistantProperties, searchMatches){
+  const inventory=Array.isArray(searchMatches) ? searchMatches : [];
+  const allowed=new Map();
+
+  for(const item of inventory){
+    const id=String(item?.id||"");
+    if(id)allowed.set(id, item);
+  }
+
+  const source=
+    Array.isArray(assistantProperties) && assistantProperties.length
+      ? assistantProperties
+      : inventory;
+
+  const cards=[];
+  const skipped=[];
+
+  for(const item of source){
+    const id=String(item?.id||item?.property_id||"");
+    const known=id ? allowed.get(id) : null;
+
+    if(!known){
+      skipped.push({
+        property_id:id,
+        nome:item?.name||"",
+        origem:item?.source||""
+      });
+      continue;
+    }
+
+    cards.push(known);
+    if(cards.length===5)break;
+  }
+
+  return {cards, skipped};
+}
+
+function appendAiPropertyCards(cards){
+  const shell=ensureAiAssistantShell();
+  const box=shell.querySelector("#aiAssistantMessages");
+  if(!box || !cards.length)return;
+
+  const list=document.createElement("div");
+  list.className="ai-result-list";
+
+  for(const property of cards){
+    const card=document.createElement("article");
+    card.className="ai-result-card";
+
+    const name=document.createElement("div");
+    name.className="ai-result-name";
+    name.textContent=property.name||"Imóvel disponível";
+
+    const source=String(property.source||"").toLowerCase();
+    if(source==="novos" || source==="usados"){
+      const tag=document.createElement("span");
+      tag.className="ai-result-source";
+      tag.textContent=source==="novos" ? "NOVO" : "USADO";
+      name.appendChild(tag);
+    }
+
+    const meta=document.createElement("div");
+    meta.className="ai-result-meta";
+    meta.textContent=property.neighborhood||"";
+
+    const price=document.createElement("div");
+    price.className="ai-result-price";
+    price.textContent=aiDisplayPrice(property.value);
+
+    const facts=document.createElement("div");
+    facts.className="ai-result-facts";
+    const bits=[];
+    if(Number(property.bedrooms)>0){
+      bits.push(`${Number(property.bedrooms)} dorm${Number(property.bedrooms)>1?"s.":"."}`);
+    }
+    if(Number(property.area)>0){
+      bits.push(`${area(property.area)} m²`);
+    }
+    facts.textContent=bits.join(" · ");
+
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="view";
+    button.textContent="Ver detalhes";
+    button.addEventListener("click",()=>{
+      openAiInventoryDetails(property);
+    });
+
+    card.append(name);
+    if(meta.textContent)card.append(meta);
+    card.append(price);
+    if(facts.textContent)card.append(facts);
+    card.append(button);
+    list.append(card);
+  }
+
+  box.appendChild(list);
+  box.scrollTop=box.scrollHeight;
+}
+
+let aiResumeChatAfterDetail=false;
+
+function openAiInventoryDetails(property){
+  const selection=aiSelectableSearchCards(
+    [property],
+    aiLastSearchContext?.matches||[]
+  );
+
+  for(const skipped of selection.skipped){
+    console.warn("MATCH_IA_PROPERTY_NOT_FOUND", skipped);
+  }
+
+  const known=selection.cards[0];
+  if(!known?.id)return;
+
+  const registered=registerAiFoundProperty(known);
+  if(!registered?.id){
+    console.warn("MATCH_IA_PROPERTY_NOT_FOUND",{
+      property_id:String(property?.id||property?.property_id||""),
+      nome:property?.name||"",
+      origem:property?.source||""
+    });
+    return;
+  }
+
+  aiResumeChatAfterDetail=true;
+  closeAiAssistant();
+
+  window.setTimeout(()=>{
+    showPhotoModal(String(registered.id));
+  },60);
+}
+
 function appendAiInternalDetailsButton(property){
   if(!property?.id)return;
 
@@ -11950,6 +12114,7 @@ function appendAiInternalDetailsButton(property){
       Fechamos a conversa antes de abrir o detalhe para evitar
       que o modal fique renderizado por baixo da IA.
     */
+    aiResumeChatAfterDetail=true;
     closeAiAssistant();
 
     window.setTimeout(()=>{
@@ -13063,6 +13228,23 @@ async function aiSearchRegionFromSupabase(state){
   };
 }
 
+function aiApiErrorText(error, fallback){
+  if(typeof error==="string" && error.trim()){
+    return error.trim();
+  }
+
+  if(
+    error &&
+    typeof error==="object" &&
+    typeof error.message==="string" &&
+    error.message.trim()
+  ){
+    return error.message.trim();
+  }
+
+  return fallback;
+}
+
 async function searchPropertiesForAi(message){
   const inventoryForParsing=
     Array.isArray(newPropertiesCache)
@@ -13245,8 +13427,10 @@ async function searchPropertiesForAi(message){
 
   if(!response.ok || data?.success!==true){
     throw new Error(
-      data?.error ||
-      "Não foi possível consultar o estoque agora."
+      aiApiErrorText(
+        data?.error,
+        "Não foi possível consultar o estoque agora."
+      )
     );
   }
 
@@ -14590,8 +14774,10 @@ async function sendAiAssistantMessage(text){
           data.success !== true
         ){
           throw new Error(
-            data.error ||
-            "Não foi possível consultar este imóvel agora."
+            aiApiErrorText(
+              data.error,
+              "Não foi possível consultar este imóvel agora."
+            )
           );
         }
 
@@ -14699,8 +14885,10 @@ async function sendAiAssistantMessage(text){
       data.success !== true
     ){
       throw new Error(
-        data.error ||
-        "Não foi possível falar com a assistente agora."
+        aiApiErrorText(
+          data.error,
+          "Não foi possível falar com a assistente agora."
+        )
       );
     }
 
@@ -14904,7 +15092,34 @@ async function sendAiAssistantMessage(text){
       return;
     }
 
+    let showedAiCards=false;
+
     if(
+      genericMode &&
+      inventoryContext &&
+      Array.isArray(inventoryContext.matches) &&
+      inventoryContext.matches.length
+    ){
+      const selection=aiSelectableSearchCards(
+        data.properties,
+        inventoryContext.matches
+      );
+
+      for(const skipped of selection.skipped){
+        console.warn(
+          "MATCH_IA_PROPERTY_NOT_FOUND",
+          skipped
+        );
+      }
+
+      if(selection.cards.length){
+        appendAiPropertyCards(selection.cards);
+        showedAiCards=true;
+      }
+    }
+
+    if(
+      !showedAiCards &&
       genericMode &&
       inventoryContext &&
       Array.isArray(inventoryContext.matches) &&
@@ -14965,10 +15180,8 @@ async function sendAiAssistantMessage(text){
 
     appendAiMessage(
       "assistant",
-      "Não consegui consultar os dados agora. Tente novamente em alguns instantes ou fale com o Rafael para confirmar a informação."
+      "Não consegui consultar os imóveis agora. Tente novamente em alguns instantes."
     );
-
-    aiSetHumanHandoffVisible(true);
 
     console.error(
       "MATCH_IA_ERROR",
@@ -15510,6 +15723,14 @@ function scheduleAiAssistantForProperty(
   clearTimeout(
     aiAssistantTriggerTimer
   );
+
+  /*
+    O detalhe foi aberto a partir da conversa.
+    A oferta proativa apagaria os cards ao substituir o chat.
+  */
+  if(aiResumeChatAfterDetail){
+    return;
+  }
 
   const proactive=
     yntIsPaidDirectPropertyEntry();
@@ -16140,7 +16361,16 @@ function closePropertyDetail({fromPopState=false}={}){
     modal.remove();
   }
 
-  document.body.style.overflow="";
+  if(aiResumeChatAfterDetail){
+    aiResumeChatAfterDetail=false;
+    const shell=document.getElementById("aiAssistantShell");
+    if(shell){
+      shell.classList.add("open");
+      document.body.style.overflow="hidden";
+    }
+  }else{
+    document.body.style.overflow="";
+  }
 
   if(
     !fromPopState &&

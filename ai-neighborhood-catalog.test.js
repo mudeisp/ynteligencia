@@ -227,6 +227,73 @@ test("index e a API usam o catálogo em vez da primeira grafia do REGION_MAP", (
   assert.match(api, /resolveNeighborhood\(/);
   assert.match(api, /postgrestNeighborhoodFilters\(/);
   assert.match(api, /propertyMatchesNeighborhood\(/);
+  assert.match(api, /import neighborhoodCatalog from "\.\.\/ai-neighborhood-catalog\.js"/);
+  assert.equal(api.includes("createRequire"), false);
+  assert.equal(api.includes("import.meta.url"), false);
   assert.equal(api.includes("params.set(\"city\", filters.city)"), true);
   assert.equal(api.includes("params.set(\"state\", filters.state)"), true);
+});
+
+test("search-properties carrega e o GET chega no handler", async () => {
+  const mod = await import("./api/search-properties.js");
+  assert.equal(typeof mod.default, "function");
+
+  let status = 0;
+  let body = null;
+  const res = {
+    setHeader() {},
+    status(code) {
+      status = code;
+      return this;
+    },
+    json(payload) {
+      body = payload;
+      return payload;
+    }
+  };
+
+  await mod.default({ method: "GET", body: {} }, res);
+  assert.equal(status, 405);
+  assert.equal(body.success, false);
+  assert.equal(body.error, "Method not allowed");
+});
+
+test("erro HTTP vira texto e falha técnica não abre handoff", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const helper = html.match(/function aiApiErrorText\(error, fallback\)\{[\s\S]*?\n\}/);
+  assert.ok(helper, "aiApiErrorText precisa estar no index");
+  const aiApiErrorText = new Function(`${helper[0]}; return aiApiErrorText;`)();
+
+  assert.equal(aiApiErrorText("SUPABASE_URL não configurada", "fallback"), "SUPABASE_URL não configurada");
+  assert.equal(
+    aiApiErrorText({ code: "500", message: "A server error has occurred" }, "fallback"),
+    "A server error has occurred"
+  );
+  assert.equal(aiApiErrorText({ code: "500" }, "Não foi possível consultar o estoque agora."), "Não foi possível consultar o estoque agora.");
+
+  const marker = "Não consegui consultar os imóveis agora. Tente novamente em alguns instantes.";
+  const markerAt = html.indexOf(marker);
+  assert.ok(markerAt > 0);
+  const catchStart = html.lastIndexOf("}catch(error){", markerAt);
+  const catchBlock = html.slice(catchStart, html.indexOf("}finally{", markerAt));
+  assert.match(catchBlock, /Não consegui consultar os imóveis agora\. Tente novamente em alguns instantes\./);
+  assert.equal(catchBlock.includes("aiSetHumanHandoffVisible"), false);
+  assert.match(catchBlock, /console\.error\(\s*"MATCH_IA_ERROR"/);
+  assert.equal(catchBlock.includes("Falar com Rafael"), false);
+
+  let handoffVisible = false;
+  let commercial = { handled: false, showHandoff: false };
+  let shown = "";
+  const data = { error: { code: "500", message: "A server error has occurred" } };
+  try {
+    if (data?.success !== true) {
+      throw new Error(aiApiErrorText(data?.error, "Não foi possível consultar o estoque agora."));
+    }
+  } catch (error) {
+    shown = "Não consegui consultar os imóveis agora. Tente novamente em alguns instantes.";
+    console.error("MATCH_IA_ERROR", error.message);
+  }
+  assert.equal(shown, "Não consegui consultar os imóveis agora. Tente novamente em alguns instantes.");
+  assert.equal(handoffVisible, false);
+  assert.equal(commercial.showHandoff, false);
 });

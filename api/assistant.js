@@ -333,117 +333,96 @@ export default async function handler(req, res) {
 
       const matches =
         inventory.matches
+          .filter(
+            item =>
+              cleanText(
+                item?.id
+              )
+          )
           .slice(
             0,
-            3
+            5
           );
 
-      const items =
-        matches.map(
-          (
-            item,
-            index
-          ) => {
-            const parts =
-              [];
-
-            const name =
-              cleanText(
-                item?.name
-              );
-
-            const neighborhood =
-              cleanText(
-                item?.neighborhood
-              );
-
-            const price =
-              formatMoney(
-                item?.value
-              );
-
-            const bedrooms =
-              Number(
-                item?.bedrooms
-              ) || 0;
-
-            const area =
-              formatArea(
-                item?.area
-              );
-
-            if (name) {
-              parts.push(
-                name
-              );
-            }
-
-            if (
-              neighborhood
-            ) {
-              parts.push(
-                `Bairro: ${neighborhood}`
-              );
-            }
-
-            if (price) {
-              parts.push(
-                `Preço: ${price}`
-              );
-            }
-
-            if (
-              bedrooms > 0
-            ) {
-              parts.push(
-                `Dormitórios: ${bedrooms}`
-              );
-            }
-
-            if (area) {
-              parts.push(
-                `Área: ${area}`
-              );
-            }
-
-            return (
-              `${index + 1}) ` +
-              parts.join(
-                " — "
-              )
-            );
-          }
+      const place =
+        cleanText(
+          inventory.query
+            ?.neighborhood
+        ) ||
+        cleanText(
+          matches[0]
+            ?.neighborhood
         );
 
-      let reply =
+      const reply =
         total === 1
-          ? "Encontrei 1 opção que atende ao que você pediu."
-          : `Encontrei ${total} opções no estoque. Vou te mostrar primeiro as 3 mais próximas do seu pedido.`;
+          ? "Encontrei uma opção que combina com sua busca."
+          : place
+            ? `Encontrei várias opções em ${place}. Separei algumas que combinam melhor com sua busca.`
+            : "Encontrei algumas opções que combinam com sua busca.";
 
-      if (
-        items.length
-      ) {
-        reply +=
-          " " +
-          items.join(
-            " "
-          );
-      }
+      const properties =
+        matches.map(
+          item => ({
+            id:
+              cleanText(
+                item?.id
+              ),
 
-      const refineQuestion =
-        total > 3
-          ? nextSearchQuestion(
-              inventory.query ||
-              {}
-            )
-          : "";
+            property_id:
+              cleanText(
+                item?.id
+              ),
 
-      if (
-        refineQuestion
-      ) {
-        reply +=
-          ` ${refineQuestion}`;
-      }
+            building_id:
+              cleanText(
+                item?.building_id
+              ),
+
+            name:
+              cleanText(
+                item?.name
+              ),
+
+            neighborhood:
+              cleanText(
+                item?.neighborhood
+              ),
+
+            city:
+              cleanText(
+                item?.city
+              ),
+
+            value:
+              Number(
+                item?.value
+              ) || 0,
+
+            bedrooms:
+              Number(
+                item?.bedrooms
+              ) || 0,
+
+            area:
+              Number(
+                item?.area
+              ) || 0,
+
+            source:
+              cleanText(
+                item?.source
+              ),
+
+            image_url:
+              item?.image_url ||
+              "",
+
+            address:
+              item?.address ||
+              null
+          })
+        );
 
       return res
         .status(200)
@@ -451,6 +430,8 @@ export default async function handler(req, res) {
           success: true,
 
           reply,
+
+          properties,
 
           handoff:
             false,
