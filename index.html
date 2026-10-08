@@ -7938,9 +7938,12 @@ async function supabaseCreateLead(lead){
             "yincorp",
 
           notes:
-            `Interesse gerado na Ynteligencia | ` +
-            `Código: ${lead.property_id || ""} | ` +
-            `Imóvel: ${lead.property_name || ""}`,
+            lead.lead_summary ||
+            (
+              `Interesse gerado na Ynteligencia | ` +
+              `Código: ${lead.property_id || ""} | ` +
+              `Imóvel: ${lead.property_name || ""}`
+            ),
 
           session_id:
             YNTELIGENCIA_SESSION_ID,
@@ -7955,6 +7958,18 @@ async function supabaseCreateLead(lead){
 
             visitor_id:
               YNTELIGENCIA_VISITOR_ID,
+
+            lead_summary:
+              lead.lead_summary || "",
+
+            ai_context:
+              lead.ai_context || null,
+
+            bedrooms:
+              Number(lead.bedrooms)||0,
+
+            inventory_source:
+              lead.inventory_source || "",
 
             session:{
               id:
@@ -10523,7 +10538,10 @@ document.addEventListener("click",event=>{
   const id=button.dataset.propertyId;
   const property=propertyForInteraction(id);
   if(!property)return;
-  if(button.dataset.propertyAction==="details")showPhotoModal(id);
+  if(button.dataset.propertyAction==="details"){
+    aiRememberOpenedProperty(property);
+    showPhotoModal(id);
+  }
   else if(button.dataset.propertyAction==="interest")interest(id,property.name);
 });
 
@@ -10901,6 +10919,7 @@ function renderDetailSimilar(base,modal){
       const pid=btn.dataset.propertyId;
       try{gtag("event","similar_property_click",{from_property_id:String(base.id||""),property_id:String(pid||"")})}catch(error){}
       modal.remove();
+      aiRememberOpenedProperty(propertyForInteraction(pid));
       showPhotoModal(pid);
     });
   });
@@ -10940,6 +10959,8 @@ let aiLeadConversation=[];
 
 function resetAiLeadConversation(){
   aiLeadConversation=[];
+  aiLastDetectedIntent="";
+  aiLastSearchReason="";
 }
 
 function registerAiLeadConversation(role,content){
@@ -10963,17 +10984,189 @@ function aiLeadConversationText(){
     .join("\n");
 }
 
-function aiLeadSummary(){
-  const lastUserMessages=
-    aiLeadConversation
-      .filter(item=>item.role==="user")
-      .map(item=>item.content)
-      .slice(-4)
-      .join(" | ");
+let aiOpenedProperties=[];
+let aiLastDetectedIntent="";
+let aiLastSearchReason="";
 
-  return lastUserMessages
-    ? `Últimas intenções do cliente: ${lastUserMessages}`
-    : "";
+function aiSyntheticPropertyId(id){
+  const value=String(id||"");
+  return !value ||
+    value==="match-ia-orulo" ||
+    value==="specialist-general" ||
+    value.startsWith("__");
+}
+
+function aiRememberOpenedProperty(property){
+  const id=String(property?.id||"");
+  if(aiSyntheticPropertyId(id))return;
+
+  aiOpenedProperties=aiOpenedProperties.filter(
+    item=>String(item?.id||"")!==id
+  );
+  aiOpenedProperties.push({
+    id,
+    name:property?.name||"",
+    neighborhood:property?.neighborhood||"",
+    value:Number(property?.value)||0,
+    bedrooms:Number(property?.bedrooms)||0,
+    source:property?.source||""
+  });
+
+  if(aiOpenedProperties.length>8){
+    aiOpenedProperties=aiOpenedProperties.slice(-8);
+  }
+}
+
+function aiSelectLeadProperty(fallback, opened){
+  const realOpened=(Array.isArray(opened)?opened:[])
+    .filter(item=>item && !aiSyntheticPropertyId(item.id));
+
+  if(fallback && !aiSyntheticPropertyId(fallback.id)){
+    return {
+      primary:fallback,
+      others:realOpened.filter(
+        item=>String(item.id)!==String(fallback.id)
+      )
+    };
+  }
+
+  const primary=realOpened.length
+    ? realOpened[realOpened.length-1]
+    : null;
+
+  return {
+    primary,
+    others:realOpened.slice(0,-1)
+  };
+}
+
+function aiBuildLeadNarrative(facts){
+  const parts=[];
+  const development=String(facts?.development||"").trim();
+  const neighborhood=String(facts?.neighborhood||"").trim();
+  const place=development
+    ? `o empreendimento ${development}`
+    : neighborhood
+      ? `imóvel em ${neighborhood}`
+      : "";
+
+  if(place){
+    const qualifiers=[];
+    if(facts?.maxPriceLabel)qualifiers.push(`até ${facts.maxPriceLabel}`);
+    if(facts?.minPriceLabel)qualifiers.push(`a partir de ${facts.minPriceLabel}`);
+    const bedrooms=Number(facts?.bedrooms)||0;
+    if(bedrooms>0){
+      qualifiers.push(`${bedrooms} dormitório${bedrooms>1?"s":""}`);
+    }
+    parts.push(
+      `Cliente busca ${place}${qualifiers.length?`, ${qualifiers.join(", ")}`:""}.`
+    );
+  }
+
+  const opened=Array.isArray(facts?.opened)?facts.opened:[];
+  const openedNames=[...new Set(
+    opened.map(item=>String(item?.name||"").trim()).filter(Boolean)
+  )];
+
+  if(opened.length===1 && openedNames[0]){
+    parts.push(`Demonstrou interesse no ${openedNames[0]} e abriu essa unidade no modal.`);
+  }else if(opened.length>1){
+    const interest=openedNames.length===1
+      ? openedNames[0]
+      : openedNames.join(", ");
+    parts.push(
+      `Demonstrou interesse no ${interest} e abriu ${opened.length} unidades no modal.`
+    );
+  }
+
+  if(facts?.askedContact){
+    parts.push("Pediu contato com especialista.");
+  }
+
+  return parts.join(" ").replace(/\s+/g," ").trim();
+}
+
+function aiPriceLabel(value){
+  const amount=Number(value);
+  if(!Number.isFinite(amount) || amount<1)return "";
+  return money(amount);
+}
+
+function aiCurrentLeadFacts(){
+  const recommended=(Array.isArray(aiLastSearchContext?.matches)
+    ? aiLastSearchContext.matches
+    : []
+  ).slice(0,5).map(item=>({
+    id:String(item?.id||""),
+    name:item?.name||"",
+    neighborhood:item?.neighborhood||"",
+    value:Number(item?.value)||0,
+    bedrooms:Number(item?.bedrooms)||0,
+    source:item?.source||""
+  }));
+
+  return {
+    neighborhood:aiSearchState?.neighborhood||"",
+    development:aiSearchState?.exactName||"",
+    minPrice:Number(aiSearchState?.minPrice)||0,
+    maxPrice:Number(aiSearchState?.maxPrice)||0,
+    minPriceLabel:aiPriceLabel(aiSearchState?.minPrice),
+    maxPriceLabel:aiPriceLabel(aiSearchState?.maxPrice),
+    bedrooms:Number(aiSearchState?.bedrooms)||0,
+    recommended,
+    opened:aiOpenedProperties.map(item=>({...item})),
+    messageCount:aiLeadConversation.length,
+    lastIntent:aiLastDetectedIntent||aiLastSearchReason||"",
+    lastSearchReason:aiLastSearchReason||""
+  };
+}
+
+function aiLeadSummary(){
+  const facts=aiCurrentLeadFacts();
+  const hasContext=Boolean(
+    facts.messageCount ||
+    facts.neighborhood ||
+    facts.development ||
+    facts.recommended.length ||
+    facts.opened.length
+  );
+  if(!hasContext)return "";
+  return aiBuildLeadNarrative({
+    ...facts,
+    askedContact:true
+  });
+}
+
+function aiLeadContext(primary){
+  const facts=aiCurrentLeadFacts();
+  return {
+    search:{
+      neighborhood:facts.neighborhood,
+      development:facts.development,
+      min_price:facts.minPrice,
+      max_price:facts.maxPrice,
+      bedrooms:facts.bedrooms,
+      reason:facts.lastSearchReason
+    },
+    recommended:facts.recommended,
+    opened:facts.opened,
+    other_property_ids:aiSelectLeadProperty(
+      primary,
+      facts.opened
+    ).others.map(item=>String(item.id||"")).filter(Boolean),
+    message_count:facts.messageCount,
+    last_intent:facts.lastIntent
+  };
+}
+
+function aiTrackLeadEvent(name,detail){
+  const payload=detail||{};
+  try{
+    gtag("event",name,payload);
+  }catch(error){}
+  try{
+    supabaseTrack(name,payload);
+  }catch(error){}
 }
 
 function aiSanitizeHandoffPromise(value){
@@ -10985,6 +11178,12 @@ function aiSetHumanHandoffVisible(show){
   if(!button)return;
 
   const on=Boolean(show);
+  if(on && button.dataset.ctaTracked!=="1"){
+    button.dataset.ctaTracked="1";
+    aiTrackLeadEvent("ai_lead_cta_shown",{
+      property_id:String(aiAssistantProperty?.id||"")
+    });
+  }
   button.classList.toggle("is-visible", on);
   button.classList.toggle("visible", on);
   button.hidden=!on;
@@ -11134,22 +11333,25 @@ function ensureAiAssistantShell(){
     document.body.style.overflow="hidden";
 
     setTimeout(()=>{
-      if(property.generic_search){
-        if(typeof openLeadCapture==="function"){
-          openLeadCapture(
-            {
-              id:"match-ia-orulo",
-              name:"Busca assistida pela Match IA",
-              neighborhood:"",
-              value:0,
-              source:"match_ia_orulo"
-            },
-            {source:"match_ia_orulo"}
-          );
-        }
-      }else{
-        openPropertySpecialist(property);
+      const selected=aiSelectLeadProperty(
+        property?.generic_search ? null : property,
+        aiOpenedProperties
+      );
+      const target=selected.primary || {
+        id:"",
+        name:aiSearchState?.exactName || "Busca assistida pela Match IA",
+        neighborhood:aiSearchState?.neighborhood || "",
+        value:0,
+        bedrooms:Number(aiSearchState?.bedrooms)||0,
+        source:""
+      };
+
+      if(!property?.generic_search && target?.id){
+        openPropertySpecialist(target);
+        return;
       }
+
+      openLeadCapture(target,{source:"match_ia"});
     },120);
   });
 
@@ -12074,6 +12276,7 @@ function openAiInventoryDetails(property){
   if(!known?.id)return;
 
   const registered=registerAiFoundProperty(known);
+  aiRememberOpenedProperty(registered);
   if(!registered?.id){
     console.warn("MATCH_IA_PROPERTY_NOT_FOUND",{
       property_id:String(property?.id||property?.property_id||""),
@@ -12108,6 +12311,7 @@ function appendAiInternalDetailsButton(property){
 
   button.addEventListener("click",()=>{
     const p=registerAiFoundProperty(property);
+    aiRememberOpenedProperty(p);
 
     /*
       A Match IA usa z-index maior que o modal de detalhes.
@@ -14202,6 +14406,9 @@ async function sendAiAssistantMessage(text){
     );
 
   aiLastRoutingTurn=routingTurn;
+  if(routingTurn?.reason){
+    aiLastSearchReason=routingTurn.reason;
+  }
 
   /*
     Intenção comercial explícita vem antes de comparação,
@@ -14212,6 +14419,9 @@ async function sendAiAssistantMessage(text){
     aiResolveCommercialTurn(text);
 
   if(commercialTurn.handled){
+    if(commercialTurn.intent){
+      aiLastDetectedIntent=String(commercialTurn.intent);
+    }
     const reply=
       aiSanitizeHandoffPromise(
         commercialTurn.reply
@@ -20102,6 +20312,15 @@ $("specialistFloat")?.addEventListener(
 
 
 function openLeadCapture(p,prefill={}){
+  const selectedProperty=aiSelectLeadProperty(p, aiOpenedProperties);
+  if(selectedProperty.primary && aiSyntheticPropertyId(p?.id)){
+    p=selectedProperty.primary;
+  }
+
+  const fromMatchIa=Boolean(
+    String(prefill.source||"").startsWith("match_ia") ||
+    aiLeadConversation.length
+  );
 
   const old=
     document.getElementById(
@@ -20216,6 +20435,14 @@ function openLeadCapture(p,prefill={}){
       modal
     );
 
+  if(fromMatchIa){
+    modal.dataset.aiLead="1";
+    aiTrackLeadEvent("ai_lead_form_opened",{
+      property_id:String(p?.id||""),
+      source:prefill.source||"match_ia"
+    });
+  }
+
   const savedLeadName=localStorage.getItem("yincorp_contact_name") || "";
   const savedLeadPhone=localStorage.getItem("yincorp_contact_phone") || "";
   const savedLeadEmail=localStorage.getItem("yincorp_contact_email") || "";
@@ -20304,10 +20531,19 @@ function openLeadCapture(p,prefill={}){
               p.value
             )||0,
 
+          bedrooms:
+            Number(p.bedrooms)||Number(aiSearchState?.bedrooms)||0,
+
+          inventory_source:
+            p.source||"",
+
           match_score:
             Number(
               p.match?.score
             )||0,
+
+          ai_context:
+            aiLeadContext(p),
 
           profile:{
             ...profile
@@ -20317,14 +20553,16 @@ function openLeadCapture(p,prefill={}){
             aiLeadSummary(),
 
           conversation:
-            aiLeadConversation.map(item=>({
+            aiLeadConversation.slice(-8).map(item=>({
               role:item.role,
               content:item.content,
               at:item.at
             })),
 
           conversation_text:
-            aiLeadConversationText(),
+            aiLeadConversation.slice(-8)
+              .map(item=>`${item.role==="user" ? "Cliente" : "IA"}: ${item.content}`)
+              .join("\n"),
 
           created_at:
             new Date()
@@ -20335,9 +20573,17 @@ function openLeadCapture(p,prefill={}){
         submitButton.disabled=
           true;
 
+        submitButton.dataset.leadLabel=
+          submitButton.textContent;
 
         submitButton.textContent=
           "Enviando...";
+
+        if(modal.dataset.aiLead==="1"){
+          aiTrackLeadEvent("ai_lead_submitted",{
+            property_id:lead.property_id
+          });
+        }
 
 
         try{
@@ -20411,6 +20657,12 @@ function openLeadCapture(p,prefill={}){
                   property_value:
                     lead.property_value,
 
+                  bedrooms:
+                    lead.bedrooms,
+
+                  inventory_source:
+                    lead.inventory_source,
+
                   match_score:
                     lead.match_score,
 
@@ -20428,6 +20680,9 @@ function openLeadCapture(p,prefill={}){
 
                   conversation_text:
                     lead.conversation_text,
+
+                  ai_context:
+                    lead.ai_context,
 
                   mensagem:
 
@@ -20465,8 +20720,15 @@ function openLeadCapture(p,prefill={}){
           ){
 
             throw new Error(
+              delivery?.error ||
               "A API não confirmou o armazenamento do lead."
             );
+          }
+
+          if(modal.dataset.aiLead==="1"){
+            aiTrackLeadEvent("ai_lead_success",{
+              property_id:lead.property_id
+            });
           }
 
 
@@ -20734,6 +20996,13 @@ function openLeadCapture(p,prefill={}){
             error
           );
 
+          if(modal.dataset.aiLead==="1"){
+            aiTrackLeadEvent("ai_lead_error",{
+              property_id:lead.property_id,
+              message:error?.message||""
+            });
+          }
+
 
           try{
 
@@ -20781,6 +21050,7 @@ function openLeadCapture(p,prefill={}){
 
 
           submitButton.textContent=
+            submitButton.dataset.leadLabel ||
             "Continuar no WhatsApp";
         }
       }

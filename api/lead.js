@@ -382,6 +382,28 @@ export default async function handler(req, res) {
       );
 
 
+    const bedrooms =
+      Number(
+        body.bedrooms ||
+        0
+      ) || 0;
+
+
+    const inventorySource =
+      clean(
+        body.inventory_source ||
+        ""
+      );
+
+
+    const aiContext =
+      body.ai_context &&
+      typeof body.ai_context === "object" &&
+      !Array.isArray(body.ai_context)
+        ? body.ai_context
+        : null;
+
+
     const conversation =
       normalizeConversation(
         body.conversation
@@ -455,7 +477,7 @@ export default async function handler(req, res) {
           ? `RESUMO MATCH IA: ${leadSummary}`
           : "",
 
-        conversationText
+        !leadSummary && conversationText
           ? `CONVERSA MATCH IA:\n${conversationText}`
           : ""
 
@@ -595,6 +617,14 @@ export default async function handler(req, res) {
 
           lead_summary:
             leadSummary,
+
+          observacao:
+            leadSummary,
+
+          bedrooms,
+
+          inventory_source:
+            inventorySource,
 
           conversation,
 
@@ -836,6 +866,8 @@ export default async function handler(req, res) {
 
           notes:
 
+            leadSummary ||
+
             mensagem ||
 
             `Lead capturado em ${origem}`,
@@ -867,6 +899,14 @@ export default async function handler(req, res) {
 
             lead_summary:
               leadSummary,
+
+            ai_context:
+              aiContext,
+
+            bedrooms,
+
+            inventory_source:
+              inventorySource,
 
             conversation,
 
@@ -918,7 +958,12 @@ export default async function handler(req, res) {
                 propertyValue,
 
               match_score:
-                matchScore
+                matchScore,
+
+              bedrooms,
+
+              source:
+                inventorySource
 
             }
 
