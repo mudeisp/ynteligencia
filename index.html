@@ -2610,8 +2610,8 @@ body.campaign-catalog-mode .specialist-float{
 .ai-assistant-input textarea:focus{border-color:#C6A76B;box-shadow:0 0 0 3px rgba(198,167,107,.13)}
 .ai-assistant-send{width:50px;height:50px;border:0;border-radius:15px;background:#171717;color:#fff;font-size:19px;font-weight:900}
 .ai-assistant-send:disabled{opacity:.45}
-.ai-human-handoff{display:block;margin:0 15px 12px;width:calc(100% - 30px);min-height:48px;border:1px solid #C6A76B;border-radius:14px;background:#F7F0E1;color:#5A4728;font-weight:900}
-.ai-human-handoff.visible{display:block}
+.ai-human-handoff{display:none;margin:0 15px 12px;width:calc(100% - 30px);min-height:48px;border:1px solid #C6A76B;border-radius:14px;background:#F7F0E1;color:#5A4728;font-weight:900}
+.ai-human-handoff.is-visible,.ai-human-handoff.visible{display:block}
 .detail-sticky-cta{opacity:0;transform:translateX(-50%) translateY(12px);pointer-events:none;transition:.22s ease}
 .detail-sticky-cta.ai-ready{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
 @media(max-width:768px){
@@ -4763,6 +4763,7 @@ body.match-results-mode #results{
 </div>
 
 <script src="ai-search-routing.js"></script>
+<script src="ai-commercial-intent.js"></script>
 <script>
 
 const CSV_FILE="Remax.teste.2.csv";
@@ -10962,16 +10963,49 @@ function aiLeadSummary(){
 }
 
 function aiSanitizeHandoffPromise(value){
-  const text=clean(value||"");
-  if(!text)return text;
+  return AiCommercialIntent.aiSanitizeHandoffPromise(value);
+}
 
-  const promisesHandoff=
-    /\b(vou|irei)\s+(encaminhar|enviar|passar)\b.*\b(rafael|corretor|especialista)\b/i.test(text) ||
-    /\b(encaminhado|enviado)\b.*\b(rafael|corretor|especialista)\b/i.test(text);
+function aiSetHumanHandoffVisible(show){
+  const button=document.getElementById("aiHumanHandoff");
+  if(!button)return;
 
-  if(!promisesHandoff)return text;
+  const on=Boolean(show);
+  button.classList.toggle("is-visible", on);
+  button.classList.toggle("visible", on);
+  button.hidden=!on;
+  button.setAttribute("aria-hidden", on ? "false" : "true");
+}
 
-  return "Perfeito. Toque em “Falar com Rafael no WhatsApp” para confirmar seus dados e eu encaminho sua solicitação.";
+function aiCommercialDecisionContext(){
+  const matches=
+    Array.isArray(aiLastSearchContext?.matches)
+      ? aiLastSearchContext.matches
+      : [];
+  const propertyMode=
+    typeof aiIsPropertyMode==="function" &&
+    aiIsPropertyMode();
+  const namedProperty=
+    propertyMode
+      ? aiAssistantProperty
+      : (
+          matches.length===1
+            ? (aiLastSelectedProperty || matches[0])
+            : null
+        );
+
+  return {
+    hasProperty:Boolean(propertyMode || matches.length===1),
+    resultCount:propertyMode ? 1 : matches.length,
+    propertyName:namedProperty?.name || ""
+  };
+}
+
+function aiResolveCommercialTurn(message){
+  return AiCommercialIntent.aiResolveCommercialTurn(
+    message,
+    aiCommercialDecisionContext()
+  );
 }
 
 let aiAssistantSending=false;
@@ -11035,7 +11069,7 @@ function ensureAiAssistantShell(){
       </div>
       <div>
         <div class="ai-assistant-messages" id="aiAssistantMessages"></div>
-        <button class="ai-human-handoff" id="aiHumanHandoff" type="button">Falar com Rafael no WhatsApp</button>
+        <button class="ai-human-handoff" id="aiHumanHandoff" type="button" hidden aria-hidden="true">Falar com Rafael no WhatsApp</button>
       </div>
       <form class="ai-assistant-input" id="aiAssistantForm">
         <textarea id="aiAssistantInput" rows="1" placeholder="Digite sua dúvida sobre este imóvel..."></textarea>
@@ -12637,7 +12671,7 @@ function openHomeAiSearch(){
 
   if(box)box.innerHTML="";
   if(input)input.placeholder="Digite bairro, preço, dormitórios ou empreendimento...";
-  if(handoff)handoff.classList.add("visible");
+  if(handoff)aiSetHumanHandoffVisible(false);
 
   shell.classList.add("open");
   document.body.style.overflow="hidden";
@@ -12664,6 +12698,7 @@ function openAiAssistant(p){
   const shell=ensureAiAssistantShell();
   const box=shell.querySelector("#aiAssistantMessages");
   if(box)box.innerHTML="";
+  aiSetHumanHandoffVisible(false);
   
   shell.classList.add("open");
   document.body.style.overflow="hidden";
@@ -13869,6 +13904,43 @@ async function sendAiAssistantMessage(text){
   aiLastRoutingTurn=routingTurn;
 
   /*
+    Intenção comercial explícita vem antes de comparação,
+    desambiguação, follow-up, estoque e OpenAI.
+    Não abre lead e não consulta /api/search-properties.
+  */
+  const commercialTurn=
+    aiResolveCommercialTurn(text);
+
+  if(commercialTurn.handled){
+    const reply=
+      aiSanitizeHandoffPromise(
+        commercialTurn.reply
+      );
+
+    appendAiMessage("assistant", reply);
+
+    aiAssistantHistory.push({
+      role:"assistant",
+      content:reply
+    });
+
+    aiAssistantHistory=
+      aiAssistantHistory.slice(-12);
+
+    if(commercialTurn.showHandoff){
+      aiSetHumanHandoffVisible(true);
+    }
+
+    aiAssistantSending=false;
+
+    if(send){
+      send.disabled=false;
+    }
+
+    return;
+  }
+
+  /*
     "comparar X com Y", "vs" e "versus" são comparação de termos,
     não desambiguação empreendimento/bairro e não comparação de imóveis.
     realComparison permanece false. Os dois lados ficam no turno.
@@ -14553,12 +14625,7 @@ async function sendAiAssistantMessage(text){
           aiAssistantHistory.slice(-12);
 
         if(data.handoff===true){
-          shell
-            .querySelector(
-              "#aiHumanHandoff"
-            )
-            ?.classList
-            .add("visible");
+          aiSetHumanHandoffVisible(true);
         }
 
         return;
@@ -14858,12 +14925,7 @@ async function sendAiAssistantMessage(text){
       aiAssistantHistory.slice(-12);
 
     if(data.handoff===true){
-      shell
-        .querySelector(
-          "#aiHumanHandoff"
-        )
-        ?.classList
-        .add("visible");
+      aiSetHumanHandoffVisible(true);
     }
 
     try{
@@ -14907,12 +14969,7 @@ async function sendAiAssistantMessage(text){
       "Não consegui consultar os dados agora. Tente novamente em alguns instantes ou fale com o Rafael para confirmar a informação."
     );
 
-    shell
-      .querySelector(
-        "#aiHumanHandoff"
-      )
-      ?.classList
-      .add("visible");
+    aiSetHumanHandoffVisible(true);
 
     console.error(
       "MATCH_IA_ERROR",
@@ -20277,7 +20334,7 @@ function openLeadCapture(p,prefill={}){
 
 
           showToast(
-            "Dados confirmados. Abrindo o WhatsApp..."
+            "Pedido enviado ao Rafael."
           );
 
 
