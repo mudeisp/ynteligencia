@@ -12326,6 +12326,49 @@ function appendAiDisambiguationChoice({
   box.scrollTop=box.scrollHeight;
 }
 
+function appendAiProjectOptions(candidates){
+  const shell=ensureAiAssistantShell();
+  const box=shell.querySelector("#aiAssistantMessages");
+  const labels=[...new Set(
+    (Array.isArray(candidates)?candidates:[])
+      .map(name=>clean(name))
+      .filter(Boolean)
+  )].slice(0,8);
+
+  if(!box || labels.length<2)return;
+
+  const question=labels.length===2
+    ? `Encontrei mais de um empreendimento com esse nome. Você procura ${labels[0]} ou ${labels[1]}?`
+    : `Encontrei mais de um empreendimento com esse nome. Você procura ${labels.slice(0,-1).join(", ")} ou ${labels[labels.length-1]}?`;
+
+  appendAiMessage("assistant", question);
+  aiAssistantHistory.push({
+    role:"assistant",
+    content:question
+  });
+  aiAssistantHistory=aiAssistantHistory.slice(-12);
+
+  const wrap=document.createElement("div");
+  wrap.className="ai-disambiguation";
+  const buttons=[];
+
+  for(const label of labels){
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="ai-disambiguation-btn";
+    button.textContent=label;
+    button.addEventListener("click",()=>{
+      for(const item of buttons)item.disabled=true;
+      sendAiAssistantMessage(label);
+    });
+    buttons.push(button);
+    wrap.appendChild(button);
+  }
+
+  box.appendChild(wrap);
+  box.scrollTop=box.scrollHeight;
+}
+
 function extractBrazilianPhone(text){
   const candidates=String(text||"").match(/(?:\+?55[\s.-]*)?(?:\(?\d{2}\)?[\s.-]*)?(?:9?\d{4})[\s.-]*\d{4}/g) || [];
 
@@ -12651,26 +12694,97 @@ function aiExtractExplicitProject(message,inventory){
   return project;
 }
 
+let aiTurnProjectNames=null;
+
+function aiRoutingProjects(){
+  return Array.isArray(aiTurnProjectNames)
+    ? aiTurnProjectNames
+    : aiKnownProjectNames();
+}
+
+async function aiLookupDevelopmentNames(token){
+  const safe=String(token||"")
+    .replace(/[*,()]/g,"")
+    .trim();
+
+  if(safe.length<4 || typeof SUPABASE_URL!=="string")return [];
+
+  try{
+    const url=new URL(`${SUPABASE_URL}/rest/v1/properties`);
+    url.searchParams.set("select","development_name");
+    url.searchParams.set("active","eq.true");
+    url.searchParams.set("development_name",`ilike.*${safe}*`);
+    url.searchParams.set("limit","300");
+
+    const response=await fetch(url.toString(),{
+      headers:{
+        apikey:SUPABASE_PUBLISHABLE_KEY,
+        Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+      }
+    });
+
+    if(!response.ok)return [];
+
+    const rows=await response.json();
+    return [...new Set(
+      (Array.isArray(rows)?rows:[])
+        .map(row=>clean(row?.development_name))
+        .filter(Boolean)
+    )];
+  }catch(error){
+    console.warn("MATCH_IA_PROJECT_LOOKUP",error);
+    return [];
+  }
+}
+
+async function aiPrepareProjectNames(message){
+  const token=AiSearchRouting.aiProjectLookupToken(
+    message,
+    aiRoutingNeighborhoodCatalog()
+  );
+  const local=aiKnownProjectNames();
+
+  if(!token){
+    aiTurnProjectNames=local;
+    return;
+  }
+
+  const remote=await aiLookupDevelopmentNames(token);
+  aiTurnProjectNames=[...new Set([...local,...remote])];
+}
+
 function aiUpdateSearchState(message,inventory){
   const applied=AiSearchRouting.aiNextSearchState(
     aiSearchState,
     message,
     aiRoutingNeighborhoodCatalog(inventory),
-    aiKnownProjectNames(inventory)
+    aiRoutingProjects()
   );
 
   const turn=applied.turn;
   const state={...applied.state};
-  const explicitProject=
-    turn.kind==="vague" || turn.kind==="follow_up"
-      ? state.exactName
-      : aiExtractExplicitProject(message,inventory);
+  const keepResolvedProject=
+    turn.reason==="known_project" &&
+    Boolean(state.exactName);
 
-  if(turn.kind!=="vague" && turn.kind!=="follow_up"){
-    if(explicitProject){
-      state.exactName=explicitProject;
-    }else if(turn.kind==="reset" || turn.kind==="alternatives"){
-      state.exactName="";
+  if(!keepResolvedProject){
+    const explicitProject=
+      turn.kind==="vague" ||
+      turn.kind==="follow_up" ||
+      turn.kind==="project_options"
+        ? state.exactName
+        : aiExtractExplicitProject(message,inventory);
+
+    if(
+      turn.kind!=="vague" &&
+      turn.kind!=="follow_up" &&
+      turn.kind!=="project_options"
+    ){
+      if(explicitProject){
+        state.exactName=explicitProject;
+      }else if(turn.kind==="reset" || turn.kind==="alternatives"){
+        state.exactName="";
+      }
     }
   }
 
@@ -14077,11 +14191,14 @@ async function sendAiAssistantMessage(text){
   const wasPropertyMode=
     aiIsPropertyMode();
 
+  await aiPrepareProjectNames(text);
+
   const routingTurn=
     aiClassifySearchTurn(
       text,
       aiCurrentRoutingContext(),
-      aiRoutingNeighborhoodCatalog()
+      aiRoutingNeighborhoodCatalog(),
+      aiRoutingProjects()
     );
 
   aiLastRoutingTurn=routingTurn;
@@ -14271,6 +14388,20 @@ async function sendAiAssistantMessage(text){
     return;
   }
 
+  if(routingTurn.kind==="project_options"){
+    appendAiProjectOptions(
+      routingTurn.projectOptions
+    );
+
+    aiAssistantSending=false;
+
+    if(send){
+      send.disabled=false;
+    }
+
+    return;
+  }
+
 
   /*
     DESAMBIGUAÇÃO DE INTENÇÃO
@@ -14288,6 +14419,7 @@ async function sendAiAssistantMessage(text){
       aiAssistantProperty
         ?.generic_search
     ) &&
+    routingTurn.reason!=="known_project" &&
     !aiPendingDisambiguationChoice
   ){
     const ambiguity=

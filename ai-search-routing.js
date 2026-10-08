@@ -392,26 +392,212 @@
   }
 
   /*
-    Empreendimento só quando o nome conhecido aparece inteiro,
-    com fronteira de palavra. A sobra livre da frase não vira nome.
+    Sufixos de cadastro. Não fazem parte do nome que o cliente fala.
+    "Rooftop Perdizes - Breve Lançamento" corresponde a "Rooftop Perdizes".
   */
-  function aiMatchKnownProject(message, knownProjects) {
-    const text = comparisonText(message);
-    if (!text) return "";
+  function aiDevelopmentLabel(name) {
+    const parts = String(name || "")
+      .trim()
+      .split(/\s+-\s+/)
+      .filter(Boolean);
 
-    const padded = ` ${text} `;
-    const sorted = [...new Set(
-      (knownProjects || [])
-        .map(name => String(name || "").trim())
-        .filter(Boolean)
-    )].sort((a, b) => aiNormalizeText(b).length - aiNormalizeText(a).length);
-
-    for (const name of sorted) {
-      const key = aiNormalizeText(name);
-      if (!key || key.length < 3 || aiProjectDenied(key)) continue;
-      if (padded.includes(` ${key} `)) return name;
+    while (parts.length > 1) {
+      const tail = aiNormalizeText(parts[parts.length - 1]);
+      if (
+        tail !== "breve lancamento" &&
+        tail !== "residencial" &&
+        tail !== "comercial" &&
+        tail !== "nr"
+      ) {
+        break;
+      }
+      parts.pop();
     }
 
+    return parts.join(" - ").trim();
+  }
+
+  function aiMessageForProjectMatch(message) {
+    return comparisonText(message)
+      .replace(
+        /(?:entre|de)\s*(?:r\$)?\s*[\d.,]+\s*(?:milhoes|milhao|mil|mi|k)?\s*(?:a|e|-)\s*(?:r\$)?\s*[\d.,]+\s*(?:milhoes|milhao|mil|mi|k)?/g,
+        " "
+      )
+      .replace(
+        /(?:ate|maximo|max|no maximo|teto de)\s*(?:r\$)?\s*[\d.,]+\s*(?:milhoes|milhao|mil|mi|k)?/g,
+        " "
+      )
+      .replace(
+        /(?:a partir de|minimo|min|acima de|mais de)\s*(?:r\$)?\s*[\d.,]+\s*(?:milhoes|milhao|mil|mi|k)?/g,
+        " "
+      )
+      .replace(
+        /(?:r\$\s*)[\d][\d.,]*\s*(?:milhoes|milhao|mil|mi|k)?/g,
+        " "
+      )
+      .replace(
+        /\b\d+\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/g,
+        " "
+      )
+      .replace(
+        /\b(?:um|uma|dois|duas|tres|quatro|cinco)\s+(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/g,
+        " "
+      )
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function aiProjectCatalog(knownProjects) {
+    const byCore = new Map();
+
+    for (const name of knownProjects || []) {
+      const label = aiDevelopmentLabel(name);
+      const core = aiNormalizeText(label);
+      if (!core || core.length < 3 || aiProjectDenied(core)) continue;
+      if (!byCore.has(core)) byCore.set(core, label);
+    }
+
+    return [...byCore.entries()]
+      .map(([core, label]) => ({ core, label }))
+      .sort((a, b) => b.core.length - a.core.length);
+  }
+
+  function keepSpecificCores(hits) {
+    return hits.filter(item =>
+      !hits.some(other =>
+        other.core !== item.core &&
+        other.core.length > item.core.length &&
+        other.core.startsWith(`${item.core} `)
+      )
+    );
+  }
+
+  /*
+    1. O nome inteiro do empreendimento, já sem sufixo de cadastro.
+    2. Prefixo claro ("Marka" → só um Marka, ou vários para desambiguar).
+    Bairro puro não vira empreendimento.
+    "em/no/na" continua separando nome curto e bairro.
+  */
+  function aiResolveKnownProjects(message, knownProjects, knownNeighborhoods) {
+    const none = { status: "none", label: "", candidates: [] };
+    const catalog = aiProjectCatalog(knownProjects);
+    const text = aiMessageForProjectMatch(message);
+    if (!text || !catalog.length) return none;
+
+    const padded = ` ${text} `;
+    const phraseHits = keepSpecificCores(
+      catalog.filter(item => padded.includes(` ${item.core} `))
+    );
+    const neighborhoodKey = aiNormalizeText(
+      aiCanonicalNeighborhood(text, knownNeighborhoods)
+    );
+
+    if (phraseHits.length === 1) {
+      const core = phraseHits[0].core;
+      if (neighborhoodKey && core === neighborhoodKey) return none;
+      const neighborhoodInside = Boolean(
+        neighborhoodKey &&
+        ` ${core} `.includes(` ${neighborhoodKey} `)
+      );
+      return {
+        status: !neighborhoodKey || neighborhoodInside ? "match" : "partial",
+        label: phraseHits[0].label,
+        candidates: [phraseHits[0].label]
+      };
+    }
+
+    if (phraseHits.length > 1) {
+      return {
+        status: "ambiguous",
+        label: "",
+        candidates: phraseHits
+          .map(item => item.label)
+          .sort((a, b) => a.localeCompare(b, "pt"))
+      };
+    }
+
+    const attempt = text
+      .replace(
+        /\b(quero|saber|sobre|tem|existe|ha|mostrar|mostra|ver|buscar|busca|procurar|procura|apartamento|apartamentos|imovel|imoveis|lancamento|lancamentos|empreendimento|empreendimentos|condominio|condominios|voce|voces|por|favor|o|a|os|as|um|uma|me|algum|alguma|uns|umas|com|para)\b/g,
+        " "
+      )
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!attempt || attempt.length < 4 || aiProjectDenied(attempt)) return none;
+
+    const attemptNeighborhood = aiNormalizeText(
+      aiCanonicalNeighborhood(attempt, knownNeighborhoods)
+    );
+    if (attemptNeighborhood && attempt === attemptNeighborhood) return none;
+
+    const prefixHits = catalog.filter(item =>
+      item.core === attempt || item.core.startsWith(`${attempt} `)
+    );
+
+    if (prefixHits.length === 1) {
+      const core = prefixHits[0].core;
+      const neighborhoodInside = Boolean(
+        neighborhoodKey &&
+        neighborhoodKey !== core &&
+        ` ${core} `.includes(` ${neighborhoodKey} `)
+      );
+      if (neighborhoodKey && !neighborhoodInside) {
+        return {
+          status: "partial",
+          label: prefixHits[0].label,
+          candidates: [prefixHits[0].label]
+        };
+      }
+      return {
+        status: "match",
+        label: prefixHits[0].label,
+        candidates: [prefixHits[0].label]
+      };
+    }
+
+    if (prefixHits.length > 1) {
+      return {
+        status: "ambiguous",
+        label: "",
+        candidates: prefixHits
+          .map(item => item.label)
+          .sort((a, b) => a.localeCompare(b, "pt"))
+      };
+    }
+
+    return none;
+  }
+
+  function aiProjectLookupToken(message, knownNeighborhoods) {
+    const text = aiMessageForProjectMatch(message)
+      .replace(
+        /\b(quero|saber|sobre|tem|existe|ha|mostrar|mostra|ver|buscar|busca|procurar|procura|apartamento|apartamentos|imovel|imoveis|lancamento|lancamentos|empreendimento|empreendimentos|condominio|condominios|voce|voces|por|favor|o|a|os|as|um|uma|me|algum|alguma|uns|umas|com|para|em|no|na|nos|nas|de|do|da|dos|das)\b/g,
+        " "
+      )
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!text || text.length < 4) return "";
+
+    const neighborhood = aiNormalizeText(
+      aiCanonicalNeighborhood(text, knownNeighborhoods)
+    );
+    if (neighborhood && text === neighborhood) return "";
+
+    return text.split(" ").find(part => part.length >= 4) || "";
+  }
+
+  /*
+    Empreendimento conhecido.
+    Nome completo tem prioridade sobre um bairro que só faz parte dele.
+    Vários empreendimentos não escolhem um ao acaso.
+  */
+  function aiMatchKnownProject(message, knownProjects) {
+    const resolved = aiResolveKnownProjects(message, knownProjects, []);
+    if (resolved.status === "match" || resolved.status === "partial") {
+      return resolved.label;
+    }
     return "";
   }
 
@@ -518,6 +704,15 @@
     );
     if (!neighborhood) return null;
 
+    const resolved = aiResolveKnownProjects(
+      message,
+      knownProjects,
+      knownNeighborhoods
+    );
+    if (resolved.status === "match" || resolved.status === "ambiguous") {
+      return null;
+    }
+
     const project = aiMatchKnownProject(message, knownProjects);
     if (!project) return null;
     if (aiNormalizeText(project) === aiNormalizeText(neighborhood)) return null;
@@ -535,8 +730,19 @@
       knownNeighborhoods,
       knownProjects
     );
-    const neighborhood = aiCanonicalNeighborhood(message, knownNeighborhoods) || "";
-    const project = aiMatchKnownProject(message, knownProjects) || "";
+    const resolvedProjects = aiResolveKnownProjects(
+      message,
+      knownProjects,
+      knownNeighborhoods
+    );
+    const neighborhood = resolvedProjects.status === "match"
+      ? ""
+      : (aiCanonicalNeighborhood(message, knownNeighborhoods) || "");
+    const project = resolvedProjects.status === "match"
+      ? resolvedProjects.label
+      : resolvedProjects.status === "ambiguous"
+        ? ""
+        : (aiMatchKnownProject(message, knownProjects) || "");
     const projectIsNeighborhood = Boolean(
       project &&
       neighborhood &&
@@ -561,7 +767,12 @@
       project: recognizedProject,
       query,
       keepQueryText: query !== "",
-      ambiguity: aiDetectProjectNeighborhoodAmbiguity(
+      projectOptions: resolvedProjects.status === "ambiguous"
+        ? resolvedProjects.candidates
+        : [],
+      ambiguity: resolvedProjects.status === "match"
+        ? null
+        : aiDetectProjectNeighborhoodAmbiguity(
         message,
         knownNeighborhoods,
         knownProjects
@@ -661,6 +872,36 @@
         preservePropertyForComparison: true,
         keepQueryText: false,
         ...placeFields
+      });
+    }
+
+    const development = aiResolveKnownProjects(
+      message,
+      knownProjects,
+      knownNeighborhoods
+    );
+
+    if (development.status === "ambiguous") {
+      return baseTurn({
+        kind: "project_options",
+        reason: "ambiguous_project",
+        keepQueryText: false,
+        isNewSearch: false,
+        neighborhood: "",
+        region: "",
+        projectOptions: development.candidates
+      });
+    }
+
+    if (development.status === "match") {
+      return baseTurn({
+        kind: "reset",
+        isNewSearch: true,
+        reason: "known_project",
+        keepQueryText: false,
+        neighborhood: "",
+        region: "",
+        project: development.label
       });
     }
 
@@ -797,7 +1038,8 @@
     if (
       turn.kind === "vague" ||
       turn.kind === "follow_up" ||
-      turn.kind === "comparison"
+      turn.kind === "comparison" ||
+      turn.kind === "project_options"
     ) {
       return {
         turn,
@@ -844,6 +1086,12 @@
       state.maxPrice = 0;
     }
 
+    if (turn.project) {
+      state.exactName = turn.project;
+      state.neighborhood = "";
+      state.region = "";
+    }
+
     return { turn, state };
   }
 
@@ -862,6 +1110,8 @@
     aiHasExplicitComparisonStructure,
     aiExtractComparison,
     aiMatchKnownProject,
+    aiResolveKnownProjects,
+    aiProjectLookupToken,
     aiNeighborhoodScope,
     aiQueryTokens,
     aiDetectProjectNeighborhoodAmbiguity,
