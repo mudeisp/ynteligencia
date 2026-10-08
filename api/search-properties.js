@@ -145,11 +145,13 @@ export default async function handler(req, res) {
 
     function queryTokens(value) {
       return normalize(value)
+        .replace(/[?!.,;:()"“”]/g, " ")
         .split(/\s+/)
         .map(token => token.trim())
         .filter(
           token =>
             token.length >= 3 &&
+            !token.includes("?") &&
             !STOP_WORDS.has(token) &&
             !/^\d/.test(token)
         );
@@ -335,6 +337,37 @@ export default async function handler(req, res) {
         : [];
     }
 
+    function uniqueNeighborhoods(values) {
+      const seen = new Set();
+      const result = [];
+
+      for (const value of values) {
+        const text = String(value || "").trim();
+        const key = normalize(text);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        result.push(text);
+      }
+
+      return result;
+    }
+
+    function quoteFilter(value) {
+      return `"${String(value).replace(/"/g, "")}"`;
+    }
+
+    const neighborhoodMode =
+      body.neighborhoodMode === "family"
+        ? "family"
+        : "exact";
+
+    const wantedNeighborhoods = uniqueNeighborhoods([
+      ...(Array.isArray(body.neighborhoods)
+        ? body.neighborhoods
+        : []),
+      neighborhood
+    ]);
+
     function createBaseParams() {
       const params =
         new URLSearchParams();
@@ -363,10 +396,33 @@ export default async function handler(req, res) {
         );
       }
 
-      if (neighborhood) {
+      if (neighborhoodMode === "family" && neighborhood) {
+        const familyRoot = String(neighborhood).replace(/["*,()]/g, "");
+        const familyNames = wantedNeighborhoods.length
+          ? wantedNeighborhoods
+          : [neighborhood];
+        const familyFilters = [
+          ...familyNames.map(
+            name => `neighborhood.ilike.${quoteFilter(name)}`
+          ),
+          `neighborhood.ilike.${quoteFilter(`${familyRoot}*`)}`
+        ];
+
+        params.set(
+          "or",
+          `(${familyFilters.join(",")})`
+        );
+      } else if (wantedNeighborhoods.length === 1) {
         params.set(
           "neighborhood",
-          `ilike.*${neighborhood}*`
+          `ilike.${quoteFilter(wantedNeighborhoods[0])}`
+        );
+      } else if (wantedNeighborhoods.length > 1) {
+        params.set(
+          "or",
+          `(${wantedNeighborhoods
+            .map(name => `neighborhood.ilike.${quoteFilter(name)}`)
+            .join(",")})`
         );
       }
 
@@ -622,6 +678,24 @@ export default async function handler(req, res) {
             );
           }
         );
+    }
+
+    if (neighborhood || wantedNeighborhoods.length) {
+      const familyRoot = normalize(neighborhood);
+      const wanted = new Set(
+        wantedNeighborhoods.map(name => normalize(name))
+      );
+
+      candidates = candidates.filter(property => {
+        const key = normalize(propertyNeighborhood(property));
+        if (!key) return false;
+
+        if (neighborhoodMode === "family" && familyRoot) {
+          return key === familyRoot || key.startsWith(`${familyRoot} `);
+        }
+
+        return wanted.has(key);
+      });
     }
 
     if (bedrooms) {

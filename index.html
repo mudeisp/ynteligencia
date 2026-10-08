@@ -12037,7 +12037,8 @@ function aiDetectSearchAmbiguity(message){
   const found=
     AiSearchRouting.aiDetectProjectNeighborhoodAmbiguity(
       message,
-      aiRoutingNeighborhoodCatalog()
+      aiRoutingNeighborhoodCatalog(),
+      aiKnownProjectNames()
     );
 
   if(!found)return null;
@@ -12464,38 +12465,24 @@ function aiExtractExplicitNeighborhood(message,inventory){
 }
 
 function aiExtractExplicitProject(message,inventory){
-  const t=norm(message||"");
+  const project=AiSearchRouting.aiMatchKnownProject(
+    message,
+    aiKnownProjectNames(inventory)
+  ) || "";
+  const neighborhood=aiCanonicalNeighborhood(
+    message,
+    aiRoutingNeighborhoodCatalog(inventory)
+  );
 
-  const candidates=[...new Set(
-    inventory
-      .flatMap(p=>{
-        const raw=aiGetRawProperty(p);
-        const building=raw?.building && typeof raw.building==="object" ? raw.building : {};
-        return [
-          p?.name,
-          raw?.name,
-          raw?.title,
-          raw?.project_name,
-          raw?.development_name,
-          raw?.building_name,
-          building?.name,
-          building?.title,
-          building?.commercial_name,
-          building?.development_name
-        ];
-      })
-      .map(clean)
-      .filter(v=>v && v.length>=4)
-  )].sort((a,b)=>b.length-a.length);
-
-  for(const value of candidates){
-    const key=norm(value);
-    if(key && t.includes(key)){
-      return value;
-    }
+  if(
+    project &&
+    neighborhood &&
+    norm(project)===norm(neighborhood)
+  ){
+    return "";
   }
 
-  return "";
+  return project;
 }
 
 function aiUpdateSearchState(message,inventory){
@@ -13219,7 +13206,19 @@ async function searchPropertiesForAi(message){
     max_price:Number(state.maxPrice)||0,
 
     source:"todos",
-    limit:12
+    limit:12,
+    neighborhoodMode: state.neighborhood
+      ? AiSearchRouting.aiNeighborhoodScope(
+          state.neighborhood,
+          aiRoutingNeighborhoodCatalog(inventoryForParsing)
+        ).mode
+      : "",
+    neighborhoods: state.neighborhood
+      ? AiSearchRouting.aiNeighborhoodScope(
+          state.neighborhood,
+          aiRoutingNeighborhoodCatalog(inventoryForParsing)
+        ).names
+      : []
   };
 
   console.log(

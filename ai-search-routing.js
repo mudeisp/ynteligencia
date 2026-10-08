@@ -127,10 +127,24 @@
 
   function aiExtractBedrooms(message) {
     const t = aiNormalizeText(message || "");
-    const match = t.match(
+    const digit = t.match(
       /(\d+)\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/
     );
-    return match ? Number(match[1]) || 0 : 0;
+    if (digit) return Number(digit[1]) || 0;
+
+    const words = {
+      um: 1,
+      uma: 1,
+      dois: 2,
+      duas: 2,
+      tres: 3,
+      quatro: 4,
+      cinco: 5
+    };
+    const word = t.match(
+      /\b(um|uma|dois|duas|tres|quatro|cinco)\s+(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos)\b/
+    );
+    return word ? words[word[1]] || 0 : 0;
   }
 
   function aiExtractExplicitRegion(message) {
@@ -355,61 +369,166 @@
   }
 
   /*
-    Desambiguação empreendimento x bairro.
-    Não roda quando a frase já tem "comparar X com Y", "vs" ou "versus".
+    Não é nome de empreendimento.
+    Número, tipologia, preço, verbo de busca e pontuação ficam de fora
+    mesmo se algum cadastro repetir essas palavras.
   */
-  function aiDetectProjectNeighborhoodAmbiguity(message, knownNeighborhoods) {
+  function aiProjectDenied(name) {
+    const denied = new Set([
+      "um", "uma", "dois", "duas", "tres", "quatro", "cinco",
+      "seis", "sete", "oito", "nove", "dez",
+      "dorm", "dorms", "dormitorio", "dormitorios",
+      "quarto", "quartos", "suite", "suites",
+      "vaga", "vagas", "banheiro", "banheiros",
+      "mil", "milhao", "milhoes", "reais", "preco", "valor",
+      "ate", "acima", "abaixo", "entre",
+      "tem", "existe", "quero", "busca", "buscar", "procura", "procurar",
+      "mostra", "mostrar", "ver", "imovel", "imoveis", "apartamento",
+      "lancamento", "lancamentos"
+    ]);
+    const tokens = aiNormalizeText(name || "").split(/\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    return tokens.every(token => denied.has(token) || /^\d+$/.test(token));
+  }
+
+  /*
+    Empreendimento só quando o nome conhecido aparece inteiro,
+    com fronteira de palavra. A sobra livre da frase não vira nome.
+  */
+  function aiMatchKnownProject(message, knownProjects) {
+    const text = comparisonText(message);
+    if (!text) return "";
+
+    const padded = ` ${text} `;
+    const sorted = [...new Set(
+      (knownProjects || [])
+        .map(name => String(name || "").trim())
+        .filter(Boolean)
+    )].sort((a, b) => aiNormalizeText(b).length - aiNormalizeText(a).length);
+
+    for (const name of sorted) {
+      const key = aiNormalizeText(name);
+      if (!key || key.length < 3 || aiProjectDenied(key)) continue;
+      if (padded.includes(` ${key} `)) return name;
+    }
+
+    return "";
+  }
+
+  /*
+    "Brooklin" é família quando o catálogo tem formas qualificadas.
+    "Brooklin Paulista" e "Brooklin Novo" são exatos.
+    A mesma regra vale para outro nome curto com qualificados conhecidos.
+  */
+  function aiNeighborhoodScope(matchedName, knownNeighborhoods) {
+    const matchedKey = aiNormalizeText(matchedName || "");
+    if (!matchedKey) return { mode: "", names: [] };
+
+    const entries = [];
+    const seen = new Set();
+    for (const name of knownNeighborhoods || []) {
+      const key = aiNormalizeText(name || "");
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      entries.push({
+        name: String(name).trim(),
+        key
+      });
+    }
+
+    const isQualified = entries.some(entry =>
+      entry.key !== matchedKey &&
+      matchedKey.startsWith(`${entry.key} `)
+    );
+    const own = entries.find(entry => entry.key === matchedKey);
+    const label = own ? own.name : String(matchedName).trim();
+
+    if (isQualified) {
+      return { mode: "exact", names: [label] };
+    }
+
+    const family = entries.filter(entry =>
+      entry.key === matchedKey ||
+      entry.key.startsWith(`${matchedKey} `)
+    );
+
+    if (family.length > 1) {
+      return {
+        mode: "family",
+        names: family.map(entry => entry.name)
+      };
+    }
+
+    return { mode: "exact", names: [label] };
+  }
+
+  function aiQueryTokens(value) {
+    return aiNormalizeText(value || "")
+      .replace(/[?!.,;:()"“”]/g, " ")
+      .split(/\s+/)
+      .map(token => token.trim())
+      .filter(token => token && !token.includes("?"));
+  }
+
+  /*
+    Desambiguação só entre bairro conhecido e empreendimento conhecido.
+    Não roda em "comparar X com Y", "vs" ou "versus".
+  */
+  function aiDetectProjectNeighborhoodAmbiguity(message, knownNeighborhoods, knownProjects) {
     if (aiHasExplicitComparisonStructure(message)) return null;
 
-    const original = String(message || "").trim();
-    const text = comparisonText(original);
-    if (!original || !text) return null;
-
     const neighborhood = aiCanonicalNeighborhood(
-      original,
+      message,
       knownNeighborhoods
     );
     if (!neighborhood) return null;
 
-    const escaped = aiNormalizeText(neighborhood)
-      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-    let candidate = ` ${text} `
-      .replace(new RegExp(`\\s${escaped}\\s`, "g"), " ")
-      .replace(
-        /\b(quero|queria|gostaria|saber|sobre|busca|buscar|busque|procura|procurar|procure|mostra|mostrar|mostre|ver|comparar|compare|comparacao|tem|existe|ha|imovel|imoveis|apartamento|apartamentos|casa|casas|empreendimento|empreendimentos|condominio|condominios|no|na|em|do|da|de|para|por|com|um|uma|o|a|os|as)\b/g,
-        " "
-      )
-      .replace(
-        /\b\d+\s*(?:dorm|dorms|dormitorio|dormitorios|quarto|quartos|m2|m)?\b/g,
-        " "
-      )
-      .replace(
-        /\b(?:ate|acima|abaixo|entre|mil|milhao|milhoes|reais|r\$)\b/g,
-        " "
-      )
-      .replace(/\s+/g, " ")
-      .trim();
-
-    const generic = new Set([
-      "novo", "novos", "usado", "usados", "studio", "studios",
-      "cobertura", "garden", "duplex", "triplex", "lancamento",
-      "lancamentos", "residencial", "comercial", "perto",
-      "proximo", "proxima", "metro", "estacao"
-    ]);
-
-    const tokens = candidate
-      .split(/\s+/)
-      .filter(Boolean)
-      .filter(token => !generic.has(token));
-
-    if (!tokens.length || tokens.join("").length < 3 || tokens.length > 4) {
-      return null;
-    }
+    const project = aiMatchKnownProject(message, knownProjects);
+    if (!project) return null;
+    if (aiNormalizeText(project) === aiNormalizeText(neighborhood)) return null;
 
     return {
-      project: aiTitleCaseWords(tokens.join(" ")),
+      project,
       neighborhood
+    };
+  }
+
+  function aiInventoryQueryPlan(message, knownNeighborhoods, knownProjects) {
+    const turn = aiClassifySearchTurn(
+      message,
+      {},
+      knownNeighborhoods,
+      knownProjects
+    );
+    const neighborhood = aiCanonicalNeighborhood(message, knownNeighborhoods) || "";
+    const project = aiMatchKnownProject(message, knownProjects) || "";
+    const projectIsNeighborhood = Boolean(
+      project &&
+      neighborhood &&
+      aiNormalizeText(project) === aiNormalizeText(neighborhood)
+    );
+    const recognizedProject = projectIsNeighborhood ? "" : project;
+    const scope = neighborhood
+      ? aiNeighborhoodScope(neighborhood, knownNeighborhoods)
+      : { mode: "", names: [] };
+    const query = neighborhood || recognizedProject
+      ? ""
+      : String(message || "").trim();
+
+    return {
+      kind: turn.kind,
+      neighborhood,
+      neighborhoodMode: scope.mode,
+      neighborhoods: scope.names,
+      bedrooms: aiExtractBedrooms(message),
+      project: recognizedProject,
+      query,
+      keepQueryText: query !== "",
+      ambiguity: aiDetectProjectNeighborhoodAmbiguity(
+        message,
+        knownNeighborhoods,
+        knownProjects
+      )
     };
   }
 
@@ -552,7 +671,7 @@
         return baseTurn({
           kind: "refine",
           reason: "same_place",
-          keepQueryText: !isBareInventoryPrompt(text) && !isYouHavePhrase(text),
+          keepQueryText: false,
           neighborhood,
           region: ""
         });
@@ -562,6 +681,7 @@
         kind: "reset",
         isNewSearch: true,
         reason: "new_place",
+        keepQueryText: false,
         neighborhood,
         region: ""
       });
@@ -597,6 +717,14 @@
       return baseTurn({
         kind: "refine",
         reason: "refinement"
+      });
+    }
+
+    if (aiMatchKnownProject(message, knownProjects)) {
+      return baseTurn({
+        kind: "refine",
+        reason: "known_project",
+        keepQueryText: false
       });
     }
 
@@ -695,6 +823,10 @@
     aiHasSearchContext,
     aiHasExplicitComparisonStructure,
     aiExtractComparison,
-    aiDetectProjectNeighborhoodAmbiguity
+    aiMatchKnownProject,
+    aiNeighborhoodScope,
+    aiQueryTokens,
+    aiDetectProjectNeighborhoodAmbiguity,
+    aiInventoryQueryPlan
   };
 });
