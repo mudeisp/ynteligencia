@@ -14,7 +14,8 @@ function loadNeighborhoods() {
   const regionMap = eval(`(${match[1]})`);
   return [
     ...new Set(Object.values(regionMap).flat()),
-    "Brooklin Paulista"
+    "Brooklin Paulista",
+    "Brooklin Novo"
   ];
 }
 
@@ -443,11 +444,20 @@ test("comparar X com Y classifica os dois lados e não vira desambiguação", ()
 test("tem Well em Perdizes continua ambíguo e Brooklin isolado segue a regra atual", () => {
   const ambiguity = routing.aiDetectProjectNeighborhoodAmbiguity(
     "tem Well em Perdizes?",
-    names
+    names,
+    ["Well"]
   );
   assert.ok(ambiguity);
   assert.equal(norm(ambiguity.neighborhood), "perdizes");
   assert.equal(norm(ambiguity.project), "well");
+  assert.equal(
+    routing.aiDetectProjectNeighborhoodAmbiguity(
+      "tem Well em Perdizes?",
+      names,
+      []
+    ),
+    null
+  );
   assert.equal(
     routing.aiExtractComparison("tem Well em Perdizes?", names, ["Well"]),
     null
@@ -480,9 +490,181 @@ test("index.html delega aos canônicos e não usa mais substring de bairro", () 
   assert.match(html, /AiSearchRouting\.aiClassifySearchTurn\(/);
   assert.match(html, /AiSearchRouting\.aiCanonicalNeighborhood\(/);
   assert.match(html, /AiSearchRouting\.aiNextSearchState\(/);
+  assert.match(html, /AiSearchRouting\.aiMatchKnownProject\(/);
+  assert.match(html, /AiSearchRouting\.aiNeighborhoodScope\(/);
+  assert.match(html, /neighborhoodMode:/);
   assert.match(html, /preservePropertyForComparison/);
   assert.match(html, /Não é comparação real/);
   assert.doesNotMatch(html, /key\.includes\(mt\)/);
   assert.doesNotMatch(html, /em pompeia\|em vila\|em moema/);
   assert.doesNotMatch(html, /brooklin paulista",\s*"brooklin"/);
+});
+
+function includesName(list, expected) {
+  return list.some(name => norm(name) === expected);
+}
+
+test("matriz de bairro, dormitório e empreendimento conhecido", () => {
+  const projects = ["Well"];
+
+  function plan(phrase) {
+    return routing.aiInventoryQueryPlan(phrase, names, projects);
+  }
+
+  const neighborhoodQueries = [
+    "tem Perdizes?",
+    "Perdizes?",
+    "tem Brooklin?",
+    "tem Brooklin",
+    "Brooklin",
+    "imóveis no Brooklin",
+    "apartamento em Brooklin",
+    "tem lançamento em Perdizes?",
+    "tem Moema?",
+    "quero Perdizes",
+    "2 dorms no Brooklin",
+    "tem 3 dormitórios no Brooklin?"
+  ];
+
+  for (const phrase of neighborhoodQueries) {
+    const result = plan(phrase);
+    assert.equal(result.query, "", phrase);
+    assert.equal(result.project, "", phrase);
+    assert.equal(result.ambiguity, null, phrase);
+    assert.ok(result.neighborhood, phrase);
+    for (const token of routing.aiQueryTokens(phrase)) {
+      assert.equal(token.includes("?"), false, phrase);
+    }
+  }
+
+  assert.equal(norm(plan("tem Perdizes?").neighborhood), "perdizes");
+  assert.equal(plan("tem Perdizes?").neighborhoodMode, "exact");
+  assert.equal(norm(plan("quero Perdizes").neighborhood), "perdizes");
+  assert.equal(norm(plan("tem Moema?").neighborhood), "moema");
+
+  const brooklin = plan("tem Brooklin?");
+  assert.equal(norm(brooklin.neighborhood), "brooklin");
+  assert.equal(brooklin.neighborhoodMode, "family");
+  assert.equal(includesName(brooklin.neighborhoods, "brooklin"), true);
+  assert.equal(includesName(brooklin.neighborhoods, "brooklin paulista"), true);
+  assert.equal(includesName(brooklin.neighborhoods, "brooklin novo"), true);
+  assert.equal(plan("tem Brooklin").neighborhoodMode, "family");
+  assert.equal(plan("Brooklin").neighborhoodMode, "family");
+
+  for (const phrase of ["Brooklin Paulista", "no Brooklin Paulista", "brooklin paulista 2 dorms"]) {
+    const result = plan(phrase);
+    assert.equal(norm(result.neighborhood), "brooklin paulista", phrase);
+    assert.equal(result.neighborhoodMode, "exact", phrase);
+    assert.equal(result.query, "", phrase);
+    assert.equal(result.ambiguity, null, phrase);
+    assert.deepEqual(result.neighborhoods.map(norm), ["brooklin paulista"]);
+  }
+
+  const novo = plan("Brooklin Novo");
+  assert.equal(norm(novo.neighborhood), "brooklin novo");
+  assert.equal(novo.neighborhoodMode, "exact");
+  assert.deepEqual(novo.neighborhoods.map(norm), ["brooklin novo"]);
+
+  assert.equal(plan("tem Brooklin dois dorms").bedrooms, 2);
+  assert.equal(plan("tem Brooklin dois dorms").ambiguity, null);
+  assert.equal(plan("dois dormitórios em Perdizes").bedrooms, 2);
+  assert.equal(norm(plan("dois dormitórios em Perdizes").neighborhood), "perdizes");
+  assert.equal(plan("quatro quartos em Perdizes").bedrooms, 4);
+  assert.equal(plan("2 dorms no Brooklin").bedrooms, 2);
+  assert.equal(plan("brooklin paulista 2 dorms").bedrooms, 2);
+  assert.equal(plan("tem 3 dormitórios no Brooklin?").bedrooms, 3);
+
+  assert.equal(
+    routing.aiDetectProjectNeighborhoodAmbiguity(
+      "tem Brooklin dois dorms",
+      names,
+      ["Dois Dorms", "Well"]
+    ),
+    null
+  );
+  assert.equal(
+    routing.aiDetectProjectNeighborhoodAmbiguity(
+      "dois dormitórios em Perdizes",
+      names,
+      ["Dois Dormitorios"]
+    ),
+    null
+  );
+
+  const wellPlace = plan("tem Well em Perdizes?");
+  assert.ok(wellPlace.ambiguity);
+  assert.equal(norm(wellPlace.ambiguity.project), "well");
+  assert.equal(norm(wellPlace.ambiguity.neighborhood), "perdizes");
+
+  const wellOnly = plan("tem o Well?");
+  assert.equal(wellOnly.ambiguity, null);
+  assert.equal(norm(wellOnly.project), "well");
+  assert.equal(wellOnly.query, "");
+  assert.equal(wellOnly.neighborhood, "");
+
+  const wellMissing = routing.aiInventoryQueryPlan("tem o Well?", names, []);
+  assert.equal(wellMissing.project, "");
+  assert.equal(wellMissing.ambiguity, null);
+
+  for (const phrase of ["perdizes?", "brooklin?", "moema?"]) {
+    assert.equal(
+      routing.aiQueryTokens(`tem ${phrase}`).some(token => token.includes("?")),
+      false
+    );
+  }
+
+  const compare = routing.aiClassifySearchTurn(
+    "comparar Brooklin com Perdizes",
+    {},
+    names,
+    projects
+  );
+  assert.equal(compare.kind, "comparison");
+  assert.equal(compare.realComparison, false);
+  assert.equal(
+    routing.aiDetectProjectNeighborhoodAmbiguity(
+      "comparar Brooklin com Perdizes",
+      names,
+      projects
+    ),
+    null
+  );
+
+  const versus = routing.aiClassifySearchTurn(
+    "Brooklin vs Perdizes",
+    {},
+    names,
+    projects
+  );
+  assert.equal(versus.kind, "comparison");
+  assert.equal(versus.realComparison, false);
+
+  const another = routing.aiClassifySearchTurn(
+    "comparar Brooklin com outro",
+    moema,
+    names,
+    projects
+  );
+  assert.equal(another.kind, "alternatives");
+  assert.equal(another.realComparison, false);
+  assert.equal(another.preservePropertyForComparison, true);
+  assert.equal(
+    routing.aiDetectProjectNeighborhoodAmbiguity(
+      "comparar Brooklin com outro",
+      names,
+      projects
+    ),
+    null
+  );
+
+  const api = fs.readFileSync(
+    path.join(__dirname, "api/search-properties.js"),
+    "utf8"
+  );
+  const tokensStart = api.indexOf("function queryTokens");
+  const tokensBody = api.slice(tokensStart, api.indexOf("function rawOf"));
+  assert.equal(tokensBody.includes('.replace(/[?!.,;:()'), true);
+  assert.equal(tokensBody.includes('token.includes("?")'), true);
+  assert.equal(api.includes('neighborhoodMode === "family"'), true);
+  assert.equal(api.includes("key.startsWith(`${familyRoot} `)"), true);
 });
