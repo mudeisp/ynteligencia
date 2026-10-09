@@ -46,7 +46,12 @@ function memory() {
       rows.sort((a, b) => descending
         ? String(b.event_time).localeCompare(String(a.event_time))
         : String(a.event_time).localeCompare(String(a.event_time)));
-      return { ok: true, status: 200, data: rows.slice(0, Number(params.get("limit")) || rows.length) };
+      rows = rows.slice(0, Number(params.get("limit")) || rows.length);
+      const select = params.get("select");
+      if (select && select !== "*") {
+        rows = rows.map(row => Object.fromEntries(select.split(",").map(key => [key, row[key]])));
+      }
+      return { ok: true, status: 200, data: rows };
     }
     if (method === "GET" && table === "ads_visitors") {
       const id = decodeFilter(params.get("visitor_id"));
@@ -662,4 +667,95 @@ test("vid válido atravessa produtos e vid inválido não substitui o local", ()
   const handoff = ads.visitorHandoffUrl("https://agente.example/chat", visitor);
   assert.equal(handoff, `https://agente.example/chat?vid=${visitor}`);
   assert.equal(ads.visitorHandoffUrl("https://agente.example/chat", "invalido"), "https://agente.example/chat");
+});
+
+test("ai_search deduplica a intenção normalizada e grava intenções diferentes em menos de 15s", async () => {
+  const store = memory();
+  const start = new Date("2026-10-09T12:00:00Z");
+  const intent = { neighborhood: "Perdizes", development: "Edifício A", bedrooms: 2, min_price: 500000, max_price: 900000, inventory_source: "todos" };
+  const send = (value, seconds) => ads.recordAdsEvent(base({ event_name: "ai_search", intent: value }), store.rest, new Date(start.getTime() + seconds * 1000));
+  const first = await send(intent, 0);
+  const repeat = await send({ ...intent, neighborhood: "  PERDIZES ", development: "edificio a", bedrooms: "2", max_price: "900000" }, 1);
+  assert.equal(first.body.duplicate, false);
+  assert.equal(repeat.body.duplicate, true);
+  assert.equal(repeat.body.event_id, first.body.event_id);
+  const second = await send({ neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 }, 2);
+  assert.equal(second.body.duplicate, false);
+  assert.equal(store.events.filter(row => row.event_name === "ai_search").length, 2);
+  for (const [key, value] of Object.entries({ neighborhood: "Moema", development: "Edifício B", bedrooms: 3, min_price: 600000, max_price: 1000000, inventory_source: "usados" })) {
+    assert.equal((await send({ ...intent, [key]: value }, 3)).body.duplicate, false, key);
+  }
+  assert.equal((await send(intent, 16)).body.duplicate, false);
+});
+
+function browserAds(storage, sessionId, search, legacy = {}) {
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const payloads = [];
+  const context = vm.createContext({
+    URL, URLSearchParams,
+    window: { location: { search, href: `https://app.yincorp.com.br/${search}`, hostname: "app.yincorp.com.br" } },
+    document: { referrer: "" },
+    YNTELIGENCIA_ATTRIBUTION: legacy,
+    YNTELIGENCIA_VISITOR_ID: visitor,
+    YNTELIGENCIA_SESSION_ID: sessionId,
+    YNTELIGENCIA_SESSION: { session_number: 1 },
+    clean: ads.clean,
+    norm: ads.normalizeText,
+    safeStorageGet: key => storage.get(key) || "",
+    safeStorageSet: (key, value) => storage.set(key, value),
+    safeStorageGetJSON: key => storage.has(key) ? JSON.parse(storage.get(key)) : null,
+    safeStorageSetJSON: (key, value) => storage.set(key, JSON.stringify(value)),
+    fetch: (url, options) => { payloads.push(JSON.parse(options.body)); return Promise.resolve(); }
+  });
+  vm.runInContext(html.slice(html.indexOf("function inferYnteligenciaCurrentTouch()"), html.indexOf("async function supabaseTrack(")), context);
+  vm.runInContext(html.slice(html.indexOf("function yntAdsAttribution()"), html.indexOf("function yntAdsIntentFromState()")), context);
+  return { payloads, track: (name, detail) => context.yntAdsTrack(name, detail) };
+}
+
+test("cliente separa current touch do legado entre três sessões e preserva first touch no servidor", async () => {
+  const storage = new Map();
+  const store = memory();
+  const legacy = { gclid: "ABC", gbraid: "OLD-B", wbraid: "OLD-W", utm_source: "google", utm_campaign: "first" };
+  const first = browserAds(storage, session, "?gclid=ABC&utm_source=google&utm_campaign=first", legacy);
+  first.track("ai_search", { intent: { neighborhood: "Perdizes", bedrooms: 2, max_price: 900000 } });
+  await ads.recordAdsEvent(first.payloads[0], store.rest, new Date("2026-10-09T12:00:00Z"));
+  assert.equal(first.payloads[0].gclid, "ABC");
+  const direct = browserAds(storage, laterSession, "", legacy);
+  direct.track("ai_search", { intent: { neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 } });
+  for (const key of ["gclid", "gbraid", "wbraid", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) assert.equal(direct.payloads[0][key], "", key);
+  await ads.recordAdsEvent(direct.payloads[0], store.rest, new Date("2026-10-10T12:00:00Z"));
+  assert.equal(store.events[1].gclid, "");
+  assert.equal(store.events[1].visitor_id, visitor);
+  assert.equal(store.events[1].session_id, laterSession);
+  const last = browserAds(storage, "session-3", "?gclid=XYZ&utm_source=google&utm_campaign=third", legacy);
+  last.track("ai_search", { intent: { neighborhood: "Moema", bedrooms: 4 } });
+  await ads.recordAdsEvent(last.payloads[0], store.rest, new Date("2026-10-11T12:00:00Z"));
+  assert.equal(store.events[2].gclid, "XYZ");
+  assert.equal(store.visitors[0].first_gclid, "ABC");
+  assert.equal(store.visitors[0].first_utm_source, "google");
+  assert.equal(store.visitors[0].first_utm_campaign, "first");
+  assert.equal(store.visitors[0].last_gclid, "XYZ");
+  assert.equal(store.visitors[0].first_declared_intent.neighborhood, "Perdizes");
+  assert.equal(store.visitors[0].current_declared_intent.neighborhood, "Moema");
+  assert.equal(JSON.parse(storage.get("ynteligencia_first_touch_v2")).gclid, "ABC");
+  // Reload sem parâmetros mantém somente o toque da própria sessão paga.
+  const reload = browserAds(storage, "session-3", "", legacy);
+  reload.track("property_view", { property: { property_id: "a" } });
+  assert.equal(reload.payloads[0].gclid, "XYZ");
+});
+
+test("cliente deduplica ai_search com os seis campos e preserva property_view", () => {
+  const client = browserAds(new Map(), session, "");
+  const intent = { neighborhood: "Perdizes", development: "Edifício A", bedrooms: 2, min_price: 500000, max_price: 900000, inventory_source: "todos" };
+  client.track("ai_search", { intent });
+  client.track("ai_search", { intent: { ...intent, neighborhood: " PERDIZES ", development: "edificio a", bedrooms: "2" } });
+  assert.equal(client.payloads.length, 1);
+  for (const [key, value] of Object.entries({ neighborhood: "Brooklin", development: "B", bedrooms: 3, min_price: 600000, max_price: 1100000, inventory_source: "novos" })) {
+    client.track("ai_search", { intent: { ...intent, [key]: value } });
+  }
+  assert.equal(client.payloads.length, 7);
+  client.track("property_view", { property: { property_id: "a" } });
+  client.track("property_view", { property: { property_id: "a" } });
+  assert.equal(client.payloads.length, 8);
 });

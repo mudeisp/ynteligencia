@@ -404,6 +404,18 @@
     };
   }
 
+  function searchIntentKey(intent) {
+    const normalized = normalizeIntent(intent);
+    return JSON.stringify([
+      normalizeText(normalized.neighborhood),
+      normalizeText(normalized.development),
+      normalized.bedrooms,
+      normalized.min_price,
+      normalized.max_price,
+      normalized.inventory_source
+    ]);
+  }
+
   function dedupeMatch(existing, event, now) {
     const cutoff = now.getTime() - DEDUPE_WINDOW_MS;
     return (Array.isArray(existing) ? existing : []).find(row => {
@@ -412,6 +424,8 @@
         row.visitor_id === event.visitor_id &&
         row.session_id === event.session_id &&
         clean(row.property_id) === clean(event.property.property_id) &&
+        (event.event_name !== "ai_search" ||
+          searchIntentKey(rowToEvent(row).intent) === searchIntentKey(event.intent)) &&
         at >= cutoff &&
         at <= now.getTime() + 1000;
     }) || null;
@@ -691,6 +705,9 @@
     const event = { ...normalized.event, event_id: normalized.event.event_id || createId() };
     const recent = await rest(
       "ads_events?select=event_id,event_name,event_time,visitor_id,session_id,property_id" +
+      (event.event_name === "ai_search"
+        ? ",declared_neighborhood,declared_development,declared_bedrooms,declared_min_price,declared_max_price,declared_inventory_source"
+        : "") +
       `&visitor_id=eq.${encodeURIComponent(event.visitor_id)}` +
       `&session_id=eq.${encodeURIComponent(event.session_id)}` +
       `&event_name=eq.${encodeURIComponent(event.event_name)}` +
@@ -855,6 +872,7 @@
     observedIntentFromViews,
     eventRow,
     rowToEvent,
+    searchIntentKey,
     dedupeMatch,
     touchPatch,
     propertyFeedItem,
