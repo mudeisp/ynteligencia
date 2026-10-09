@@ -6237,9 +6237,7 @@ async function supabaseTrack(
 
 
 function yntAdsAttribution(){
-  const source = typeof YNTELIGENCIA_ATTRIBUTION==="object" && YNTELIGENCIA_ATTRIBUTION
-    ? YNTELIGENCIA_ATTRIBUTION
-    : {};
+  const source = YNTELIGENCIA_TOUCHES.current_touch || {};
   return {
     gclid: source.gclid || "",
     gbraid: source.gbraid || "",
@@ -6256,7 +6254,20 @@ function yntAdsTrack(eventName, detail){
   try{
     const property = detail && detail.property ? detail.property : null;
     const intent = detail && detail.intent ? detail.intent : null;
-    const dedupeKey = [
+    const amount = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : 0;
+    const inventory = clean(intent && (intent.inventory_source || intent.source)).toLowerCase();
+    const dedupeKey = eventName === "ai_search" ? JSON.stringify([
+      YNTELIGENCIA_VISITOR_ID,
+      YNTELIGENCIA_SESSION_ID,
+      eventName,
+      property && property.property_id || "",
+      norm(intent && intent.neighborhood),
+      norm(intent && (intent.development || intent.project || intent.exact_name)),
+      Math.round(amount(intent && intent.bedrooms)),
+      amount(intent && (intent.min_price ?? intent.minPrice)),
+      amount(intent && (intent.max_price ?? intent.maxPrice)),
+      ["novos", "usados", "todos"].includes(inventory) ? inventory : ""
+    ]) : [
       eventName,
       YNTELIGENCIA_SESSION_ID,
       property && property.property_id || "",
@@ -6269,7 +6280,7 @@ function yntAdsTrack(eventName, detail){
     const recent = window.__yntAdsRecent || (window.__yntAdsRecent = {});
     if(recent[dedupeKey] && now - recent[dedupeKey] < 15000) return;
     recent[dedupeKey] = now;
-    fetch("/api/ads-event", {
+    fetch("/api/ads?action=event", {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       keepalive:true,

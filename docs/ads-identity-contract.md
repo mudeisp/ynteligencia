@@ -2,7 +2,7 @@
 
 Os dois produtos usam o mesmo endpoint e o mesmo schema.
 
-`POST /api/ads-event`
+`POST /api/ads?action=event`
 
 A diferença entre os produtos é somente o campo `product`:
 
@@ -14,7 +14,7 @@ Não existem rotas separadas por produto.
 ## visitor_id
 
 - É um UUID. Não contém nome, telefone, e-mail nem outro dado pessoal.
-- Não entra em `/api/ads-feed`, `/api/ads-intent-feed` nem `/api/google-ads-conversions`.
+- Não entra em `/api/ads?action=feed`, `/api/ads?action=intent-feed` nem `/api/ads?action=google-conversions`.
 - Pode ir na navegação entre os produtos da Yincorp.
 
 Quando um produto enviar o comprador ao outro, a URL leva o identificador:
@@ -27,7 +27,7 @@ O produto de destino deve:
 2. Aceitar somente UUID. `acceptVisitorId(vid, idLocal)` devolve o `vid` quando ele é válido.
 3. Se `vid` for inválido ou ausente, manter ou gerar o `visitor_id` local. Não reaproveitar lixo da URL.
 4. Persistir o valor aceito.
-5. Enviar esse mesmo `visitor_id` em todos os `POST /api/ads-event`.
+5. Enviar esse mesmo `visitor_id` em todos os `POST /api/ads?action=event`.
 
 `session_id` continua sendo a visita, não a pessoa. Uma sessão nova não apaga `first_declared_intent`, `first_gclid` nem a primeira origem.
 
@@ -55,6 +55,8 @@ O backend separa:
 Busca explícita válida é `ai_search` ou `ad_entry` com bairro, empreendimento, dormitórios ou preço. Ver imóvel, abrir a IA, CTA ou lead não mudam a intenção declarada. O cliente não define `observed_intent` nem envia `high_intent_buyer`.
 
 ## Payload que o agente deve enviar
+
+`POST /api/ads?action=event`
 
 ```json
 {
