@@ -53,6 +53,7 @@ export function applyCors(req, res) {
     "https://app.yincorp.com.br",
     "https://www.yincorp.com.br",
     "https://yincorp.com.br",
+    "https://agente.yincorp.com.br",
     ...deploymentOrigins()
   ]);
 

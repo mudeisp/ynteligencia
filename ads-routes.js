@@ -2,6 +2,7 @@ import {
   ads,
   applyCors,
   authorizedExport,
+  deploymentOrigins,
   readBody,
   rest,
   supabaseConfigured
@@ -12,6 +13,60 @@ function unavailable(res) {
     success: false,
     error: "Supabase não configurado para a camada de anúncios"
   });
+}
+
+function handoffOrigins() {
+  return [
+    "https://app.yincorp.com.br",
+    "https://www.yincorp.com.br",
+    "https://yincorp.com.br",
+    ...deploymentOrigins()
+  ];
+}
+
+export async function handleCreateHandoff(req, res) {
+  if (!applyCors(req, res)) return;
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ success: false, error: "Method not allowed" });
+  }
+  if (!ads.agentHandoffEnabled()) {
+    return res.status(409).json({ success: false, error: "handoff_disabled" });
+  }
+  if (!supabaseConfigured()) return unavailable(res);
+
+  try {
+    const result = await ads.createHandoff(readBody(req), rest, new Date(), {
+      allowedOrigins: handoffOrigins()
+    });
+    return res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error("ADS_HANDOFF_CREATE_ERROR", error && error.name ? error.name : "Error");
+    return res.status(500).json({
+      success: false,
+      error: "Erro interno ao criar o handoff"
+    });
+  }
+}
+
+export async function handleGetHandoff(req, res) {
+  if (!applyCors(req, res)) return;
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ success: false, error: "Method not allowed" });
+  }
+  if (!supabaseConfigured()) return unavailable(res);
+
+  try {
+    const result = await ads.readHandoff(readBody(req), rest);
+    return res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error("ADS_HANDOFF_READ_ERROR", error && error.name ? error.name : "Error");
+    return res.status(500).json({
+      success: false,
+      error: "Erro interno ao ler o handoff"
+    });
+  }
 }
 
 export async function handleAdsEvent(req, res) {
