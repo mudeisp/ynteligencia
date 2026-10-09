@@ -30,6 +30,9 @@ export async function handleCreateHandoff(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
+  if (!ads.agentHandoffEnabled()) {
+    return res.status(409).json({ success: false, error: "handoff_disabled" });
+  }
   if (!supabaseConfigured()) return unavailable(res);
 
   try {

@@ -1,3 +1,10 @@
+import inventoryCoordinates from "../inventory-coordinates.js";
+
+const {
+  coordinatesFromOruloBuilding,
+  deactivationPatch
+} = inventoryCoordinates;
+
 const SUPABASE_URL =
   "https://wzaegidwtdjuhqchpdpd.supabase.co";
 
@@ -254,7 +261,7 @@ async function getTypologies(
 // NORMALIZA BUILDING
 // =========================================================
 
-function normalizeBuilding({
+export function normalizeBuilding({
   building,
   buildingId,
   typologies,
@@ -404,6 +411,10 @@ function normalizeBuilding({
       state:
         building.address?.state ||
         "SP",
+
+      ...coordinatesFromOruloBuilding(
+        building
+      ),
 
       price:
         price !== null
@@ -979,16 +990,9 @@ async function deactivateStaleRows(
 
 
           body:
-            JSON.stringify({
-
-              active:
-                false,
-
-              updated_at:
-                new Date()
-                  .toISOString()
-
-            })
+            JSON.stringify(
+              deactivationPatch()
+            )
         }
       );
 
@@ -1095,16 +1099,9 @@ async function softDeleteBuilding(
 
 
         body:
-          JSON.stringify({
-
-            active:
-              false,
-
-            updated_at:
-              new Date()
-                .toISOString()
-
-          })
+          JSON.stringify(
+            deactivationPatch()
+          )
       }
     );
 

@@ -1,3 +1,7 @@
+import inventoryCoordinates from "../inventory-coordinates.js";
+
+const { coordinatesFromOruloBuilding } = inventoryCoordinates;
+
 const SUPABASE_URL = "https://wzaegidwtdjuhqchpdpd.supabase.co";
 
 export default async function handler(req, res) {
@@ -1536,6 +1540,12 @@ export default async function handler(req, res) {
               buildingSummary.address?.state ||
 
               "SP",
+
+
+            ...coordinatesFromOruloBuilding(
+              building,
+              buildingSummary
+            ),
 
 
             price:

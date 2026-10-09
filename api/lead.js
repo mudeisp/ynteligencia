@@ -1816,6 +1816,66 @@ function readableLine(label, value) {
 }
 
 
+function emailValueText(value) {
+  const label = commercialValueLabel(value);
+  if (label === "Valor sob consulta") return "Sob consulta";
+  return label;
+}
+
+
+function matchIaEmailSummary({
+  leadSummary,
+  neighborhood,
+  empreendimento,
+  bedrooms,
+  search
+}) {
+  const existing = String(leadSummary || "").trim();
+  if (existing) return existing;
+
+  const context = search && typeof search === "object" ? search : {};
+  const place = String(context.neighborhood || neighborhood || "").trim();
+  const development = String(context.development || "").trim();
+  const propertyName = String(empreendimento || "").trim();
+  const beds = Number(context.bedrooms) > 0
+    ? Number(context.bedrooms)
+    : Number(bedrooms) > 0
+      ? Number(bedrooms)
+      : 0;
+  const details = [];
+
+  if (beds > 0) {
+    details.push(`de ${beds} dormitório${beds > 1 ? "s" : ""}`);
+  }
+  if (Number(context.min_price) >= 1) {
+    details.push(`a partir de ${commercialValueLabel(context.min_price)}`);
+  }
+  if (Number(context.max_price) >= 1) {
+    details.push(`até ${commercialValueLabel(context.max_price)}`);
+  }
+
+  const where = [];
+  if (place) where.push(`em ${place}`);
+  if (development && development !== propertyName) {
+    where.push(`no empreendimento ${development}`);
+  }
+
+  const hasSearch = details.length > 0 || where.length > 0;
+  if (!hasSearch && !propertyName) return "Sem resumo adicional.";
+  if (!hasSearch) return `Cliente demonstrou interesse no ${propertyName}.`;
+
+  const searchText = `Cliente busca imóvel${
+    details.length ? ` ${details.join(", ")}` : ""
+  }${where.length ? ` ${where.join(", ")}` : ""}`;
+
+  if (propertyName) {
+    return `${searchText} e demonstrou interesse no ${propertyName}.`;
+  }
+
+  return `${searchText}.`;
+}
+
+
 function buildMatchIaEmail({
   nome,
   telefone,
@@ -1841,7 +1901,7 @@ function buildMatchIaEmail({
   );
   const priceLabel = value => {
     if (value === null || value === undefined || value === "") return "";
-    return commercialValueLabel(value);
+    return emailValueText(value);
   };
   const range = [
     Number(search.min_price) >= 1
@@ -1880,7 +1940,13 @@ function buildMatchIaEmail({
       ${readableLine("Telefone", telefone)}
       ${readableLine("E-mail", email)}
       <h3>RESUMO MATCH IA</h3>
-      <p>${escapeHtml(leadSummary || "Sem resumo adicional.")}</p>
+      <p>${escapeHtml(matchIaEmailSummary({
+        leadSummary,
+        neighborhood,
+        empreendimento,
+        bedrooms,
+        search
+      }))}</p>
       <h3>Busca</h3>
       ${readableLine("Bairro", search.neighborhood || neighborhood)}
       ${readableLine("Empreendimento", search.development || "")}
@@ -1890,7 +1956,7 @@ function buildMatchIaEmail({
       <h3>Imóvel principal</h3>
       ${readableLine("Nome", empreendimento)}
       ${readableLine("Código", propertyId)}
-      ${readableLine("Valor", commercialValueLabel(propertyValue))}
+      ${readableLine("Valor", emailValueText(propertyValue))}
       ${readableLine("Bairro", neighborhood)}
       ${readableLine("Dormitórios", Number(bedrooms) > 0 ? String(bedrooms) : "")}
       ${readableLine("Origem", sourceLabel)}

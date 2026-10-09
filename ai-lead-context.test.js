@@ -249,7 +249,8 @@ test("valor 0.1 permanece bruto e o e-mail mostra valor sob consulta", async () 
   assert.equal(payload.email_sent, true);
   assert.equal(payload.praedium, false);
   assert.equal(supabase.body.metadata.property.value, 0.1);
-  assert.match(email.body.html, /Valor sob consulta/);
+  assert.match(email.body.html, /<strong>Valor:<\/strong> Sob consulta/);
+  assert.equal(email.body.html.includes("Valor sob consulta"), false);
   assert.equal(email.body.html.includes("0.1"), false);
   assert.equal(email.body.html.includes("R$ 0"), false);
   assert.match(email.body.subject, /Novo lead Match IA — Perdizes/);
@@ -267,8 +268,8 @@ test("preço real usa o formato BRL do projeto", async () => {
     mensagem: "Valor: 500000"
   });
   const email = calls.find(call => call.url.includes("api.resend.com"));
-  assert.match(email.body.html, /R\$\s*500\.000/);
-  assert.match(email.body.html, /Valor sob consulta|R\$\s*500\.000/);
+  assert.match(email.body.html, /<strong>Valor:<\/strong> R\$\s*500\.000/);
+  assert.equal(email.body.html.includes("Valor sob consulta"), false);
 });
 
 test("landing page continua enviando ao Praedium", async () => {
@@ -350,10 +351,63 @@ test("e-mail separa a origem da busca da origem do imóvel", async () => {
   });
   const email = calls.find(call => call.url.includes("api.resend.com"));
   assert.match(email.body.html, /Outros imóveis abertos/);
-  assert.match(email.body.html, /Valor sob consulta/);
+  assert.match(email.body.html, /Sob consulta/);
+  assert.equal(email.body.html.includes("Valor sob consulta"), false);
   assert.match(email.body.html, /R\$\s*500\.000/);
   assert.equal(email.body.html.includes("0.1"), false);
   assert.equal(email.body.html.includes("{"), false);
+});
+
+test("resumo existente permanece no e-mail", async () => {
+  const summary = "Cliente busca imóvel em Perdizes, até R$ 900.000, 2 dormitórios.";
+  const { calls } = await postLead({
+    nome: "Ana",
+    telefone: "11999999999",
+    origem: "ynteligencia",
+    neighborhood: "Aclimação",
+    bedrooms: 1,
+    property_name: "Ed. Ba806",
+    lead_summary: summary
+  });
+  const email = calls.find(call => call.url.includes("api.resend.com"));
+  assert.match(email.body.html, /Cliente busca imóvel em Perdizes, até R\$ 900\.000, 2 dormitórios\./);
+  assert.equal(email.body.html.includes("Ed. Ba806."), false);
+});
+
+test("sem resumo, o e-mail usa bairro, dormitórios e imóvel", async () => {
+  const { calls } = await postLead({
+    nome: "Ana",
+    telefone: "11999999999",
+    origem: "ynteligencia",
+    neighborhood: "Aclimação",
+    bedrooms: 1,
+    property_name: "Ed. Ba806",
+    inventory_source: "usados",
+    property_value: 0.1
+  });
+  const email = calls.find(call => call.url.includes("api.resend.com"));
+  const supabase = calls.find(call => call.url.includes("/rest/v1/leads"));
+  assert.match(
+    email.body.html,
+    /Cliente busca imóvel de 1 dormitório em Aclimação e demonstrou interesse no Ed\. Ba806\./
+  );
+  assert.equal(email.body.html.includes("Sem resumo adicional."), false);
+  assert.match(email.body.html, /<strong>Valor:<\/strong> Sob consulta/);
+  assert.equal(supabase.body.metadata.lead_summary, "");
+  assert.equal(supabase.body.metadata.property.value, 0.1);
+});
+
+test("sem resumo e sem imóvel, o e-mail usa só a busca", async () => {
+  const { calls } = await postLead({
+    nome: "Ana",
+    telefone: "11999999999",
+    origem: "ynteligencia",
+    neighborhood: "Aclimação",
+    bedrooms: 1
+  });
+  const email = calls.find(call => call.url.includes("api.resend.com"));
+  assert.match(email.body.html, /Cliente busca imóvel de 1 dormitório em Aclimação\./);
+  assert.equal(email.body.html.includes("demonstrou interesse"), false);
 });
 
 test("origens do lead", async () => {

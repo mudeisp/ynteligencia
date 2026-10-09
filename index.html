@@ -6247,9 +6247,7 @@ async function supabaseTrack(
 
 
 function yntAdsAttribution(){
-  const source = typeof YNTELIGENCIA_ATTRIBUTION==="object" && YNTELIGENCIA_ATTRIBUTION
-    ? YNTELIGENCIA_ATTRIBUTION
-    : {};
+  const source = YNTELIGENCIA_TOUCHES.current_touch || {};
   return {
     gclid: source.gclid || "",
     gbraid: source.gbraid || "",
@@ -6288,17 +6286,27 @@ async function openAgentConversation(property){
     status.textContent="";
   }
 
-  const propertyPayload=item=>({
-    property_id:String(item&&(item.id||item.property_id)||""),
-    name:item&&(item.name||item.property_name)||"",
-    neighborhood:item&&item.neighborhood||"",
-    development:item&&(item.development||item.development_name)||"",
-    bedrooms:Number(item&&item.bedrooms)||0,
-    price:Number(item&&(item.value||item.price||item.property_value))||0,
-    inventory_source:item&&(item.source||item.inventory_source)||""
-  });
+  const propertyPayload=item=>{
+    const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const external=[item&&item.external_id,item&&item.id,item&&item.property_id]
+      .map(value=>String(value||"").trim())
+      .find(value=>value&&!uuid.test(value))||"";
+    const dbId=String(item&&item.db_id||"").trim();
+    return {
+      external_id:external,
+      property_id:external,
+      db_id:uuid.test(dbId)?dbId:"",
+      name:item&&(item.name||item.property_name)||"",
+      neighborhood:item&&item.neighborhood||"",
+      development:item&&(item.development||item.development_name)||"",
+      bedrooms:Number(item&&item.bedrooms)||0,
+      price:Number(item&&(item.value||item.price||item.property_value))||0,
+      inventory_source:item&&(item.source||item.inventory_source)||""
+    };
+  };
 
   try{
+    const currentTouch=(YNTELIGENCIA_TOUCHES&&YNTELIGENCIA_TOUCHES.current_touch)||{};
     const response=await fetch("/api/ads?action=create-handoff",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
@@ -6307,13 +6315,19 @@ async function openAgentConversation(property){
         session_id:YNTELIGENCIA_SESSION_ID,
         source_product:"ynteligencia",
         return_origin:location.origin,
+        property:propertyPayload(property),
         current_property:propertyPayload(property),
         recent_properties:(aiOpenedProperties||[]).map(propertyPayload),
         declared_intent:yntAdsIntentFromState(),
+        current_touch:currentTouch,
         attribution:yntAdsAttribution()
       })
     });
     const data=await response.json().catch(()=>null);
+    if(data&&data.error==="handoff_disabled"){
+      openAiAssistant(property);
+      return;
+    }
     const url=yntAgentHandoffUrl(data&&data.url);
     if(!response.ok||!url)throw new Error("handoff");
     const opened=window.open(url,"_blank","noopener,noreferrer");
@@ -6332,7 +6346,20 @@ function yntAdsTrack(eventName, detail){
   try{
     const property = detail && detail.property ? detail.property : null;
     const intent = detail && detail.intent ? detail.intent : null;
-    const dedupeKey = [
+    const amount = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : 0;
+    const inventory = clean(intent && (intent.inventory_source || intent.source)).toLowerCase();
+    const dedupeKey = eventName === "ai_search" ? JSON.stringify([
+      YNTELIGENCIA_VISITOR_ID,
+      YNTELIGENCIA_SESSION_ID,
+      eventName,
+      property && property.property_id || "",
+      norm(intent && intent.neighborhood),
+      norm(intent && (intent.development || intent.project || intent.exact_name)),
+      Math.round(amount(intent && intent.bedrooms)),
+      amount(intent && (intent.min_price ?? intent.minPrice)),
+      amount(intent && (intent.max_price ?? intent.maxPrice)),
+      ["novos", "usados", "todos"].includes(inventory) ? inventory : ""
+    ]) : [
       eventName,
       YNTELIGENCIA_SESSION_ID,
       property && property.property_id || "",

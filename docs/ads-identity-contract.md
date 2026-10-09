@@ -21,7 +21,7 @@ Quando um produto enviar o comprador ao outro sem contexto de imóvel, a URL pod
 
 `https://agente.example/?vid=<visitor_id>`
 
-O contexto de um imóvel aberto na YNTELIGENCIA não vai na query string. Esse caminho está em `docs/agent-handoff-contract.md`: a YNTELIGENCIA cria um handoff opaco e abre `https://agente.yincorp.com.br/?handoff=<token>`.
+O contexto de um imóvel aberto na YNTELIGENCIA não vai na query string. Esse caminho está em `docs/agent-handoff-contract.md`. Ele só abre `https://agente.yincorp.com.br/?handoff=<token>` quando `ADS_AGENT_HANDOFF_ENABLED` vale `true` no servidor. Ausente, a flag fica desligada e a Match IA da ficha permanece.
 
 O produto de destino deve:
 

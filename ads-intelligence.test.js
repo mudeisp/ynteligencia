@@ -47,7 +47,12 @@ function memory() {
       rows.sort((a, b) => descending
         ? String(b.event_time).localeCompare(String(a.event_time))
         : String(a.event_time).localeCompare(String(a.event_time)));
-      return { ok: true, status: 200, data: rows.slice(0, Number(params.get("limit")) || rows.length) };
+      rows = rows.slice(0, Number(params.get("limit")) || rows.length);
+      const select = params.get("select");
+      if (select && select !== "*") {
+        rows = rows.map(row => Object.fromEntries(select.split(",").map(key => [key, row[key]])));
+      }
+      return { ok: true, status: 200, data: rows };
     }
     if (method === "GET" && table === "ads_visitors") {
       const id = decodeFilter(params.get("visitor_id"));
@@ -391,6 +396,11 @@ test("a YNTELIGENCIA reutiliza visitor e sessão e aceita property_id na URL", (
   assert.match(html, /Falar com especialista/);
   assert.match(html, /\/api\/ads\?action=create-handoff/);
   assert.match(html, /openAgentConversation\(p\)/);
+  assert.match(html, /openAiAssistant\(property\)/);
+  assert.match(html, /data\.error==="handoff_disabled"/);
+  assert.match(html, /current_touch:currentTouch/);
+  assert.equal(html.includes("ADS_AGENT_HANDOFF_ENABLED"), false);
+  assert.equal(html.includes("NEXT_PUBLIC"), false);
   assert.match(html, /openPropertySpecialist\(p\)/);
   assert.equal(html.includes("agente.yincorp.com.br/?property"), false);
   assert.equal(html.includes("?property_name="), false);
@@ -687,6 +697,48 @@ test("vid válido atravessa produtos e vid inválido não substitui o local", ()
   assert.equal(ads.visitorHandoffUrl("https://agente.example/chat", "invalido"), "https://agente.example/chat");
 });
 
+
+const enabled = { env: { ADS_AGENT_HANDOFF_ENABLED: "true" }, allowedOrigins: ["https://app.yincorp.com.br"] };
+const dbId = "22222222-2222-4222-8222-222222222222";
+
+function handoffBody(extra = {}) {
+  return {
+    visitor_id: visitor,
+    session_id: session,
+    source_product: "ynteligencia",
+    return_origin: "https://app.yincorp.com.br",
+    declared_intent: { neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 },
+    property: {
+      external_id: "nonstop:florida",
+      property_id: dbId,
+      id: dbId,
+      db_id: dbId,
+      name: "Flórida",
+      neighborhood: "Brooklin",
+      bedrooms: 3,
+      price: 847100,
+      inventory_source: "usados"
+    },
+    ...extra
+  };
+}
+
+test("flag ausente não cria handoff e não devolve URL do agente", async () => {
+  const store = memory();
+  const created = await ads.createHandoff(handoffBody(), store.rest, new Date("2026-10-09T18:00:00.000Z"), {
+    env: {},
+    allowedOrigins: ["https://app.yincorp.com.br"]
+  });
+  assert.equal(created.status, 409);
+  assert.equal(created.body.error, "handoff_disabled");
+  assert.equal(created.body.url, undefined);
+  assert.equal(store.handoffs.length, 0);
+  assert.equal(store.events.length, 0);
+  assert.equal(ads.agentHandoffEnabled({}), false);
+  assert.equal(ads.agentHandoffEnabled({ ADS_AGENT_HANDOFF_ENABLED: "false" }), false);
+  assert.equal(ads.agentHandoffEnabled({ ADS_AGENT_HANDOFF_ENABLED: "1" }), false);
+});
+
 test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", async () => {
   const store = memory();
   store.visitors.push({
@@ -718,36 +770,29 @@ test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", a
   });
 
   const now = new Date("2026-10-09T18:00:00.000Z");
-  const created = await ads.createHandoff({
-    visitor_id: visitor,
-    session_id: session,
-    source_product: "ynteligencia",
+  const created = await ads.createHandoff(handoffBody({
     return_origin: "https://evil.example",
     email: "ana@example.com",
     nome: "Ana",
     telefone: "11999999999",
     conversation: "quero visitar",
     observed_intent: { neighborhood: "Moema", bedrooms: 1 },
-    declared_intent: { neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 },
-    current_property: {
-      property_id: "nonstop:florida",
-      name: "Flórida",
-      neighborhood: "Brooklin",
-      bedrooms: 3,
-      price: 847100,
-      inventory_source: "usados"
-    },
     recent_properties: [
-      { property_id: "nonstop:florida", name: "Flórida", neighborhood: "Brooklin", bedrooms: 3, price: 847100, inventory_source: "usados" },
+      { external_id: "nonstop:florida", property_id: dbId, db_id: dbId, name: "Flórida", neighborhood: "Brooklin", bedrooms: 3, price: 847100, inventory_source: "usados" },
       { property_id: "orulo:outro", name: "Outro", neighborhood: "Brooklin", bedrooms: 3, price: 960000, inventory_source: "usados", email: "ana@example.com" }
     ],
-    attribution: {
-      gclid: "TEST-GCLID-ADS",
+    current_touch: {
+      gclid: "CURRENT-GCLID",
       utm_source: "google",
       utm_medium: "cpc",
       utm_campaign: "brooklin_3d"
+    },
+    attribution: {
+      gclid: "LEGACY-GCLID",
+      utm_source: "legacy",
+      utm_campaign: "old"
     }
-  }, store.rest, now, { allowedOrigins: ["https://app.yincorp.com.br"] });
+  }), store.rest, now, enabled);
 
   assert.equal(created.status, 200);
   const url = new URL(created.body.url);
@@ -760,8 +805,11 @@ test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", a
   assert.equal(store.handoffs[0].session_id, session);
   assert.equal(store.handoffs[0].target_product, "agente_yincorp");
   const context = store.handoffs[0].context;
-  assert.equal(context.current_property.name, "Flórida");
-  assert.equal(context.current_property.neighborhood, "Brooklin");
+  assert.equal(context.property.property_id, "nonstop:florida");
+  assert.equal(context.property.db_id, dbId);
+  assert.equal(context.current_property, context.property);
+  assert.equal(context.property.name, "Flórida");
+  assert.equal(context.property.neighborhood, "Brooklin");
   assert.equal(context.first_declared_intent.neighborhood, "Perdizes");
   assert.equal(context.first_declared_intent.bedrooms, 2);
   assert.equal(context.current_declared_intent.neighborhood, "Brooklin");
@@ -769,7 +817,11 @@ test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", a
   assert.equal(context.observed_intent.neighborhood, "Perdizes");
   assert.equal(context.observed_intent.bedrooms, 3);
   assert.equal(context.recent_properties.length, 2);
-  assert.equal(context.attribution.gclid, "TEST-GCLID-ADS");
+  assert.equal(context.recent_properties[1].property_id, "orulo:outro");
+  assert.equal(context.attribution.gclid, "CURRENT-GCLID");
+  assert.equal(context.attribution.utm_source, "google");
+  assert.equal(context.attribution.utm_campaign, "brooklin_3d");
+  assert.equal(JSON.stringify(context.attribution).includes("LEGACY-GCLID"), false);
   assert.equal(context.last_product, "ynteligencia");
   assert.equal(context.return_url, `https://app.yincorp.com.br/?imovel=nonstop%3Aflorida&vid=${visitor}`);
   const packed = JSON.stringify(context);
@@ -785,30 +837,27 @@ test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", a
   assert.equal(read.body.visitor_id, visitor);
   assert.equal(read.body.session_id, session);
   assert.equal(read.body.handoff_id, undefined);
-  assert.equal(read.body.context.current_property.property_id, "nonstop:florida");
+  assert.equal(read.body.context.property.property_id, "nonstop:florida");
+  assert.equal(read.body.context.property.db_id, dbId);
   assert.ok(store.handoffs[0].consumed_at);
 
   const again = await ads.readHandoff({ handoff_id: token }, store.rest, new Date(now.getTime() + 60000));
   assert.equal(again.status, 200);
 
-  const second = await ads.createHandoff({
-    visitor_id: visitor,
-    session_id: session,
-    current_property: {
+  const second = await ads.createHandoff(handoffBody({
+    property: {
       property_id: "nonstop:outro",
       name: "Apartamento",
       neighborhood: "Brooklin",
       bedrooms: 3,
       price: 960000,
       inventory_source: "usados"
-    },
-    declared_intent: { neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 },
-    return_origin: "https://app.yincorp.com.br"
-  }, store.rest, new Date(now.getTime() + 20000), { allowedOrigins: ["https://app.yincorp.com.br"] });
+    }
+  }), store.rest, new Date(now.getTime() + 20000), enabled);
   assert.equal(second.status, 200);
   const secondToken = new URL(second.body.url).searchParams.get("handoff");
   assert.notEqual(secondToken, token);
-  assert.equal(store.handoffs[1].context.current_property.property_id, "nonstop:outro");
+  assert.equal(store.handoffs[1].context.property.property_id, "nonstop:outro");
   assert.equal(store.handoffs[1].context.return_url, `https://app.yincorp.com.br/?imovel=nonstop%3Aoutro&vid=${visitor}`);
 
   const expired = await ads.readHandoff({ handoff_id: token }, store.rest, new Date(now.getTime() + ads.HANDOFF_TTL_MS + 1000));
@@ -819,8 +868,10 @@ test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", a
   const unknown = "a".repeat(43);
   const missing = await ads.readHandoff({ handoff_id: unknown }, store.rest, now);
   assert.equal(missing.status, 404);
+  assert.equal(missing.body.error, "handoff_invalid");
   const malformed = await ads.readHandoff({ handoff_id: "curto" }, store.rest, now);
   assert.equal(malformed.status, 400);
+  assert.equal(malformed.body.error, "handoff_malformed");
 
   const forced = await ads.recordAdsEvent(base({ event_name: "agent_handoff_created" }), store.rest, now);
   assert.equal(forced.status, 400);
@@ -830,7 +881,7 @@ test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", a
     event_name: "agent_opened",
     visitor_id: visitor,
     session_id: session,
-    gclid: "TEST-GCLID-ADS"
+    gclid: "CURRENT-GCLID"
   }, store.rest, new Date(now.getTime() + 30000));
   assert.equal(opened.status, 200);
   const csv = ads.googleAdsConversionsCsv(store.events);
@@ -840,24 +891,171 @@ test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", a
   assert.equal(csv.includes(token), false);
 });
 
+test("toque atual vazio não reaproveita a atribuição legada", async () => {
+  const store = memory();
+  const created = await ads.createHandoff(handoffBody({
+    current_touch: {},
+    attribution: { gclid: "LEGACY-GCLID", utm_source: "legacy" }
+  }), store.rest, new Date("2026-10-09T18:00:00.000Z"), enabled);
+  assert.equal(created.status, 200);
+  assert.equal(store.handoffs[0].context.attribution.gclid, "");
+  assert.equal(store.handoffs[0].context.attribution.utm_source, "");
+});
+
+test("falha de storage no handoff não devolve URL", async () => {
+  const store = memory();
+  const rest = async (requestPath, options = {}) => {
+    const [table] = requestPath.split("?");
+    if ((options.method || "GET") === "GET" && table === "ads_visitors") {
+      return { ok: true, status: 200, data: [] };
+    }
+    return { ok: false, status: 500, data: null };
+  };
+  const created = await ads.createHandoff(handoffBody(), rest, new Date("2026-10-09T18:00:00.000Z"), enabled);
+  assert.equal(created.status, 502);
+  assert.equal(created.body.url, undefined);
+  const read = await ads.readHandoff({ handoff_id: "a".repeat(43) }, rest, new Date("2026-10-09T18:00:00.000Z"));
+  assert.equal(read.status, 502);
+});
+
 test("create-handoff cabe na function existente e o agente pode chamar", async () => {
   delete process.env.SUPABASE_URL;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   delete process.env.SUPABASE_SECRET_KEY;
+  delete process.env.ADS_AGENT_HANDOFF_ENABLED;
   const { default: adsHandler } = await import(`./api/ads.js?handoff=${Date.now()}`);
-  const created = await invokeAds(adsHandler, {
+  const disabled = await invokeAds(adsHandler, {
     method: "POST",
     query: { action: "create-handoff" },
-    headers: { origin: "https://agente.yincorp.com.br" },
+    headers: { origin: "https://app.yincorp.com.br" },
+    body: {}
+  });
+  assert.equal(disabled.code, 409);
+  assert.equal(disabled.body.error, "handoff_disabled");
+
+  process.env.ADS_AGENT_HANDOFF_ENABLED = "true";
+  const { default: enabledHandler } = await import(`./api/ads.js?handoff-on=${Date.now()}`);
+  const created = await invokeAds(enabledHandler, {
+    method: "POST",
+    query: { action: "create-handoff" },
+    headers: { origin: "https://app.yincorp.com.br" },
     body: {}
   });
   assert.equal(created.code, 500);
-  const read = await invokeAds(adsHandler, {
+  const wrongMethod = await invokeAds(enabledHandler, {
+    method: "GET",
+    query: { action: "create-handoff" },
+    headers: { origin: "https://app.yincorp.com.br" }
+  });
+  assert.equal(wrongMethod.code, 405);
+  const read = await invokeAds(enabledHandler, {
     method: "GET",
     query: { action: "get-handoff", handoff: "segredo-na-query" },
     headers: { origin: "https://agente.yincorp.com.br" }
   });
   assert.equal(read.code, 405);
+  const event = await invokeAds(enabledHandler, {
+    method: "POST",
+    query: { action: "event" },
+    headers: { origin: "https://exemplo.com" },
+    body: { product: "ynteligencia", event_name: "ad_entry" }
+  });
+  assert.equal(event.code, 403);
+  delete process.env.ADS_AGENT_HANDOFF_ENABLED;
   const files = fs.readdirSync(path.join(__dirname, "api")).filter(name => name.endsWith(".js"));
   assert.equal(files.length, 12);
+  assert.equal(files.includes("ads.js"), true);
+  assert.equal(files.some(name => name.startsWith("ads-") || name.startsWith("google-ads")), false);
+});
+
+
+test("ai_search deduplica a intenção normalizada e grava intenções diferentes em menos de 15s", async () => {
+  const store = memory();
+  const start = new Date("2026-10-09T12:00:00Z");
+  const intent = { neighborhood: "Perdizes", development: "Edifício A", bedrooms: 2, min_price: 500000, max_price: 900000, inventory_source: "todos" };
+  const send = (value, seconds) => ads.recordAdsEvent(base({ event_name: "ai_search", intent: value }), store.rest, new Date(start.getTime() + seconds * 1000));
+  const first = await send(intent, 0);
+  const repeat = await send({ ...intent, neighborhood: "  PERDIZES ", development: "edificio a", bedrooms: "2", max_price: "900000" }, 1);
+  assert.equal(first.body.duplicate, false);
+  assert.equal(repeat.body.duplicate, true);
+  assert.equal(repeat.body.event_id, first.body.event_id);
+  const second = await send({ neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 }, 2);
+  assert.equal(second.body.duplicate, false);
+  assert.equal(store.events.filter(row => row.event_name === "ai_search").length, 2);
+  for (const [key, value] of Object.entries({ neighborhood: "Moema", development: "Edifício B", bedrooms: 3, min_price: 600000, max_price: 1000000, inventory_source: "usados" })) {
+    assert.equal((await send({ ...intent, [key]: value }, 3)).body.duplicate, false, key);
+  }
+  assert.equal((await send(intent, 16)).body.duplicate, false);
+});
+
+function browserAds(storage, sessionId, search, legacy = {}) {
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const payloads = [];
+  const context = vm.createContext({
+    URL, URLSearchParams,
+    window: { location: { search, href: `https://app.yincorp.com.br/${search}`, hostname: "app.yincorp.com.br" } },
+    document: { referrer: "" },
+    YNTELIGENCIA_ATTRIBUTION: legacy,
+    YNTELIGENCIA_VISITOR_ID: visitor,
+    YNTELIGENCIA_SESSION_ID: sessionId,
+    YNTELIGENCIA_SESSION: { session_number: 1 },
+    clean: ads.clean,
+    norm: ads.normalizeText,
+    safeStorageGet: key => storage.get(key) || "",
+    safeStorageSet: (key, value) => storage.set(key, value),
+    safeStorageGetJSON: key => storage.has(key) ? JSON.parse(storage.get(key)) : null,
+    safeStorageSetJSON: (key, value) => storage.set(key, JSON.stringify(value)),
+    fetch: (url, options) => { payloads.push(JSON.parse(options.body)); return Promise.resolve(); }
+  });
+  vm.runInContext(html.slice(html.indexOf("function inferYnteligenciaCurrentTouch()"), html.indexOf("async function supabaseTrack(")), context);
+  vm.runInContext(html.slice(html.indexOf("function yntAdsAttribution()"), html.indexOf("function yntAdsIntentFromState()")), context);
+  return { payloads, track: (name, detail) => context.yntAdsTrack(name, detail) };
+}
+
+test("cliente separa current touch do legado entre três sessões e preserva first touch no servidor", async () => {
+  const storage = new Map();
+  const store = memory();
+  const legacy = { gclid: "ABC", gbraid: "OLD-B", wbraid: "OLD-W", utm_source: "google", utm_campaign: "first" };
+  const first = browserAds(storage, session, "?gclid=ABC&utm_source=google&utm_campaign=first", legacy);
+  first.track("ai_search", { intent: { neighborhood: "Perdizes", bedrooms: 2, max_price: 900000 } });
+  await ads.recordAdsEvent(first.payloads[0], store.rest, new Date("2026-10-09T12:00:00Z"));
+  assert.equal(first.payloads[0].gclid, "ABC");
+  const direct = browserAds(storage, laterSession, "", legacy);
+  direct.track("ai_search", { intent: { neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 } });
+  for (const key of ["gclid", "gbraid", "wbraid", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) assert.equal(direct.payloads[0][key], "", key);
+  await ads.recordAdsEvent(direct.payloads[0], store.rest, new Date("2026-10-10T12:00:00Z"));
+  assert.equal(store.events[1].gclid, "");
+  assert.equal(store.events[1].visitor_id, visitor);
+  assert.equal(store.events[1].session_id, laterSession);
+  const last = browserAds(storage, "session-3", "?gclid=XYZ&utm_source=google&utm_campaign=third", legacy);
+  last.track("ai_search", { intent: { neighborhood: "Moema", bedrooms: 4 } });
+  await ads.recordAdsEvent(last.payloads[0], store.rest, new Date("2026-10-11T12:00:00Z"));
+  assert.equal(store.events[2].gclid, "XYZ");
+  assert.equal(store.visitors[0].first_gclid, "ABC");
+  assert.equal(store.visitors[0].first_utm_source, "google");
+  assert.equal(store.visitors[0].first_utm_campaign, "first");
+  assert.equal(store.visitors[0].last_gclid, "XYZ");
+  assert.equal(store.visitors[0].first_declared_intent.neighborhood, "Perdizes");
+  assert.equal(store.visitors[0].current_declared_intent.neighborhood, "Moema");
+  assert.equal(JSON.parse(storage.get("ynteligencia_first_touch_v2")).gclid, "ABC");
+  // Reload sem parâmetros mantém somente o toque da própria sessão paga.
+  const reload = browserAds(storage, "session-3", "", legacy);
+  reload.track("property_view", { property: { property_id: "a" } });
+  assert.equal(reload.payloads[0].gclid, "XYZ");
+});
+
+test("cliente deduplica ai_search com os seis campos e preserva property_view", () => {
+  const client = browserAds(new Map(), session, "");
+  const intent = { neighborhood: "Perdizes", development: "Edifício A", bedrooms: 2, min_price: 500000, max_price: 900000, inventory_source: "todos" };
+  client.track("ai_search", { intent });
+  client.track("ai_search", { intent: { ...intent, neighborhood: " PERDIZES ", development: "edificio a", bedrooms: "2" } });
+  assert.equal(client.payloads.length, 1);
+  for (const [key, value] of Object.entries({ neighborhood: "Brooklin", development: "B", bedrooms: 3, min_price: 600000, max_price: 1100000, inventory_source: "novos" })) {
+    client.track("ai_search", { intent: { ...intent, [key]: value } });
+  }
+  assert.equal(client.payloads.length, 7);
+  client.track("property_view", { property: { property_id: "a" } });
+  client.track("property_view", { property: { property_id: "a" } });
+  assert.equal(client.payloads.length, 8);
 });

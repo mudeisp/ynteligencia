@@ -1,3 +1,10 @@
+import inventoryCoordinates from "../inventory-coordinates.js";
+
+const {
+  coordinatesFromNonstopProperty,
+  deactivationPatch
+} = inventoryCoordinates;
+
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   "https://wzaegidwtdjuhqchpdpd.supabase.co";
@@ -358,7 +365,7 @@ function extractImages(property) {
 // NORMALIZA NONSTOP → PROPERTIES
 // =========================================================
 
-function normalizeProperty(
+export function normalizeProperty(
   property
 ) {
 
@@ -654,6 +661,11 @@ function normalizeProperty(
         ""
 
       ) || null,
+
+
+    ...coordinatesFromNonstopProperty(
+      property
+    ),
 
 
     price:
@@ -1074,17 +1086,9 @@ async function deactivateProperty(
 
 
         body:
-          JSON.stringify({
-
-            active:
-              false,
-
-
-            updated_at:
-              new Date()
-                .toISOString()
-
-          })
+          JSON.stringify(
+            deactivationPatch()
+          )
 
       }
 

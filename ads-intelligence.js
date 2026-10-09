@@ -121,11 +121,20 @@
     };
   }
 
+  function isUuid(value) {
+    return VISITOR_ID_PATTERN.test(clean(value));
+  }
+
   function normalizeProperty(property) {
     const source = property && typeof property === "object" ? property : {};
     const inventory = clean(source.inventory_source || source.source).toLowerCase();
-    return {
-      property_id: clean(source.property_id || source.id),
+    const external = clean(source.external_id);
+    const rawPropertyId = clean(source.property_id);
+    const rawId = clean(source.id);
+    const propertyId = [external, rawPropertyId, rawId].find(value => value && !isUuid(value)) || "";
+    const dbId = [clean(source.db_id || source.dbId), rawPropertyId, rawId].find(value => isUuid(value)) || "";
+    const normalized = {
+      property_id: propertyId,
       name: clean(source.name || source.property_name),
       neighborhood: clean(source.neighborhood),
       development: clean(source.development || source.development_name),
@@ -133,6 +142,8 @@
       price: numberOrZero(source.price ?? source.value ?? source.property_value),
       inventory_source: ["novos", "usados"].includes(inventory) ? inventory : ""
     };
+    if (dbId && dbId !== propertyId) normalized.db_id = dbId;
+    return normalized;
   }
 
   function isValidSearch(intent) {
@@ -274,9 +285,26 @@
     return url.toString();
   }
 
+  function handoffEnv(options) {
+    if (options && Object.prototype.hasOwnProperty.call(options, "env")) return options.env || {};
+    return typeof process !== "undefined" && process.env ? process.env : {};
+  }
+
+  function agentHandoffEnabled(env) {
+    const source = env || handoffEnv();
+    return String(source.ADS_AGENT_HANDOFF_ENABLED || "") === "true";
+  }
+
+  function authoritativeAttribution(body) {
+    if (body.current_touch && typeof body.current_touch === "object" && !Array.isArray(body.current_touch)) {
+      return sanitizeAttribution(body.current_touch);
+    }
+    return sanitizeAttribution(body.attribution);
+  }
+
   function handoffContext(input, visitor, allowedOrigins) {
     const body = omitPii(input || {});
-    const property = normalizeProperty(body.current_property || body.property);
+    const property = normalizeProperty(body.property || body.current_property);
     const recent = (Array.isArray(body.recent_properties) ? body.recent_properties : [])
       .slice(-8)
       .map(item => normalizeProperty(item))
@@ -285,19 +313,24 @@
     const storedCurrent = visitor ? normalizeIntent(visitor.current_declared_intent) : normalizeIntent(null);
     const storedFirst = visitor ? normalizeIntent(visitor.first_declared_intent) : normalizeIntent(null);
     return {
+      property,
       current_property: property,
       declared_intent: screenIntent,
       first_declared_intent: isValidSearch(storedFirst) ? storedFirst : null,
       current_declared_intent: isValidSearch(storedCurrent) ? storedCurrent : screenIntent,
       observed_intent: visitor ? sanitizeObserved(visitor.observed_intent) : null,
       recent_properties: recent,
-      attribution: sanitizeAttribution(body.attribution),
+      attribution: authoritativeAttribution(body),
       last_product: clip(visitor && visitor.last_product) || "ynteligencia",
       return_url: propertyReturnUrl(body.return_origin, property.property_id, body.visitor_id, allowedOrigins)
     };
   }
 
   async function createHandoff(input, rest, now = new Date(), options = {}) {
+    if (!agentHandoffEnabled(handoffEnv(options))) {
+      return { status: 409, body: { success: false, error: "handoff_disabled" } };
+    }
+
     const body = omitPii(input || {});
     const visitorId = clean(body.visitor_id);
     const sessionId = clip(body.session_id, 120);
@@ -350,7 +383,7 @@
       session_id: sessionId,
       ...context.attribution,
       intent: context.declared_intent,
-      property: context.current_property,
+      property: context.property,
       metadata: { target_product: "agente_yincorp" }
     }, rest, now, options.createId || cryptoRandom, { internal: true });
     if (recorded.status >= 500) {
@@ -370,7 +403,7 @@
   async function readHandoff(input, rest, now = new Date()) {
     const token = clean(input && (input.handoff_id || input.handoff));
     if (!HANDOFF_TOKEN_PATTERN.test(token)) {
-      return { status: 400, body: { success: false, error: "handoff_invalid" } };
+      return { status: 400, body: { success: false, error: "handoff_malformed" } };
     }
 
     const rows = await rest(
@@ -607,6 +640,18 @@
     };
   }
 
+  function searchIntentKey(intent) {
+    const normalized = normalizeIntent(intent);
+    return JSON.stringify([
+      normalizeText(normalized.neighborhood),
+      normalizeText(normalized.development),
+      normalized.bedrooms,
+      normalized.min_price,
+      normalized.max_price,
+      normalized.inventory_source
+    ]);
+  }
+
   function dedupeMatch(existing, event, now) {
     const cutoff = now.getTime() - DEDUPE_WINDOW_MS;
     return (Array.isArray(existing) ? existing : []).find(row => {
@@ -615,6 +660,8 @@
         row.visitor_id === event.visitor_id &&
         row.session_id === event.session_id &&
         clean(row.property_id) === clean(event.property.property_id) &&
+        (event.event_name !== "ai_search" ||
+          searchIntentKey(rowToEvent(row).intent) === searchIntentKey(event.intent)) &&
         at >= cutoff &&
         at <= now.getTime() + 1000;
     }) || null;
@@ -894,6 +941,9 @@
     const event = { ...normalized.event, event_id: normalized.event.event_id || createId() };
     const recent = await rest(
       "ads_events?select=event_id,event_name,event_time,visitor_id,session_id,property_id" +
+      (event.event_name === "ai_search"
+        ? ",declared_neighborhood,declared_development,declared_bedrooms,declared_min_price,declared_max_price,declared_inventory_source"
+        : "") +
       `&visitor_id=eq.${encodeURIComponent(event.visitor_id)}` +
       `&session_id=eq.${encodeURIComponent(event.session_id)}` +
       `&event_name=eq.${encodeURIComponent(event.event_name)}` +
@@ -1053,6 +1103,7 @@
     acceptVisitorId,
     visitorHandoffUrl,
     agentHandoffUrl,
+    agentHandoffEnabled,
     createHandoff,
     readHandoff,
     normalizeIntent,
@@ -1063,6 +1114,7 @@
     observedIntentFromViews,
     eventRow,
     rowToEvent,
+    searchIntentKey,
     dedupeMatch,
     touchPatch,
     propertyFeedItem,
