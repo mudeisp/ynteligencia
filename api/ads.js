@@ -3,7 +3,9 @@ import {
   handleAdsFeed,
   handleAdsGoogleConversions,
   handleAdsIntentFeed,
-  handleAdsSheet
+  handleAdsSheet,
+  handleCreateHandoff,
+  handleGetHandoff
 } from "../ads-routes.js";
 
 const actions = {
@@ -11,7 +13,9 @@ const actions = {
   feed: handleAdsFeed,
   "intent-feed": handleAdsIntentFeed,
   sheet: handleAdsSheet,
-  "google-conversions": handleAdsGoogleConversions
+  "google-conversions": handleAdsGoogleConversions,
+  "create-handoff": handleCreateHandoff,
+  "get-handoff": handleGetHandoff
 };
 
 function requestAction(req) {

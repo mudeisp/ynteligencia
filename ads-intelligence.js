@@ -25,8 +25,10 @@
     "property_view",
     "property_view_multiple",
     "specialist_cta_opened",
-    "lead_created"
+    "lead_created",
+    "agent_opened"
   ];
+  const INTERNAL_EVENTS = ["agent_handoff_created"];
   const PII_KEYS = [
     "nome",
     "telefone",
@@ -40,6 +42,9 @@
     "notes"
   ];
   const APP_ORIGIN = "https://app.yincorp.com.br";
+  const AGENT_ORIGIN = "https://agente.yincorp.com.br";
+  const HANDOFF_TTL_MS = 15 * 60 * 1000;
+  const HANDOFF_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
   const HIGH_INTENT_CONVERSION_VALUE = 1;
   const LEAD_CONVERSION_VALUE = 10;
   const CONVERSION_CURRENCY = "BRL";
@@ -141,17 +146,18 @@
     );
   }
 
-  function normalizeEvent(input, now = new Date()) {
+  function normalizeEvent(input, now = new Date(), options = {}) {
     const body = omitPii(input || {});
     const product = clean(body.product).toLowerCase();
     const eventName = clean(body.event_name);
+    const allowedEvents = options.internal ? CLIENT_EVENTS.concat(INTERNAL_EVENTS) : CLIENT_EVENTS;
     const visitorId = clean(body.visitor_id);
     const sessionId = clean(body.session_id);
 
     if (!PRODUCTS.includes(product)) {
       return { error: "product inválido" };
     }
-    if (!CLIENT_EVENTS.includes(eventName)) {
+    if (!allowedEvents.includes(eventName)) {
       return { error: "event_name inválido" };
     }
     if (!visitorId || !sessionId) {
@@ -205,6 +211,203 @@
     if (validVisitorId(candidate)) return clean(candidate);
     if (validVisitorId(localId)) return clean(localId);
     return "";
+  }
+
+  function clip(value, max = 180) {
+    return clean(value).slice(0, max);
+  }
+
+  function createHandoffToken() {
+    const bytes = new Uint8Array(32);
+    globalThis.crypto.getRandomValues(bytes);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function sanitizeAttribution(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {
+      gclid: clip(source.gclid, 200),
+      gbraid: clip(source.gbraid, 200),
+      wbraid: clip(source.wbraid, 200),
+      utm_source: clip(source.utm_source, 120),
+      utm_medium: clip(source.utm_medium, 120),
+      utm_campaign: clip(source.utm_campaign, 120),
+      utm_term: clip(source.utm_term, 120),
+      utm_content: clip(source.utm_content, 120)
+    };
+  }
+
+  function sanitizeObserved(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const observed = {
+      neighborhood: clip(value.neighborhood),
+      development: clip(value.development),
+      bedrooms: whole(value.bedrooms),
+      price_min: numberOrZero(value.price_min),
+      price_max: numberOrZero(value.price_max)
+    };
+    if (!observed.neighborhood && !observed.development && !observed.bedrooms && !observed.price_min && !observed.price_max) {
+      return null;
+    }
+    return observed;
+  }
+
+  function allowedReturnOrigin(origin, allowedOrigins) {
+    const candidate = clean(origin).replace(/\/$/, "");
+    if ((allowedOrigins || []).includes(candidate)) return candidate;
+    return "";
+  }
+
+  function propertyReturnUrl(origin, propertyId, visitorId, allowedOrigins) {
+    const base = allowedReturnOrigin(origin, allowedOrigins) || APP_ORIGIN;
+    const url = new URL(`${base}/`);
+    if (propertyId) url.searchParams.set("imovel", propertyId);
+    if (validVisitorId(visitorId)) url.searchParams.set("vid", visitorId);
+    return url.toString();
+  }
+
+  function agentHandoffUrl(token) {
+    const url = new URL(`${AGENT_ORIGIN}/`);
+    url.searchParams.set("handoff", token);
+    return url.toString();
+  }
+
+  function handoffContext(input, visitor, allowedOrigins) {
+    const body = omitPii(input || {});
+    const property = normalizeProperty(body.current_property || body.property);
+    const recent = (Array.isArray(body.recent_properties) ? body.recent_properties : [])
+      .slice(-8)
+      .map(item => normalizeProperty(item))
+      .filter(item => item.property_id);
+    const screenIntent = normalizeIntent(body.declared_intent || body.intent);
+    const storedCurrent = visitor ? normalizeIntent(visitor.current_declared_intent) : normalizeIntent(null);
+    const storedFirst = visitor ? normalizeIntent(visitor.first_declared_intent) : normalizeIntent(null);
+    return {
+      current_property: property,
+      declared_intent: screenIntent,
+      first_declared_intent: isValidSearch(storedFirst) ? storedFirst : null,
+      current_declared_intent: isValidSearch(storedCurrent) ? storedCurrent : screenIntent,
+      observed_intent: visitor ? sanitizeObserved(visitor.observed_intent) : null,
+      recent_properties: recent,
+      attribution: sanitizeAttribution(body.attribution),
+      last_product: clip(visitor && visitor.last_product) || "ynteligencia",
+      return_url: propertyReturnUrl(body.return_origin, property.property_id, body.visitor_id, allowedOrigins)
+    };
+  }
+
+  async function createHandoff(input, rest, now = new Date(), options = {}) {
+    const body = omitPii(input || {});
+    const visitorId = clean(body.visitor_id);
+    const sessionId = clip(body.session_id, 120);
+    const source = clean(body.source_product).toLowerCase() || "ynteligencia";
+    if (source !== "ynteligencia") {
+      return { status: 400, body: { success: false, error: "source_product inválido" } };
+    }
+    if (!validVisitorId(visitorId) || !sessionId) {
+      return { status: 400, body: { success: false, error: "visitor_id e session_id são obrigatórios" } };
+    }
+
+    const visitorRows = await rest(
+      `ads_visitors?select=visitor_id,last_product,first_declared_intent,current_declared_intent,observed_intent,observed_confidence&visitor_id=eq.${encodeURIComponent(visitorId)}&limit=1`,
+      { method: "GET" }
+    );
+    if (!visitorRows.ok) {
+      return { status: 502, body: { success: false, error: "Não foi possível criar o handoff" } };
+    }
+
+    const visitor = Array.isArray(visitorRows.data) ? visitorRows.data[0] : null;
+    const token = (options.createToken || createHandoffToken)();
+    if (!HANDOFF_TOKEN_PATTERN.test(token)) {
+      return { status: 500, body: { success: false, error: "Não foi possível criar o handoff" } };
+    }
+
+    const context = handoffContext({ ...body, visitor_id: visitorId }, visitor, options.allowedOrigins || []);
+    const expires = new Date(now.getTime() + HANDOFF_TTL_MS);
+    const saved = await rest("ads_handoffs", {
+      method: "POST",
+      body: {
+        handoff_id: token,
+        visitor_id: visitorId,
+        session_id: sessionId,
+        source_product: "ynteligencia",
+        target_product: "agente_yincorp",
+        context,
+        created_at: now.toISOString(),
+        expires_at: expires.toISOString(),
+        consumed_at: null
+      }
+    });
+    if (!saved.ok) {
+      return { status: 502, body: { success: false, error: "Não foi possível criar o handoff" } };
+    }
+
+    const recorded = await recordAdsEvent({
+      product: "ynteligencia",
+      event_name: "agent_handoff_created",
+      visitor_id: visitorId,
+      session_id: sessionId,
+      ...context.attribution,
+      intent: context.declared_intent,
+      property: context.current_property,
+      metadata: { target_product: "agente_yincorp" }
+    }, rest, now, options.createId || cryptoRandom, { internal: true });
+    if (recorded.status >= 500) {
+      return { status: 502, body: { success: false, error: "Não foi possível criar o handoff" } };
+    }
+
+    return {
+      status: 200,
+      body: {
+        success: true,
+        expires_at: expires.toISOString(),
+        url: agentHandoffUrl(token)
+      }
+    };
+  }
+
+  async function readHandoff(input, rest, now = new Date()) {
+    const token = clean(input && (input.handoff_id || input.handoff));
+    if (!HANDOFF_TOKEN_PATTERN.test(token)) {
+      return { status: 400, body: { success: false, error: "handoff_invalid" } };
+    }
+
+    const rows = await rest(
+      "ads_handoffs?select=visitor_id,session_id,source_product,target_product,context,created_at,expires_at,consumed_at" +
+      `&handoff_id=eq.${encodeURIComponent(token)}&limit=1`,
+      { method: "GET" }
+    );
+    if (!rows.ok) {
+      return { status: 502, body: { success: false, error: "Não foi possível ler o handoff" } };
+    }
+
+    const row = Array.isArray(rows.data) ? rows.data[0] : null;
+    if (!row) return { status: 404, body: { success: false, error: "handoff_invalid" } };
+    if (new Date(row.expires_at).getTime() <= now.getTime()) {
+      return { status: 410, body: { success: false, error: "handoff_expired" } };
+    }
+
+    if (!row.consumed_at) {
+      await rest(`ads_handoffs?handoff_id=eq.${encodeURIComponent(token)}`, {
+        method: "PATCH",
+        body: { consumed_at: now.toISOString() }
+      });
+    }
+
+    return {
+      status: 200,
+      body: {
+        success: true,
+        visitor_id: row.visitor_id,
+        session_id: row.session_id,
+        source_product: row.source_product,
+        target_product: row.target_product,
+        context: omitPii(row.context),
+        created_at: row.created_at,
+        expires_at: row.expires_at
+      }
+    };
   }
 
   function visitorHandoffUrl(baseUrl, visitorId) {
@@ -682,8 +885,8 @@
     };
   }
 
-  async function recordAdsEvent(input, rest, now = new Date(), createId = () => cryptoRandom()) {
-    const normalized = normalizeEvent(input, now);
+  async function recordAdsEvent(input, rest, now = new Date(), createId = () => cryptoRandom(), options = {}) {
+    const normalized = normalizeEvent(input, now, options);
     if (normalized.error) {
       return { status: 400, body: { success: false, error: normalized.error } };
     }
@@ -840,6 +1043,8 @@
     LEAD_CONVERSION_VALUE,
     CONVERSION_CURRENCY,
     APP_ORIGIN,
+    AGENT_ORIGIN,
+    HANDOFF_TTL_MS,
     clean,
     normalizeText,
     slug,
@@ -847,6 +1052,9 @@
     validVisitorId,
     acceptVisitorId,
     visitorHandoffUrl,
+    agentHandoffUrl,
+    createHandoff,
+    readHandoff,
     normalizeIntent,
     normalizeProperty,
     isValidSearch,

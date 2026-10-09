@@ -1969,9 +1969,17 @@ body.campaign-catalog-mode .specialist-float{
 }
 .detail-specialist-copy strong{display:block;font-size:17px;line-height:1.15;color:#29251f}
 .detail-specialist-copy p{margin:4px 0 0;font-size:12px;line-height:1.4;color:#6e685f}
+.detail-specialist-actions{display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
 .detail-specialist button{
   border:0;border-radius:999px;background:#159b50;color:#fff;font-weight:900;
   padding:12px 15px;cursor:pointer;white-space:nowrap
+}
+.detail-specialist .detail-specialist-human-btn{
+  border:1px solid #C6A76B;background:#fff;color:#5A4728
+}
+.detail-agent-status{
+  margin:0;max-width:220px;font-size:12px;line-height:1.35;font-weight:700;
+  color:#8a4b2f;white-space:normal
 }
 .detail-similar{margin:26px 0 92px;padding-top:20px;border-top:1px solid #ded8cd}
 .detail-similar h3{margin:0 0 4px;font-size:20px}
@@ -1999,7 +2007,9 @@ body.campaign-catalog-mode .specialist-float{
   .specialist-title{font-size:12px!important}
   .detail-specialist{display:grid;grid-template-columns:56px 1fr;padding:13px;gap:10px}
   .detail-specialist img{width:56px;height:56px}
+  .detail-specialist-actions{grid-column:1/-1}
   .detail-specialist button{grid-column:1/-1;width:100%}
+  .detail-agent-status{max-width:none}
   .detail-similar-grid{grid-template-columns:1fr 1fr}
 }
 </style>
@@ -6250,6 +6260,72 @@ function yntAdsAttribution(){
     utm_term: source.utm_term || "",
     utm_content: source.utm_content || ""
   };
+}
+
+function yntAgentHandoffUrl(value){
+  try{
+    const url=new URL(String(value||""));
+    const handoff=url.searchParams.get("handoff")||"";
+    const keys=Array.from(url.searchParams.keys());
+    if(url.origin!=="https://agente.yincorp.com.br")return "";
+    if(url.pathname!=="/")return "";
+    if(!/^[A-Za-z0-9_-]{43}$/.test(handoff))return "";
+    if(keys.length!==1||keys[0]!=="handoff")return "";
+    return url.toString();
+  }catch(error){
+    return "";
+  }
+}
+
+let yntAgentHandoffPending=false;
+
+async function openAgentConversation(property){
+  if(!property||yntAgentHandoffPending)return;
+  yntAgentHandoffPending=true;
+  const status=document.querySelector("#photoModal .detail-agent-status");
+  if(status){
+    status.hidden=true;
+    status.textContent="";
+  }
+
+  const propertyPayload=item=>({
+    property_id:String(item&&(item.id||item.property_id)||""),
+    name:item&&(item.name||item.property_name)||"",
+    neighborhood:item&&item.neighborhood||"",
+    development:item&&(item.development||item.development_name)||"",
+    bedrooms:Number(item&&item.bedrooms)||0,
+    price:Number(item&&(item.value||item.price||item.property_value))||0,
+    inventory_source:item&&(item.source||item.inventory_source)||""
+  });
+
+  try{
+    const response=await fetch("/api/ads?action=create-handoff",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        visitor_id:YNTELIGENCIA_VISITOR_ID,
+        session_id:YNTELIGENCIA_SESSION_ID,
+        source_product:"ynteligencia",
+        return_origin:location.origin,
+        current_property:propertyPayload(property),
+        recent_properties:(aiOpenedProperties||[]).map(propertyPayload),
+        declared_intent:yntAdsIntentFromState(),
+        attribution:yntAdsAttribution()
+      })
+    });
+    const data=await response.json().catch(()=>null);
+    const url=yntAgentHandoffUrl(data&&data.url);
+    if(!response.ok||!url)throw new Error("handoff");
+    const opened=window.open(url,"_blank","noopener,noreferrer");
+    if(!opened)window.location.assign(url);
+  }catch(error){
+    if(status){
+      status.hidden=false;
+      status.textContent="Não foi possível abrir a conversa agora. Você pode falar com um especialista.";
+    }
+  }finally{
+    yntAgentHandoffPending=false;
+  }
 }
 
 function yntAdsTrack(eventName, detail){
@@ -18337,9 +18413,13 @@ async function showPhotoModal(id){
         <div class="detail-specialist-copy">
           <small>Atendimento personalizado</small>
           <strong>Quer entender melhor este imóvel?</strong>
-          <p>A IA pode responder sobre preço, condições, localização e comparar opções. Se precisar, ela chama o atendimento humano.</p>
+          <p>Escolha conversar com a IA sobre este imóvel ou falar com um especialista.</p>
         </div>
-        <button class="detail-specialist-btn" type="button">Conversar com a IA</button>
+        <div class="detail-specialist-actions">
+          <button class="detail-specialist-btn" type="button">Conversar com a IA</button>
+          <button class="detail-specialist-human-btn" type="button">Falar com especialista</button>
+          <p class="detail-agent-status" hidden></p>
+        </div>
       </section>
 
       <section class="detail-similar" id="detailSimilarSection">
@@ -18416,10 +18496,11 @@ async function showPhotoModal(id){
     )
     ?.addEventListener(
       "click",
-      ()=>openAiAssistant(p)
+      ()=>openAgentConversation(p)
     );
 
-  modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAiAssistant(p));
+  modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAgentConversation(p));
+  modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   document.body.appendChild(modal);
 
   /*

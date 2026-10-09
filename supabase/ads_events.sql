@@ -79,3 +79,26 @@ create table if not exists public.ads_visitors (
 
 alter table public.ads_events enable row level security;
 alter table public.ads_visitors enable row level security;
+
+/*
+  Handoff temporário entre YNTELIGENCIA e agente.yincorp.
+  Banco que já aplicou este arquivo antes desta tabela:
+  rode supabase/ads_handoffs.sql.
+*/
+
+create table if not exists public.ads_handoffs (
+  handoff_id text primary key,
+  visitor_id text not null,
+  session_id text not null,
+  source_product text not null,
+  target_product text not null,
+  context jsonb not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  consumed_at timestamptz
+);
+
+create index if not exists ads_handoffs_expires_idx
+  on public.ads_handoffs (expires_at);
+
+alter table public.ads_handoffs enable row level security;
