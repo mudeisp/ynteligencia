@@ -17,6 +17,7 @@ function memory() {
   const events = [];
   const visitors = [];
   const handoffs = [];
+  const profiles = [];
   const rest = async (requestPath, options = {}) => {
     const method = options.method || "GET";
     const [table, query = ""] = requestPath.split("?");
@@ -73,9 +74,27 @@ function memory() {
       const id = decodeFilter(params.get("handoff_id"));
       return { ok: true, status: 200, data: handoffs.filter(row => !id || row.handoff_id === id) };
     }
+    if (method === "POST" && table === "buyer_profiles") {
+      if (profiles.some(item => item.visitor_id === options.body.visitor_id)) {
+        return { ok: false, status: 409, data: null };
+      }
+      profiles.push({ ...options.body });
+      return { ok: true, status: 201, data: null };
+    }
+    if (method === "PATCH" && table === "buyer_profiles") {
+      const id = decodeFilter(params.get("visitor_id"));
+      const row = profiles.find(item => item.visitor_id === id);
+      if (!row) return { ok: false, status: 404, data: null };
+      Object.assign(row, options.body);
+      return { ok: true, status: 204, data: null };
+    }
+    if (method === "GET" && table === "buyer_profiles") {
+      const id = decodeFilter(params.get("visitor_id"));
+      return { ok: true, status: 200, data: profiles.filter(row => !id || row.visitor_id === id) };
+    }
     return { ok: false, status: 404, data: null };
   };
-  return { events, visitors, handoffs, rest };
+  return { events, visitors, handoffs, profiles, rest };
 }
 
 function base(extra = {}) {
@@ -1177,6 +1196,67 @@ test("cliente separa current touch do legado entre três sessões e preserva fir
   const reload = browserAds(storage, "session-3", "", legacy);
   reload.track("property_view", { property: { property_id: "a" } });
   assert.equal(reload.payloads[0].gclid, "XYZ");
+});
+
+test("buyer profile acompanha o evento e não entra na resposta", async () => {
+  const store = memory();
+  const now = new Date("2026-10-08T12:00:00.000Z");
+  const result = await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    gclid: "gclid-perfil",
+    utm_source: "google",
+    utm_campaign: "perfil"
+  }), store.rest, now);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(store.profiles.length, 1);
+  assert.equal(store.profiles[0].stage, "exploring");
+  assert.equal(store.profiles[0].first_touch.gclid, "gclid-perfil");
+  assert.equal(store.events.length, 1);
+});
+
+test("retentativa deduplicada recupera o perfil sem contar duas vezes", async () => {
+  const store = memory();
+  let failProfile = true;
+  const rest = async (requestPath, options = {}) => {
+    if (requestPath.split("?")[0] === "buyer_profiles" && failProfile) throw new Error("profile down");
+    return store.rest(requestPath, options);
+  };
+  const now = new Date("2026-10-08T12:00:00.000Z");
+  const payload = base({
+    event_name: "ai_search",
+    intent: { neighborhood: "Perdizes", bedrooms: 2, max_price: 900000 }
+  });
+  const first = await ads.recordAdsEvent(payload, rest, now);
+  assert.equal(first.status, 200);
+  assert.equal(store.profiles.length, 0);
+  failProfile = false;
+  const retry = await ads.recordAdsEvent(payload, rest, new Date(now.getTime() + 5000));
+  assert.equal(retry.body.duplicate, true);
+  assert.equal(store.events.length, 1);
+  assert.equal(store.profiles.length, 1);
+  assert.equal(store.profiles[0].total_ai_searches, 1);
+  assert.deepEqual(store.profiles[0].neighborhoods, ["Perdizes"]);
+  const third = await ads.recordAdsEvent(payload, rest, new Date(now.getTime() + 8000));
+  assert.equal(third.body.duplicate, true);
+  assert.equal(store.profiles[0].total_ai_searches, 1);
+});
+
+test("falha do buyer profile não apaga o ads_event", async () => {
+  const store = memory();
+  const rest = async (requestPath, options = {}) => {
+    if (requestPath.split("?")[0] === "buyer_profiles") throw new Error("profile down");
+    return store.rest(requestPath, options);
+  };
+  const result = await ads.recordAdsEvent(base({
+    event_name: "property_view",
+    property: { property_id: "orulo:1", name: "Solar", neighborhood: "Perdizes" }
+  }), rest, new Date("2026-10-08T12:00:00.000Z"));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(store.events.length, 1);
+  assert.equal(store.events[0].event_name, "property_view");
+  assert.equal(store.profiles.length, 0);
 });
 
 test("cliente deduplica ai_search com os seis campos e preserva property_view", () => {

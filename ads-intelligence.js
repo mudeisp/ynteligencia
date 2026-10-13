@@ -50,6 +50,7 @@
   const CONVERSION_CURRENCY = "BRL";
   const VISITOR_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const EXPLICIT_SEARCH_EVENTS = new Set(["ai_search", "ad_entry"]);
+  const buyerProfiles = loadBuyerProfiles();
   const GOOGLE_CONVERSIONS = {
     high_intent_buyer: {
       name: "High Intent Buyer",
@@ -71,6 +72,15 @@
     "Order ID",
     "Product"
   ];
+
+  function loadBuyerProfiles() {
+    if (typeof require !== "function") return null;
+    try {
+      return require("./buyer-profile.js");
+    } catch (error) {
+      return null;
+    }
+  }
 
   function clean(value) {
     return String(value ?? "").replace(/\s+/g, " ").trim();
@@ -118,6 +128,17 @@
       min_price: numberOrZero(source.min_price ?? source.minPrice),
       max_price: numberOrZero(source.max_price ?? source.maxPrice),
       inventory_source: ["novos", "usados", "todos"].includes(inventory) ? inventory : ""
+    };
+  }
+
+  function declaredPreference(intent) {
+    const source = intent && typeof intent === "object" ? intent : {};
+    return {
+      city: clip(source.city, 80),
+      state: clip(source.state, 40),
+      region: clip(source.region, 80),
+      property_type: clip(source.property_type || source.propertyType, 80),
+      purpose: clip(source.purpose || source.intention, 80)
     };
   }
 
@@ -209,6 +230,7 @@
         utm_content: clean(body.utm_content),
         intent: normalizeIntent(body.intent || body.declared_intent),
         property: normalizeProperty(body.property),
+        preference: declaredPreference(body.intent || body.declared_intent),
         metadata
       }
     };
@@ -932,6 +954,29 @@
     };
   }
 
+  let buyerProfileUnavailableLogged = false;
+
+  function logBuyerProfileFailure(result) {
+    const status = result && result.status;
+    if (status === 404) {
+      if (buyerProfileUnavailableLogged) return;
+      buyerProfileUnavailableLogged = true;
+      console.error("BUYER_PROFILE_UNAVAILABLE");
+      return;
+    }
+    console.error("BUYER_PROFILE_ERROR", status || (result && result.error) || "Error");
+  }
+
+  async function syncBuyerProfile(event, rest) {
+    if (!buyerProfiles || !event || !buyerProfiles.PROFILE_EVENTS.has(event.event_name)) return;
+    try {
+      const result = await buyerProfiles.updateBuyerProfileFromEvent(event, rest);
+      if (result && result.ok === false) logBuyerProfileFailure(result);
+    } catch (error) {
+      console.error("BUYER_PROFILE_ERROR", error && error.name ? error.name : "Error");
+    }
+  }
+
   async function recordAdsEvent(input, rest, now = new Date(), createId = () => cryptoRandom(), options = {}) {
     const normalized = normalizeEvent(input, now, options);
     if (normalized.error) {
@@ -954,6 +999,7 @@
 
     const duplicate = dedupeMatch(recent.data, event, now);
     if (duplicate) {
+      await syncBuyerProfile({ ...event, event_id: duplicate.event_id }, rest);
       return {
         status: 200,
         body: {
@@ -990,6 +1036,7 @@
       body: eventRow(event, observed)
     });
     if (!inserted.ok) return supabaseFailure(inserted);
+    await syncBuyerProfile(event, rest);
 
     const touch = touchPatch(visitor, event);
     if (observed.observed_intent) {
@@ -1025,6 +1072,7 @@
       const saved = await rest("ads_events", { method: "POST", body: eventRow(extra, observed) });
       if (!saved.ok) return supabaseFailure(saved);
       multipleId = extra.event_id;
+      await syncBuyerProfile(extra, rest);
     }
 
     if (decision.high_intent && !names.has("high_intent_buyer")) {
