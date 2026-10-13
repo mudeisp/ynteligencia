@@ -16,6 +16,7 @@ function decodeFilter(value) {
 function memory() {
   const events = [];
   const visitors = [];
+  const handoffs = [];
   const rest = async (requestPath, options = {}) => {
     const method = options.method || "GET";
     const [table, query = ""] = requestPath.split("?");
@@ -57,9 +58,24 @@ function memory() {
       const id = decodeFilter(params.get("visitor_id"));
       return { ok: true, status: 200, data: visitors.filter(row => row.visitor_id === id) };
     }
+    if (method === "POST" && table === "ads_handoffs") {
+      handoffs.push({ ...options.body });
+      return { ok: true, status: 201, data: null };
+    }
+    if (method === "PATCH" && table === "ads_handoffs") {
+      const id = decodeFilter(params.get("handoff_id"));
+      const row = handoffs.find(item => item.handoff_id === id);
+      if (!row) return { ok: false, status: 404, data: null };
+      Object.assign(row, options.body);
+      return { ok: true, status: 204, data: null };
+    }
+    if (method === "GET" && table === "ads_handoffs") {
+      const id = decodeFilter(params.get("handoff_id"));
+      return { ok: true, status: 200, data: handoffs.filter(row => !id || row.handoff_id === id) };
+    }
     return { ok: false, status: 404, data: null };
   };
-  return { events, visitors, rest };
+  return { events, visitors, handoffs, rest };
 }
 
 function base(extra = {}) {
@@ -376,6 +392,18 @@ test("a YNTELIGENCIA reutiliza visitor e sessão e aceita property_id na URL", (
   assert.match(html, /params\.get\("vid"\)/);
   assert.match(html, /yntValidVisitorId\(vid\)/);
   assert.match(html, /fetch\("\/api\/ads\?action=event"/);
+  assert.match(html, /Conversar com a IA/);
+  assert.match(html, /Falar com especialista/);
+  assert.match(html, /\/api\/ads\?action=create-handoff/);
+  assert.match(html, /openAgentConversation\(p\)/);
+  assert.match(html, /openAiAssistant\(property\)/);
+  assert.match(html, /data\.error==="handoff_disabled"/);
+  assert.match(html, /current_touch:currentTouch/);
+  assert.equal(html.includes("ADS_AGENT_HANDOFF_ENABLED"), false);
+  assert.equal(html.includes("NEXT_PUBLIC"), false);
+  assert.match(html, /openPropertySpecialist\(p\)/);
+  assert.equal(html.includes("agente.yincorp.com.br/?property"), false);
+  assert.equal(html.includes("?property_name="), false);
   assert.equal(html.includes("/api/ads-event"), false);
   assert.match(html, /yntAdsTrack\("ai_search"/);
   assert.match(html, /yntAdsTrack\("property_view"/);
@@ -667,6 +695,412 @@ test("vid válido atravessa produtos e vid inválido não substitui o local", ()
   const handoff = ads.visitorHandoffUrl("https://agente.example/chat", visitor);
   assert.equal(handoff, `https://agente.example/chat?vid=${visitor}`);
   assert.equal(ads.visitorHandoffUrl("https://agente.example/chat", "invalido"), "https://agente.example/chat");
+});
+
+
+const enabled = { env: { ADS_AGENT_HANDOFF_ENABLED: "true" }, allowedOrigins: ["https://app.yincorp.com.br"] };
+const dbId = "22222222-2222-4222-8222-222222222222";
+
+function handoffBody(extra = {}) {
+  return {
+    visitor_id: visitor,
+    session_id: session,
+    source_product: "ynteligencia",
+    return_origin: "https://app.yincorp.com.br",
+    declared_intent: { neighborhood: "Brooklin", bedrooms: 3, max_price: 1100000 },
+    property: {
+      external_id: "nonstop:florida",
+      property_id: dbId,
+      id: dbId,
+      db_id: dbId,
+      name: "Flórida",
+      neighborhood: "Brooklin",
+      bedrooms: 3,
+      price: 847100,
+      inventory_source: "usados"
+    },
+    ...extra
+  };
+}
+
+test("flag ausente não cria handoff e não devolve URL do agente", async () => {
+  const store = memory();
+  const created = await ads.createHandoff(handoffBody(), store.rest, new Date("2026-10-09T18:00:00.000Z"), {
+    env: {},
+    allowedOrigins: ["https://app.yincorp.com.br"]
+  });
+  assert.equal(created.status, 409);
+  assert.equal(created.body.error, "handoff_disabled");
+  assert.equal(created.body.url, undefined);
+  assert.equal(store.handoffs.length, 0);
+  assert.equal(store.events.length, 0);
+  assert.equal(ads.agentHandoffEnabled({}), false);
+  assert.equal(ads.agentHandoffEnabled({ ADS_AGENT_HANDOFF_ENABLED: "false" }), false);
+  assert.equal(ads.agentHandoffEnabled({ ADS_AGENT_HANDOFF_ENABLED: "1" }), false);
+});
+
+test("handoff leva o contexto sem PII e o agente reutiliza visitor e sessão", async () => {
+  const store = memory();
+  store.visitors.push({
+    visitor_id: visitor,
+    last_product: "ynteligencia",
+    first_declared_intent: {
+      neighborhood: "Perdizes",
+      development: "",
+      bedrooms: 2,
+      min_price: 0,
+      max_price: 900000,
+      inventory_source: "todos"
+    },
+    current_declared_intent: {
+      neighborhood: "Brooklin",
+      development: "",
+      bedrooms: 3,
+      min_price: 0,
+      max_price: 1100000,
+      inventory_source: "todos"
+    },
+    observed_intent: {
+      neighborhood: "Perdizes",
+      bedrooms: 3,
+      price_min: 850000,
+      price_max: 1000000
+    },
+    observed_confidence: 0.75
+  });
+
+  const now = new Date("2026-10-09T18:00:00.000Z");
+  const created = await ads.createHandoff(handoffBody({
+    return_origin: "https://evil.example",
+    email: "ana@example.com",
+    nome: "Ana",
+    telefone: "11999999999",
+    conversation: "quero visitar",
+    observed_intent: { neighborhood: "Moema", bedrooms: 1 },
+    recent_properties: [
+      { external_id: "nonstop:florida", property_id: dbId, db_id: dbId, name: "Flórida", neighborhood: "Brooklin", bedrooms: 3, price: 847100, inventory_source: "usados" },
+      { property_id: "orulo:outro", name: "Outro", neighborhood: "Brooklin", bedrooms: 3, price: 960000, inventory_source: "usados", email: "ana@example.com" }
+    ],
+    current_touch: {
+      gclid: "CURRENT-GCLID",
+      utm_source: "google",
+      utm_medium: "cpc",
+      utm_campaign: "brooklin_3d"
+    },
+    attribution: {
+      gclid: "LEGACY-GCLID",
+      utm_source: "legacy",
+      utm_campaign: "old"
+    }
+  }), store.rest, now, enabled);
+
+  assert.equal(created.status, 200);
+  const url = new URL(created.body.url);
+  assert.equal(url.origin, "https://agente.yincorp.com.br");
+  assert.deepEqual([...url.searchParams.keys()], ["handoff"]);
+  const token = url.searchParams.get("handoff");
+  assert.match(token, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(created.body.handoff_id, undefined);
+  assert.equal(store.handoffs[0].visitor_id, visitor);
+  assert.equal(store.handoffs[0].session_id, session);
+  assert.equal(store.handoffs[0].target_product, "agente_yincorp");
+  const context = store.handoffs[0].context;
+  assert.equal(context.property.property_id, "nonstop:florida");
+  assert.equal(context.property.db_id, dbId);
+  assert.equal(context.current_property, context.property);
+  assert.equal(context.property.name, "Flórida");
+  assert.equal(context.property.neighborhood, "Brooklin");
+  assert.equal(context.first_declared_intent.neighborhood, "Perdizes");
+  assert.equal(context.first_declared_intent.bedrooms, 2);
+  assert.equal(context.current_declared_intent.neighborhood, "Brooklin");
+  assert.equal(context.current_declared_intent.max_price, 1100000);
+  assert.equal(context.observed_intent.neighborhood, "Perdizes");
+  assert.equal(context.observed_intent.bedrooms, 3);
+  assert.equal(context.recent_properties.length, 2);
+  assert.equal(context.recent_properties[1].property_id, "orulo:outro");
+  assert.equal(context.attribution.gclid, "CURRENT-GCLID");
+  assert.equal(context.attribution.utm_source, "google");
+  assert.equal(context.attribution.utm_campaign, "brooklin_3d");
+  assert.equal(JSON.stringify(context.attribution).includes("LEGACY-GCLID"), false);
+  assert.equal(context.last_product, "ynteligencia");
+  assert.equal(context.return_url, `https://app.yincorp.com.br/?imovel=nonstop%3Aflorida&vid=${visitor}`);
+  const packed = JSON.stringify(context);
+  assert.equal(packed.includes("ana@example.com"), false);
+  assert.equal(packed.includes("11999999999"), false);
+  assert.equal(packed.includes("quero visitar"), false);
+  assert.equal(packed.includes("Moema"), false);
+  assert.equal(store.events.some(item => item.event_name === "agent_handoff_created"), true);
+  assert.equal(JSON.stringify(store.events).includes(token), false);
+
+  const read = await ads.readHandoff({ handoff_id: token }, store.rest, now);
+  assert.equal(read.status, 200);
+  assert.equal(read.body.visitor_id, visitor);
+  assert.equal(read.body.session_id, session);
+  assert.equal(read.body.handoff_id, undefined);
+  assert.equal(read.body.context.property.property_id, "nonstop:florida");
+  assert.equal(read.body.context.property.db_id, dbId);
+  assert.ok(store.handoffs[0].consumed_at);
+
+  const again = await ads.readHandoff({ handoff_id: token }, store.rest, new Date(now.getTime() + 60000));
+  assert.equal(again.status, 200);
+
+  const second = await ads.createHandoff(handoffBody({
+    property: {
+      property_id: "nonstop:outro",
+      name: "Apartamento",
+      neighborhood: "Brooklin",
+      bedrooms: 3,
+      price: 960000,
+      inventory_source: "usados"
+    }
+  }), store.rest, new Date(now.getTime() + 20000), enabled);
+  assert.equal(second.status, 200);
+  const secondToken = new URL(second.body.url).searchParams.get("handoff");
+  assert.notEqual(secondToken, token);
+  assert.equal(store.handoffs[1].context.property.property_id, "nonstop:outro");
+  assert.equal(store.handoffs[1].context.return_url, `https://app.yincorp.com.br/?imovel=nonstop%3Aoutro&vid=${visitor}`);
+
+  const expired = await ads.readHandoff({ handoff_id: token }, store.rest, new Date(now.getTime() + ads.HANDOFF_TTL_MS + 1000));
+  assert.equal(expired.status, 410);
+  assert.equal(expired.body.error, "handoff_expired");
+  assert.equal(expired.body.context, undefined);
+
+  const unknown = "a".repeat(43);
+  const missing = await ads.readHandoff({ handoff_id: unknown }, store.rest, now);
+  assert.equal(missing.status, 404);
+  assert.equal(missing.body.error, "handoff_invalid");
+  const malformed = await ads.readHandoff({ handoff_id: "curto" }, store.rest, now);
+  assert.equal(malformed.status, 400);
+  assert.equal(malformed.body.error, "handoff_malformed");
+
+  const forced = await ads.recordAdsEvent(base({ event_name: "agent_handoff_created" }), store.rest, now);
+  assert.equal(forced.status, 400);
+
+  const opened = await ads.recordAdsEvent({
+    product: "agente_yincorp",
+    event_name: "agent_opened",
+    visitor_id: visitor,
+    session_id: session,
+    gclid: "CURRENT-GCLID"
+  }, store.rest, new Date(now.getTime() + 30000));
+  assert.equal(opened.status, 200);
+  const csv = ads.googleAdsConversionsCsv(store.events);
+  assert.equal(csv.includes("agent_opened"), false);
+  assert.equal(csv.includes("agent_handoff_created"), false);
+  assert.equal(csv.includes(opened.body.event_id), false);
+  assert.equal(csv.includes(token), false);
+});
+
+test("toque atual vazio não reaproveita a atribuição legada", async () => {
+  const store = memory();
+  const created = await ads.createHandoff(handoffBody({
+    current_touch: {},
+    attribution: { gclid: "LEGACY-GCLID", utm_source: "legacy" }
+  }), store.rest, new Date("2026-10-09T18:00:00.000Z"), enabled);
+  assert.equal(created.status, 200);
+  assert.equal(store.handoffs[0].context.attribution.gclid, "");
+  assert.equal(store.handoffs[0].context.attribution.utm_source, "");
+});
+
+test("falha de storage no handoff não devolve URL", async () => {
+  const store = memory();
+  const rest = async (requestPath, options = {}) => {
+    const [table] = requestPath.split("?");
+    if ((options.method || "GET") === "GET" && table === "ads_visitors") {
+      return { ok: true, status: 200, data: [] };
+    }
+    return { ok: false, status: 500, data: null };
+  };
+  const created = await ads.createHandoff(handoffBody(), rest, new Date("2026-10-09T18:00:00.000Z"), enabled);
+  assert.equal(created.status, 502);
+  assert.equal(created.body.url, undefined);
+  const read = await ads.readHandoff({ handoff_id: "a".repeat(43) }, rest, new Date("2026-10-09T18:00:00.000Z"));
+  assert.equal(read.status, 502);
+});
+
+test("create-handoff cabe na function existente e o agente pode chamar", async () => {
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.SUPABASE_SECRET_KEY;
+  delete process.env.ADS_AGENT_HANDOFF_ENABLED;
+  const { default: adsHandler } = await import(`./api/ads.js?handoff=${Date.now()}`);
+  const disabled = await invokeAds(adsHandler, {
+    method: "POST",
+    query: { action: "create-handoff" },
+    headers: { origin: "https://app.yincorp.com.br" },
+    body: {}
+  });
+  assert.equal(disabled.code, 409);
+  assert.equal(disabled.body.error, "handoff_disabled");
+
+  process.env.ADS_AGENT_HANDOFF_ENABLED = "true";
+  const { default: enabledHandler } = await import(`./api/ads.js?handoff-on=${Date.now()}`);
+  const created = await invokeAds(enabledHandler, {
+    method: "POST",
+    query: { action: "create-handoff" },
+    headers: { origin: "https://app.yincorp.com.br" },
+    body: {}
+  });
+  assert.equal(created.code, 500);
+  const wrongMethod = await invokeAds(enabledHandler, {
+    method: "GET",
+    query: { action: "create-handoff" },
+    headers: { origin: "https://app.yincorp.com.br" }
+  });
+  assert.equal(wrongMethod.code, 405);
+  const read = await invokeAds(enabledHandler, {
+    method: "GET",
+    query: { action: "get-handoff", handoff: "segredo-na-query" },
+    headers: { origin: "https://agente.yincorp.com.br" }
+  });
+  assert.equal(read.code, 405);
+  const event = await invokeAds(enabledHandler, {
+    method: "POST",
+    query: { action: "event" },
+    headers: { origin: "https://exemplo.com" },
+    body: { product: "ynteligencia", event_name: "ad_entry" }
+  });
+  assert.equal(event.code, 403);
+  delete process.env.ADS_AGENT_HANDOFF_ENABLED;
+  const files = fs.readdirSync(path.join(__dirname, "api")).filter(name => name.endsWith(".js"));
+  assert.equal(files.length, 12);
+  assert.equal(files.includes("ads.js"), true);
+  assert.equal(files.some(name => name.startsWith("ads-") || name.startsWith("google-ads")), false);
+});
+
+function agentOpenHarness(openImpl, responseBody, responseOk = true) {
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const start = html.indexOf("function yntAgentHandoffUrl");
+  const end = html.indexOf("function yntAdsTrack");
+  const navigations = [];
+  const context = vm.createContext({
+    URL,
+    URLSearchParams,
+    navigations,
+    window: {
+      open(...args) {
+        const features = String(args[2] || "");
+        if (features.includes("noopener") || features.includes("noreferrer")) {
+          navigations.push({ type: "noopener-open", url: args[0] });
+          return null;
+        }
+        return openImpl(navigations, args);
+      },
+      location: {
+        assign(url) { navigations.push({ type: "assign", url }); }
+      }
+    },
+    location: { origin: "https://app.yincorp.com.br" },
+    document: { querySelector() { return null; } },
+    fetch() {
+      return Promise.resolve({
+        ok: responseOk,
+        json: () => Promise.resolve(responseBody)
+      });
+    },
+    YNTELIGENCIA_VISITOR_ID: visitor,
+    YNTELIGENCIA_SESSION_ID: session,
+    YNTELIGENCIA_TOUCHES: { current_touch: { gclid: "CURRENT-GCLID" } },
+    aiOpenedProperties: [],
+    openAiAssistant(property) { navigations.push({ type: "assistant", id: property && property.id }); }
+  });
+  vm.runInContext(`${html.slice(start, end)}
+function yntAdsIntentFromState(){ return {}; }
+function yntAdsAttribution(){ return { gclid: "CURRENT-GCLID" }; }
+`, context);
+  return {
+    navigations,
+    open: property => context.openAgentConversation(property)
+  };
+}
+
+function agentTokenUrl() {
+  return `https://agente.yincorp.com.br/?handoff=${"a".repeat(43)}`;
+}
+
+function tokenUses(navigations) {
+  return navigations.filter(item => String(item.url || item.href || "").includes("handoff="));
+}
+
+test("handoff ativo abre o agente uma única vez", async () => {
+  const harness = agentOpenHarness((navigations, args) => {
+    navigations.push({ type: "open", url: args[0] });
+    return {
+      opener: {},
+      document: {
+        body: { appendChild() {} },
+        createElement() {
+          const link = {
+            rel: "",
+            target: "",
+            click() { navigations.push({ type: "popup", href: link.href, rel: link.rel }); }
+          };
+          return link;
+        }
+      },
+      close() { navigations.push({ type: "close" }); }
+    };
+  }, { success: true, url: agentTokenUrl() });
+
+  await harness.open({ id: "nonstop:florida", name: "Flórida" });
+  const uses = tokenUses(harness.navigations);
+  assert.equal(uses.length, 1);
+  assert.equal(uses[0].type, "popup");
+  assert.equal(uses[0].rel, "noopener noreferrer");
+  assert.equal(harness.navigations.some(item => item.type === "assign"), false);
+  assert.equal(harness.navigations.some(item => item.type === "noopener-open"), false);
+  assert.equal(harness.navigations.filter(item => item.type === "open").length, 1);
+  assert.equal(harness.navigations.find(item => item.type === "open").url, "about:blank");
+});
+
+test("null de noopener não dispara segunda navegação do mesmo token", async () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const opener = html.slice(html.indexOf("function yntOpenAgentOnce"), html.indexOf("async function openAgentConversation"));
+  assert.equal(opener.includes("noopener,noreferrer"), false);
+  assert.equal(opener.includes("window.location.assign(url)"), true);
+  assert.equal(html.includes('window.open(url,"_blank","noopener,noreferrer")'), false);
+  assert.equal(html.includes("if(!opened)window.location.assign"), false);
+
+  const harness = agentOpenHarness(() => null, { success: true, url: agentTokenUrl() });
+  await harness.open({ id: "nonstop:florida" });
+  const uses = tokenUses(harness.navigations);
+  assert.equal(uses.length, 1);
+  assert.equal(uses[0].type, "assign");
+  assert.equal(harness.navigations.filter(item => item.type === "assign").length, 1);
+  assert.equal(harness.navigations.some(item => item.type === "popup" || item.type === "noopener-open"), false);
+});
+
+test("popup bloqueado navega a ficha uma vez e não abre outra aba", async () => {
+  const harness = agentOpenHarness(() => null, { success: true, url: agentTokenUrl() });
+  await harness.open({ id: "orulo:1" });
+  assert.deepEqual(tokenUses(harness.navigations).map(item => item.type), ["assign"]);
+});
+
+test("falha ao usar a aba em branco não reabre o token na ficha", async () => {
+  const harness = agentOpenHarness(navigations => {
+    navigations.push({ type: "open", url: "about:blank" });
+    return {
+      opener: {},
+      document: {
+        body: { appendChild() { throw new Error("documento indisponível"); } },
+        createElement() { return { rel: "", target: "", click() {} }; }
+      },
+      close() { navigations.push({ type: "close" }); }
+    };
+  }, { success: true, url: agentTokenUrl() });
+  await harness.open({ id: "nonstop:florida" });
+  assert.equal(tokenUses(harness.navigations).length, 0);
+  assert.equal(harness.navigations.some(item => item.type === "close"), true);
+  assert.equal(harness.navigations.some(item => item.type === "assign"), false);
+});
+
+test("flag desligada mantém a Match IA e não abre o agente", async () => {
+  const harness = agentOpenHarness(() => {
+    throw new Error("não deveria abrir janela");
+  }, { success: false, error: "handoff_disabled" }, false);
+  await harness.open({ id: "nonstop:florida" });
+  assert.deepEqual(harness.navigations, [{ type: "assistant", id: "nonstop:florida" }]);
 });
 
 test("ai_search deduplica a intenção normalizada e grava intenções diferentes em menos de 15s", async () => {

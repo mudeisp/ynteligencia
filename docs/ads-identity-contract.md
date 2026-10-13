@@ -17,9 +17,11 @@ Não existem rotas separadas por produto.
 - Não entra em `/api/ads?action=feed`, `/api/ads?action=intent-feed` nem `/api/ads?action=google-conversions`.
 - Pode ir na navegação entre os produtos da Yincorp.
 
-Quando um produto enviar o comprador ao outro, a URL leva o identificador:
+Quando um produto enviar o comprador ao outro sem contexto de imóvel, a URL pode levar só o identificador:
 
 `https://agente.example/?vid=<visitor_id>`
+
+O contexto de um imóvel aberto na YNTELIGENCIA não vai na query string. Esse caminho está em `docs/agent-handoff-contract.md`. Ele só abre `https://agente.yincorp.com.br/?handoff=<token>` quando `ADS_AGENT_HANDOFF_ENABLED` vale `true` no servidor. Ausente, a flag fica desligada e a Match IA da ficha permanece.
 
 O produto de destino deve:
 
