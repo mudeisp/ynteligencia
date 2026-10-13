@@ -50,6 +50,7 @@
   const CONVERSION_CURRENCY = "BRL";
   const VISITOR_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const EXPLICIT_SEARCH_EVENTS = new Set(["ai_search", "ad_entry"]);
+  const buyerProfiles = loadBuyerProfiles();
   const GOOGLE_CONVERSIONS = {
     high_intent_buyer: {
       name: "High Intent Buyer",
@@ -72,8 +73,24 @@
     "Product"
   ];
 
+  function loadBuyerProfiles() {
+    if (typeof require !== "function") return null;
+    try {
+      return require("./buyer-profile.js");
+    } catch (error) {
+      return null;
+    }
+  }
+
   function clean(value) {
     return String(value ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  function trackingField(value, max) {
+    const raw = String(value ?? "");
+    if (/[\r\n]/.test(raw)) return "";
+    const cleaned = clean(raw);
+    return typeof max === "number" ? cleaned.slice(0, max) : cleaned;
   }
 
   function normalizeText(value) {
@@ -118,6 +135,17 @@
       min_price: numberOrZero(source.min_price ?? source.minPrice),
       max_price: numberOrZero(source.max_price ?? source.maxPrice),
       inventory_source: ["novos", "usados", "todos"].includes(inventory) ? inventory : ""
+    };
+  }
+
+  function declaredPreference(intent) {
+    const source = intent && typeof intent === "object" ? intent : {};
+    return {
+      city: clip(source.city, 80),
+      state: clip(source.state, 40),
+      region: clip(source.region, 80),
+      property_type: clip(source.property_type || source.propertyType, 80),
+      purpose: clip(source.purpose || source.intention || source.finality, 80)
     };
   }
 
@@ -199,16 +227,17 @@
         product,
         visitor_id: visitorId,
         session_id: sessionId,
-        gclid: clean(body.gclid),
-        gbraid: clean(body.gbraid),
-        wbraid: clean(body.wbraid),
-        utm_source: clean(body.utm_source),
-        utm_medium: clean(body.utm_medium),
-        utm_campaign: clean(body.utm_campaign),
-        utm_term: clean(body.utm_term),
-        utm_content: clean(body.utm_content),
+        gclid: trackingField(body.gclid),
+        gbraid: trackingField(body.gbraid),
+        wbraid: trackingField(body.wbraid),
+        utm_source: trackingField(body.utm_source),
+        utm_medium: trackingField(body.utm_medium),
+        utm_campaign: trackingField(body.utm_campaign),
+        utm_term: trackingField(body.utm_term),
+        utm_content: trackingField(body.utm_content),
         intent: normalizeIntent(body.intent || body.declared_intent),
         property: normalizeProperty(body.property),
+        preference: declaredPreference(body.intent || body.declared_intent),
         metadata
       }
     };
@@ -239,14 +268,14 @@
   function sanitizeAttribution(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-      gclid: clip(source.gclid, 200),
-      gbraid: clip(source.gbraid, 200),
-      wbraid: clip(source.wbraid, 200),
-      utm_source: clip(source.utm_source, 120),
-      utm_medium: clip(source.utm_medium, 120),
-      utm_campaign: clip(source.utm_campaign, 120),
-      utm_term: clip(source.utm_term, 120),
-      utm_content: clip(source.utm_content, 120)
+      gclid: trackingField(source.gclid, 200),
+      gbraid: trackingField(source.gbraid, 200),
+      wbraid: trackingField(source.wbraid, 200),
+      utm_source: trackingField(source.utm_source, 120),
+      utm_medium: trackingField(source.utm_medium, 120),
+      utm_campaign: trackingField(source.utm_campaign, 120),
+      utm_term: trackingField(source.utm_term, 120),
+      utm_content: trackingField(source.utm_content, 120)
     };
   }
 
@@ -563,6 +592,48 @@
     };
   }
 
+  function canonicalText(value, max) {
+    const raw = String(value ?? "");
+    if (/[\r\n]/.test(raw)) return "";
+    const trimmed = raw.replace(/\s+/g, " ").trim();
+    if (!trimmed || trimmed === "0" || /^(?:false|null|undefined)$/i.test(trimmed)) return "";
+    if (trimmed[0] === "{" || trimmed[0] === "[") return "";
+    if (/"?(?:lead_summary|transcript|whatsapp|messages|conversation|contact|phone|email|message|name)"?\s*:/i.test(trimmed)) return "";
+    if (/"(?:lead_summary|transcript|whatsapp|messages|conversation|contact|phone|email|message|name)"/i.test(trimmed)) return "";
+    if (/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(trimmed)) return "";
+    if (/whatsapp|wa\.me/i.test(trimmed)) return "";
+    const digits = trimmed.replace(/\D/g, "");
+    if (/[0-9]{8,}/.test(trimmed) || (/[0-9][0-9\s().+\-]{6,}[0-9]/.test(trimmed) && digits.length >= 8)) return "";
+    if (trimmed.length > 200) return "";
+    return trimmed.slice(0, max);
+  }
+
+  function canonicalPreference(preference) {
+    const source = preference && typeof preference === "object" ? preference : {};
+    const values = {
+      city: canonicalText(source.city, 80),
+      state: canonicalText(source.state, 40),
+      region: canonicalText(source.region, 80),
+      property_type: canonicalText(source.property_type || source.propertyType, 80),
+      purpose: canonicalText(source.purpose || source.intention || source.finality, 80)
+    };
+    const stored = {};
+    for (const [key, value] of Object.entries(values)) {
+      if (value) stored[key] = value;
+    }
+    return stored;
+  }
+
+  function eventMetadata(event) {
+    const metadata = {
+      ...(event.metadata && typeof event.metadata === "object" ? event.metadata : {})
+    };
+    delete metadata.canonical_preference;
+    const canonical = canonicalPreference(event.preference);
+    if (Object.keys(canonical).length) metadata.canonical_preference = canonical;
+    return metadata;
+  }
+
   function eventRow(event, observed = {}) {
     const intent = event.intent || normalizeIntent(null);
     const property = event.property || normalizeProperty(null);
@@ -600,7 +671,7 @@
       observed_price_min: preference.price_min || null,
       observed_price_max: preference.price_max || null,
       observed_confidence: observed.observed_confidence || 0,
-      metadata: event.metadata || {}
+      metadata: eventMetadata(event)
     };
   }
 
@@ -932,6 +1003,76 @@
     };
   }
 
+  let buyerProfileUnavailableLogged = false;
+
+  function logBuyerProfileFailure(result) {
+    const status = result && result.status;
+    if (status === 404) {
+      if (buyerProfileUnavailableLogged) return;
+      buyerProfileUnavailableLogged = true;
+      console.error("BUYER_PROFILE_UNAVAILABLE");
+      return;
+    }
+    console.error("BUYER_PROFILE_ERROR", status || (result && result.error) || "Error");
+  }
+
+  function projectionOptionsFor(options = {}) {
+    if (Number.isFinite(Number(options.projectionDeadline))) return options;
+    const timeoutMs = Number(options.buyerProfileTimeoutMs) > 0
+      ? Number(options.buyerProfileTimeoutMs)
+      : (buyerProfiles && buyerProfiles.BUYER_PROFILE_TIMEOUT_MS) || 800;
+    return { ...options, projectionDeadline: Date.now() + timeoutMs };
+  }
+
+  async function syncBuyerProfile(event, rest, options = {}) {
+    if (!buyerProfiles || !event || !buyerProfiles.PROFILE_EVENTS.has(event.event_name)) return;
+    const timeoutMs = Number(options.buyerProfileTimeoutMs) > 0
+      ? Number(options.buyerProfileTimeoutMs)
+      : buyerProfiles.BUYER_PROFILE_TIMEOUT_MS;
+    const deadline = Number.isFinite(Number(options.projectionDeadline))
+      ? Number(options.projectionDeadline)
+      : Date.now() + timeoutMs;
+    const remaining = deadline - Date.now();
+    if (!(remaining > 0)) {
+      console.error("BUYER_PROFILE_TIMEOUT");
+      return;
+    }
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let timedOut = false;
+    let timer;
+    const projection = buyerProfiles.updateBuyerProfileFromEvent(event, rest, {
+      signal: controller && controller.signal
+    }).catch(error => {
+      if (timedOut || (error && error.name === "AbortError")) return { ok: false, timeout: true };
+      throw error;
+    });
+    try {
+      const result = await Promise.race([
+        projection,
+        new Promise(resolve => {
+          timer = setTimeout(() => {
+            timedOut = true;
+            if (controller) controller.abort();
+            resolve({ ok: false, timeout: true });
+          }, remaining);
+        })
+      ]);
+      if (timedOut || (result && result.timeout)) {
+        console.error("BUYER_PROFILE_TIMEOUT");
+        return;
+      }
+      if (result && result.ok === false) logBuyerProfileFailure(result);
+    } catch (error) {
+      if (timedOut || (error && error.name === "AbortError")) {
+        console.error("BUYER_PROFILE_TIMEOUT");
+        return;
+      }
+      console.error("BUYER_PROFILE_ERROR", error && error.name ? error.name : "Error");
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function recordAdsEvent(input, rest, now = new Date(), createId = () => cryptoRandom(), options = {}) {
     const normalized = normalizeEvent(input, now, options);
     if (normalized.error) {
@@ -985,11 +1126,14 @@
       ? priorViews.concat(event)
       : priorViews;
     const observed = observedIntentFromViews(viewsForObserved);
+    const row = eventRow(event, observed);
+    const projection = projectionOptionsFor(options);
     const inserted = await rest("ads_events", {
       method: "POST",
-      body: eventRow(event, observed)
+      body: row
     });
     if (!inserted.ok) return supabaseFailure(inserted);
+    await syncBuyerProfile(row, rest, projection);
 
     const touch = touchPatch(visitor, event);
     if (observed.observed_intent) {
@@ -1022,9 +1166,11 @@
       const second = views[1] || views[views.length - 1];
       const extra = derivedEvent(event, "property_view_multiple", second.property, event.intent, observed);
       extra.event_id = createId();
-      const saved = await rest("ads_events", { method: "POST", body: eventRow(extra, observed) });
+      const extraRow = eventRow(extra, observed);
+      const saved = await rest("ads_events", { method: "POST", body: extraRow });
       if (!saved.ok) return supabaseFailure(saved);
       multipleId = extra.event_id;
+      await syncBuyerProfile(extraRow, rest, projection);
     }
 
     if (decision.high_intent && !names.has("high_intent_buyer")) {

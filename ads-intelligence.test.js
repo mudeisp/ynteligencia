@@ -17,6 +17,7 @@ function memory() {
   const events = [];
   const visitors = [];
   const handoffs = [];
+  const rpcCalls = [];
   const rest = async (requestPath, options = {}) => {
     const method = options.method || "GET";
     const [table, query = ""] = requestPath.split("?");
@@ -73,9 +74,13 @@ function memory() {
       const id = decodeFilter(params.get("handoff_id"));
       return { ok: true, status: 200, data: handoffs.filter(row => !id || row.handoff_id === id) };
     }
+    if (method === "POST" && table === "rpc/apply_buyer_profile_event") {
+      rpcCalls.push(options.body && options.body.p_event);
+      return { ok: true, status: 200, data: { status: "applied" } };
+    }
     return { ok: false, status: 404, data: null };
   };
-  return { events, visitors, handoffs, rest };
+  return { events, visitors, handoffs, rpcCalls, rest };
 }
 
 function base(extra = {}) {
@@ -1177,6 +1182,187 @@ test("cliente separa current touch do legado entre três sessões e preserva fir
   const reload = browserAds(storage, "session-3", "", legacy);
   reload.track("property_view", { property: { property_id: "a" } });
   assert.equal(reload.payloads[0].gclid, "XYZ");
+});
+
+test("buyer profile acompanha o evento e não entra na resposta", async () => {
+  const store = memory();
+  const now = new Date("2026-10-08T12:00:00.000Z");
+  const result = await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    gclid: "gclid-perfil",
+    utm_source: "google",
+    utm_campaign: "perfil",
+    metadata: { buyer_id: "22222222-2222-4222-8222-222222222222", email: "maria@example.com" }
+  }), store.rest, now);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.profile, undefined);
+  assert.equal(store.events.length, 1);
+  assert.equal(store.rpcCalls.length, 1);
+  assert.equal(store.rpcCalls[0].gclid, "gclid-perfil");
+  assert.equal(store.rpcCalls[0].buyer_id, undefined);
+  assert.equal(JSON.stringify(store.rpcCalls[0]).includes("maria@example.com"), false);
+});
+
+test("retry deduplicado não reprojeta o payload novo", async () => {
+  const store = memory();
+  const now = new Date("2026-10-08T12:00:00.000Z");
+  const payload = base({
+    event_name: "ai_search",
+    intent: { neighborhood: "Perdizes", bedrooms: 2, max_price: 900000 }
+  });
+  const first = await ads.recordAdsEvent(payload, store.rest, now);
+  assert.equal(first.status, 200);
+  assert.equal(store.rpcCalls.length, 1);
+  const retry = await ads.recordAdsEvent({
+    ...payload,
+    gclid: "OUTRO-CLIQUE",
+    utm_campaign: "maria@example.com"
+  }, store.rest, new Date(now.getTime() + 5000));
+  assert.equal(retry.body.duplicate, true);
+  assert.equal(store.events.length, 1);
+  assert.equal(store.rpcCalls.length, 1);
+  assert.equal(store.rpcCalls[0].neighborhood, "Perdizes");
+  assert.equal(store.rpcCalls[0].gclid, "");
+  assert.equal(JSON.stringify(store.rpcCalls[0]).includes("maria@example.com"), false);
+});
+
+test("duas projeções do mesmo evento compartilham um único prazo", async () => {
+  const store = memory();
+  await ads.recordAdsEvent(base({
+    event_name: "property_view",
+    property: { property_id: "orulo:a", name: "Astorga", neighborhood: "Perdizes" }
+  }), store.rest, new Date("2026-10-08T12:00:00.000Z"));
+  let slowCalls = 0;
+  const rest = (requestPath, options = {}) => {
+    if (requestPath.split("?")[0] === "rpc/apply_buyer_profile_event") {
+      slowCalls += 1;
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => resolve({ ok: true, status: 200, data: { status: "applied" } }), 5000);
+        if (options.signal) {
+          options.signal.addEventListener("abort", () => {
+            clearTimeout(timer);
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        }
+      });
+    }
+    return store.rest(requestPath, options);
+  };
+  const budget = 80;
+  const started = Date.now();
+  const result = await ads.recordAdsEvent(base({
+    event_name: "property_view",
+    property: { property_id: "orulo:b" }
+  }), rest, new Date("2026-10-08T12:01:00.000Z"), undefined, { buyerProfileTimeoutMs: budget });
+  const elapsed = Date.now() - started;
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.property_view_multiple, true);
+  assert.equal(slowCalls, 1);
+  assert.ok(elapsed < budget * 2, `elapsed ${elapsed}`);
+  assert.ok(elapsed >= budget - 25, `elapsed ${elapsed}`);
+});
+
+test("prazo da projeção não quebra handoff, agent_opened nem lead_created", async () => {
+  const store = memory();
+  const handoff = await ads.createHandoff(handoffBody(), store.rest, new Date("2026-10-09T18:00:00.000Z"), enabled);
+  assert.equal(handoff.status, 200);
+  assert.equal(handoff.body.success, true);
+  const opened = await ads.recordAdsEvent({
+    product: "agente_yincorp",
+    event_name: "agent_opened",
+    visitor_id: visitor,
+    session_id: session
+  }, store.rest, new Date("2026-10-09T18:01:00.000Z"));
+  assert.equal(opened.status, 200);
+  assert.equal(opened.body.success, true);
+  const lead = await ads.recordAdsEvent(base({
+    event_name: "lead_created"
+  }), store.rest, new Date("2026-10-09T18:02:00.000Z"));
+  assert.equal(lead.status, 200);
+  assert.equal(lead.body.success, true);
+  assert.equal(store.events.some(item => item.event_name === "agent_handoff_created"), true);
+  assert.equal(store.events.some(item => item.event_name === "agent_opened"), true);
+  assert.equal(store.events.some(item => item.event_name === "lead_created"), true);
+});
+
+test("timeout da projeção não muda a resposta do evento", async () => {
+  const store = memory();
+  const rest = (requestPath, options = {}) => {
+    if (requestPath.split("?")[0] === "rpc/apply_buyer_profile_event") {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => resolve({ ok: true, status: 200, data: { status: "applied" } }), 250);
+        if (options.signal) {
+          options.signal.addEventListener("abort", () => {
+            clearTimeout(timer);
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        }
+      });
+    }
+    return store.rest(requestPath, options);
+  };
+  const result = await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    gclid: "gclid-lento"
+  }), rest, new Date("2026-10-08T12:00:00.000Z"), undefined, { buyerProfileTimeoutMs: 40 });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(store.events.length, 1);
+});
+
+test("CR e LF na campanha não chegam à RPC", async () => {
+  for (const campaign of [
+    "campanha-x\nsegunda-linha",
+    "campanha-x\rsegunda-linha",
+    "campanha-x\r\nsegunda-linha"
+  ]) {
+    const store = memory();
+    const result = await ads.recordAdsEvent(base({
+      event_name: "ad_entry",
+      gclid: "CLICK-OK",
+      utm_source: "google",
+      utm_campaign: campaign
+    }), store.rest, new Date("2026-10-08T12:00:00.000Z"));
+    assert.equal(result.status, 200);
+    assert.equal(store.rpcCalls.length, 1);
+    assert.equal(store.rpcCalls[0].utm_campaign, "");
+    assert.equal(store.events[0].utm_campaign, "");
+    assert.equal(JSON.stringify(store.rpcCalls[0]).includes("segunda-linha"), false);
+    assert.equal(store.rpcCalls[0].gclid, "CLICK-OK");
+    assert.equal(store.rpcCalls[0].utm_source, "google");
+  }
+  const store = memory();
+  const kept = await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    utm_campaign: "campanha-x segunda-linha"
+  }), store.rest, new Date("2026-10-08T12:00:00.000Z"));
+  assert.equal(kept.status, 200);
+  assert.equal(store.rpcCalls[0].utm_campaign, "campanha-x segunda-linha");
+  assert.equal(store.events[0].utm_campaign, "campanha-x segunda-linha");
+});
+
+test("falha do buyer profile não apaga o ads_event", async () => {
+  const store = memory();
+  const rest = async (requestPath, options = {}) => {
+    if (requestPath.split("?")[0] === "rpc/apply_buyer_profile_event") {
+      return { ok: false, status: 404, data: null };
+    }
+    return store.rest(requestPath, options);
+  };
+  const result = await ads.recordAdsEvent(base({
+    event_name: "property_view",
+    property: { property_id: "orulo:1", name: "Solar", neighborhood: "Perdizes" }
+  }), rest, new Date("2026-10-08T12:00:00.000Z"));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(store.events.length, 1);
+  assert.equal(store.events[0].event_name, "property_view");
 });
 
 test("cliente deduplica ai_search com os seis campos e preserva property_view", () => {

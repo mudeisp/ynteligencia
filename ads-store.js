@@ -13,6 +13,7 @@ export async function rest(path, options = {}) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   const response = await fetch(`${url}/rest/v1/${path}`, {
     method: options.method || "GET",
+    signal: options.signal,
     headers: {
       apikey: key,
       Authorization: `Bearer ${key}`,
