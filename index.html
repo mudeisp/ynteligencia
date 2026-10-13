@@ -6277,6 +6277,27 @@ function yntAgentHandoffUrl(value){
 
 let yntAgentHandoffPending=false;
 
+function yntOpenAgentOnce(url){
+  const popup=window.open("about:blank","_blank");
+  if(!popup){
+    window.location.assign(url);
+    return;
+  }
+  try{
+    popup.opener=null;
+    const doc=popup.document;
+    const link=doc.createElement("a");
+    link.href=url;
+    link.rel="noopener noreferrer";
+    link.target="_self";
+    (doc.body||doc.documentElement).appendChild(link);
+    link.click();
+  }catch(error){
+    try{ popup.close(); }catch(closeError){}
+    throw error;
+  }
+}
+
 async function openAgentConversation(property){
   if(!property||yntAgentHandoffPending)return;
   yntAgentHandoffPending=true;
@@ -6330,8 +6351,7 @@ async function openAgentConversation(property){
     }
     const url=yntAgentHandoffUrl(data&&data.url);
     if(!response.ok||!url)throw new Error("handoff");
-    const opened=window.open(url,"_blank","noopener,noreferrer");
-    if(!opened)window.location.assign(url);
+    yntOpenAgentOnce(url);
   }catch(error){
     if(status){
       status.hidden=false;

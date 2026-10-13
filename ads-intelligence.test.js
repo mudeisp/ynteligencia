@@ -968,6 +968,140 @@ test("create-handoff cabe na function existente e o agente pode chamar", async (
   assert.equal(files.some(name => name.startsWith("ads-") || name.startsWith("google-ads")), false);
 });
 
+function agentOpenHarness(openImpl, responseBody, responseOk = true) {
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const start = html.indexOf("function yntAgentHandoffUrl");
+  const end = html.indexOf("function yntAdsTrack");
+  const navigations = [];
+  const context = vm.createContext({
+    URL,
+    URLSearchParams,
+    navigations,
+    window: {
+      open(...args) {
+        const features = String(args[2] || "");
+        if (features.includes("noopener") || features.includes("noreferrer")) {
+          navigations.push({ type: "noopener-open", url: args[0] });
+          return null;
+        }
+        return openImpl(navigations, args);
+      },
+      location: {
+        assign(url) { navigations.push({ type: "assign", url }); }
+      }
+    },
+    location: { origin: "https://app.yincorp.com.br" },
+    document: { querySelector() { return null; } },
+    fetch() {
+      return Promise.resolve({
+        ok: responseOk,
+        json: () => Promise.resolve(responseBody)
+      });
+    },
+    YNTELIGENCIA_VISITOR_ID: visitor,
+    YNTELIGENCIA_SESSION_ID: session,
+    YNTELIGENCIA_TOUCHES: { current_touch: { gclid: "CURRENT-GCLID" } },
+    aiOpenedProperties: [],
+    openAiAssistant(property) { navigations.push({ type: "assistant", id: property && property.id }); }
+  });
+  vm.runInContext(`${html.slice(start, end)}
+function yntAdsIntentFromState(){ return {}; }
+function yntAdsAttribution(){ return { gclid: "CURRENT-GCLID" }; }
+`, context);
+  return {
+    navigations,
+    open: property => context.openAgentConversation(property)
+  };
+}
+
+function agentTokenUrl() {
+  return `https://agente.yincorp.com.br/?handoff=${"a".repeat(43)}`;
+}
+
+function tokenUses(navigations) {
+  return navigations.filter(item => String(item.url || item.href || "").includes("handoff="));
+}
+
+test("handoff ativo abre o agente uma única vez", async () => {
+  const harness = agentOpenHarness((navigations, args) => {
+    navigations.push({ type: "open", url: args[0] });
+    return {
+      opener: {},
+      document: {
+        body: { appendChild() {} },
+        createElement() {
+          const link = {
+            rel: "",
+            target: "",
+            click() { navigations.push({ type: "popup", href: link.href, rel: link.rel }); }
+          };
+          return link;
+        }
+      },
+      close() { navigations.push({ type: "close" }); }
+    };
+  }, { success: true, url: agentTokenUrl() });
+
+  await harness.open({ id: "nonstop:florida", name: "Flórida" });
+  const uses = tokenUses(harness.navigations);
+  assert.equal(uses.length, 1);
+  assert.equal(uses[0].type, "popup");
+  assert.equal(uses[0].rel, "noopener noreferrer");
+  assert.equal(harness.navigations.some(item => item.type === "assign"), false);
+  assert.equal(harness.navigations.some(item => item.type === "noopener-open"), false);
+  assert.equal(harness.navigations.filter(item => item.type === "open").length, 1);
+  assert.equal(harness.navigations.find(item => item.type === "open").url, "about:blank");
+});
+
+test("null de noopener não dispara segunda navegação do mesmo token", async () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const opener = html.slice(html.indexOf("function yntOpenAgentOnce"), html.indexOf("async function openAgentConversation"));
+  assert.equal(opener.includes("noopener,noreferrer"), false);
+  assert.equal(opener.includes("window.location.assign(url)"), true);
+  assert.equal(html.includes('window.open(url,"_blank","noopener,noreferrer")'), false);
+  assert.equal(html.includes("if(!opened)window.location.assign"), false);
+
+  const harness = agentOpenHarness(() => null, { success: true, url: agentTokenUrl() });
+  await harness.open({ id: "nonstop:florida" });
+  const uses = tokenUses(harness.navigations);
+  assert.equal(uses.length, 1);
+  assert.equal(uses[0].type, "assign");
+  assert.equal(harness.navigations.filter(item => item.type === "assign").length, 1);
+  assert.equal(harness.navigations.some(item => item.type === "popup" || item.type === "noopener-open"), false);
+});
+
+test("popup bloqueado navega a ficha uma vez e não abre outra aba", async () => {
+  const harness = agentOpenHarness(() => null, { success: true, url: agentTokenUrl() });
+  await harness.open({ id: "orulo:1" });
+  assert.deepEqual(tokenUses(harness.navigations).map(item => item.type), ["assign"]);
+});
+
+test("falha ao usar a aba em branco não reabre o token na ficha", async () => {
+  const harness = agentOpenHarness(navigations => {
+    navigations.push({ type: "open", url: "about:blank" });
+    return {
+      opener: {},
+      document: {
+        body: { appendChild() { throw new Error("documento indisponível"); } },
+        createElement() { return { rel: "", target: "", click() {} }; }
+      },
+      close() { navigations.push({ type: "close" }); }
+    };
+  }, { success: true, url: agentTokenUrl() });
+  await harness.open({ id: "nonstop:florida" });
+  assert.equal(tokenUses(harness.navigations).length, 0);
+  assert.equal(harness.navigations.some(item => item.type === "close"), true);
+  assert.equal(harness.navigations.some(item => item.type === "assign"), false);
+});
+
+test("flag desligada mantém a Match IA e não abre o agente", async () => {
+  const harness = agentOpenHarness(() => {
+    throw new Error("não deveria abrir janela");
+  }, { success: false, error: "handoff_disabled" }, false);
+  await harness.open({ id: "nonstop:florida" });
+  assert.deepEqual(harness.navigations, [{ type: "assistant", id: "nonstop:florida" }]);
+});
 
 test("ai_search deduplica a intenção normalizada e grava intenções diferentes em menos de 15s", async () => {
   const store = memory();
