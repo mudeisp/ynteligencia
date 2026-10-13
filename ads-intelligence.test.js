@@ -90,6 +90,38 @@ function memory() {
       rpcCalls.push(options.body && options.body.p_event);
       return { ok: true, status: 200, data: { status: "applied" } };
     }
+    if (method === "POST" && table === "rpc/record_ads_lead") {
+      const row = (options.body && options.body.p_row) || {};
+      const existingId = events.find(item => item.event_id === row.event_id);
+      if (existingId) {
+        const conflict = existingId.visitor_id !== row.visitor_id || existingId.event_name !== "lead_created";
+        return {
+          ok: true,
+          status: 200,
+          data: [{ event_id: existingId.event_id, duplicate: !conflict, conflict }]
+        };
+      }
+      const at = new Date(row.event_time).getTime();
+      const prior = events
+        .filter(item =>
+          item.event_name === "lead_created" &&
+          item.visitor_id === row.visitor_id &&
+          (item.property_id || "") === (row.property_id || "")
+        )
+        .filter(item => {
+          const time = new Date(item.event_time).getTime();
+          return time >= at - ads.LEAD_LOGICAL_WINDOW_MS && time <= at + 1000;
+        })
+        .sort((left, right) =>
+          String(left.event_time).localeCompare(String(right.event_time)) ||
+          String(left.event_id).localeCompare(String(right.event_id))
+        )[0];
+      if (prior) {
+        return { ok: true, status: 200, data: [{ event_id: prior.event_id, duplicate: true, conflict: false }] };
+      }
+      events.push({ ...row });
+      return { ok: true, status: 200, data: [{ event_id: row.event_id, duplicate: false, conflict: false }] };
+    }
     return { ok: false, status: 404, data: null };
   };
   return { events, visitors, handoffs, rpcCalls, rest };
@@ -569,7 +601,25 @@ test("POST externo continua bloqueado e a planilha exige token", async () => {
     });
     assert.equal(failed.code, 200);
     assert.deepEqual(failed.body, { success: true, failed: 1, event_ids: ["evt-2"] });
-    assert.deepEqual(calls[2].body, { p_event_ids: ["evt-2"], p_error: "conexao caiu" });
+    assert.deepEqual(calls[2].body, { p_event_ids: ["evt-2"], p_error: "unknown" });
+
+    const coded = await invokeExport({
+      method: "POST",
+      query: { action: "google-conversions" },
+      headers: { authorization: "Bearer token-teste" },
+      body: { fail_event_ids: ["evt-3"], error: "ana@example.com 11999998888" }
+    });
+    assert.equal(coded.code, 200);
+    assert.deepEqual(calls[3].body, { p_event_ids: ["evt-3"], p_error: "unknown" });
+
+    const allowed = await invokeExport({
+      method: "POST",
+      query: { action: "google-conversions" },
+      headers: { authorization: "Bearer token-teste" },
+      body: { fail_event_ids: ["evt-4"], error: "DOWNLOAD_FAILED" }
+    });
+    assert.equal(allowed.code, 200);
+    assert.deepEqual(calls[4].body, { p_event_ids: ["evt-4"], p_error: "download_failed" });
 
     const missing = await invokeExport({
       method: "POST",
@@ -586,7 +636,7 @@ test("POST externo continua bloqueado e a planilha exige token", async () => {
       body: { confirm_event_ids: ["evt-1"], fail_event_ids: ["evt-2"] }
     });
     assert.equal(both.code, 400);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 5);
 
     const wrong = await invokeExport({
       method: "POST",
@@ -1551,10 +1601,19 @@ test("lead usa o clique da sessão e não mistura com um clique antigo", async (
   assert.equal(lead.status, 200);
   assert.equal(lead.body.event_id, "lead-sessao-atual");
   const row = store.events.find(item => item.event_id === "lead-sessao-atual");
-  assert.equal(row.gclid, "GCLID-ATUAL");
+  assert.equal(row.gclid, "");
   assert.equal(row.gbraid, "");
   assert.equal(row.wbraid, "");
+  assert.equal(row.conversion_gclid, "GCLID-ATUAL");
+  assert.equal(row.conversion_gbraid, "");
+  assert.equal(row.conversion_wbraid, "");
+  assert.equal(row.conversion_click_source, "prior_session");
   assert.equal(row.utm_campaign, "campanha-atual");
+  assert.equal(row.utm_source, "google");
+  const leadProfile = store.rpcCalls.find(item => item && item.event_id === "lead-sessao-atual");
+  assert.equal(leadProfile.gclid, "");
+  assert.equal(leadProfile.utm_campaign, "campanha-atual");
+  assert.equal(JSON.stringify(leadProfile).includes("GCLID-ANTIGO"), false);
   const stored = JSON.stringify(row);
   for (const secret of ["Maria", "maria@example.com", "11988887777", "5511988887777", "quer visitar", "oi, quero comprar"]) {
     assert.equal(stored.includes(secret), false, secret);
@@ -1590,11 +1649,20 @@ test("lead orgânico herda o último clique do visitante e não o de outro", asy
   }), store.rest, new Date(start.getTime() + 86400000));
   assert.equal(inherited.body.event_id, "lead-organico");
   const row = store.events.find(item => item.event_id === "lead-organico");
-  assert.equal(row.gclid, "GCLID-VISITANTE");
-  assert.equal(row.gbraid, "GBRAID-VISITANTE");
-  assert.equal(row.wbraid, "WBRAID-VISITANTE");
+  assert.equal(row.gclid, "");
+  assert.equal(row.gbraid, "");
+  assert.equal(row.wbraid, "");
+  assert.equal(row.conversion_gclid, "GCLID-VISITANTE");
+  assert.equal(row.conversion_gbraid, "GBRAID-VISITANTE");
+  assert.equal(row.conversion_wbraid, "WBRAID-VISITANTE");
+  assert.equal(row.conversion_click_source, "prior_visitor");
   assert.equal(row.utm_source, "organic");
-  assert.equal(JSON.stringify(store.events).includes("GCLID-ALHEIO") && row.gclid !== "GCLID-ALHEIO", true);
+  assert.equal(row.utm_campaign, "");
+  const inheritedProfile = store.rpcCalls.find(item => item && item.event_id === "lead-organico");
+  assert.equal(inheritedProfile.gclid, "");
+  assert.equal(inheritedProfile.utm_source, "organic");
+  assert.equal(inheritedProfile.utm_campaign, "");
+  assert.equal(JSON.stringify(store.events).includes("GCLID-ALHEIO") && row.conversion_gclid !== "GCLID-ALHEIO", true);
 
   const emptyVisitor = "33333333-3333-4333-8333-333333333333";
   const blank = await ads.recordAdsEvent({
@@ -1610,6 +1678,8 @@ test("lead orgânico herda o último clique do visitante e não o de outro", asy
   assert.equal(blankRow.gclid, "");
   assert.equal(blankRow.gbraid, "");
   assert.equal(blankRow.wbraid, "");
+  assert.equal(blankRow.conversion_gclid, "");
+  assert.equal(blankRow.conversion_click_source, "");
   const csv = ads.googleAdsConversionsCsv(store.events);
   assert.match(csv, /lead-organico/);
   assert.equal(csv.includes("lead-sem-clique"), false);
@@ -1639,6 +1709,10 @@ test("o mesmo lead conserva um event_id e leads diferentes permanecem distintos"
     property: { property_id: "nonstop:florida" }
   }), store.rest, new Date(start.getTime() + ads.LEAD_LOGICAL_WINDOW_MS + 60000));
   assert.equal(first.body.duplicate, false);
+  const canonical = store.events.find(item => item.event_id === "lead-canonico");
+  assert.equal(canonical.gclid, "GCLID-LEAD");
+  assert.equal(canonical.conversion_gclid, "GCLID-LEAD");
+  assert.equal(canonical.conversion_click_source, "current_session");
   assert.equal(retry.status, 200);
   assert.equal(retry.body.duplicate, true);
   assert.equal(retry.body.event_id, "lead-canonico");
@@ -1695,12 +1769,20 @@ test("handoff sem clique na sessão recebe o último clique e preserva o UTM atu
     current_touch: { utm_source: "organic", gclid: "" }
   }), store.rest, new Date("2026-10-09T18:00:00.000Z"), enabled);
   assert.equal(created.status, 200);
-  assert.equal(store.handoffs[0].context.attribution.gclid, "GCLID-HANDOFF");
+  assert.equal(store.handoffs[0].context.attribution.gclid, "");
   assert.equal(store.handoffs[0].context.attribution.utm_source, "organic");
   assert.equal(store.handoffs[0].context.attribution.utm_campaign, "");
+  assert.equal(store.handoffs[0].context.conversion_attribution.gclid, "GCLID-HANDOFF");
+  assert.equal(store.handoffs[0].context.conversion_attribution.source, "prior_visitor");
   const handoffEvent = store.events.find(item => item.event_name === "agent_handoff_created");
-  assert.equal(handoffEvent.gclid, "GCLID-HANDOFF");
+  assert.equal(handoffEvent.gclid, "");
   assert.equal(handoffEvent.utm_source, "organic");
+  assert.equal(handoffEvent.utm_campaign, "");
+  assert.equal(handoffEvent.conversion_gclid, "GCLID-HANDOFF");
+  assert.equal(handoffEvent.conversion_click_source, "prior_visitor");
+  const handoffProfile = store.rpcCalls.find(item => item && item.event_name === "agent_handoff_created");
+  assert.equal(handoffProfile.gclid, "");
+  assert.equal(handoffProfile.utm_source, "organic");
 });
 
 test("sinais intermediários têm nome próprio e ficam fora do CSV de lead", () => {
@@ -1804,6 +1886,7 @@ test("o claim reserva o lead e a exportação só fecha com confirmação", asyn
     end $$;
   `], { stdio: "pipe" });
   execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_events.sql")], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_lead_identity.sql")], { stdio: "pipe" });
   execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", migration], { stdio: "pipe" });
 
   psql(database, `
@@ -1854,9 +1937,10 @@ test("o claim reserva o lead e a exportação só fecha com confirmação", asyn
   assert.equal(psql(database, "select count(*) from public.claim_google_lead_conversions(10)"), "0");
   assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports where event_id = 'inexistente'"), "0");
 
-  const longError = "x".repeat(600);
-  assert.equal(psql(database, `select event_id from public.fail_google_lead_conversions(array['lead-novo', 'lead-antigo'], '${longError}')`), "lead-novo");
-  assert.equal(psql(database, "select length(last_error)::text from public.google_ads_conversion_exports where event_id = 'lead-novo'"), "500");
+  const nasty = "ana@example.com 11999998888 conversa oi quero comprar nome Maria";
+  assert.equal(psql(database, `select event_id from public.fail_google_lead_conversions(array['lead-novo', 'lead-antigo'], '${nasty}')`), "lead-novo");
+  assert.equal(psql(database, "select last_error from public.google_ads_conversion_exports where event_id = 'lead-novo'"), "unknown");
+  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports where last_error ilike '%@%' or last_error ~ '[0-9]{8}' or last_error ilike '%conversa%' or last_error ilike '%maria%'"), "0");
   assert.equal(psql(database, "select status from public.google_ads_conversion_exports where event_id = 'lead-antigo'"), "exported");
   assert.equal(psql(database, "select event_id from public.claim_google_lead_conversions(10)"), "lead-novo");
   assert.equal(ledgerState("lead-novo"), "pending:2::");
@@ -1899,6 +1983,8 @@ test("o claim reserva o lead e a exportação só fecha com confirmação", asyn
   `);
   assert.equal(eventColumns.includes("claimed_at"), false);
   assert.equal(eventColumns.includes("exported_at"), false);
+  assert.equal(eventColumns.includes("conversion_gclid"), true);
+  assert.equal(eventColumns.includes("conversion_click_source"), true);
   assert.equal(psql(database, "select count(*) from pg_policies where tablename = 'google_ads_conversion_exports'"), "0");
   assert.equal(psql(database, `
     select relrowsecurity::text
@@ -1907,9 +1993,9 @@ test("o claim reserva o lead e a exportação só fecha com confirmação", asyn
   `), "true");
 
   psql(database, `
-    insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, gclid) values
-      ('lead-race-1', 'lead_created', '2026-10-05T12:00:00Z', 'ynteligencia', 'v1', 's5', 'gclid-race-1'),
-      ('lead-race-2', 'lead_created', '2026-10-05T12:01:00Z', 'ynteligencia', 'v1', 's6', 'gclid-race-2');
+    insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, property_id, gclid) values
+      ('lead-race-1', 'lead_created', '2026-10-05T12:00:00Z', 'ynteligencia', 'v1', 's5', 'imovel-race-1', 'gclid-race-1'),
+      ('lead-race-2', 'lead_created', '2026-10-05T12:01:00Z', 'ynteligencia', 'v1', 's6', 'imovel-race-2', 'gclid-race-2');
   `);
   psql(database, `
     create or replace function public.test_delay_google_claim()
@@ -1976,9 +2062,19 @@ test("o claim reserva o lead e a exportação só fecha com confirmação", asyn
     assert.match(denied, /permission denied/);
   }
 
+  psql(database, `
+    insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, property_id, gclid)
+    values ('lead-code', 'lead_created', '2026-10-06T12:00:00Z', 'ynteligencia', 'v1', 's7', 'imovel-code', 'gclid-code')
+  `);
+  assert.equal(psql(database, "select event_id from public.claim_google_lead_conversions(10)"), "lead-code");
+  assert.equal(psql(database, "select event_id from public.fail_google_lead_conversions(array['lead-code'], 'DOWNLOAD_FAILED')"), "lead-code");
+  assert.equal(psql(database, "select last_error from public.google_ads_conversion_exports where event_id = 'lead-code'"), "download_failed");
+  assert.equal(psql(database, "select event_id from public.claim_google_lead_conversions(10)"), "lead-code");
+  assert.equal(psql(database, "select event_id from public.confirm_google_lead_conversions(array['lead-code'])"), "lead-code");
+
   execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", migration], { stdio: "pipe" });
   assert.equal(psql(database, "select count(*) from public.claim_google_lead_conversions(10)"), "0");
-  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports"), "5");
+  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports"), "6");
 
   recreate(upgrade);
   execFileSync("psql", ["-d", upgrade, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_events.sql")], { stdio: "pipe" });
@@ -2018,4 +2114,278 @@ test("o claim reserva o lead e a exportação só fecha com confirmação", asyn
   assert.equal(psql(upgrade, "select event_id from public.claim_google_lead_conversions(10)"), "lead-upgrade");
   assert.equal(psql(upgrade, "select status from public.google_ads_conversion_exports where event_id = 'lead-upgrade'"), "pending");
   assert.equal(psql(upgrade, "select status from public.google_ads_conversion_exports where event_id = 'lead-ja-exportado'"), "exported");
+});
+
+test("a identidade do lead é atômica e o clique herdado não vira toque atual", async () => {
+  const { execFileSync, spawn } = require("node:child_process");
+  const buyer = require("./buyer-profile.js");
+  const database = "ads_lead_identity_test";
+  const visitorA = "11111111-1111-4111-8111-111111111111";
+  const visitorB = "22222222-2222-4222-8222-222222222222";
+  const psql = (db, sql) => execFileSync("psql", [
+    "-d", db, "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c", sql
+  ], { encoding: "utf8" }).trim();
+  const psqlAsync = (db, sql) => new Promise((resolve, reject) => {
+    const child = spawn("psql", ["-d", db, "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c", sql]);
+    const out = [];
+    const err = [];
+    child.stdout.on("data", chunk => out.push(chunk));
+    child.stderr.on("data", chunk => err.push(chunk));
+    child.on("error", reject);
+    child.on("close", code => {
+      if (code !== 0) reject(new Error(Buffer.concat(err).toString("utf8") || Buffer.concat(out).toString("utf8")));
+      else resolve(Buffer.concat(out).toString("utf8").trim());
+    });
+  });
+  const leadRow = (eventId, visitorId, propertyId, time, product = "ynteligencia") => ({
+    event_id: eventId,
+    event_name: "lead_created",
+    event_time: time,
+    product,
+    visitor_id: visitorId,
+    session_id: `sessao-${eventId}`,
+    property_id: propertyId,
+    gclid: "",
+    gbraid: "",
+    wbraid: "",
+    utm_source: "organic",
+    conversion_gclid: "GCLID-HIST",
+    conversion_gbraid: "",
+    conversion_wbraid: "",
+    conversion_click_source: "prior_visitor"
+  });
+  const claimSql = row => `select event_id || '|' || duplicate::text || '|' || conflict::text from public.record_ads_lead($json$${JSON.stringify(row)}$json$::jsonb)`;
+
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `
+    select pg_terminate_backend(pid) from pg_stat_activity
+    where datname = '${database}' and pid <> pg_backend_pid()
+  `], { stdio: "pipe" });
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `drop database if exists ${database}`], { stdio: "pipe" });
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `create database ${database}`], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-c", `
+    do $$ begin
+      if not exists (select 1 from pg_roles where rolname = 'service_role') then
+        create role service_role nologin bypassrls;
+      else
+        alter role service_role bypassrls;
+      end if;
+      if not exists (select 1 from pg_roles where rolname = 'anon') then
+        create role anon nologin;
+      end if;
+    end $$;
+  `], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_events.sql")], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_lead_identity.sql")], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_lead_identity.sql")], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/buyer_profiles.sql")], { stdio: "pipe" });
+
+  psql(database, `
+    create or replace function public.test_delay_lead_insert()
+    returns trigger language plpgsql as $fn$
+    begin
+      perform pg_sleep(0.4);
+      return new;
+    end;
+    $fn$;
+    drop trigger if exists test_delay_lead_insert on public.ads_events;
+    create trigger test_delay_lead_insert
+    before insert on public.ads_events
+    for each row when (new.event_name = 'lead_created')
+    execute function public.test_delay_lead_insert();
+  `);
+
+  const sameTime = "2026-10-08T12:00:00.000Z";
+  let same;
+  let properties;
+  let visitors;
+  try {
+    [same, properties, visitors] = await Promise.all([
+      Promise.all([
+        psqlAsync(database, claimSql(leadRow("lead-a", visitorA, "imovel-igual", sameTime))),
+        psqlAsync(database, claimSql(leadRow("lead-b", visitorA, "imovel-igual", sameTime, "agente_yincorp")))
+      ]),
+      Promise.all([
+        psqlAsync(database, claimSql(leadRow("lead-p1", visitorA, "imovel-1", sameTime))),
+        psqlAsync(database, claimSql(leadRow("lead-p2", visitorA, "imovel-2", sameTime)))
+      ]),
+      Promise.all([
+        psqlAsync(database, claimSql(leadRow("lead-v1", visitorA, "imovel-visitante", sameTime))),
+        psqlAsync(database, claimSql(leadRow("lead-v2", visitorB, "imovel-visitante", sameTime)))
+      ])
+    ]);
+  } finally {
+    psql(database, `
+      drop trigger if exists test_delay_lead_insert on public.ads_events;
+      drop function if exists public.test_delay_lead_insert();
+    `);
+  }
+
+  const parse = text => text.split("|");
+  const sameRows = same.map(parse);
+  assert.equal(sameRows[0][0], sameRows[1][0]);
+  assert.deepEqual(sameRows.map(row => row[1]).sort(), ["false", "true"]);
+  assert.deepEqual(sameRows.map(row => row[2]), ["false", "false"]);
+  assert.equal(psql(database, `
+    select count(*) from public.ads_events
+    where event_name = 'lead_created' and visitor_id = '${visitorA}' and property_id = 'imovel-igual'
+  `), "1");
+
+  const propertyRows = properties.map(parse);
+  assert.deepEqual(propertyRows.map(row => row[0]).sort(), ["lead-p1", "lead-p2"]);
+  assert.deepEqual(propertyRows.map(row => row[1]), ["false", "false"]);
+  assert.equal(psql(database, `
+    select count(*) from public.ads_events
+    where event_name = 'lead_created' and property_id in ('imovel-1', 'imovel-2')
+  `), "2");
+
+  const visitorRows = visitors.map(parse);
+  assert.deepEqual(visitorRows.map(row => row[0]).sort(), ["lead-v1", "lead-v2"]);
+  assert.deepEqual(visitorRows.map(row => row[1]), ["false", "false"]);
+
+  const later = parse(psql(database, claimSql(leadRow(
+    "lead-depois",
+    visitorA,
+    "imovel-igual",
+    "2026-10-08T12:16:00.000Z"
+  ))));
+  assert.equal(later[0], "lead-depois");
+  assert.equal(later[1], "false");
+  assert.equal(psql(database, `
+    select count(*) from public.ads_events
+    where event_name = 'lead_created' and visitor_id = '${visitorA}' and property_id = 'imovel-igual'
+  `), "2");
+
+  const again = parse(psql(database, claimSql(leadRow("lead-a-de-novo", visitorA, "imovel-igual", sameTime))));
+  assert.equal(again[1], "true");
+  assert.equal(again[0], sameRows[0][0]);
+
+  let blocked = "";
+  try {
+    psql(database, `
+      insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, property_id)
+      values ('lead-direto', 'lead_created', '${sameTime}', 'ynteligencia', '${visitorA}', 's-direto', 'imovel-igual')
+    `);
+  } catch (error) {
+    blocked = String(error.stderr || error.message);
+  }
+  assert.match(blocked, /ads_lead_duplicate/);
+
+  const conflict = parse(psql(database, claimSql(leadRow(sameRows[0][0], visitorB, "imovel-outro", sameTime))));
+  assert.equal(conflict[2], "true");
+
+  const asService = psql(database, `
+    begin;
+    set local role service_role;
+    select event_id from public.record_ads_lead($json$${JSON.stringify(leadRow("lead-svc-id", visitorA, "imovel-svc", sameTime))}$json$::jsonb);
+    commit;
+  `);
+  assert.equal(asService.split("\n").filter(line => !["BEGIN", "SET", "COMMIT"].includes(line)).join("\n"), "lead-svc-id");
+
+  let denied = "";
+  try {
+    psql(database, `
+      begin;
+      set local role anon;
+      select event_id from public.record_ads_lead('{"event_name":"lead_created"}'::jsonb);
+      commit;
+    `);
+  } catch (error) {
+    denied = String(error.stderr || error.message);
+  }
+  assert.match(denied, /permission denied/);
+
+  psql(database, `
+    insert into public.ads_events (
+      event_id, event_name, event_time, product, visitor_id, session_id,
+      gclid, utm_source, utm_campaign, conversion_gclid, conversion_click_source
+    ) values (
+      'ad-retorno', 'ad_entry', '2026-10-08T12:00:00Z', 'ynteligencia', '${visitorA}', 'sessao-paga',
+      'GCLID-OLD', 'google', 'campanha-antiga', 'GCLID-OLD', 'current_session'
+    )
+  `);
+  assert.equal(psql(database, claimSql({
+    event_id: "lead-retorno",
+    event_name: "lead_created",
+    event_time: "2026-10-09T15:00:00.000Z",
+    product: "ynteligencia",
+    visitor_id: visitorA,
+    session_id: "sessao-organica",
+    property_id: "imovel-retorno",
+    gclid: "",
+    utm_source: "organic",
+    utm_campaign: "",
+    conversion_gclid: "GCLID-OLD",
+    conversion_gbraid: "",
+    conversion_wbraid: "",
+    conversion_click_source: "prior_visitor"
+  })), "lead-retorno|false|false");
+  assert.equal(psql(database, `
+    select gclid || '|' || utm_source || '|' || utm_campaign || '|' || conversion_gclid || '|' || conversion_click_source
+    from public.ads_events where event_id = 'lead-retorno'
+  `), "|organic||GCLID-OLD|prior_visitor");
+
+  const leadPayload = buyer.toApplyPayload({
+    event_id: "lead-retorno",
+    event_name: "lead_created",
+    event_time: "2026-10-09T15:00:00.000Z",
+    visitor_id: visitorA,
+    session_id: "sessao-organica",
+    product: "ynteligencia",
+    gclid: "",
+    utm_source: "organic",
+    conversion_gclid: "GCLID-OLD",
+    conversion_click_source: "prior_visitor"
+  });
+  assert.equal(leadPayload.gclid, "");
+  assert.equal(leadPayload.utm_source, "organic");
+  assert.equal(JSON.stringify(leadPayload).includes("GCLID-OLD"), false);
+
+  const apply = payload => psql(database, `select public.apply_buyer_profile_event($json$${JSON.stringify(payload)}$json$::jsonb)`);
+  apply(buyer.toApplyPayload({
+    event_id: "ad-retorno",
+    event_name: "ad_entry",
+    event_time: "2026-10-08T12:00:00.000Z",
+    visitor_id: visitorA,
+    session_id: "sessao-paga",
+    product: "ynteligencia",
+    gclid: "GCLID-OLD",
+    utm_source: "google",
+    utm_campaign: "campanha-antiga"
+  }));
+  apply(leadPayload);
+  const profile = JSON.parse(psql(database, `select public.get_buyer_profile('${visitorA}')`)).profile;
+  assert.equal(profile.attribution.first_touch.gclid, "GCLID-OLD");
+  assert.equal(profile.attribution.first_touch.utm_campaign, "campanha-antiga");
+  assert.equal(profile.attribution.current_touch.gclid, "GCLID-OLD");
+  assert.equal(profile.attribution.current_touch.utm_source, "organic");
+  assert.equal(profile.attribution.current_touch.utm_campaign, "campanha-antiga");
+  assert.equal(psql(database, `
+    select attribution_field_times->'gclid'->>'id'
+    from public.buyer_profiles where visitor_id = '${visitorA}'
+  `), "ad-retorno");
+  assert.equal(psql(database, `
+    select attribution_field_times->'utm_source'->>'id'
+    from public.buyer_profiles where visitor_id = '${visitorA}'
+  `), "lead-retorno");
+  assert.equal(psql(database, `
+    select attribution_field_times->'utm_campaign'->>'id'
+    from public.buyer_profiles where visitor_id = '${visitorA}'
+  `), "ad-retorno");
+
+  apply(buyer.toApplyPayload({
+    event_id: "lead-sozinho",
+    event_name: "lead_created",
+    event_time: "2026-10-09T15:00:00.000Z",
+    visitor_id: visitorB,
+    session_id: "sessao-b",
+    product: "agente_yincorp",
+    gclid: "",
+    utm_source: "organic",
+    conversion_gclid: "GCLID-OLD"
+  }));
+  const alone = JSON.parse(psql(database, `select public.get_buyer_profile('${visitorB}')`)).profile;
+  assert.equal(alone.attribution.current_touch.gclid, undefined);
+  assert.equal(alone.attribution.current_touch.utm_source, "organic");
+  assert.equal(alone.attribution.first_touch.gclid, undefined);
+  assert.equal(alone.attribution.last_gclid, "");
 });

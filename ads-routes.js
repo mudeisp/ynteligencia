@@ -172,6 +172,19 @@ function requireExport(req, res) {
   return requireExportAuth(req, res);
 }
 
+const EXPORT_ERROR_CODES = new Set([
+  "download_failed",
+  "google_rejected",
+  "timeout",
+  "manual_retry",
+  "unknown"
+]);
+
+function exportErrorCode(value) {
+  const code = String(value ?? "").replace(/[\u0000-\u001f]/g, " ").trim().toLowerCase();
+  return EXPORT_ERROR_CODES.has(code) ? code : "unknown";
+}
+
 function conversionEventIds(value) {
   if (!Array.isArray(value) || value.length < 1 || value.length > 500) return null;
   const ids = [];
@@ -191,7 +204,7 @@ export async function handleAdsSheet(req, res) {
   if (!requireExport(req, res)) return;
 
   const rows = await rest(
-    "ads_events?select=event_time,event_name,product,visitor_id,session_id,gclid,gbraid,wbraid,utm_source,utm_campaign,declared_neighborhood,declared_development,declared_bedrooms,declared_max_price,observed_neighborhood,observed_bedrooms,observed_price_min,observed_price_max,observed_confidence,property_id,property_name,property_price,property_inventory_source&order=event_time.asc&limit=5000",
+    "ads_events?select=event_time,event_name,product,visitor_id,session_id,gclid,gbraid,wbraid,conversion_gclid,conversion_gbraid,conversion_wbraid,conversion_click_source,utm_source,utm_campaign,declared_neighborhood,declared_development,declared_bedrooms,declared_max_price,observed_neighborhood,observed_bedrooms,observed_price_min,observed_price_max,observed_confidence,property_id,property_name,property_price,property_inventory_source&order=event_time.asc&limit=5000",
     { method: "GET" }
   );
   if (!rows.ok) {
@@ -260,7 +273,7 @@ export async function handleAdsGoogleConversions(req, res) {
       prefer: "return=representation",
       body: {
         p_event_ids: ids,
-        p_error: String(body.error ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 500)
+        p_error: exportErrorCode(body.error)
       }
     });
     if (!failed.ok) {

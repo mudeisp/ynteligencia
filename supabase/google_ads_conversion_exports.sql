@@ -65,6 +65,12 @@ alter table public.google_ads_conversion_exports enable row level security;
 
 revoke all on table public.google_ads_conversion_exports from public;
 
+alter table public.ads_events
+  add column if not exists conversion_gclid text not null default '',
+  add column if not exists conversion_gbraid text not null default '',
+  add column if not exists conversion_wbraid text not null default '',
+  add column if not exists conversion_click_source text not null default '';
+
 drop function if exists public.claim_google_lead_conversions(integer);
 
 create or replace function public.claim_google_lead_conversions(
@@ -93,25 +99,59 @@ begin
   end if;
 
   return query
-  with candidates as (
+  with clicks as (
     select
       event.event_id,
       event.event_time,
       event.product,
-      event.gclid,
-      event.gbraid,
-      event.wbraid
+      case
+        when btrim(coalesce(event.conversion_gclid, '')) <> ''
+          or btrim(coalesce(event.conversion_gbraid, '')) <> ''
+          or btrim(coalesce(event.conversion_wbraid, '')) <> ''
+        then btrim(coalesce(event.conversion_gclid, ''))
+        when btrim(coalesce(event.conversion_click_source, '')) in ('', 'current_session')
+        then btrim(coalesce(event.gclid, ''))
+        else ''
+      end as gclid,
+      case
+        when btrim(coalesce(event.conversion_gclid, '')) <> ''
+          or btrim(coalesce(event.conversion_gbraid, '')) <> ''
+          or btrim(coalesce(event.conversion_wbraid, '')) <> ''
+        then btrim(coalesce(event.conversion_gbraid, ''))
+        when btrim(coalesce(event.conversion_click_source, '')) in ('', 'current_session')
+        then btrim(coalesce(event.gbraid, ''))
+        else ''
+      end as gbraid,
+      case
+        when btrim(coalesce(event.conversion_gclid, '')) <> ''
+          or btrim(coalesce(event.conversion_gbraid, '')) <> ''
+          or btrim(coalesce(event.conversion_wbraid, '')) <> ''
+        then btrim(coalesce(event.conversion_wbraid, ''))
+        when btrim(coalesce(event.conversion_click_source, '')) in ('', 'current_session')
+        then btrim(coalesce(event.wbraid, ''))
+        else ''
+      end as wbraid
     from public.ads_events as event
     where event.event_name = 'lead_created'
-      and (
-        btrim(coalesce(event.gclid, '')) <> ''
-        or btrim(coalesce(event.gbraid, '')) <> ''
-        or btrim(coalesce(event.wbraid, '')) <> ''
+  ),
+  candidates as (
+    select
+      clicks.event_id,
+      clicks.event_time,
+      clicks.product,
+      clicks.gclid,
+      clicks.gbraid,
+      clicks.wbraid
+    from clicks
+    where (
+        clicks.gclid <> ''
+        or clicks.gbraid <> ''
+        or clicks.wbraid <> ''
       )
       and not exists (
         select 1
         from public.google_ads_conversion_exports as prior
-        where prior.event_id = event.event_id
+        where prior.event_id = clicks.event_id
           and prior.conversion_name = 'Lead Created'
           and (
             prior.status = 'exported'
@@ -121,7 +161,7 @@ begin
             )
           )
       )
-    order by event.event_time asc, event.event_id asc
+    order by clicks.event_time asc, clicks.event_id asc
     limit v_limit
   ),
   upserted as (
@@ -224,7 +264,13 @@ security invoker
 set search_path = pg_catalog
 as $$
 #variable_conflict use_column
+declare
+  v_error text := lower(btrim(coalesce(p_error, '')));
 begin
+  if v_error not in ('download_failed', 'google_rejected', 'timeout', 'manual_retry', 'unknown') then
+    v_error := 'unknown';
+  end if;
+
   return query
   with requested as (
     select distinct btrim(item) as event_id
@@ -235,7 +281,7 @@ begin
   updated as (
     update public.google_ads_conversion_exports as ledger
     set status = 'failed',
-        last_error = left(btrim(coalesce(p_error, '')), 500)
+        last_error = v_error
     from requested
     where ledger.event_id = requested.event_id
       and ledger.conversion_name = 'Lead Created'

@@ -113,7 +113,8 @@ O restante do contexto:
 - `current_declared_intent`: busca gravada mais recente, quando existir
 - `observed_intent`: calculada no servidor, quando existir. O cliente não define esse campo.
 - `recent_properties`: até 8 imóveis vistos, com o mesmo critério de `property_id`
-- `attribution`: toque atual autoritativo da Ads Intelligence (`current_touch`): `gclid`, `gbraid`, `wbraid` e UTMs. Não usa o `YNTELIGENCIA_ATTRIBUTION` legado quando o toque atual existe, mesmo que o toque atual esteja vazio
+- `attribution`: toque real desta sessão: `gclid`, `gbraid`, `wbraid` e UTMs observados agora. Não usa o `YNTELIGENCIA_ATTRIBUTION` legado quando o toque atual existe, mesmo que o toque atual esteja vazio. Não recebe clique herdado de outra sessão
+- `conversion_attribution`: clique resolvido só para a conversão Google (`gclid`, `gbraid`, `wbraid`, `source`). O Agent não copia esses campos para o `gclid` dos eventos seguintes
 - `last_product`
 - `return_url`: volta para a YNTELIGENCIA com `imovel` e `vid`, sem o token
 
