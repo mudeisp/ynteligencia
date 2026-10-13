@@ -477,6 +477,128 @@ test("POST externo continua bloqueado e a planilha exige token", async () => {
     headers: {}
   });
   assert.equal(unknown.code, 404);
+
+  const unconfirmedPost = await invokeAds(adsHandler, {
+    method: "POST",
+    query: { action: "google-conversions" },
+    headers: { authorization: "Bearer token-teste" },
+    body: { confirm_event_ids: ["evt-1"] }
+  });
+  assert.equal(unconfirmedPost.code, 503);
+
+  process.env.ADS_EXPORT_TOKEN = "token-teste";
+  const calls = [];
+  const originalFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    const payload = JSON.parse(options.body || "{}");
+    calls.push({ url: String(url), body: payload });
+    if (String(url).includes("claim_google_lead_conversions")) {
+      return new Response(JSON.stringify([{
+        event_id: "evt-1",
+        event_time: "2026-10-08T18:40:00.000Z",
+        product: "ynteligencia",
+        gclid: "gclid-1",
+        gbraid: "",
+        wbraid: ""
+      }]), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (String(url).includes("confirm_google_lead_conversions")) {
+      return new Response(JSON.stringify(
+        (payload.p_event_ids || []).map(event_id => ({ event_id, status: "exported" }))
+      ), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (String(url).includes("fail_google_lead_conversions")) {
+      return new Response(JSON.stringify(
+        (payload.p_event_ids || []).map(event_id => ({ event_id, status: "failed" }))
+      ), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return new Response("no", { status: 500 });
+  };
+
+  function invokeExport(req) {
+    return new Promise(resolve => {
+      const res = {
+        headers: {},
+        setHeader(name, value) { this.headers[name] = value; },
+        status(code) { this.statusCode = code; return this; },
+        json(body) { resolve({ code: this.statusCode, body, headers: this.headers }); },
+        end(payload) { resolve({ code: this.statusCode, body: payload, headers: this.headers }); }
+      };
+      Promise.resolve(adsHandler(req, res)).catch(error => resolve({ error }));
+    });
+  }
+
+  try {
+    const sheetPost = await invokeExport({
+      method: "POST",
+      query: { action: "sheet" },
+      headers: { authorization: "Bearer token-teste" },
+      body: {}
+    });
+    assert.equal(sheetPost.code, 405);
+    assert.equal(calls.length, 0);
+
+    const reserved = await invokeExport({
+      method: "GET",
+      query: { action: "google-conversions" },
+      headers: { authorization: "Bearer token-teste" }
+    });
+    assert.equal(reserved.code, 200);
+    assert.equal(reserved.headers["Content-Type"], "text/csv; charset=utf-8");
+    assert.match(reserved.body, /evt-1/);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /claim_google_lead_conversions$/);
+    assert.deepEqual(calls[0].body, { p_limit: 500 });
+
+    const confirmed = await invokeExport({
+      method: "POST",
+      query: { action: "google-conversions" },
+      headers: { authorization: "Bearer token-teste" },
+      body: { confirm_event_ids: [" evt-1 ", "evt-1"], email: "ana@example.com" }
+    });
+    assert.equal(confirmed.code, 200);
+    assert.deepEqual(confirmed.body, { success: true, confirmed: 1, event_ids: ["evt-1"] });
+    assert.match(calls[1].url, /confirm_google_lead_conversions$/);
+    assert.deepEqual(calls[1].body, { p_event_ids: ["evt-1"] });
+
+    const failed = await invokeExport({
+      method: "POST",
+      query: { action: "google-conversions" },
+      headers: { authorization: "Bearer token-teste" },
+      body: { fail_event_ids: ["evt-2"], error: "conexao caiu" }
+    });
+    assert.equal(failed.code, 200);
+    assert.deepEqual(failed.body, { success: true, failed: 1, event_ids: ["evt-2"] });
+    assert.deepEqual(calls[2].body, { p_event_ids: ["evt-2"], p_error: "conexao caiu" });
+
+    const missing = await invokeExport({
+      method: "POST",
+      query: { action: "google-conversions" },
+      headers: { authorization: "Bearer token-teste" },
+      body: {}
+    });
+    assert.equal(missing.code, 400);
+
+    const both = await invokeExport({
+      method: "POST",
+      query: { action: "google-conversions" },
+      headers: { authorization: "Bearer token-teste" },
+      body: { confirm_event_ids: ["evt-1"], fail_event_ids: ["evt-2"] }
+    });
+    assert.equal(both.code, 400);
+    assert.equal(calls.length, 3);
+
+    const wrong = await invokeExport({
+      method: "POST",
+      query: { action: "google-conversions" },
+      headers: { authorization: "Bearer outro" },
+      body: { confirm_event_ids: ["evt-1"] }
+    });
+    assert.equal(wrong.code, 401);
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.ADS_EXPORT_TOKEN;
+  }
 });
 
 test("a camada de anúncios ocupa uma única Serverless Function", () => {
@@ -1625,21 +1747,47 @@ test("o hit AW usa o event_id confirmado, o valor 10 e BRL", () => {
   assert.equal(files.length, 12);
 });
 
-test("o ledger de exportação só devolve lead_created ainda não exportado", () => {
-  const { execFileSync } = require("node:child_process");
+test("o claim reserva o lead e a exportação só fecha com confirmação", async () => {
+  const { execFileSync, spawn } = require("node:child_process");
   const database = "google_ads_export_test";
+  const upgrade = "google_ads_export_upgrade";
+  const migration = path.join(__dirname, "supabase/google_ads_conversion_exports.sql");
   const psql = (db, sql) => execFileSync("psql", [
     "-d", db,
     "-v", "ON_ERROR_STOP=1",
     "-t", "-A",
     "-c", sql
   ], { encoding: "utf8" }).trim();
-  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `
-    select pg_terminate_backend(pid) from pg_stat_activity
-    where datname = '${database}' and pid <> pg_backend_pid()
-  `], { stdio: "pipe" });
-  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `drop database if exists ${database}`], { stdio: "pipe" });
-  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `create database ${database}`], { stdio: "pipe" });
+  const psqlAsync = (db, sql) => new Promise((resolve, reject) => {
+    const child = spawn("psql", ["-d", db, "-v", "ON_ERROR_STOP=1", "-t", "-A", "-c", sql]);
+    const out = [];
+    const err = [];
+    child.stdout.on("data", chunk => out.push(chunk));
+    child.stderr.on("data", chunk => err.push(chunk));
+    child.on("error", reject);
+    child.on("close", code => {
+      if (code !== 0) {
+        reject(new Error(Buffer.concat(err).toString("utf8") || Buffer.concat(out).toString("utf8")));
+        return;
+      }
+      resolve(Buffer.concat(out).toString("utf8").trim());
+    });
+  });
+  const recreate = name => {
+    execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `
+      select pg_terminate_backend(pid) from pg_stat_activity
+      where datname = '${name}' and pid <> pg_backend_pid()
+    `], { stdio: "pipe" });
+    execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `drop database if exists ${name}`], { stdio: "pipe" });
+    execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `create database ${name}`], { stdio: "pipe" });
+  };
+  const ledgerState = eventId => psql(database, `
+    select status || ':' || attempts::text || ':' || coalesce(exported_at::text, '') || ':' || last_error
+    from public.google_ads_conversion_exports
+    where event_id = '${eventId}'
+  `);
+
+  recreate(database);
   execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-c", `
     do $$ begin
       if not exists (select 1 from pg_roles where rolname = 'service_role') then
@@ -1650,10 +1798,13 @@ test("o ledger de exportação só devolve lead_created ainda não exportado", (
       if not exists (select 1 from pg_roles where rolname = 'anon') then
         create role anon nologin;
       end if;
+      if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+        create role authenticated nologin;
+      end if;
     end $$;
   `], { stdio: "pipe" });
   execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_events.sql")], { stdio: "pipe" });
-  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/google_ads_conversion_exports.sql")], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", migration], { stdio: "pipe" });
 
   psql(database, `
     insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, gclid, gbraid, wbraid) values
@@ -1663,14 +1814,67 @@ test("o ledger de exportação só devolve lead_created ainda não exportado", (
       ('high-1', 'high_intent_buyer', '2026-10-01T13:00:00Z', 'ynteligencia', 'v1', 's1', 'gclid-antigo', '', ''),
       ('view-1', 'property_view', '2026-10-01T11:00:00Z', 'ynteligencia', 'v1', 's1', 'gclid-antigo', '', '');
   `);
+  const eventsBefore = psql(database, `
+    select event_id || '|' || event_name || '|' || gclid || '|' || gbraid || '|' || wbraid || '|' || event_time::text
+    from public.ads_events
+    order by event_id
+  `);
+
   assert.equal(psql(database, "select event_id from public.claim_google_lead_conversions(10)"), "lead-antigo\nlead-novo");
   assert.equal(psql(database, "select count(*) from public.claim_google_lead_conversions(10)"), "0");
-  assert.equal(psql(database, "select status || ':' || attempts::text || ':' || last_error from public.google_ads_conversion_exports order by event_id"), "exported:1:\nexported:1:");
+  assert.equal(ledgerState("lead-antigo"), "pending:1::");
+  assert.equal(ledgerState("lead-novo"), "pending:1::");
   assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports where event_id in ('high-1', 'view-1', 'lead-vazio')"), "0");
+  assert.equal(psql(database, `
+    select event_id || '|' || event_name || '|' || gclid || '|' || gbraid || '|' || wbraid || '|' || event_time::text
+    from public.ads_events
+    order by event_id
+  `), eventsBefore);
 
-  psql(database, "update public.google_ads_conversion_exports set status = 'failed', last_error = 'download perdido' where event_id = 'lead-novo'");
+  psql(database, `
+    update public.google_ads_conversion_exports
+    set claimed_at = now() - interval '16 minutes'
+    where event_id = 'lead-antigo'
+  `);
+  assert.equal(psql(database, "select event_id from public.claim_google_lead_conversions(10)"), "lead-antigo");
+  assert.equal(ledgerState("lead-antigo"), "pending:2::");
+  assert.equal(psql(database, "select count(*) from public.claim_google_lead_conversions(10)"), "0");
+  assert.equal(psql(database, "select count(*) from public.claim_google_lead_conversions(10, interval '0')"), "0");
+
+  assert.equal(psql(database, "select event_id from public.confirm_google_lead_conversions(array['lead-antigo', 'inexistente'])"), "lead-antigo");
+  assert.match(ledgerState("lead-antigo"), /^exported:2:.+:$/);
+  const exportedAt = psql(database, "select exported_at::text from public.google_ads_conversion_exports where event_id = 'lead-antigo'");
+  assert.equal(psql(database, "select event_id from public.confirm_google_lead_conversions(array['lead-antigo'])"), "lead-antigo");
+  assert.equal(psql(database, "select exported_at::text from public.google_ads_conversion_exports where event_id = 'lead-antigo'"), exportedAt);
+  psql(database, `
+    update public.google_ads_conversion_exports
+    set claimed_at = now() - interval '16 minutes'
+    where event_id = 'lead-antigo'
+  `);
+  assert.equal(psql(database, "select count(*) from public.claim_google_lead_conversions(10)"), "0");
+  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports where event_id = 'inexistente'"), "0");
+
+  const longError = "x".repeat(600);
+  assert.equal(psql(database, `select event_id from public.fail_google_lead_conversions(array['lead-novo', 'lead-antigo'], '${longError}')`), "lead-novo");
+  assert.equal(psql(database, "select length(last_error)::text from public.google_ads_conversion_exports where event_id = 'lead-novo'"), "500");
+  assert.equal(psql(database, "select status from public.google_ads_conversion_exports where event_id = 'lead-antigo'"), "exported");
   assert.equal(psql(database, "select event_id from public.claim_google_lead_conversions(10)"), "lead-novo");
-  assert.equal(psql(database, "select attempts::text || ':' || status || ':' || last_error from public.google_ads_conversion_exports where event_id = 'lead-novo'"), "2:exported:");
+  assert.equal(ledgerState("lead-novo"), "pending:2::");
+  assert.equal(psql(database, "select count(*) from public.confirm_google_lead_conversions(array['lead-novo'])"), "1");
+  assert.equal(psql(database, "select count(*) from public.fail_google_lead_conversions(array['lead-novo'], 'nao reabre')"), "0");
+  assert.match(ledgerState("lead-novo"), /^exported:2:.+:$/);
+  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports where event_id = 'lead-novo'"), "1");
+
+  let duplicate = "";
+  try {
+    psql(database, `
+      insert into public.google_ads_conversion_exports (event_id, conversion_name, status)
+      values ('lead-antigo', 'Lead Created', 'pending')
+    `);
+  } catch (error) {
+    duplicate = String(error.stderr || error.message);
+  }
+  assert.match(duplicate, /duplicate key|unique/);
 
   const columns = psql(database, `
     select column_name from information_schema.columns
@@ -1679,6 +1883,7 @@ test("o ledger de exportação só devolve lead_created ainda não exportado", (
   `);
   assert.equal(columns, [
     "attempts",
+    "claimed_at",
     "conversion_name",
     "created_at",
     "event_id",
@@ -1687,6 +1892,56 @@ test("o ledger de exportação só devolve lead_created ainda não exportado", (
     "status"
   ].join("\n"));
   assert.equal(/nome|email|phone|telefone|whatsapp|summary|transcript|conversation/.test(columns), false);
+  const eventColumns = psql(database, `
+    select column_name from information_schema.columns
+    where table_schema = 'public' and table_name = 'ads_events'
+    order by column_name
+  `);
+  assert.equal(eventColumns.includes("claimed_at"), false);
+  assert.equal(eventColumns.includes("exported_at"), false);
+  assert.equal(psql(database, "select count(*) from pg_policies where tablename = 'google_ads_conversion_exports'"), "0");
+  assert.equal(psql(database, `
+    select relrowsecurity::text
+    from pg_class
+    where oid = 'public.google_ads_conversion_exports'::regclass
+  `), "true");
+
+  psql(database, `
+    insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, gclid) values
+      ('lead-race-1', 'lead_created', '2026-10-05T12:00:00Z', 'ynteligencia', 'v1', 's5', 'gclid-race-1'),
+      ('lead-race-2', 'lead_created', '2026-10-05T12:01:00Z', 'ynteligencia', 'v1', 's6', 'gclid-race-2');
+  `);
+  psql(database, `
+    create or replace function public.test_delay_google_claim()
+    returns trigger
+    language plpgsql
+    as $fn$
+    begin
+      perform pg_sleep(0.4);
+      return new;
+    end;
+    $fn$;
+    drop trigger if exists test_delay_google_claim on public.google_ads_conversion_exports;
+    create trigger test_delay_google_claim
+    before insert on public.google_ads_conversion_exports
+    for each row execute function public.test_delay_google_claim();
+  `);
+  let raced;
+  try {
+    raced = await Promise.all([
+      psqlAsync(database, "select event_id from public.claim_google_lead_conversions(10)"),
+      psqlAsync(database, "select event_id from public.claim_google_lead_conversions(10)")
+    ]);
+  } finally {
+    psql(database, `
+      drop trigger if exists test_delay_google_claim on public.google_ads_conversion_exports;
+      drop function if exists public.test_delay_google_claim();
+    `);
+  }
+  const returned = raced.flatMap(text => text.split("\n").filter(Boolean)).sort();
+  assert.deepEqual(returned, ["lead-race-1", "lead-race-2"]);
+  assert.equal(ledgerState("lead-race-1"), "pending:1::");
+  assert.equal(ledgerState("lead-race-2"), "pending:1::");
 
   psql(database, `
     insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, gclid)
@@ -1696,21 +1951,71 @@ test("o ledger de exportação só devolve lead_created ainda não exportado", (
     begin;
     set local role service_role;
     select event_id from public.claim_google_lead_conversions(10);
+    select event_id from public.confirm_google_lead_conversions(array['lead-svc']::text[]);
     commit;
   `);
-  assert.equal(asService.split("\n").filter(line => !["BEGIN", "SET", "COMMIT"].includes(line)).join("\n"), "lead-svc");
+  assert.equal(asService.split("\n").filter(line => !["BEGIN", "SET", "COMMIT"].includes(line)).join("\n"), "lead-svc\nlead-svc");
+  assert.match(ledgerState("lead-svc"), /^exported:1:.+:$/);
 
-  let denied = "";
-  try {
-    psql(database, `
-      begin;
-      set local role anon;
-      select event_id from public.claim_google_lead_conversions(10);
-      commit;
-    `);
-  } catch (error) {
-    denied = String(error.stderr || error.message);
+  for (const statement of [
+    "select event_id from public.claim_google_lead_conversions(10)",
+    "select event_id from public.confirm_google_lead_conversions(array['lead-svc']::text[])",
+    "select event_id from public.fail_google_lead_conversions(array['lead-svc']::text[], 'anon')"
+  ]) {
+    let denied = "";
+    try {
+      psql(database, `
+        begin;
+        set local role anon;
+        ${statement};
+        commit;
+      `);
+    } catch (error) {
+      denied = String(error.stderr || error.message);
+    }
+    assert.match(denied, /permission denied/);
   }
-  assert.match(denied, /permission denied/);
-  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports"), "3");
+
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", migration], { stdio: "pipe" });
+  assert.equal(psql(database, "select count(*) from public.claim_google_lead_conversions(10)"), "0");
+  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports"), "5");
+
+  recreate(upgrade);
+  execFileSync("psql", ["-d", upgrade, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_events.sql")], { stdio: "pipe" });
+  execFileSync("psql", ["-d", upgrade, "-v", "ON_ERROR_STOP=1", "-c", `
+    create table public.google_ads_conversion_exports (
+      event_id text not null,
+      conversion_name text not null,
+      exported_at timestamptz,
+      status text not null default 'exported',
+      attempts integer not null default 1,
+      last_error text not null default '',
+      created_at timestamptz not null default now(),
+      primary key (event_id, conversion_name),
+      constraint google_ads_conversion_exports_status_check
+        check (status in ('exported', 'failed')),
+      constraint google_ads_conversion_exports_attempts_check
+        check (attempts >= 1)
+    );
+    create index google_ads_conversion_exports_status_idx
+      on public.google_ads_conversion_exports (conversion_name, status, exported_at);
+    create function public.claim_google_lead_conversions(integer)
+    returns integer language sql as $$ select 1 $$;
+    insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, gclid)
+    values
+      ('lead-ja-exportado', 'lead_created', '2026-10-01T12:00:00Z', 'ynteligencia', 'v1', 's1', 'gclid-velho'),
+      ('lead-upgrade', 'lead_created', '2026-10-02T12:00:00Z', 'ynteligencia', 'v1', 's2', 'gclid-novo');
+    insert into public.google_ads_conversion_exports (event_id, conversion_name, exported_at, status, attempts)
+    values ('lead-ja-exportado', 'Lead Created', '2026-10-01T00:00:00Z', 'exported', 1);
+  `], { stdio: "pipe" });
+  execFileSync("psql", ["-d", upgrade, "-v", "ON_ERROR_STOP=1", "-f", migration], { stdio: "pipe" });
+  execFileSync("psql", ["-d", upgrade, "-v", "ON_ERROR_STOP=1", "-f", migration], { stdio: "pipe" });
+  assert.equal(psql(upgrade, `
+    select (status = 'exported' and claimed_at = exported_at)::text
+    from public.google_ads_conversion_exports
+    where event_id = 'lead-ja-exportado'
+  `), "true");
+  assert.equal(psql(upgrade, "select event_id from public.claim_google_lead_conversions(10)"), "lead-upgrade");
+  assert.equal(psql(upgrade, "select status from public.google_ads_conversion_exports where event_id = 'lead-upgrade'"), "pending");
+  assert.equal(psql(upgrade, "select status from public.google_ads_conversion_exports where event_id = 'lead-ja-exportado'"), "exported");
 });

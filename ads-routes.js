@@ -143,12 +143,8 @@ export async function handleAdsIntentFeed(req, res) {
   });
 }
 
-function requireExport(req, res) {
+function requireExportAuth(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  if (req.method !== "GET") {
-    res.status(405).json({ success: false, error: "Method not allowed" });
-    return false;
-  }
   if (!process.env.ADS_EXPORT_TOKEN) {
     res.status(503).json({
       success: false,
@@ -167,6 +163,30 @@ function requireExport(req, res) {
   return true;
 }
 
+function requireExport(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+  if (req.method !== "GET") {
+    res.status(405).json({ success: false, error: "Method not allowed" });
+    return false;
+  }
+  return requireExportAuth(req, res);
+}
+
+function conversionEventIds(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 500) return null;
+  const ids = [];
+  const seen = new Set();
+  for (const item of value) {
+    if (typeof item !== "string") return null;
+    const id = item.trim();
+    if (!id || id.length > 200 || /[\u0000-\u001f]/.test(id)) return null;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids.length ? ids : null;
+}
+
 export async function handleAdsSheet(req, res) {
   if (!requireExport(req, res)) return;
 
@@ -183,8 +203,76 @@ export async function handleAdsSheet(req, res) {
   return res.end(ads.sheetCsv(rows.data || []));
 }
 
+function rpcRows(result) {
+  return Array.isArray(result.data) ? result.data : [];
+}
+
 export async function handleAdsGoogleConversions(req, res) {
-  if (!requireExport(req, res)) return;
+  res.setHeader("Cache-Control", "no-store");
+  if (req.method !== "GET" && req.method !== "POST") {
+    res.status(405).json({ success: false, error: "Method not allowed" });
+    return;
+  }
+  if (!requireExportAuth(req, res)) return;
+
+  if (req.method === "POST") {
+    let body;
+    try {
+      body = readBody(req);
+    } catch {
+      return res.status(400).json({ success: false, error: "Corpo inválido" });
+    }
+    const wantsConfirm = Object.prototype.hasOwnProperty.call(body, "confirm_event_ids");
+    const wantsFail = Object.prototype.hasOwnProperty.call(body, "fail_event_ids");
+    if (wantsConfirm === wantsFail) {
+      return res.status(400).json({
+        success: false,
+        error: "Informe confirm_event_ids ou fail_event_ids"
+      });
+    }
+    const ids = conversionEventIds(wantsConfirm ? body.confirm_event_ids : body.fail_event_ids);
+    if (!ids) {
+      return res.status(400).json({
+        success: false,
+        error: wantsConfirm ? "confirm_event_ids inválido" : "fail_event_ids inválido"
+      });
+    }
+
+    if (wantsConfirm) {
+      const confirmed = await rest("rpc/confirm_google_lead_conversions", {
+        method: "POST",
+        prefer: "return=representation",
+        body: { p_event_ids: ids }
+      });
+      if (!confirmed.ok) {
+        return res.status(502).json({ success: false, error: "Não foi possível confirmar a exportação" });
+      }
+      const rows = rpcRows(confirmed);
+      return res.status(200).json({
+        success: true,
+        confirmed: rows.length,
+        event_ids: rows.map(row => row.event_id)
+      });
+    }
+
+    const failed = await rest("rpc/fail_google_lead_conversions", {
+      method: "POST",
+      prefer: "return=representation",
+      body: {
+        p_event_ids: ids,
+        p_error: String(body.error ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 500)
+      }
+    });
+    if (!failed.ok) {
+      return res.status(502).json({ success: false, error: "Não foi possível registrar a falha da exportação" });
+    }
+    const rows = rpcRows(failed);
+    return res.status(200).json({
+      success: true,
+      failed: rows.length,
+      event_ids: rows.map(row => row.event_id)
+    });
+  }
 
   const claimed = await rest("rpc/claim_google_lead_conversions", {
     method: "POST",
@@ -192,10 +280,10 @@ export async function handleAdsGoogleConversions(req, res) {
     body: { p_limit: 500 }
   });
   if (!claimed.ok) {
-    return res.status(502).json({ success: false, error: "Não foi possível exportar as conversões" });
+    return res.status(502).json({ success: false, error: "Não foi possível reservar as conversões" });
   }
 
-  const rows = (Array.isArray(claimed.data) ? claimed.data : []).map(row => ({
+  const rows = rpcRows(claimed).map(row => ({
     ...row,
     event_name: "lead_created"
   }));
