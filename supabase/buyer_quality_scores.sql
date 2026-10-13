@@ -1062,7 +1062,8 @@ begin
 
   if exists (select 1 from pg_roles where rolname = 'service_role') then
     execute 'grant select on table public.ads_events to service_role';
-    execute 'grant select, insert, update, delete on table public.buyer_quality_scores to service_role';
+    execute 'revoke delete on table public.buyer_quality_scores from service_role';
+    execute 'grant select, insert, update on table public.buyer_quality_scores to service_role';
     foreach v_signature in array v_functions loop
       execute format('grant execute on function %s to service_role', v_signature);
     end loop;
