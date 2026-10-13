@@ -1,20 +1,12 @@
 #!/usr/bin/env node
 /*
-  Reconstrói buyer_profiles a partir de ads_events.
+  Reconstrói buyer_profiles chamando a mesma RPC do caminho online.
+  Não recalcula estágio, toque nem contagem aqui.
 
-  Não apaga eventos. Não altera ads_visitors, handoff nem leads.
   Sem --apply, só conta. Sem BUYER_PROFILE_BACKFILL=1, não faz nada.
 
-  O rebuild parte de ads_events. Cidade, estado, região, tipo e
-  propósito só entram se o evento os trouxer. Hoje esses campos
-  não são colunas de ads_events; o backfill não os inventa.
-
-  Exemplo, depois da migration aplicada:
-    BUYER_PROFILE_BACKFILL=1 SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
-      node scripts/backfill-buyer-profiles.js
-
-    BUYER_PROFILE_BACKFILL=1 SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
-      node scripts/backfill-buyer-profiles.js --apply
+  A ordem é event_time e, no empate, event_id. O resultado é o mesmo
+  de aplicar os eventos fora de ordem, porque a função SQL é determinística.
 */
 
 const buyer = require("../buyer-profile.js");
@@ -33,14 +25,13 @@ async function rest(path, options = {}) {
       apikey: key,
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=minimal"
+      Prefer: "return=representation"
     },
     body: options.body ? JSON.stringify(options.body) : undefined
   });
   if (!response.ok) {
     throw new Error(`supabase_${response.status}`);
   }
-  if (options.method && options.method !== "GET") return { ok: true, status: response.status, data: null };
   const data = await response.json();
   return { ok: true, status: response.status, data };
 }
@@ -60,6 +51,12 @@ async function readEvents() {
   }
 }
 
+function byTime(a, b) {
+  const time = String(a.event_time || "").localeCompare(String(b.event_time || ""));
+  if (time !== 0) return time;
+  return String(a.event_id || "").localeCompare(String(b.event_id || ""));
+}
+
 async function main() {
   if (process.env.BUYER_PROFILE_BACKFILL !== "1") {
     console.error("Defina BUYER_PROFILE_BACKFILL=1. Nada foi alterado.");
@@ -73,15 +70,22 @@ async function main() {
   }
 
   const apply = process.argv.includes("--apply");
-  const events = await readEvents();
-  const profiles = buyer.rebuildProfiles(events);
-  console.log(`eventos=${events.length} perfis=${profiles.length} modo=${apply ? "apply" : "leitura"}`);
+  const events = (await readEvents()).slice().sort(byTime);
+  const visitors = new Set(events.map(row => row.visitor_id).filter(Boolean));
+  console.log(`eventos=${events.length} visitantes=${visitors.size} modo=${apply ? "apply" : "leitura"}`);
   if (!apply) return;
 
-  for (const profile of profiles) {
-    await rest("buyer_profiles?on_conflict=visitor_id", { method: "POST", body: profile });
+  for (const row of events) {
+    const result = await rest("rpc/apply_buyer_profile_event", {
+      method: "POST",
+      body: { p_event: buyer.toApplyPayload(row) }
+    });
+    const status = result.data && result.data.status;
+    if (status === "rejected") {
+      throw new Error("buyer_profile_rejected");
+    }
   }
-  console.log(`perfis_gravados=${profiles.length}`);
+  console.log(`eventos_aplicados=${events.length}`);
 }
 
 if (require.main === module) {

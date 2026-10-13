@@ -17,7 +17,7 @@ function memory() {
   const events = [];
   const visitors = [];
   const handoffs = [];
-  const profiles = [];
+  const rpcCalls = [];
   const rest = async (requestPath, options = {}) => {
     const method = options.method || "GET";
     const [table, query = ""] = requestPath.split("?");
@@ -74,27 +74,13 @@ function memory() {
       const id = decodeFilter(params.get("handoff_id"));
       return { ok: true, status: 200, data: handoffs.filter(row => !id || row.handoff_id === id) };
     }
-    if (method === "POST" && table === "buyer_profiles") {
-      if (profiles.some(item => item.visitor_id === options.body.visitor_id)) {
-        return { ok: false, status: 409, data: null };
-      }
-      profiles.push({ ...options.body });
-      return { ok: true, status: 201, data: null };
-    }
-    if (method === "PATCH" && table === "buyer_profiles") {
-      const id = decodeFilter(params.get("visitor_id"));
-      const row = profiles.find(item => item.visitor_id === id);
-      if (!row) return { ok: false, status: 404, data: null };
-      Object.assign(row, options.body);
-      return { ok: true, status: 204, data: null };
-    }
-    if (method === "GET" && table === "buyer_profiles") {
-      const id = decodeFilter(params.get("visitor_id"));
-      return { ok: true, status: 200, data: profiles.filter(row => !id || row.visitor_id === id) };
+    if (method === "POST" && table === "rpc/apply_buyer_profile_event") {
+      rpcCalls.push(options.body && options.body.p_event);
+      return { ok: true, status: 200, data: { status: "applied" } };
     }
     return { ok: false, status: 404, data: null };
   };
-  return { events, visitors, handoffs, profiles, rest };
+  return { events, visitors, handoffs, rpcCalls, rest };
 }
 
 function base(extra = {}) {
@@ -1205,47 +1191,75 @@ test("buyer profile acompanha o evento e não entra na resposta", async () => {
     event_name: "ad_entry",
     gclid: "gclid-perfil",
     utm_source: "google",
-    utm_campaign: "perfil"
+    utm_campaign: "perfil",
+    metadata: { buyer_id: "22222222-2222-4222-8222-222222222222", email: "maria@example.com" }
   }), store.rest, now);
   assert.equal(result.status, 200);
   assert.equal(result.body.success, true);
-  assert.equal(store.profiles.length, 1);
-  assert.equal(store.profiles[0].stage, "exploring");
-  assert.equal(store.profiles[0].first_touch.gclid, "gclid-perfil");
+  assert.equal(result.body.profile, undefined);
   assert.equal(store.events.length, 1);
+  assert.equal(store.rpcCalls.length, 1);
+  assert.equal(store.rpcCalls[0].gclid, "gclid-perfil");
+  assert.equal(store.rpcCalls[0].buyer_id, undefined);
+  assert.equal(JSON.stringify(store.rpcCalls[0]).includes("maria@example.com"), false);
 });
 
-test("retentativa deduplicada recupera o perfil sem contar duas vezes", async () => {
+test("retry deduplicado não reprojeta o payload novo", async () => {
   const store = memory();
-  let failProfile = true;
-  const rest = async (requestPath, options = {}) => {
-    if (requestPath.split("?")[0] === "buyer_profiles" && failProfile) throw new Error("profile down");
-    return store.rest(requestPath, options);
-  };
   const now = new Date("2026-10-08T12:00:00.000Z");
   const payload = base({
     event_name: "ai_search",
     intent: { neighborhood: "Perdizes", bedrooms: 2, max_price: 900000 }
   });
-  const first = await ads.recordAdsEvent(payload, rest, now);
+  const first = await ads.recordAdsEvent(payload, store.rest, now);
   assert.equal(first.status, 200);
-  assert.equal(store.profiles.length, 0);
-  failProfile = false;
-  const retry = await ads.recordAdsEvent(payload, rest, new Date(now.getTime() + 5000));
+  assert.equal(store.rpcCalls.length, 1);
+  const retry = await ads.recordAdsEvent({
+    ...payload,
+    gclid: "OUTRO-CLIQUE",
+    utm_campaign: "maria@example.com"
+  }, store.rest, new Date(now.getTime() + 5000));
   assert.equal(retry.body.duplicate, true);
   assert.equal(store.events.length, 1);
-  assert.equal(store.profiles.length, 1);
-  assert.equal(store.profiles[0].total_ai_searches, 1);
-  assert.deepEqual(store.profiles[0].neighborhoods, ["Perdizes"]);
-  const third = await ads.recordAdsEvent(payload, rest, new Date(now.getTime() + 8000));
-  assert.equal(third.body.duplicate, true);
-  assert.equal(store.profiles[0].total_ai_searches, 1);
+  assert.equal(store.rpcCalls.length, 1);
+  assert.equal(store.rpcCalls[0].neighborhood, "Perdizes");
+  assert.equal(store.rpcCalls[0].gclid, "");
+  assert.equal(JSON.stringify(store.rpcCalls[0]).includes("maria@example.com"), false);
+});
+
+test("timeout da projeção não muda a resposta do evento", async () => {
+  const store = memory();
+  const rest = (requestPath, options = {}) => {
+    if (requestPath.split("?")[0] === "rpc/apply_buyer_profile_event") {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => resolve({ ok: true, status: 200, data: { status: "applied" } }), 250);
+        if (options.signal) {
+          options.signal.addEventListener("abort", () => {
+            clearTimeout(timer);
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        }
+      });
+    }
+    return store.rest(requestPath, options);
+  };
+  const result = await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    gclid: "gclid-lento"
+  }), rest, new Date("2026-10-08T12:00:00.000Z"), undefined, { buyerProfileTimeoutMs: 40 });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(store.events.length, 1);
 });
 
 test("falha do buyer profile não apaga o ads_event", async () => {
   const store = memory();
   const rest = async (requestPath, options = {}) => {
-    if (requestPath.split("?")[0] === "buyer_profiles") throw new Error("profile down");
+    if (requestPath.split("?")[0] === "rpc/apply_buyer_profile_event") {
+      return { ok: false, status: 404, data: null };
+    }
     return store.rest(requestPath, options);
   };
   const result = await ads.recordAdsEvent(base({
@@ -1256,7 +1270,6 @@ test("falha do buyer profile não apaga o ads_event", async () => {
   assert.equal(result.body.success, true);
   assert.equal(store.events.length, 1);
   assert.equal(store.events[0].event_name, "property_view");
-  assert.equal(store.profiles.length, 0);
 });
 
 test("cliente deduplica ai_search com os seis campos e preserva property_view", () => {

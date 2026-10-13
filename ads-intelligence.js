@@ -967,13 +967,44 @@
     console.error("BUYER_PROFILE_ERROR", status || (result && result.error) || "Error");
   }
 
-  async function syncBuyerProfile(event, rest) {
+  async function syncBuyerProfile(event, rest, options = {}) {
     if (!buyerProfiles || !event || !buyerProfiles.PROFILE_EVENTS.has(event.event_name)) return;
+    const timeoutMs = Number(options.buyerProfileTimeoutMs) > 0
+      ? Number(options.buyerProfileTimeoutMs)
+      : buyerProfiles.BUYER_PROFILE_TIMEOUT_MS;
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let timedOut = false;
+    let timer;
+    const projection = buyerProfiles.updateBuyerProfileFromEvent(event, rest, {
+      signal: controller && controller.signal
+    }).catch(error => {
+      if (timedOut || (error && error.name === "AbortError")) return { ok: false, timeout: true };
+      throw error;
+    });
     try {
-      const result = await buyerProfiles.updateBuyerProfileFromEvent(event, rest);
+      const result = await Promise.race([
+        projection,
+        new Promise(resolve => {
+          timer = setTimeout(() => {
+            timedOut = true;
+            if (controller) controller.abort();
+            resolve({ ok: false, timeout: true });
+          }, timeoutMs);
+        })
+      ]);
+      if (timedOut || (result && result.timeout)) {
+        console.error("BUYER_PROFILE_TIMEOUT");
+        return;
+      }
       if (result && result.ok === false) logBuyerProfileFailure(result);
     } catch (error) {
+      if (timedOut || (error && error.name === "AbortError")) {
+        console.error("BUYER_PROFILE_TIMEOUT");
+        return;
+      }
       console.error("BUYER_PROFILE_ERROR", error && error.name ? error.name : "Error");
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -999,7 +1030,6 @@
 
     const duplicate = dedupeMatch(recent.data, event, now);
     if (duplicate) {
-      await syncBuyerProfile({ ...event, event_id: duplicate.event_id }, rest);
       return {
         status: 200,
         body: {
@@ -1036,7 +1066,7 @@
       body: eventRow(event, observed)
     });
     if (!inserted.ok) return supabaseFailure(inserted);
-    await syncBuyerProfile(event, rest);
+    await syncBuyerProfile(event, rest, options);
 
     const touch = touchPatch(visitor, event);
     if (observed.observed_intent) {
@@ -1072,7 +1102,7 @@
       const saved = await rest("ads_events", { method: "POST", body: eventRow(extra, observed) });
       if (!saved.ok) return supabaseFailure(saved);
       multipleId = extra.event_id;
-      await syncBuyerProfile(extra, rest);
+      await syncBuyerProfile(extra, rest, options);
     }
 
     if (decision.high_intent && !names.has("high_intent_buyer")) {
