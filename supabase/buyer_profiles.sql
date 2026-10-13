@@ -637,7 +637,7 @@ begin
   v_property_event := v_event_name in (
     'property_view', 'property_view_multiple', 'agent_handoff_created', 'agent_opened', 'lead_created'
   );
-  if v_property_event and v_property_id <> '' and v_event_name <> 'property_view' then
+  if v_property_event and v_property_id <> '' then
     insert into public.buyer_profile_properties (
       visitor_id, property_id, first_event_id, first_event_time, viewed
     ) values (
@@ -655,18 +655,6 @@ begin
       returning 1 as ok
     )
     select coalesce(sum(ok), 0) into v_unique_inc from marked;
-    if v_unique_inc = 0 then
-      with inserted as (
-        insert into public.buyer_profile_properties (
-          visitor_id, property_id, first_event_id, first_event_time, viewed
-        ) values (
-          v_visitor, v_property_id, v_event_id, v_time, true
-        )
-        on conflict (visitor_id, property_id) do nothing
-        returning 1 as ok
-      )
-      select coalesce(sum(ok), 0) into v_unique_inc from inserted;
-    end if;
   end if;
 
   v_view_inc := case when v_event_name = 'property_view' then 1 else 0 end;
@@ -1029,31 +1017,56 @@ revoke all on table public.buyer_profiles from public;
 revoke all on table public.buyer_profile_events from public;
 revoke all on table public.buyer_profile_properties from public;
 revoke all on table public.buyer_profile_sessions from public;
-revoke all on function public.apply_buyer_profile_event(jsonb) from public;
-revoke all on function public.get_buyer_profile(text) from public;
-revoke all on function public.buyer_profile_public(public.buyer_profiles) from public;
-revoke all on function public.buyer_profile_sorted(jsonb) from public;
 
 do $$
 declare
+  v_signature text;
   v_role text;
+  v_functions text[] := array[
+    'public.buyer_profile_clip(text, integer)',
+    'public.buyer_profile_positive(text)',
+    'public.buyer_profile_attribution(text)',
+    'public.buyer_profile_tracking(text, integer)',
+    'public.buyer_profile_append_unique(jsonb, text)',
+    'public.buyer_profile_stage_rank(text)',
+    'public.buyer_profile_stage_name(integer)',
+    'public.buyer_profile_event_stage(text, integer, integer, integer, integer, integer)',
+    'public.buyer_profile_stage_max(text, text)',
+    'public.buyer_profile_is_newer(timestamptz, text, timestamptz, text)',
+    'public.buyer_profile_is_earlier(timestamptz, text, timestamptz, text)',
+    'public.buyer_profile_field_is_newer(jsonb, text, timestamptz, text)',
+    'public.buyer_profile_set_field_time(jsonb, text, timestamptz, text)',
+    'public.buyer_profile_merge_touch(jsonb, jsonb, jsonb, timestamptz, text)',
+    'public.buyer_profile_sorted(jsonb)',
+    'public.buyer_profile_public(public.buyer_profiles)',
+    'public.apply_buyer_profile_event(jsonb)',
+    'public.get_buyer_profile(text)'
+  ];
 begin
+  foreach v_signature in array v_functions loop
+    execute format('revoke all on function %s from public', v_signature);
+    execute format('alter function %s security invoker set search_path = pg_catalog', v_signature);
+  end loop;
+
   foreach v_role in array array['anon', 'authenticated'] loop
     if exists (select 1 from pg_roles where rolname = v_role) then
       execute format('revoke all on table public.buyer_profiles from %I', v_role);
       execute format('revoke all on table public.buyer_profile_events from %I', v_role);
       execute format('revoke all on table public.buyer_profile_properties from %I', v_role);
       execute format('revoke all on table public.buyer_profile_sessions from %I', v_role);
-      execute format('revoke all on function public.apply_buyer_profile_event(jsonb) from %I', v_role);
-      execute format('revoke all on function public.get_buyer_profile(text) from %I', v_role);
+      foreach v_signature in array v_functions loop
+        execute format('revoke all on function %s from %I', v_signature, v_role);
+      end loop;
     end if;
   end loop;
+
   if exists (select 1 from pg_roles where rolname = 'service_role') then
     execute 'grant select, insert, update, delete on table public.buyer_profiles to service_role';
     execute 'grant select, insert, update, delete on table public.buyer_profile_events to service_role';
     execute 'grant select, insert, update, delete on table public.buyer_profile_properties to service_role';
     execute 'grant select, insert, update, delete on table public.buyer_profile_sessions to service_role';
-    execute 'grant execute on function public.apply_buyer_profile_event(jsonb) to service_role';
-    execute 'grant execute on function public.get_buyer_profile(text) to service_role';
+    foreach v_signature in array v_functions loop
+      execute format('grant execute on function %s to service_role', v_signature);
+    end loop;
   end if;
 end $$;

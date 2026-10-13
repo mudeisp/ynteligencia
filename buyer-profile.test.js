@@ -17,14 +17,18 @@ const bulkVisitor = "44444444-4444-4444-8444-444444444444";
 const sessionVisitor = "55555555-5555-4555-8555-555555555555";
 
 function psql(sql) {
+  return psqlDb("buyer_profile_test", sql);
+}
+
+function psqlDb(database, sql) {
   return new Promise((resolve, reject) => {
     execFile("psql", [
-      "-d", "buyer_profile_test",
+      "-d", database,
       "-v", "ON_ERROR_STOP=1",
       "-t", "-A",
       "-c", sql
     ], { maxBuffer: 20 * 1024 * 1024 }, (error, stdout, stderr) => {
-      if (error) reject(new Error(String(stderr || error.message).slice(0, 1200)));
+      if (error) reject(new Error(String(stderr || error.message).slice(0, 1500)));
       else resolve(String(stdout || "").trim());
     });
   });
@@ -1038,4 +1042,257 @@ test("a projeção não cria function nova em /api e o backfill usa a RPC", () =
   assert.equal(script.includes("rpc/apply_buyer_profile_event"), true);
   assert.equal(script.includes("toApplyPayload"), true);
   assert.equal(script.includes("stage ="), false);
+});
+
+test("a primeira visualização conta uma vez mesmo junto com agent_opened", async () => {
+  const person = "15111111-1111-4111-8111-111111111111";
+  const races = await Promise.all(Array.from({ length: 16 }, (_, index) => Promise.all([
+    apply({
+      visitor_id: person,
+      event_id: `race-view-${index}`,
+      event_name: "property_view",
+      event_time: `2026-10-08T12:00:${String(index).padStart(2, "0")}.000Z`,
+      session_id: "race-view",
+      property_id: `race-${index}`
+    }),
+    apply({
+      visitor_id: person,
+      event_id: `race-open-${index}`,
+      event_name: "agent_opened",
+      event_time: `2026-10-08T12:01:${String(index).padStart(2, "0")}.000Z`,
+      session_id: "race-open",
+      property_id: `race-${index}`
+    })
+  ])));
+  for (const [viewed, opened] of races) {
+    assert.equal(viewed.status, "applied");
+    assert.equal(opened.status, "applied");
+  }
+  const profile = await read(person);
+  assert.equal(profile.behavior.total_property_views, 16);
+  assert.equal(profile.behavior.unique_properties_viewed, 16);
+  assert.equal(profile.behavior.total_agent_opens, 16);
+  assert.equal(await psql(
+    `select count(*) from public.buyer_profile_properties where visitor_id = '${person}' and viewed`
+  ), "16");
+  assert.equal(await psql(
+    `select count(*) from public.buyer_profile_properties where visitor_id = '${person}' and not viewed`
+  ), "0");
+
+  const twin = "15111111-1111-4111-8111-111111111112";
+  const [firstView, secondView] = await Promise.all([
+    apply({
+      visitor_id: twin,
+      event_id: "twin-a",
+      event_name: "property_view",
+      event_time: "2026-10-08T13:00:00.000Z",
+      session_id: "twin",
+      property_id: "same-x"
+    }),
+    apply({
+      visitor_id: twin,
+      event_id: "twin-b",
+      event_name: "property_view",
+      event_time: "2026-10-08T13:00:01.000Z",
+      session_id: "twin",
+      property_id: "same-x"
+    })
+  ]);
+  assert.equal(firstView.status, "applied");
+  assert.equal(secondView.status, "applied");
+  const twins = await read(twin);
+  assert.equal(twins.behavior.total_property_views, 2);
+  assert.equal(twins.behavior.unique_properties_viewed, 1);
+  assert.equal(await psql(
+    `select viewed from public.buyer_profile_properties where visitor_id = '${twin}' and property_id = 'same-x'`
+  ), "t");
+
+  const placeholder = "15111111-1111-4111-8111-111111111113";
+  await apply({
+    visitor_id: placeholder,
+    event_id: "place-open",
+    event_name: "agent_opened",
+    property_id: "X",
+    property_name: "Astorga"
+  });
+  let early = await read(placeholder);
+  assert.equal(early.behavior.unique_properties_viewed, 0);
+  await apply({
+    visitor_id: placeholder,
+    event_id: "place-view",
+    event_name: "property_view",
+    event_time: "2026-10-08T14:00:00.000Z",
+    property_id: "X"
+  });
+  early = await read(placeholder);
+  assert.equal(early.behavior.total_property_views, 1);
+  assert.equal(early.behavior.unique_properties_viewed, 1);
+
+  const viewedFirst = "15111111-1111-4111-8111-111111111114";
+  await apply({
+    visitor_id: viewedFirst,
+    event_id: "first-view",
+    event_name: "property_view",
+    property_id: "X",
+    property_name: "Astorga",
+    property_neighborhood: "Perdizes"
+  });
+  await apply({
+    visitor_id: viewedFirst,
+    event_id: "later-open",
+    event_name: "agent_opened",
+    event_time: "2026-10-08T15:00:00.000Z",
+    property_id: "X"
+  });
+  const later = await read(viewedFirst);
+  assert.equal(later.behavior.total_property_views, 1);
+  assert.equal(later.behavior.unique_properties_viewed, 1);
+  assert.equal(later.behavior.total_agent_opens, 1);
+  assert.equal(await psql(
+    `select viewed from public.buyer_profile_properties where visitor_id = '${viewedFirst}' and property_id = 'X'`
+  ), "t");
+});
+
+test("service_role executa a projeção e anon/authenticated não", async () => {
+  const database = "buyer_profile_roles";
+  const sqlFile = path.join(__dirname, "supabase/buyer_profiles.sql");
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `
+    select pg_terminate_backend(pid)
+    from pg_stat_activity
+    where datname = '${database}' and pid <> pg_backend_pid()
+  `], { stdio: "pipe" });
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `drop database if exists ${database}`], { stdio: "pipe" });
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `create database ${database}`], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-c", `
+    do $$ begin
+      if not exists (select 1 from pg_roles where rolname = 'service_role') then
+        create role service_role nologin bypassrls;
+      else
+        alter role service_role bypassrls;
+      end if;
+      if not exists (select 1 from pg_roles where rolname = 'anon') then
+        create role anon nologin;
+      end if;
+      if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+        create role authenticated nologin;
+      end if;
+    end $$;
+  `], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", sqlFile], { stdio: "pipe" });
+
+  const visitorId = "16111111-1111-4111-8111-111111111111";
+  const applied = await psqlDb(database, `
+    begin;
+    set local role service_role;
+    select public.buyer_profile_clip('  ok  ', 10);
+    select public.apply_buyer_profile_event($json$${JSON.stringify({
+      event_id: "svc-1",
+      event_name: "property_view",
+      event_time: "2026-10-08T12:00:00.000Z",
+      visitor_id: visitorId,
+      session_id: "svc",
+      property_id: "X",
+      property_name: "Astorga",
+      property_neighborhood: "Perdizes"
+    })}$json$::jsonb);
+    select public.get_buyer_profile('${visitorId}');
+    commit;
+  `);
+  const lines = applied.split("\n").map((line) => line.trim()).filter((line) => line && !["BEGIN", "SET", "COMMIT", "ROLLBACK"].includes(line));
+  assert.equal(lines[0], "ok");
+  const profile = JSON.parse(lines[2]).profile;
+  assert.equal(profile.behavior.total_property_views, 1);
+  assert.equal(profile.behavior.unique_properties_viewed, 1);
+  assert.equal(profile.behavior.last_property.name, "Astorga");
+
+  const privileges = await psqlDb(database, `
+    select p.proname || '=' ||
+      has_function_privilege('service_role', p.oid, 'execute')::text || '/' ||
+      has_function_privilege('anon', p.oid, 'execute')::text || '/' ||
+      has_function_privilege('authenticated', p.oid, 'execute')::text
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and (
+        p.proname like 'buyer_profile%'
+        or p.proname in ('apply_buyer_profile_event', 'get_buyer_profile')
+      )
+    order by 1
+  `);
+  const rows = privileges.split("\n").filter(Boolean);
+  assert.equal(rows.length, 18);
+  for (const row of rows) {
+    assert.equal(row.endsWith("=true/false/false"), true, row);
+  }
+  const guarded = await psqlDb(database, `
+    select count(*)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and (
+        p.proname like 'buyer_profile%'
+        or p.proname in ('apply_buyer_profile_event', 'get_buyer_profile')
+      )
+      and not p.prosecdef
+      and p.proconfig @> array['search_path=pg_catalog']
+  `);
+  assert.equal(guarded, "18");
+
+  await assert.rejects(
+    () => psqlDb(database, `
+      begin;
+      set local role anon;
+      select public.apply_buyer_profile_event('{"event_id":"anon","event_name":"ad_entry","event_time":"2026-10-08T12:00:00.000Z","visitor_id":"${visitorId}","session_id":"x"}'::jsonb);
+      commit;
+    `),
+    /permission denied/
+  );
+  await assert.rejects(
+    () => psqlDb(database, `
+      begin;
+      set local role authenticated;
+      select public.get_buyer_profile('${visitorId}');
+      commit;
+    `),
+    /permission denied/
+  );
+  await assert.rejects(
+    () => psqlDb(database, `
+      begin;
+      set local role anon;
+      select public.buyer_profile_public(profile) from public.buyer_profiles profile limit 1;
+      commit;
+    `),
+    /permission denied/
+  );
+  assert.equal(await psqlDb(database, "select count(*) from public.buyer_profile_events"), "1");
+
+  await psqlDb(database, `
+    begin;
+    set local role service_role;
+    select public.apply_buyer_profile_event('{"event_id":"svc-rollback","event_name":"ai_search","event_time":"2026-10-08T13:00:00.000Z","visitor_id":"${visitorId}","session_id":"svc","neighborhood":"Pinheiros"}'::jsonb);
+    rollback;
+  `);
+  assert.equal(await psqlDb(database, "select count(*) from public.buyer_profile_events"), "1");
+  assert.equal(await psqlDb(database, "select count(*) from public.buyer_profile_events where event_id = 'svc-rollback'"), "0");
+  assert.equal(await psqlDb(
+    database,
+    `select public.get_buyer_profile('${visitorId}')#>>'{profile,behavior,total_ai_searches}'`
+  ), "0");
+  assert.equal(await psqlDb(
+    database,
+    `select public.get_buyer_profile('${visitorId}')#>>'{profile,behavior,unique_properties_viewed}'`
+  ), "1");
+  assert.equal(await psqlDb(database, `
+    select count(*)
+    from (values ('anon'), ('authenticated')) as roles(role)
+    cross join (values
+      ('public.buyer_profiles'),
+      ('public.buyer_profile_events'),
+      ('public.buyer_profile_properties'),
+      ('public.buyer_profile_sessions')
+    ) as tables(rel)
+    cross join (values ('select'), ('insert'), ('update'), ('delete')) as privileges(priv)
+    where has_table_privilege(roles.role, tables.rel, privileges.priv)
+  `), "0");
 });
