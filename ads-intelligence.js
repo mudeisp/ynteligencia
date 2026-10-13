@@ -39,6 +39,7 @@
     "conversation",
     "conversation_text",
     "transcript",
+    "whatsapp",
     "notes"
   ];
   const APP_ORIGIN = "https://app.yincorp.com.br";
@@ -51,14 +52,43 @@
   const VISITOR_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const EXPLICIT_SEARCH_EVENTS = new Set(["ai_search", "ad_entry"]);
   const buyerProfiles = loadBuyerProfiles();
+  const LEAD_CONVERSION_NAME = "Lead Created";
+  /*
+    15 minutos é a identidade lógica quando a YNTELIGENCIA e o Agent não
+    compartilham event_id. O mesmo visitante e o mesmo imóvel nesse intervalo
+    viram um lead. Isso segura duplo submit, reload e os dois produtos, e pode
+    juntar dois pedidos legítimos. O mesmo event_id continua único depois da
+    janela. A corrida é fechada em public.record_ads_lead, não num SELECT prévio.
+  */
+  const LEAD_LOGICAL_WINDOW_MS = HANDOFF_TTL_MS;
+  const CONVERSION_CLICK_SOURCES = ["current_session", "prior_session", "prior_visitor"];
   const GOOGLE_CONVERSIONS = {
+    lead_created: {
+      name: LEAD_CONVERSION_NAME,
+      value: LEAD_CONVERSION_VALUE
+    }
+  };
+  /*
+    Sinais preparados para uma exportação futura, cada um com nome próprio.
+    O CSV padrão não os inclui. property_view simples não entra.
+    Os valores não são decisão de lance nem de campanha.
+  */
+  const GOOGLE_SIGNAL_CONVERSIONS = {
     high_intent_buyer: {
       name: "High Intent Buyer",
       value: HIGH_INTENT_CONVERSION_VALUE
     },
-    lead_created: {
-      name: "Lead Created",
-      value: LEAD_CONVERSION_VALUE
+    property_view_multiple: {
+      name: "Property View Multiple",
+      value: 2
+    },
+    specialist_cta_opened: {
+      name: "Specialist CTA Opened",
+      value: 3
+    },
+    agent_opened: {
+      name: "Agent Opened",
+      value: 5
     }
   };
   const GOOGLE_CONVERSION_COLUMNS = [
@@ -386,6 +416,16 @@
     }
 
     const context = handoffContext({ ...body, visitor_id: visitorId }, visitor, options.allowedOrigins || []);
+    const resolved = await resolveGoogleClick(visitorId, rest, sessionId, context.attribution);
+    if (!resolved.ok) {
+      return { status: 502, body: { success: false, error: "Não foi possível criar o handoff" } };
+    }
+    context.conversion_attribution = {
+      gclid: resolved.conversion.gclid,
+      gbraid: resolved.conversion.gbraid,
+      wbraid: resolved.conversion.wbraid,
+      source: resolved.source
+    };
     const expires = new Date(now.getTime() + HANDOFF_TTL_MS);
     const saved = await rest("ads_handoffs", {
       method: "POST",
@@ -414,7 +454,10 @@
       intent: context.declared_intent,
       property: context.property,
       metadata: { target_product: "agente_yincorp" }
-    }, rest, now, options.createId || cryptoRandom, { internal: true });
+    }, rest, now, options.createId || cryptoRandom, {
+      internal: true,
+      conversionAttribution: context.conversion_attribution
+    });
     if (recorded.status >= 500) {
       return { status: 502, body: { success: false, error: "Não foi possível criar o handoff" } };
     }
@@ -671,7 +714,11 @@
       observed_price_min: preference.price_min || null,
       observed_price_max: preference.price_max || null,
       observed_confidence: observed.observed_confidence || 0,
-      metadata: eventMetadata(event)
+      metadata: eventMetadata(event),
+      conversion_gclid: event.conversion_gclid || "",
+      conversion_gbraid: event.conversion_gbraid || "",
+      conversion_wbraid: event.conversion_wbraid || "",
+      conversion_click_source: event.conversion_click_source || ""
     };
   }
 
@@ -918,6 +965,10 @@
     "gclid",
     "gbraid",
     "wbraid",
+    "conversion_gclid",
+    "conversion_gbraid",
+    "conversion_wbraid",
+    "conversion_click_source",
     "utm_source",
     "utm_campaign",
     "declared_neighborhood",
@@ -943,8 +994,18 @@
     return `${lines.join("\n")}\n`;
   }
 
-  function hasClickId(row) {
-    return Boolean(clean(row && row.gclid) || clean(row && row.gbraid) || clean(row && row.wbraid));
+  function exportClick(row) {
+    const conversion = googleClick({
+      gclid: row && row.conversion_gclid,
+      gbraid: row && row.conversion_gbraid,
+      wbraid: row && row.conversion_wbraid
+    });
+    if (hasGoogleClick(conversion)) return conversion;
+    const source = clean(row && row.conversion_click_source);
+    if (source === "prior_session" || source === "prior_visitor") {
+      return { gclid: "", gbraid: "", wbraid: "" };
+    }
+    return googleClick(row);
   }
 
   function googleAdsConversionTime(value) {
@@ -965,12 +1026,13 @@
     for (const row of rows || []) {
       const spec = GOOGLE_CONVERSIONS[clean(row.event_name)];
       const orderId = clean(row.event_id);
-      if (!spec || !orderId || seen.has(orderId) || !hasClickId(row)) continue;
+      const click = exportClick(row);
+      if (!spec || !orderId || seen.has(orderId) || !hasGoogleClick(click)) continue;
       seen.add(orderId);
       exported.push({
-        "Google Click ID": clean(row.gclid),
-        GBRAID: clean(row.gbraid),
-        WBRAID: clean(row.wbraid),
+        "Google Click ID": click.gclid,
+        GBRAID: click.gbraid,
+        WBRAID: click.wbraid,
         "Conversion Name": spec.name,
         "Conversion Time": googleAdsConversionTime(row.event_time),
         "Conversion Value": spec.value,
@@ -999,6 +1061,10 @@
       property: property || normalizeProperty(null),
       intent: intent || base.intent,
       metadata: { derived: true },
+      conversion_gclid: "",
+      conversion_gbraid: "",
+      conversion_wbraid: "",
+      conversion_click_source: "",
       observed
     };
   }
@@ -1073,13 +1139,109 @@
     }
   }
 
+  function googleClickField(value) {
+    const text = trackingField(value, 200);
+    if (!text || text === "0" || /^(?:false|null|undefined)$/i.test(text)) return "";
+    if (text[0] === "{" || text[0] === "[") return "";
+    return text;
+  }
+
+  function googleClick(source) {
+    return {
+      gclid: googleClickField(source && source.gclid),
+      gbraid: googleClickField(source && source.gbraid),
+      wbraid: googleClickField(source && source.wbraid)
+    };
+  }
+
+  function hasGoogleClick(click) {
+    return Boolean(click && (click.gclid || click.gbraid || click.wbraid));
+  }
+
+  async function storedGoogleClick(visitorId, rest, sessionId) {
+    const session = sessionId
+      ? `&session_id=eq.${encodeURIComponent(sessionId)}`
+      : "";
+    const prior = await rest(
+      "ads_events?select=gclid,gbraid,wbraid,event_time,event_id" +
+      `&visitor_id=eq.${encodeURIComponent(visitorId)}` +
+      session +
+      "&or=(gclid.neq.,gbraid.neq.,wbraid.neq.)" +
+      "&order=event_time.desc,event_id.desc&limit=8",
+      { method: "GET" }
+    );
+    if (!prior.ok) return { ok: false, gclid: "", gbraid: "", wbraid: "" };
+    for (const row of prior.data || []) {
+      const click = googleClick(row);
+      if (hasGoogleClick(click)) return { ok: true, ...click };
+    }
+    return { ok: true, gclid: "", gbraid: "", wbraid: "" };
+  }
+
+  function clickOnly(source) {
+    return {
+      gclid: source.gclid || "",
+      gbraid: source.gbraid || "",
+      wbraid: source.wbraid || ""
+    };
+  }
+
+  async function resolveGoogleClick(visitorId, rest, sessionId, payload) {
+    const real = googleClick(payload);
+    if (hasGoogleClick(real)) {
+      return { ok: true, real, conversion: real, source: "current_session" };
+    }
+    if (sessionId) {
+      const inSession = await storedGoogleClick(visitorId, rest, sessionId);
+      if (!inSession.ok) return inSession;
+      if (hasGoogleClick(inSession)) {
+        return { ok: true, real, conversion: clickOnly(inSession), source: "prior_session" };
+      }
+    }
+    const prior = await storedGoogleClick(visitorId, rest, "");
+    if (!prior.ok) return prior;
+    if (hasGoogleClick(prior)) {
+      return { ok: true, real, conversion: clickOnly(prior), source: "prior_visitor" };
+    }
+    return { ok: true, real, conversion: { gclid: "", gbraid: "", wbraid: "" }, source: "" };
+  }
+
+  function assignConversion(event, conversion, source) {
+    event.conversion_gclid = conversion.gclid || "";
+    event.conversion_gbraid = conversion.gbraid || "";
+    event.conversion_wbraid = conversion.wbraid || "";
+    event.conversion_click_source = CONVERSION_CLICK_SOURCES.includes(source) ? source : "";
+  }
+
+  function leadDuplicate(eventId) {
+    return {
+      status: 200,
+      body: {
+        success: true,
+        duplicate: true,
+        event_id: eventId,
+        high_intent_buyer: false
+      }
+    };
+  }
+
+  function leadClaim(result) {
+    const data = result && result.data;
+    if (Array.isArray(data)) return data[0] || null;
+    return data && data.event_id ? data : null;
+  }
+
   async function recordAdsEvent(input, rest, now = new Date(), createId = () => cryptoRandom(), options = {}) {
     const normalized = normalizeEvent(input, now, options);
     if (normalized.error) {
       return { status: 400, body: { success: false, error: normalized.error } };
     }
 
-    const event = { ...normalized.event, event_id: normalized.event.event_id || createId() };
+    const event = {
+      ...normalized.event,
+      supplied_event_id: normalized.event.event_id,
+      event_id: normalized.event.event_id || createId()
+    };
     const recent = await rest(
       "ads_events?select=event_id,event_name,event_time,visitor_id,session_id,property_id" +
       (event.event_name === "ai_search"
@@ -1106,6 +1268,21 @@
       };
     }
 
+    if (event.event_name === "lead_created") {
+      const resolved = await resolveGoogleClick(event.visitor_id, rest, event.session_id, event);
+      if (!resolved.ok) return supabaseFailure(resolved);
+      event.gclid = resolved.real.gclid;
+      event.gbraid = resolved.real.gbraid;
+      event.wbraid = resolved.real.wbraid;
+      assignConversion(event, resolved.conversion, resolved.source);
+    } else if (options.conversionAttribution) {
+      const supplied = googleClick(options.conversionAttribution);
+      const source = clean(options.conversionAttribution.source);
+      assignConversion(event, supplied, source);
+    } else {
+      assignConversion(event, { gclid: "", gbraid: "", wbraid: "" }, "");
+    }
+
     const visitorRows = await rest(
       `ads_visitors?select=*&visitor_id=eq.${encodeURIComponent(event.visitor_id)}&limit=1`,
       { method: "GET" }
@@ -1128,11 +1305,29 @@
     const observed = observedIntentFromViews(viewsForObserved);
     const row = eventRow(event, observed);
     const projection = projectionOptionsFor(options);
-    const inserted = await rest("ads_events", {
-      method: "POST",
-      body: row
-    });
-    if (!inserted.ok) return supabaseFailure(inserted);
+    if (event.event_name === "lead_created") {
+      const claimed = await rest("rpc/record_ads_lead", {
+        method: "POST",
+        prefer: "return=representation",
+        body: { p_row: row }
+      });
+      if (!claimed.ok) return supabaseFailure(claimed);
+      const outcome = leadClaim(claimed);
+      if (!outcome) return supabaseFailure(claimed);
+      if (outcome.conflict) {
+        return {
+          status: 409,
+          body: { success: false, error: "event_id já pertence a outra conversão" }
+        };
+      }
+      if (outcome.duplicate) return leadDuplicate(outcome.event_id);
+    } else {
+      const inserted = await rest("ads_events", {
+        method: "POST",
+        body: row
+      });
+      if (!inserted.ok) return supabaseFailure(inserted);
+    }
     await syncBuyerProfile(row, rest, projection);
 
     const touch = touchPatch(visitor, event);
@@ -1236,7 +1431,10 @@
     SHEET_COLUMNS,
     GOOGLE_CONVERSION_COLUMNS,
     HIGH_INTENT_CONVERSION_VALUE,
+    LEAD_CONVERSION_NAME,
     LEAD_CONVERSION_VALUE,
+    LEAD_LOGICAL_WINDOW_MS,
+    GOOGLE_SIGNAL_CONVERSIONS,
     CONVERSION_CURRENCY,
     APP_ORIGIN,
     AGENT_ORIGIN,

@@ -33,6 +33,16 @@ O produto de destino deve:
 
 `session_id` continua sendo a visita, não a pessoa. Uma sessão nova não apaga `first_declared_intent`, `first_gclid` nem a primeira origem.
 
+## Lead lógico
+
+O `event_id` enviado pelo cliente continua único para sempre. Quando o id é novo, a identidade lógica é `visitor_id` + `property_id` por 15 minutos, para YNTELIGENCIA e Agent. A decisão e o insert acontecem juntos em `public.record_ads_lead`. Dois envios simultâneos recebem o mesmo `event_id` e só uma linha `lead_created` é criada.
+
+A janela segura duplo submit, reload e o mesmo imóvel nos dois produtos, que não compartilham o `event_id` do `sessionStorage`. O custo é juntar dois pedidos legítimos do mesmo visitante e do mesmo imóvel nesse intervalo. Não há um id de formulário comum entre os produtos. Imóvel diferente ou visitante diferente continua sendo outro lead. Depois de 15 minutos, um `event_id` novo pode criar outro lead.
+
+## Toque real e atribuição da conversão
+
+`gclid`, `gbraid`, `wbraid` e os UTMs da linha são o toque observado naquele evento. O clique usado para o Google pode vir de um evento anterior e fica em `conversion_gclid`, `conversion_gbraid`, `conversion_wbraid` e `conversion_click_source` (`current_session`, `prior_session` ou `prior_visitor`). Clique de outra sessão não entra no toque real, no `current_touch` do buyer profile nem no `attribution` do handoff. O CSV de conversão lê a atribuição da conversão. O backfill do buyer profile continua lendo só o toque real.
+
 ## First touch e last touch
 
 No primeiro evento do `visitor_id`, o backend grava a origem e não a substitui.
