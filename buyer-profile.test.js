@@ -658,6 +658,222 @@ test("troca de imóvel não herda nome nem bairro", async () => {
   ]), expectedA);
 });
 
+test("mesmo imóvel converge em qualquer ordem e outro imóvel não herda", async () => {
+  async function profileOf(events) {
+    await reset();
+    for (const event of events) {
+      const applied = await apply({ event_name: "property_view", session_id: "imovel", ...event });
+      assert.equal(applied.status, "applied");
+    }
+    return read();
+  }
+
+  const sameId = [
+    {
+      event_id: "same-old",
+      event_time: "2026-10-08T12:00:00.000Z",
+      property_id: "X",
+      property_name: "Astorga",
+      property_neighborhood: "Perdizes"
+    },
+    {
+      event_id: "same-new",
+      event_time: "2026-10-08T12:05:00.000Z",
+      property_id: "X",
+      property_name: null,
+      property_neighborhood: null
+    }
+  ];
+  const sameForward = await profileOf(sameId);
+  const sameReverse = await profileOf(sameId.slice().reverse());
+  assert.deepEqual(sameForward, sameReverse);
+  assert.deepEqual(sameForward.behavior.last_property, {
+    property_id: "X",
+    name: "Astorga",
+    neighborhood: "Perdizes"
+  });
+
+  const split = [
+    {
+      event_id: "split-name",
+      event_time: "2026-10-08T12:00:00.000Z",
+      property_id: "X",
+      property_name: "Astorga",
+      property_neighborhood: null
+    },
+    {
+      event_id: "split-place",
+      event_time: "2026-10-08T12:05:00.000Z",
+      property_id: "X",
+      property_name: null,
+      property_neighborhood: "Pinheiros"
+    },
+    {
+      event_id: "split-rename",
+      event_time: "2026-10-08T12:06:00.000Z",
+      property_id: "X",
+      property_name: "Solar",
+      property_neighborhood: null
+    }
+  ];
+  const splitForward = await profileOf(split);
+  const splitReverse = await profileOf(split.slice().reverse());
+  assert.deepEqual(splitForward, splitReverse);
+  assert.deepEqual(splitForward.behavior.last_property, {
+    property_id: "X",
+    name: "Solar",
+    neighborhood: "Pinheiros"
+  });
+
+  const tied = [
+    {
+      event_id: "evt-a",
+      event_time: "2026-10-08T13:00:00.000Z",
+      property_id: "X",
+      property_name: "Astorga",
+      property_neighborhood: "Perdizes"
+    },
+    {
+      event_id: "evt-z",
+      event_time: "2026-10-08T13:00:00.000Z",
+      property_id: "X",
+      property_name: "Solar",
+      property_neighborhood: "Lapa"
+    }
+  ];
+  const tiedForward = await profileOf(tied);
+  const tiedReverse = await profileOf(tied.slice().reverse());
+  assert.deepEqual(tiedForward, tiedReverse);
+  assert.deepEqual(tiedForward.behavior.last_property, {
+    property_id: "X",
+    name: "Solar",
+    neighborhood: "Lapa"
+  });
+
+  const other = [
+    {
+      event_id: "other-x",
+      event_time: "2026-10-08T12:00:00.000Z",
+      property_id: "X",
+      property_name: "Astorga",
+      property_neighborhood: "Perdizes"
+    },
+    {
+      event_id: "other-y",
+      event_time: "2026-10-08T12:05:00.000Z",
+      property_id: "Y",
+      property_name: null,
+      property_neighborhood: null
+    }
+  ];
+  const otherForward = await profileOf(other);
+  const otherReverse = await profileOf(other.slice().reverse());
+  assert.deepEqual(otherForward, otherReverse);
+  assert.deepEqual(otherForward.behavior.last_property, {
+    property_id: "Y",
+    name: null,
+    neighborhood: null
+  });
+  assert.equal(JSON.stringify(otherForward).includes("Astorga"), false);
+
+  const opened = [
+    {
+      event_id: "opened-name",
+      event_name: "agent_opened",
+      event_time: "2026-10-08T12:00:00.000Z",
+      property_id: "X",
+      property_name: "Astorga",
+      property_neighborhood: "Perdizes"
+    },
+    {
+      event_id: "opened-view",
+      event_name: "property_view",
+      event_time: "2026-10-08T12:05:00.000Z",
+      property_id: "X",
+      property_name: null,
+      property_neighborhood: null
+    }
+  ];
+  const openedForward = await profileOf(opened);
+  const openedReverse = await profileOf(opened.slice().reverse());
+  assert.deepEqual(openedForward, openedReverse);
+  assert.deepEqual(openedForward.behavior.last_property, {
+    property_id: "X",
+    name: "Astorga",
+    neighborhood: "Perdizes"
+  });
+  assert.equal(openedForward.behavior.unique_properties_viewed, 1);
+  assert.equal(openedForward.behavior.total_property_views, 1);
+  assert.equal(openedForward.behavior.total_agent_opens, 1);
+});
+
+test("online, ordem reversa e backfill convergem no mesmo imóvel incompleto", async () => {
+  const ads = require("./ads-intelligence.js");
+  const person = "14111111-1111-4111-8111-111111111111";
+  const store = memoryAds();
+  const inputs = [
+    {
+      product: "ynteligencia",
+      event_id: "canon-entry",
+      event_name: "ad_entry",
+      event_time: "2026-10-08T11:00:00.000Z",
+      visitor_id: person,
+      session_id: "canon-property",
+      gclid: "ABC",
+      utm_source: "google",
+      utm_campaign: "campanha-x",
+      intent: { neighborhood: "Perdizes", city: "São Paulo", state: "SP", max_price: 900000 }
+    },
+    {
+      product: "ynteligencia",
+      event_id: "canon-complete",
+      event_name: "property_view",
+      event_time: "2026-10-08T12:00:00.000Z",
+      visitor_id: person,
+      session_id: "canon-property",
+      property: { property_id: "X", name: "Astorga", neighborhood: "Perdizes" }
+    },
+    {
+      product: "ynteligencia",
+      event_id: "canon-incomplete",
+      event_name: "property_view",
+      event_time: "2026-10-08T12:10:00.000Z",
+      visitor_id: person,
+      session_id: "canon-property",
+      property: { property_id: "X" }
+    }
+  ];
+  for (const input of inputs) {
+    const recorded = await ads.recordAdsEvent(input, store.rest, new Date(input.event_time));
+    assert.equal(recorded.status, 200);
+  }
+  const rows = store.events.filter(row => buyer.PROFILE_EVENTS.has(row.event_name));
+  assert.equal(rows.length, 3);
+  const payloads = rows.map(row => {
+    const reconstructed = buyer.toApplyPayload(JSON.parse(JSON.stringify(row)));
+    const online = store.rpcCalls.find(call => call.event_id === row.event_id);
+    assert.deepEqual(online, reconstructed);
+    return reconstructed;
+  });
+  for (const payload of payloads) {
+    assert.equal((await apply({ ...payload, visitor_id: person })).status, "applied");
+  }
+  const chronological = await read(person);
+  await reset();
+  for (const payload of payloads.slice().reverse()) {
+    assert.equal((await apply({ ...payload, visitor_id: person })).status, "applied");
+  }
+  const reverse = await read(person);
+  assert.deepEqual(chronological, reverse);
+  assert.deepEqual(chronological.behavior.last_property, {
+    property_id: "X",
+    name: "Astorga",
+    neighborhood: "Perdizes"
+  });
+  assert.equal(chronological.preferences.city, "São Paulo");
+  assert.equal(chronological.attribution.current_touch.gclid, "ABC");
+});
+
 test("atribuição rejeita JSON, lead e sentinelas sem apagar toque válido", async () => {
   await apply({
     event_id: "touch-valid",

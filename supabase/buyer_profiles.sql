@@ -132,8 +132,24 @@ create table if not exists public.buyer_profile_properties (
   property_id text not null,
   first_event_id text not null,
   first_event_time timestamptz not null,
+  property_name text not null default '',
+  property_neighborhood text not null default '',
+  name_event_time timestamptz,
+  name_event_id text not null default '',
+  neighborhood_event_time timestamptz,
+  neighborhood_event_id text not null default '',
+  viewed boolean not null default false,
   primary key (visitor_id, property_id)
 );
+
+alter table public.buyer_profile_properties
+  add column if not exists property_name text not null default '',
+  add column if not exists property_neighborhood text not null default '',
+  add column if not exists name_event_time timestamptz,
+  add column if not exists name_event_id text not null default '',
+  add column if not exists neighborhood_event_time timestamptz,
+  add column if not exists neighborhood_event_id text not null default '',
+  add column if not exists viewed boolean not null default true;
 
 create table if not exists public.buyer_profile_sessions (
   visitor_id text not null,
@@ -547,6 +563,9 @@ declare
   v_property_neighborhood_value text;
   v_property_time timestamptz;
   v_property_event_id text;
+  v_known_name text;
+  v_known_neighborhood text;
+  v_detail_found boolean;
   v_activity text;
   v_activity_at timestamptz;
   v_activity_time timestamptz;
@@ -618,14 +637,36 @@ begin
   v_property_event := v_event_name in (
     'property_view', 'property_view_multiple', 'agent_handoff_created', 'agent_opened', 'lead_created'
   );
+  if v_property_event and v_property_id <> '' and v_event_name <> 'property_view' then
+    insert into public.buyer_profile_properties (
+      visitor_id, property_id, first_event_id, first_event_time, viewed
+    ) values (
+      v_visitor, v_property_id, v_event_id, v_time, false
+    )
+    on conflict (visitor_id, property_id) do nothing;
+  end if;
   if v_event_name = 'property_view' and v_property_id <> '' then
-    with inserted as (
-      insert into public.buyer_profile_properties (visitor_id, property_id, first_event_id, first_event_time)
-      values (v_visitor, v_property_id, v_event_id, v_time)
-      on conflict (visitor_id, property_id) do nothing
+    with marked as (
+      update public.buyer_profile_properties
+      set viewed = true
+      where visitor_id = v_visitor
+        and property_id = v_property_id
+        and viewed = false
       returning 1 as ok
     )
-    select coalesce(sum(ok), 0) into v_unique_inc from inserted;
+    select coalesce(sum(ok), 0) into v_unique_inc from marked;
+    if v_unique_inc = 0 then
+      with inserted as (
+        insert into public.buyer_profile_properties (
+          visitor_id, property_id, first_event_id, first_event_time, viewed
+        ) values (
+          v_visitor, v_property_id, v_event_id, v_time, true
+        )
+        on conflict (visitor_id, property_id) do nothing
+        returning 1 as ok
+      )
+      select coalesce(sum(ok), 0) into v_unique_inc from inserted;
+    end if;
   end if;
 
   v_view_inc := case when v_event_name = 'property_view' then 1 else 0 end;
@@ -773,20 +814,58 @@ begin
     if v_property_event and v_property_neighborhood <> '' then
       v_observed := public.buyer_profile_append_unique(v_observed, v_property_neighborhood);
     end if;
+    v_detail_found := false;
+    v_known_name := '';
+    v_known_neighborhood := '';
+    if v_property_event and v_property_id <> '' then
+      update public.buyer_profile_properties set
+        property_name = case
+          when v_property_name <> '' and public.buyer_profile_is_newer(v_time, v_event_id, name_event_time, name_event_id)
+          then v_property_name else property_name end,
+        name_event_time = case
+          when v_property_name <> '' and public.buyer_profile_is_newer(v_time, v_event_id, name_event_time, name_event_id)
+          then v_time else name_event_time end,
+        name_event_id = case
+          when v_property_name <> '' and public.buyer_profile_is_newer(v_time, v_event_id, name_event_time, name_event_id)
+          then v_event_id else name_event_id end,
+        property_neighborhood = case
+          when v_property_neighborhood <> '' and public.buyer_profile_is_newer(v_time, v_event_id, neighborhood_event_time, neighborhood_event_id)
+          then v_property_neighborhood else property_neighborhood end,
+        neighborhood_event_time = case
+          when v_property_neighborhood <> '' and public.buyer_profile_is_newer(v_time, v_event_id, neighborhood_event_time, neighborhood_event_id)
+          then v_time else neighborhood_event_time end,
+        neighborhood_event_id = case
+          when v_property_neighborhood <> '' and public.buyer_profile_is_newer(v_time, v_event_id, neighborhood_event_time, neighborhood_event_id)
+          then v_event_id else neighborhood_event_id end
+      where visitor_id = v_visitor and property_id = v_property_id
+      returning property_name, property_neighborhood
+      into v_known_name, v_known_neighborhood;
+      v_detail_found := found;
+    end if;
     if v_property_event and v_property_id <> '' and public.buyer_profile_is_newer(v_time, v_event_id, v_property_time, v_property_event_id) then
       if v_property_id is distinct from v_property_value then
         v_property_name_value := '';
         v_property_neighborhood_value := '';
       end if;
       v_property_value := v_property_id;
-      if v_property_name <> '' then
-        v_property_name_value := v_property_name;
-      end if;
-      if v_property_neighborhood <> '' then
-        v_property_neighborhood_value := v_property_neighborhood;
+      if not v_detail_found then
+        if v_property_name <> '' then
+          v_property_name_value := v_property_name;
+        end if;
+        if v_property_neighborhood <> '' then
+          v_property_neighborhood_value := v_property_neighborhood;
+        end if;
       end if;
       v_property_time := v_time;
       v_property_event_id := v_event_id;
+    end if;
+    if v_detail_found and v_property_value = v_property_id then
+      if coalesce(v_known_name, '') <> '' then
+        v_property_name_value := v_known_name;
+      end if;
+      if coalesce(v_known_neighborhood, '') <> '' then
+        v_property_neighborhood_value := v_known_neighborhood;
+      end if;
     end if;
 
     if public.buyer_profile_is_newer(v_time, v_event_id, v_activity_time, v_activity_id) then

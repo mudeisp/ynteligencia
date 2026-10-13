@@ -86,6 +86,13 @@
     return String(value ?? "").replace(/\s+/g, " ").trim();
   }
 
+  function trackingField(value, max) {
+    const raw = String(value ?? "");
+    if (/[\r\n]/.test(raw)) return "";
+    const cleaned = clean(raw);
+    return typeof max === "number" ? cleaned.slice(0, max) : cleaned;
+  }
+
   function normalizeText(value) {
     return clean(value)
       .normalize("NFD")
@@ -220,14 +227,14 @@
         product,
         visitor_id: visitorId,
         session_id: sessionId,
-        gclid: clean(body.gclid),
-        gbraid: clean(body.gbraid),
-        wbraid: clean(body.wbraid),
-        utm_source: clean(body.utm_source),
-        utm_medium: clean(body.utm_medium),
-        utm_campaign: clean(body.utm_campaign),
-        utm_term: clean(body.utm_term),
-        utm_content: clean(body.utm_content),
+        gclid: trackingField(body.gclid),
+        gbraid: trackingField(body.gbraid),
+        wbraid: trackingField(body.wbraid),
+        utm_source: trackingField(body.utm_source),
+        utm_medium: trackingField(body.utm_medium),
+        utm_campaign: trackingField(body.utm_campaign),
+        utm_term: trackingField(body.utm_term),
+        utm_content: trackingField(body.utm_content),
         intent: normalizeIntent(body.intent || body.declared_intent),
         property: normalizeProperty(body.property),
         preference: declaredPreference(body.intent || body.declared_intent),
@@ -261,14 +268,14 @@
   function sanitizeAttribution(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-      gclid: clip(source.gclid, 200),
-      gbraid: clip(source.gbraid, 200),
-      wbraid: clip(source.wbraid, 200),
-      utm_source: clip(source.utm_source, 120),
-      utm_medium: clip(source.utm_medium, 120),
-      utm_campaign: clip(source.utm_campaign, 120),
-      utm_term: clip(source.utm_term, 120),
-      utm_content: clip(source.utm_content, 120)
+      gclid: trackingField(source.gclid, 200),
+      gbraid: trackingField(source.gbraid, 200),
+      wbraid: trackingField(source.wbraid, 200),
+      utm_source: trackingField(source.utm_source, 120),
+      utm_medium: trackingField(source.utm_medium, 120),
+      utm_campaign: trackingField(source.utm_campaign, 120),
+      utm_term: trackingField(source.utm_term, 120),
+      utm_content: trackingField(source.utm_content, 120)
     };
   }
 

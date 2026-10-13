@@ -1316,6 +1316,37 @@ test("timeout da projeção não muda a resposta do evento", async () => {
   assert.equal(store.events.length, 1);
 });
 
+test("CR e LF na campanha não chegam à RPC", async () => {
+  for (const campaign of [
+    "campanha-x\nsegunda-linha",
+    "campanha-x\rsegunda-linha",
+    "campanha-x\r\nsegunda-linha"
+  ]) {
+    const store = memory();
+    const result = await ads.recordAdsEvent(base({
+      event_name: "ad_entry",
+      gclid: "CLICK-OK",
+      utm_source: "google",
+      utm_campaign: campaign
+    }), store.rest, new Date("2026-10-08T12:00:00.000Z"));
+    assert.equal(result.status, 200);
+    assert.equal(store.rpcCalls.length, 1);
+    assert.equal(store.rpcCalls[0].utm_campaign, "");
+    assert.equal(store.events[0].utm_campaign, "");
+    assert.equal(JSON.stringify(store.rpcCalls[0]).includes("segunda-linha"), false);
+    assert.equal(store.rpcCalls[0].gclid, "CLICK-OK");
+    assert.equal(store.rpcCalls[0].utm_source, "google");
+  }
+  const store = memory();
+  const kept = await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    utm_campaign: "campanha-x segunda-linha"
+  }), store.rest, new Date("2026-10-08T12:00:00.000Z"));
+  assert.equal(kept.status, 200);
+  assert.equal(store.rpcCalls[0].utm_campaign, "campanha-x segunda-linha");
+  assert.equal(store.events[0].utm_campaign, "campanha-x segunda-linha");
+});
+
 test("falha do buyer profile não apaga o ads_event", async () => {
   const store = memory();
   const rest = async (requestPath, options = {}) => {
