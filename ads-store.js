@@ -18,9 +18,10 @@ export async function rest(path, options = {}) {
       apikey: key,
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
-      Prefer: options.method && options.method !== "GET"
-        ? "return=minimal"
-        : "return=representation"
+      Prefer: options.prefer
+        || (options.method && options.method !== "GET"
+          ? "return=minimal"
+          : "return=representation")
     },
     body: options.body ? JSON.stringify(options.body) : undefined
   });

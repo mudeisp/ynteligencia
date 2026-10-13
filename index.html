@@ -6362,6 +6362,22 @@ async function openAgentConversation(property){
   }
 }
 
+function yntLeadConversionId(propertyId){
+  const key = "ynteligencia_lead_conversion_" + String(YNTELIGENCIA_VISITOR_ID || "") + "_" + String(propertyId || "");
+  const maxAge = 15 * 60 * 1000;
+  try{
+    const stored = JSON.parse(sessionStorage.getItem(key) || "null");
+    if(stored && stored.id && Date.now() - Number(stored.at) < maxAge) return String(stored.id);
+  }catch(error){}
+  const id = window.crypto && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : "lead-" + Date.now().toString(16) + "-" + Math.random().toString(16).slice(2);
+  try{
+    sessionStorage.setItem(key, JSON.stringify({ id: id, at: Date.now() }));
+  }catch(error){}
+  return id;
+}
+
 function yntAdsTrack(eventName, detail){
   try{
     const property = detail && detail.property ? detail.property : null;
@@ -6390,23 +6406,31 @@ function yntAdsTrack(eventName, detail){
     ].join("|");
     const now = Date.now();
     const recent = window.__yntAdsRecent || (window.__yntAdsRecent = {});
-    if(recent[dedupeKey] && now - recent[dedupeKey] < 15000) return;
-    recent[dedupeKey] = now;
-    fetch("/api/ads?action=event", {
+    if(eventName !== "lead_created" && recent[dedupeKey] && now - recent[dedupeKey] < 15000){
+      return Promise.resolve(null);
+    }
+    if(eventName !== "lead_created") recent[dedupeKey] = now;
+    const payload = {
+      product:"ynteligencia",
+      event_name:eventName,
+      visitor_id:YNTELIGENCIA_VISITOR_ID,
+      session_id:YNTELIGENCIA_SESSION_ID,
+      ...yntAdsAttribution(),
+      intent,
+      property
+    };
+    if(detail && detail.event_id) payload.event_id = detail.event_id;
+    return fetch("/api/ads?action=event", {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       keepalive:true,
-      body:JSON.stringify({
-        product:"ynteligencia",
-        event_name:eventName,
-        visitor_id:YNTELIGENCIA_VISITOR_ID,
-        session_id:YNTELIGENCIA_SESSION_ID,
-        ...yntAdsAttribution(),
-        intent,
-        property
-      })
-    }).catch(()=>{});
-  }catch(error){}
+      body:JSON.stringify(payload)
+    }).then(response => response.json().then(data => (
+      response.ok && data && data.success && data.event_id ? data : null
+    )).catch(() => null)).catch(() => null);
+  }catch(error){
+    return Promise.resolve(null);
+  }
 }
 
 function yntAdsIntentFromState(){
@@ -21049,7 +21073,8 @@ function openLeadCapture(p,prefill={}){
             });
           }
 
-          yntAdsTrack("lead_created", {
+          const recordedLead = await yntAdsTrack("lead_created", {
+            event_id: yntLeadConversionId(lead.property_id),
             intent: yntAdsIntentFromState(),
             property:{
               property_id: lead.property_id || "",
@@ -21060,22 +21085,32 @@ function openLeadCapture(p,prefill={}){
               inventory_source: lead.inventory_source || ""
             }
           });
+          const conversionId = recordedLead && recordedLead.event_id
+            ? String(recordedLead.event_id)
+            : "";
 
 
             /* =================================================
                GOOGLE ADS - CONVERSÃO LEAD YNTELIGENCIA
+               O transaction_id é o event_id confirmado em ads_events.
+               value 10 e BRL acompanham Lead Created no CSV.
             ================================================= */
 
             try{
 
-              gtag(
-                'event',
-                'conversion',
-                {
-                  'send_to':
-                    'AW-18371236623/1P2xCPmnzfccEI-mi7hE'
-                }
-              );
+              if(conversionId){
+                gtag(
+                  'event',
+                  'conversion',
+                  {
+                    'send_to':
+                      'AW-18371236623/1P2xCPmnzfccEI-mi7hE',
+                    'transaction_id': conversionId,
+                    'value': 10,
+                    'currency': 'BRL'
+                  }
+                );
+              }
 
             }catch(error){
 

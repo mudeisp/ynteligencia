@@ -186,17 +186,20 @@ export async function handleAdsSheet(req, res) {
 export async function handleAdsGoogleConversions(req, res) {
   if (!requireExport(req, res)) return;
 
-  const rows = await rest(
-    "ads_events?select=event_id,event_name,event_time,product,gclid,gbraid,wbraid" +
-    "&event_name=in.(high_intent_buyer,lead_created)" +
-    "&order=event_time.asc&limit=5000",
-    { method: "GET" }
-  );
-  if (!rows.ok) {
+  const claimed = await rest("rpc/claim_google_lead_conversions", {
+    method: "POST",
+    prefer: "return=representation",
+    body: { p_limit: 500 }
+  });
+  if (!claimed.ok) {
     return res.status(502).json({ success: false, error: "Não foi possível exportar as conversões" });
   }
 
+  const rows = (Array.isArray(claimed.data) ? claimed.data : []).map(row => ({
+    ...row,
+    event_name: "lead_created"
+  }));
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.status(200);
-  return res.end(ads.googleAdsConversionsCsv(rows.data || []));
+  return res.end(ads.googleAdsConversionsCsv(rows));
 }

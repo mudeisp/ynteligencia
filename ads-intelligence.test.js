@@ -44,10 +44,22 @@ function memory() {
       if (visitorId) rows = rows.filter(row => row.visitor_id === visitorId);
       if (sessionId) rows = rows.filter(row => row.session_id === sessionId);
       if (name) rows = rows.filter(row => row.event_name === name);
-      const descending = String(params.get("order") || "").endsWith("desc");
-      rows.sort((a, b) => descending
-        ? String(b.event_time).localeCompare(String(a.event_time))
-        : String(a.event_time).localeCompare(String(a.event_time)));
+      const propertyId = decodeFilter(params.get("property_id"));
+      const eventId = decodeFilter(params.get("event_id"));
+      if (params.has("property_id")) rows = rows.filter(row => (row.property_id || "") === propertyId);
+      if (eventId) rows = rows.filter(row => row.event_id === eventId);
+      if (params.get("or")) {
+        rows = rows.filter(row => ["gclid", "gbraid", "wbraid"].some(key => String(row[key] || "").trim()));
+      }
+      const orders = String(params.get("order") || "").split(",").filter(Boolean);
+      rows.sort((left, right) => {
+        for (const order of orders) {
+          const [field, direction] = order.split(".");
+          const compared = String(left[field] ?? "").localeCompare(String(right[field] ?? ""));
+          if (compared !== 0) return direction === "desc" ? -compared : compared;
+        }
+        return 0;
+      });
       rows = rows.slice(0, Number(params.get("limit")) || rows.length);
       const select = params.get("select");
       if (select && select !== "*") {
@@ -589,10 +601,10 @@ test("high intent e lead com clique entram na exportação e evento sem clique f
 
   const csv = ads.googleAdsConversionsCsv(store.events);
   assert.match(csv, /^Google Click ID,GBRAID,WBRAID,Conversion Name,/);
-  assert.match(csv, /High Intent Buyer/);
+  assert.equal(csv.includes("High Intent Buyer"), false);
   assert.match(csv, /Lead Created/);
   assert.match(csv, /2026-10-08 15:41:03-0300/);
-  assert.match(csv, new RegExp(high.event_id));
+  assert.equal(csv.includes(high.event_id), false);
   assert.match(csv, new RegExp(lead.event_id));
   assert.equal(csv.includes(hidden.event_id), false);
   assert.equal(csv.includes("ai_search"), false);
@@ -600,8 +612,9 @@ test("high intent e lead com clique entram na exportação e evento sem clique f
   assert.equal(csv.includes("ana@example.com"), false);
   assert.equal(csv.includes("11999999999"), false);
   assert.equal(ads.HIGH_INTENT_CONVERSION_VALUE, 1);
+  assert.equal(ads.LEAD_CONVERSION_NAME, "Lead Created");
   assert.equal(ads.LEAD_CONVERSION_VALUE, 10);
-  assert.match(csv, /"1","BRL"/);
+  assert.equal(csv.includes('"1","BRL"'), false);
   assert.match(csv, /"10","BRL"/);
 
   const sheet = ads.sheetCsv(store.events);
@@ -640,7 +653,7 @@ test("exportação deduplica pelo event_id e aceita gbraid ou wbraid", () => {
     },
     {
       event_id: "evt-wbraid",
-      event_name: "high_intent_buyer",
+      event_name: "lead_created",
       event_time: "2026-10-08T18:42:00.000Z",
       product: "agente_yincorp",
       wbraid: "wbraid-brooklin"
@@ -653,7 +666,7 @@ test("exportação deduplica pelo event_id e aceita gbraid ou wbraid", () => {
     }
   ]);
   assert.equal(csv.split("evt-1").length - 1, 1);
-  assert.match(csv, /2026-10-08 15:32:11-0300/);
+  assert.match(csv, /2026-10-08 15:40:00-0300/);
   assert.match(csv, /gbraid-brooklin/);
   assert.match(csv, /wbraid-brooklin/);
   assert.equal(csv.includes("evt-sem-clique"), false);
@@ -1378,4 +1391,326 @@ test("cliente deduplica ai_search com os seis campos e preserva property_view", 
   client.track("property_view", { property: { property_id: "a" } });
   client.track("property_view", { property: { property_id: "a" } });
   assert.equal(client.payloads.length, 8);
+});
+
+test("lead usa o clique da sessão e não mistura com um clique antigo", async () => {
+  const store = memory();
+  const start = new Date("2026-10-08T12:00:00.000Z");
+  await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    session_id: "sessao-antiga",
+    gclid: "GCLID-ANTIGO",
+    gbraid: "GBRAID-ANTIGO",
+    utm_campaign: "campanha-antiga"
+  }), store.rest, start);
+  await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    session_id: "sessao-atual",
+    gclid: "GCLID-ATUAL",
+    utm_source: "google",
+    utm_campaign: "campanha-atual"
+  }), store.rest, new Date(start.getTime() + 60000));
+
+  const lead = await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    event_id: "lead-sessao-atual",
+    session_id: "sessao-atual",
+    utm_source: "google",
+    utm_campaign: "campanha-atual",
+    property: { property_id: "nonstop:atual", name: "Atual" },
+    nome: "Maria",
+    email: "maria@example.com",
+    telefone: "11988887777",
+    whatsapp: "5511988887777",
+    lead_summary: "quer visitar",
+    transcript: "oi, quero comprar"
+  }), store.rest, new Date(start.getTime() + 120000));
+
+  assert.equal(lead.status, 200);
+  assert.equal(lead.body.event_id, "lead-sessao-atual");
+  const row = store.events.find(item => item.event_id === "lead-sessao-atual");
+  assert.equal(row.gclid, "GCLID-ATUAL");
+  assert.equal(row.gbraid, "");
+  assert.equal(row.wbraid, "");
+  assert.equal(row.utm_campaign, "campanha-atual");
+  const stored = JSON.stringify(row);
+  for (const secret of ["Maria", "maria@example.com", "11988887777", "5511988887777", "quer visitar", "oi, quero comprar"]) {
+    assert.equal(stored.includes(secret), false, secret);
+  }
+});
+
+test("lead orgânico herda o último clique do visitante e não o de outro", async () => {
+  const store = memory();
+  const start = new Date("2026-10-08T12:00:00.000Z");
+  const other = "22222222-2222-4222-8222-222222222222";
+  await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    gclid: "GCLID-VISITANTE",
+    gbraid: "GBRAID-VISITANTE",
+    wbraid: "WBRAID-VISITANTE"
+  }), store.rest, start);
+  await ads.recordAdsEvent({
+    product: "ynteligencia",
+    visitor_id: other,
+    session_id: "sessao-alheia",
+    event_name: "ad_entry",
+    gclid: "GCLID-ALHEIO"
+  }, store.rest, new Date(start.getTime() + 60000));
+
+  const inherited = await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    event_id: "lead-organico",
+    session_id: "sessao-organica",
+    gclid: "0",
+    gbraid: "",
+    utm_source: "organic",
+    property: { property_id: "nonstop:florida", name: "Flórida" }
+  }), store.rest, new Date(start.getTime() + 86400000));
+  assert.equal(inherited.body.event_id, "lead-organico");
+  const row = store.events.find(item => item.event_id === "lead-organico");
+  assert.equal(row.gclid, "GCLID-VISITANTE");
+  assert.equal(row.gbraid, "GBRAID-VISITANTE");
+  assert.equal(row.wbraid, "WBRAID-VISITANTE");
+  assert.equal(row.utm_source, "organic");
+  assert.equal(JSON.stringify(store.events).includes("GCLID-ALHEIO") && row.gclid !== "GCLID-ALHEIO", true);
+
+  const emptyVisitor = "33333333-3333-4333-8333-333333333333";
+  const blank = await ads.recordAdsEvent({
+    product: "ynteligencia",
+    visitor_id: emptyVisitor,
+    session_id: "sessao-sem-clique",
+    event_name: "lead_created",
+    event_id: "lead-sem-clique",
+    property: { property_id: "nonstop:vazio" }
+  }, store.rest, new Date(start.getTime() + 90000000));
+  assert.equal(blank.body.event_id, "lead-sem-clique");
+  const blankRow = store.events.find(item => item.event_id === "lead-sem-clique");
+  assert.equal(blankRow.gclid, "");
+  assert.equal(blankRow.gbraid, "");
+  assert.equal(blankRow.wbraid, "");
+  const csv = ads.googleAdsConversionsCsv(store.events);
+  assert.match(csv, /lead-organico/);
+  assert.equal(csv.includes("lead-sem-clique"), false);
+  assert.match(csv, /GCLID-VISITANTE/);
+  assert.equal(csv.includes("GCLID-ALHEIO"), false);
+});
+
+test("o mesmo lead conserva um event_id e leads diferentes permanecem distintos", async () => {
+  const store = memory();
+  const start = new Date("2026-10-08T15:00:00.000Z");
+  const first = await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    event_id: "lead-canonico",
+    gclid: "GCLID-LEAD",
+    property: { property_id: "nonstop:florida", name: "Flórida" }
+  }), store.rest, start);
+  const retry = await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    event_id: "lead-outro-id",
+    product: "agente_yincorp",
+    gclid: "GCLID-LEAD",
+    property: { property_id: "nonstop:florida", name: "Flórida" }
+  }), store.rest, new Date(start.getTime() + 10 * 60 * 1000));
+  const sameId = await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    event_id: "lead-canonico",
+    property: { property_id: "nonstop:florida" }
+  }), store.rest, new Date(start.getTime() + ads.LEAD_LOGICAL_WINDOW_MS + 60000));
+  assert.equal(first.body.duplicate, false);
+  assert.equal(retry.status, 200);
+  assert.equal(retry.body.duplicate, true);
+  assert.equal(retry.body.event_id, "lead-canonico");
+  assert.equal(sameId.body.duplicate, true);
+  assert.equal(sameId.body.event_id, "lead-canonico");
+  assert.equal(store.events.filter(item => item.event_name === "lead_created").length, 1);
+
+  const second = await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    event_id: "lead-outro-imovel",
+    gclid: "GCLID-LEAD",
+    property: { property_id: "nonstop:outro", name: "Outro" }
+  }), store.rest, new Date(start.getTime() + 60000));
+  assert.equal(second.body.duplicate, false);
+  assert.equal(second.body.event_id, "lead-outro-imovel");
+  assert.equal(store.events.filter(item => item.event_name === "lead_created").length, 2);
+
+  const later = await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    event_id: "lead-depois-da-janela",
+    gclid: "GCLID-LEAD",
+    property: { property_id: "nonstop:florida", name: "Flórida" }
+  }), store.rest, new Date(start.getTime() + ads.LEAD_LOGICAL_WINDOW_MS + 60000));
+  assert.equal(later.body.event_id, "lead-depois-da-janela");
+  assert.equal(later.body.duplicate, false);
+
+  const csv = ads.googleAdsConversionsCsv(store.events.filter(item => item.event_name === "lead_created"));
+  assert.equal(csv.split("lead-canonico").length - 1, 1);
+  assert.match(csv, /lead-outro-imovel/);
+  assert.match(csv, /lead-depois-da-janela/);
+  assert.match(csv, /"10","BRL"/);
+  assert.equal(csv.includes("High Intent Buyer"), false);
+
+  const conflict = await ads.recordAdsEvent(base({
+    event_name: "lead_created",
+    event_id: "lead-outro-imovel",
+    visitor_id: "44444444-4444-4444-8444-444444444444",
+    property: { property_id: "nonstop:novo" }
+  }), store.rest, start);
+  assert.equal(conflict.status, 409);
+});
+
+test("handoff sem clique na sessão recebe o último clique e preserva o UTM atual", async () => {
+  const store = memory();
+  await ads.recordAdsEvent(base({
+    event_name: "ad_entry",
+    session_id: "sessao-paga",
+    gclid: "GCLID-HANDOFF",
+    utm_source: "google",
+    utm_campaign: "campanha-antiga"
+  }), store.rest, new Date("2026-10-08T12:00:00.000Z"));
+  const created = await ads.createHandoff(handoffBody({
+    session_id: "sessao-organica",
+    current_touch: { utm_source: "organic", gclid: "" }
+  }), store.rest, new Date("2026-10-09T18:00:00.000Z"), enabled);
+  assert.equal(created.status, 200);
+  assert.equal(store.handoffs[0].context.attribution.gclid, "GCLID-HANDOFF");
+  assert.equal(store.handoffs[0].context.attribution.utm_source, "organic");
+  assert.equal(store.handoffs[0].context.attribution.utm_campaign, "");
+  const handoffEvent = store.events.find(item => item.event_name === "agent_handoff_created");
+  assert.equal(handoffEvent.gclid, "GCLID-HANDOFF");
+  assert.equal(handoffEvent.utm_source, "organic");
+});
+
+test("sinais intermediários têm nome próprio e ficam fora do CSV de lead", () => {
+  const signals = ads.GOOGLE_SIGNAL_CONVERSIONS;
+  assert.deepEqual(Object.keys(signals).sort(), [
+    "agent_opened",
+    "high_intent_buyer",
+    "property_view_multiple",
+    "specialist_cta_opened"
+  ]);
+  assert.equal(signals.property_view, undefined);
+  const names = new Set(Object.values(signals).map(item => item.name));
+  names.add(ads.LEAD_CONVERSION_NAME);
+  assert.equal(names.size, 5);
+  const values = Object.values(signals).map(item => item.value);
+  assert.equal(new Set(values).size, values.length);
+  assert.equal(values.includes(ads.LEAD_CONVERSION_VALUE), false);
+  const csv = ads.googleAdsConversionsCsv([
+    { event_id: "s1", event_name: "high_intent_buyer", event_time: "2026-10-08T12:00:00.000Z", product: "ynteligencia", gclid: "G" },
+    { event_id: "s2", event_name: "agent_opened", event_time: "2026-10-08T12:01:00.000Z", product: "agente_yincorp", gclid: "G" },
+    { event_id: "s3", event_name: "specialist_cta_opened", event_time: "2026-10-08T12:02:00.000Z", product: "ynteligencia", gclid: "G" },
+    { event_id: "s4", event_name: "property_view_multiple", event_time: "2026-10-08T12:03:00.000Z", product: "ynteligencia", gclid: "G" },
+    { event_id: "s5", event_name: "property_view", event_time: "2026-10-08T12:04:00.000Z", product: "ynteligencia", gclid: "G" },
+    { event_id: "lead-1", event_name: "lead_created", event_time: "2026-10-08T12:05:00.000Z", product: "ynteligencia", gclid: "G" }
+  ]);
+  assert.match(csv, /lead-1/);
+  for (const id of ["s1", "s2", "s3", "s4", "s5"]) assert.equal(csv.includes(id), false, id);
+  assert.equal(csv.includes("High Intent Buyer"), false);
+  assert.equal(csv.includes("Agent Opened"), false);
+});
+
+test("o hit AW usa o event_id confirmado, o valor 10 e BRL", () => {
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  assert.match(html, /send_to':\s*'AW-18371236623\/1P2xCPmnzfccEI-mi7hE'/);
+  assert.match(html, /transaction_id': conversionId/);
+  assert.match(html, /value': 10/);
+  assert.match(html, /currency': 'BRL'/);
+  assert.equal(ads.LEAD_CONVERSION_VALUE, 10);
+  assert.equal(ads.CONVERSION_CURRENCY, "BRL");
+  assert.match(html, /if\(conversionId\)/);
+  assert.match(html, /ynteligencia_lead_conversion_/);
+  assert.equal((html.match(/AW-18371236623/g) || []).length, 1);
+  const files = fs.readdirSync(path.join(__dirname, "api")).filter(name => name.endsWith(".js"));
+  assert.equal(files.length, 12);
+});
+
+test("o ledger de exportação só devolve lead_created ainda não exportado", () => {
+  const { execFileSync } = require("node:child_process");
+  const database = "google_ads_export_test";
+  const psql = (db, sql) => execFileSync("psql", [
+    "-d", db,
+    "-v", "ON_ERROR_STOP=1",
+    "-t", "-A",
+    "-c", sql
+  ], { encoding: "utf8" }).trim();
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `
+    select pg_terminate_backend(pid) from pg_stat_activity
+    where datname = '${database}' and pid <> pg_backend_pid()
+  `], { stdio: "pipe" });
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `drop database if exists ${database}`], { stdio: "pipe" });
+  execFileSync("psql", ["-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", `create database ${database}`], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-c", `
+    do $$ begin
+      if not exists (select 1 from pg_roles where rolname = 'service_role') then
+        create role service_role nologin bypassrls;
+      else
+        alter role service_role bypassrls;
+      end if;
+      if not exists (select 1 from pg_roles where rolname = 'anon') then
+        create role anon nologin;
+      end if;
+    end $$;
+  `], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/ads_events.sql")], { stdio: "pipe" });
+  execFileSync("psql", ["-d", database, "-v", "ON_ERROR_STOP=1", "-f", path.join(__dirname, "supabase/google_ads_conversion_exports.sql")], { stdio: "pipe" });
+
+  psql(database, `
+    insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, gclid, gbraid, wbraid) values
+      ('lead-antigo', 'lead_created', '2026-10-01T12:00:00Z', 'ynteligencia', 'v1', 's1', 'gclid-antigo', '', ''),
+      ('lead-novo', 'lead_created', '2026-10-02T12:00:00Z', 'agente_yincorp', 'v1', 's2', '', 'gbraid-novo', ''),
+      ('lead-vazio', 'lead_created', '2026-10-03T12:00:00Z', 'ynteligencia', 'v1', 's3', '', '', ''),
+      ('high-1', 'high_intent_buyer', '2026-10-01T13:00:00Z', 'ynteligencia', 'v1', 's1', 'gclid-antigo', '', ''),
+      ('view-1', 'property_view', '2026-10-01T11:00:00Z', 'ynteligencia', 'v1', 's1', 'gclid-antigo', '', '');
+  `);
+  assert.equal(psql(database, "select event_id from public.claim_google_lead_conversions(10)"), "lead-antigo\nlead-novo");
+  assert.equal(psql(database, "select count(*) from public.claim_google_lead_conversions(10)"), "0");
+  assert.equal(psql(database, "select status || ':' || attempts::text || ':' || last_error from public.google_ads_conversion_exports order by event_id"), "exported:1:\nexported:1:");
+  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports where event_id in ('high-1', 'view-1', 'lead-vazio')"), "0");
+
+  psql(database, "update public.google_ads_conversion_exports set status = 'failed', last_error = 'download perdido' where event_id = 'lead-novo'");
+  assert.equal(psql(database, "select event_id from public.claim_google_lead_conversions(10)"), "lead-novo");
+  assert.equal(psql(database, "select attempts::text || ':' || status || ':' || last_error from public.google_ads_conversion_exports where event_id = 'lead-novo'"), "2:exported:");
+
+  const columns = psql(database, `
+    select column_name from information_schema.columns
+    where table_schema = 'public' and table_name = 'google_ads_conversion_exports'
+    order by column_name
+  `);
+  assert.equal(columns, [
+    "attempts",
+    "conversion_name",
+    "created_at",
+    "event_id",
+    "exported_at",
+    "last_error",
+    "status"
+  ].join("\n"));
+  assert.equal(/nome|email|phone|telefone|whatsapp|summary|transcript|conversation/.test(columns), false);
+
+  psql(database, `
+    insert into public.ads_events (event_id, event_name, event_time, product, visitor_id, session_id, gclid)
+    values ('lead-svc', 'lead_created', '2026-10-04T12:00:00Z', 'ynteligencia', 'v1', 's4', 'gclid-svc')
+  `);
+  const asService = psql(database, `
+    begin;
+    set local role service_role;
+    select event_id from public.claim_google_lead_conversions(10);
+    commit;
+  `);
+  assert.equal(asService.split("\n").filter(line => !["BEGIN", "SET", "COMMIT"].includes(line)).join("\n"), "lead-svc");
+
+  let denied = "";
+  try {
+    psql(database, `
+      begin;
+      set local role anon;
+      select event_id from public.claim_google_lead_conversions(10);
+      commit;
+    `);
+  } catch (error) {
+    denied = String(error.stderr || error.message);
+  }
+  assert.match(denied, /permission denied/);
+  assert.equal(psql(database, "select count(*) from public.google_ads_conversion_exports"), "3");
 });
