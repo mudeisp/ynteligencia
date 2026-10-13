@@ -138,7 +138,7 @@
       state: clip(source.state, 40),
       region: clip(source.region, 80),
       property_type: clip(source.property_type || source.propertyType, 80),
-      purpose: clip(source.purpose || source.intention, 80)
+      purpose: clip(source.purpose || source.intention || source.finality, 80)
     };
   }
 
@@ -585,6 +585,48 @@
     };
   }
 
+  function canonicalText(value, max) {
+    const raw = String(value ?? "");
+    if (/[\r\n]/.test(raw)) return "";
+    const trimmed = raw.replace(/\s+/g, " ").trim();
+    if (!trimmed || trimmed === "0" || /^(?:false|null|undefined)$/i.test(trimmed)) return "";
+    if (trimmed[0] === "{" || trimmed[0] === "[") return "";
+    if (/"?(?:lead_summary|transcript|whatsapp|messages|conversation|contact|phone|email|message|name)"?\s*:/i.test(trimmed)) return "";
+    if (/"(?:lead_summary|transcript|whatsapp|messages|conversation|contact|phone|email|message|name)"/i.test(trimmed)) return "";
+    if (/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(trimmed)) return "";
+    if (/whatsapp|wa\.me/i.test(trimmed)) return "";
+    const digits = trimmed.replace(/\D/g, "");
+    if (/[0-9]{8,}/.test(trimmed) || (/[0-9][0-9\s().+\-]{6,}[0-9]/.test(trimmed) && digits.length >= 8)) return "";
+    if (trimmed.length > 200) return "";
+    return trimmed.slice(0, max);
+  }
+
+  function canonicalPreference(preference) {
+    const source = preference && typeof preference === "object" ? preference : {};
+    const values = {
+      city: canonicalText(source.city, 80),
+      state: canonicalText(source.state, 40),
+      region: canonicalText(source.region, 80),
+      property_type: canonicalText(source.property_type || source.propertyType, 80),
+      purpose: canonicalText(source.purpose || source.intention || source.finality, 80)
+    };
+    const stored = {};
+    for (const [key, value] of Object.entries(values)) {
+      if (value) stored[key] = value;
+    }
+    return stored;
+  }
+
+  function eventMetadata(event) {
+    const metadata = {
+      ...(event.metadata && typeof event.metadata === "object" ? event.metadata : {})
+    };
+    delete metadata.canonical_preference;
+    const canonical = canonicalPreference(event.preference);
+    if (Object.keys(canonical).length) metadata.canonical_preference = canonical;
+    return metadata;
+  }
+
   function eventRow(event, observed = {}) {
     const intent = event.intent || normalizeIntent(null);
     const property = event.property || normalizeProperty(null);
@@ -622,7 +664,7 @@
       observed_price_min: preference.price_min || null,
       observed_price_max: preference.price_max || null,
       observed_confidence: observed.observed_confidence || 0,
-      metadata: event.metadata || {}
+      metadata: eventMetadata(event)
     };
   }
 
@@ -967,11 +1009,27 @@
     console.error("BUYER_PROFILE_ERROR", status || (result && result.error) || "Error");
   }
 
+  function projectionOptionsFor(options = {}) {
+    if (Number.isFinite(Number(options.projectionDeadline))) return options;
+    const timeoutMs = Number(options.buyerProfileTimeoutMs) > 0
+      ? Number(options.buyerProfileTimeoutMs)
+      : (buyerProfiles && buyerProfiles.BUYER_PROFILE_TIMEOUT_MS) || 800;
+    return { ...options, projectionDeadline: Date.now() + timeoutMs };
+  }
+
   async function syncBuyerProfile(event, rest, options = {}) {
     if (!buyerProfiles || !event || !buyerProfiles.PROFILE_EVENTS.has(event.event_name)) return;
     const timeoutMs = Number(options.buyerProfileTimeoutMs) > 0
       ? Number(options.buyerProfileTimeoutMs)
       : buyerProfiles.BUYER_PROFILE_TIMEOUT_MS;
+    const deadline = Number.isFinite(Number(options.projectionDeadline))
+      ? Number(options.projectionDeadline)
+      : Date.now() + timeoutMs;
+    const remaining = deadline - Date.now();
+    if (!(remaining > 0)) {
+      console.error("BUYER_PROFILE_TIMEOUT");
+      return;
+    }
     const controller = typeof AbortController === "function" ? new AbortController() : null;
     let timedOut = false;
     let timer;
@@ -989,7 +1047,7 @@
             timedOut = true;
             if (controller) controller.abort();
             resolve({ ok: false, timeout: true });
-          }, timeoutMs);
+          }, remaining);
         })
       ]);
       if (timedOut || (result && result.timeout)) {
@@ -1061,12 +1119,14 @@
       ? priorViews.concat(event)
       : priorViews;
     const observed = observedIntentFromViews(viewsForObserved);
+    const row = eventRow(event, observed);
+    const projection = projectionOptionsFor(options);
     const inserted = await rest("ads_events", {
       method: "POST",
-      body: eventRow(event, observed)
+      body: row
     });
     if (!inserted.ok) return supabaseFailure(inserted);
-    await syncBuyerProfile(event, rest, options);
+    await syncBuyerProfile(row, rest, projection);
 
     const touch = touchPatch(visitor, event);
     if (observed.observed_intent) {
@@ -1099,10 +1159,11 @@
       const second = views[1] || views[views.length - 1];
       const extra = derivedEvent(event, "property_view_multiple", second.property, event.intent, observed);
       extra.event_id = createId();
-      const saved = await rest("ads_events", { method: "POST", body: eventRow(extra, observed) });
+      const extraRow = eventRow(extra, observed);
+      const saved = await rest("ads_events", { method: "POST", body: extraRow });
       if (!saved.ok) return supabaseFailure(saved);
       multipleId = extra.event_id;
-      await syncBuyerProfile(extra, rest, options);
+      await syncBuyerProfile(extraRow, rest, projection);
     }
 
     if (decision.high_intent && !names.has("high_intent_buyer")) {

@@ -482,6 +482,339 @@ test("visitor inválido e evento desconhecido não gravam", async () => {
   assert.equal(ledger, "0");
 });
 
+test("online e a linha de ads_events produzem as mesmas preferences", async () => {
+  const ads = require("./ads-intelligence.js");
+  const onlineVisitor = "77777777-7777-4777-8777-777777777777";
+  const backfillVisitor = "88888888-8888-4888-8888-888888888888";
+  const store = memoryAds();
+  const recorded = await ads.recordAdsEvent({
+    product: "ynteligencia",
+    event_id: "evt-1",
+    event_name: "ad_entry",
+    event_time: "2026-10-08T12:00:00.000Z",
+    visitor_id: onlineVisitor,
+    session_id: "canonical",
+    utm_source: "google",
+    utm_medium: "cpc",
+    utm_campaign: "campanha-x",
+    intent: {
+      neighborhood: "Perdizes",
+      city: "São Paulo",
+      state: "SP",
+      region: "Oeste",
+      property_type: "apartamento",
+      purpose: "comprar",
+      max_price: 900000
+    },
+    metadata: {
+      email: "maria@example.com",
+      lead_summary: "segredo",
+      transcript: "oi",
+      note: "origem",
+      canonical_preference: { city: "Hacker", name: "Maria" }
+    }
+  }, store.rest, new Date("2026-10-08T12:00:00.000Z"));
+  assert.equal(recorded.status, 200);
+  await ads.recordAdsEvent({
+    product: "ynteligencia",
+    event_id: "evt-2",
+    event_name: "ai_search",
+    event_time: "2026-10-08T12:05:00.000Z",
+    visitor_id: onlineVisitor,
+    session_id: "canonical",
+    intent: {
+      neighborhood: "Pinheiros",
+      city: "Campinas",
+      state: "SP",
+      region: "Leste",
+      propertyType: "casa",
+      finality: "investir",
+      min_price: 500000
+    }
+  }, store.rest, new Date("2026-10-08T12:05:00.000Z"));
+  await ads.recordAdsEvent({
+    product: "ynteligencia",
+    event_id: "evt-3",
+    event_name: "ai_search",
+    event_time: "2026-10-08T12:06:00.000Z",
+    visitor_id: onlineVisitor,
+    session_id: "canonical",
+    intent: {
+      city: '{"name":"Maria","lead_summary":"segredo"}',
+      purpose: '{"transcript":"oi"}'
+    }
+  }, store.rest, new Date("2026-10-08T12:06:00.000Z"));
+
+  const profileEvents = store.events.filter(row => buyer.PROFILE_EVENTS.has(row.event_name));
+  assert.equal(profileEvents.length, 3);
+  assert.deepEqual(store.events[0].metadata.canonical_preference, {
+    city: "São Paulo",
+    state: "SP",
+    region: "Oeste",
+    property_type: "apartamento",
+    purpose: "comprar"
+  });
+  assert.equal(store.events[0].metadata.note, "origem");
+  assert.equal(store.events[0].metadata.email, undefined);
+  assert.equal(store.events[0].preference, undefined);
+  assert.equal(store.events[0].intent, undefined);
+  assert.equal(JSON.stringify(store.events[0]).includes("maria@example.com"), false);
+  assert.equal(JSON.stringify(store.events[0]).includes("Hacker"), false);
+  assert.equal(store.events[2].metadata.canonical_preference, undefined);
+  assert.equal(JSON.stringify(store.events[2]).includes("Maria"), false);
+
+  for (const row of profileEvents) {
+    const onlinePayload = store.rpcCalls.find(call => call.event_id === row.event_id);
+    const reconstructed = buyer.toApplyPayload(JSON.parse(JSON.stringify(row)));
+    assert.deepEqual(onlinePayload, reconstructed);
+  }
+
+  for (const payload of store.rpcCalls) {
+    assert.equal((await apply({ ...payload, visitor_id: onlineVisitor })).status, "applied");
+  }
+  const online = await read(onlineVisitor);
+  await reset();
+  const reconstructed = profileEvents
+    .map(row => buyer.toApplyPayload(JSON.parse(JSON.stringify(row))))
+    .sort((left, right) => {
+      const time = String(left.event_time).localeCompare(String(right.event_time));
+      return time === 0 ? String(left.event_id).localeCompare(String(right.event_id)) : time;
+    })
+    .reverse();
+  for (const payload of reconstructed) {
+    assert.equal((await apply({ ...payload, visitor_id: backfillVisitor })).status, "applied");
+  }
+  const backfill = await read(backfillVisitor);
+  assert.deepEqual(online.preferences, backfill.preferences);
+  assert.equal(online.preferences.city, "Campinas");
+  assert.equal(online.preferences.state, "SP");
+  assert.equal(online.preferences.purpose, "investir");
+  assert.equal(online.preferences.min_price, 500000);
+  assert.equal(online.preferences.max_price, 900000);
+  assert.deepEqual(online.preferences.regions, ["Leste", "Oeste"]);
+  assert.deepEqual(online.preferences.neighborhoods, ["Perdizes", "Pinheiros"]);
+  assert.deepEqual(online.preferences.property_types, ["apartamento", "casa"]);
+  assert.equal(JSON.stringify(online.preferences).includes("Maria"), false);
+});
+
+test("troca de imóvel não herda nome nem bairro", async () => {
+  async function project(visitorId, events) {
+    for (const event of events) {
+      const applied = await apply({
+        visitor_id: visitorId,
+        event_name: "property_view",
+        session_id: "imovel",
+        ...event,
+        event_id: `${visitorId.slice(-4)}-${event.event_id}`
+      });
+      assert.equal(applied.status, "applied");
+    }
+    return (await read(visitorId)).behavior.last_property;
+  }
+
+  const complete = {
+    event_id: "evt-a",
+    event_time: "2026-10-08T12:00:00.000Z",
+    property_id: "A",
+    property_name: "Astorga",
+    property_neighborhood: "Perdizes"
+  };
+  const incomplete = {
+    event_id: "evt-b",
+    event_time: "2026-10-08T12:01:00.000Z",
+    property_id: "B",
+    property_name: null,
+    property_neighborhood: null
+  };
+  const expectedB = { property_id: "B", name: null, neighborhood: null };
+  const expectedA = { property_id: "A", name: "Astorga", neighborhood: "Perdizes" };
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111111", [complete, incomplete]), expectedB);
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111112", [incomplete, complete]), expectedB);
+
+  const earlyIncomplete = { ...incomplete, event_time: "2026-10-08T11:00:00.000Z" };
+  const laterComplete = { ...complete, event_time: "2026-10-08T12:02:00.000Z" };
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111113", [earlyIncomplete, laterComplete]), expectedA);
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111114", [laterComplete, earlyIncomplete]), expectedA);
+
+  const tiedComplete = { ...complete, event_id: "evt-a", event_time: "2026-10-08T12:03:00.000Z" };
+  const tiedIncomplete = { ...incomplete, event_id: "evt-z", event_time: "2026-10-08T12:03:00.000Z" };
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111115", [tiedComplete, tiedIncomplete]), expectedB);
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111116", [tiedIncomplete, tiedComplete]), expectedB);
+
+  const tiedWinner = { ...complete, event_id: "evt-z", event_time: "2026-10-08T12:04:00.000Z" };
+  const tiedLoser = { ...incomplete, event_id: "evt-m", event_time: "2026-10-08T12:04:00.000Z" };
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111117", [tiedLoser, tiedWinner]), expectedA);
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111118", [tiedWinner, tiedLoser]), expectedA);
+
+  assert.deepEqual(await project("12111111-1111-4111-8111-111111111119", [
+    complete,
+    {
+      event_id: "evt-same",
+      event_time: "2026-10-08T12:05:00.000Z",
+      property_id: "A",
+      property_name: "",
+      property_neighborhood: "   "
+    }
+  ]), expectedA);
+});
+
+test("atribuição rejeita JSON, lead e sentinelas sem apagar toque válido", async () => {
+  await apply({
+    event_id: "touch-valid",
+    event_name: "ad_entry",
+    gclid: "CLICK-OK",
+    utm_source: "google",
+    utm_medium: "cpc",
+    utm_campaign: "campanha-x"
+  });
+  await apply({
+    event_id: "touch-json",
+    event_name: "ad_entry",
+    event_time: "2026-10-08T13:00:00.000Z",
+    gclid: '{"name":"Maria"}',
+    gbraid: '{"lead_summary":"quer comprar"}',
+    wbraid: '{"transcript":"oi, quero visitar"}',
+    utm_source: "whatsapp",
+    utm_medium: '["phone","11999998888"]',
+    utm_campaign: "lead_summary: segredo\ntranscript: oi",
+    utm_term: "maria@example.com",
+    utm_content: "11988887777"
+  });
+  await apply({
+    event_id: "touch-more-json",
+    event_name: "ad_entry",
+    event_time: "2026-10-08T13:01:00.000Z",
+    gclid: "C".repeat(250),
+    gbraid: '{"message":"oi"}',
+    wbraid: '{"messages":["oi"]}',
+    utm_source: '{\\"name\\":\\"Maria\\"}',
+    utm_term: '{"conversation":"oi"}',
+    utm_content: '{"contact":"11999998888"}'
+  });
+  const profile = await read();
+  const touch = profile.attribution.current_touch;
+  assert.equal(touch.gclid, "CLICK-OK");
+  assert.equal(touch.utm_source, "google");
+  assert.equal(touch.utm_medium, "cpc");
+  assert.equal(touch.utm_campaign, "campanha-x");
+  assert.equal(touch.gbraid, undefined);
+  assert.equal(touch.wbraid, undefined);
+  assert.equal(touch.utm_term, undefined);
+  assert.equal(touch.utm_content, undefined);
+  assert.equal(profile.attribution.last_gclid, "CLICK-OK");
+  assert.equal(profile.attribution.last_utm_campaign, "campanha-x");
+  const serialized = JSON.stringify(profile);
+  assert.equal(serialized.includes("Maria"), false);
+  assert.equal(serialized.includes("lead_summary"), false);
+  assert.equal(serialized.includes("transcript"), false);
+  assert.equal(serialized.includes("maria@example.com"), false);
+  assert.equal(serialized.includes("11988887777"), false);
+  assert.equal(serialized.includes("11999998888"), false);
+  assert.equal(serialized.includes("whatsapp"), false);
+  assert.equal(serialized.includes("conversation"), false);
+
+  const medium = "13111111-1111-4111-8111-111111111111";
+  await apply({
+    visitor_id: medium,
+    event_id: "medium-email",
+    event_name: "ad_entry",
+    utm_medium: "email",
+    utm_source: "newsletter",
+    utm_campaign: "campanha-x",
+    gclid: "CLICK-OK"
+  });
+  const kept = await read(medium);
+  assert.equal(kept.attribution.current_touch.utm_medium, "email");
+  assert.equal(kept.attribution.current_touch.gclid, "CLICK-OK");
+  assert.equal(kept.attribution.current_touch.utm_campaign, "campanha-x");
+});
+
+test("zero e sentinelas não substituem gclid nem campanha", async () => {
+  await apply({
+    event_id: "touch-abc",
+    event_name: "ad_entry",
+    gclid: "ABC",
+    utm_campaign: "campanha-x",
+    utm_source: "google"
+  });
+  await apply({
+    event_id: "touch-zero",
+    event_name: "ad_entry",
+    event_time: "2026-10-08T14:00:00.000Z",
+    gclid: 0,
+    utm_campaign: "0",
+    utm_source: false,
+    utm_medium: "null",
+    utm_term: "undefined",
+    utm_content: "   ",
+    gbraid: "0",
+    wbraid: 0
+  });
+  const profile = await read();
+  assert.equal(profile.attribution.current_touch.gclid, "ABC");
+  assert.equal(profile.attribution.current_touch.utm_campaign, "campanha-x");
+  assert.equal(profile.attribution.current_touch.utm_source, "google");
+  assert.equal(profile.attribution.current_touch.utm_medium, undefined);
+  assert.equal(profile.attribution.current_touch.utm_term, undefined);
+  assert.equal(profile.attribution.last_gclid, "ABC");
+  assert.equal(profile.attribution.last_utm_campaign, "campanha-x");
+});
+
+function memoryAds() {
+  const events = [];
+  const visitors = [];
+  const rpcCalls = [];
+  const rest = async (requestPath, options = {}) => {
+    const method = options.method || "GET";
+    const [table, query = ""] = requestPath.split("?");
+    const params = new URLSearchParams(query);
+    const decode = value => value ? decodeURIComponent(value.replace(/^eq\./, "")) : "";
+    if (method === "POST" && table === "ads_events") {
+      events.push({ ...options.body });
+      return { ok: true, status: 201, data: null };
+    }
+    if (method === "POST" && table === "ads_visitors") {
+      visitors.push({ ...options.body });
+      return { ok: true, status: 201, data: null };
+    }
+    if (method === "PATCH" && table === "ads_visitors") {
+      const id = decode(params.get("visitor_id"));
+      const row = visitors.find(item => item.visitor_id === id);
+      Object.assign(row, options.body);
+      return { ok: true, status: 204, data: null };
+    }
+    if (method === "GET" && table === "ads_events") {
+      let rows = events.slice();
+      const visitorId = decode(params.get("visitor_id"));
+      const sessionId = decode(params.get("session_id"));
+      const name = decode(params.get("event_name"));
+      if (visitorId) rows = rows.filter(row => row.visitor_id === visitorId);
+      if (sessionId) rows = rows.filter(row => row.session_id === sessionId);
+      if (name) rows = rows.filter(row => row.event_name === name);
+      const descending = String(params.get("order") || "").endsWith("desc");
+      rows.sort((left, right) => descending
+        ? String(right.event_time).localeCompare(String(left.event_time))
+        : String(left.event_time).localeCompare(String(right.event_time)));
+      rows = rows.slice(0, Number(params.get("limit")) || rows.length);
+      const select = params.get("select");
+      if (select && select !== "*") {
+        rows = rows.map(row => Object.fromEntries(select.split(",").map(key => [key, row[key]])));
+      }
+      return { ok: true, status: 200, data: rows };
+    }
+    if (method === "GET" && table === "ads_visitors") {
+      const id = decode(params.get("visitor_id"));
+      return { ok: true, status: 200, data: visitors.filter(row => row.visitor_id === id) };
+    }
+    if (method === "POST" && table === "rpc/apply_buyer_profile_event") {
+      rpcCalls.push(options.body && options.body.p_event);
+      return { ok: true, status: 200, data: { status: "applied" } };
+    }
+    return { ok: false, status: 404, data: null };
+  };
+  return { events, visitors, rpcCalls, rest };
+}
+
 test("a projeção não cria function nova em /api e o backfill usa a RPC", () => {
   const files = fs.readdirSync(path.join(__dirname, "api")).filter(name => name.endsWith(".js"));
   assert.equal(files.length, 12);

@@ -5,10 +5,14 @@
   public.apply_buyer_profile_event. Este arquivo só traduz o evento
   já persistido e chama a RPC. Online e backfill usam o mesmo payload.
 
-  800 ms é o teto da resposta do evento. Uma RPC transacional local
-  costuma voltar em bem menos que 300 ms. Acima de 800 ms o fato em
-  ads_events já está gravado; a projeção se recupera pelo ledger no
-  backfill, sem segurar o cliente.
+  Cidade, estado, região, tipo e finalidade só entram se estiverem em
+  metadata.canonical_preference, gravado no ads_events. O objeto em
+  memória do pedido não é uma segunda fonte.
+
+  800 ms é o teto de todas as projeções do mesmo evento. Quem grava o
+  anúncio cria um único prazo e reparte o que ainda falta. Acima desse
+  prazo o fato em ads_events já está gravado; a projeção se recupera
+  pelo ledger no backfill, sem segurar o cliente.
 */
 
 const PROFILE_EVENTS = new Set([
@@ -22,8 +26,20 @@ const PROFILE_EVENTS = new Set([
 ]);
 const BUYER_PROFILE_TIMEOUT_MS = 800;
 
+const LEAD_KEY = /"(?:lead_summary|transcript|whatsapp|messages|conversation|contact|phone|email|message|name)"|(?:^|[^a-z0-9_])(?:lead_summary|transcript|whatsapp|messages|conversation|contact|phone|email|message|name)\s*:|\\?"(?:lead_summary|transcript|whatsapp|messages|conversation|contact|phone|email|message|name)\\?"\s*:/i;
+
 function text(value, max = 200) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function trackingText(value, max = 200) {
+  const raw = String(value ?? "");
+  if (/[\r\n]/.test(raw)) return "";
+  const trimmed = raw.replace(/\s+/g, " ").trim();
+  if (!trimmed || trimmed === "0" || /^(?:false|null|undefined)$/i.test(trimmed)) return "";
+  if (trimmed.length > max || trimmed[0] === "{" || trimmed[0] === "[") return "";
+  if (LEAD_KEY.test(trimmed)) return "";
+  return trimmed;
 }
 
 function toApplyPayload(input) {
@@ -37,7 +53,13 @@ function toApplyPayload(input) {
     max_price: source.declared_max_price,
     inventory_source: source.declared_inventory_source
   } : (source.intent || {});
-  const preference = source.preference && typeof source.preference === "object" ? source.preference : intent;
+  const metadata = source.metadata && typeof source.metadata === "object" ? source.metadata : {};
+  const storedPreference = metadata.canonical_preference && typeof metadata.canonical_preference === "object"
+    ? metadata.canonical_preference
+    : {};
+  const preference = fromRow
+    ? storedPreference
+    : (source.preference && typeof source.preference === "object" ? source.preference : intent);
   const property = fromRow ? {
     property_id: source.property_id,
     name: source.property_name,
@@ -50,14 +72,14 @@ function toApplyPayload(input) {
     visitor_id: text(source.visitor_id, 80),
     session_id: text(source.session_id, 120),
     product: text(source.product, 40),
-    gclid: text(source.gclid, 200),
-    gbraid: text(source.gbraid, 200),
-    wbraid: text(source.wbraid, 200),
-    utm_source: text(source.utm_source, 120),
-    utm_medium: text(source.utm_medium, 120),
-    utm_campaign: text(source.utm_campaign, 120),
-    utm_term: text(source.utm_term, 120),
-    utm_content: text(source.utm_content, 120),
+    gclid: trackingText(source.gclid, 200),
+    gbraid: trackingText(source.gbraid, 200),
+    wbraid: trackingText(source.wbraid, 200),
+    utm_source: trackingText(source.utm_source, 120),
+    utm_medium: trackingText(source.utm_medium, 120),
+    utm_campaign: trackingText(source.utm_campaign, 120),
+    utm_term: trackingText(source.utm_term, 120),
+    utm_content: trackingText(source.utm_content, 120),
     neighborhood: text(intent.neighborhood, 80),
     development: text(intent.development, 120),
     bedrooms: intent.bedrooms ?? 0,
@@ -68,7 +90,7 @@ function toApplyPayload(input) {
     state: text(preference.state, 40),
     region: text(preference.region, 80),
     property_type: text(preference.property_type || preference.propertyType, 80),
-    purpose: text(preference.purpose || preference.intention, 80),
+    purpose: text(preference.purpose || preference.intention || preference.finality, 80),
     property_id: text(property.property_id, 120),
     property_name: text(property.name, 180),
     property_neighborhood: text(property.neighborhood, 80)

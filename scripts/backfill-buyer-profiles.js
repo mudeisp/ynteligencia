@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /*
   Reconstrói buyer_profiles chamando a mesma RPC do caminho online.
-  Não recalcula estágio, toque nem contagem aqui.
+  O payload é toApplyPayload da linha de ads_events, inclusive
+  metadata.canonical_preference. Não recalcula estágio, toque nem contagem.
 
   Sem --apply, só conta. Sem BUYER_PROFILE_BACKFILL=1, não faz nada.
 

@@ -27,6 +27,7 @@
     drop function if exists public.buyer_profile_stage_name(integer);
     drop function if exists public.buyer_profile_stage_rank(text);
     drop function if exists public.buyer_profile_append_unique(jsonb, text);
+    drop function if exists public.buyer_profile_tracking(text, integer);
     drop function if exists public.buyer_profile_attribution(text);
     drop function if exists public.buyer_profile_positive(text);
     drop function if exists public.buyer_profile_clip(text, integer);
@@ -174,9 +175,26 @@ as $$
 declare
   v text;
   digits text;
+  keys text := 'lead_summary|transcript|whatsapp|messages|conversation|contact|phone|email|message|name';
 begin
+  if p_value is null or position(E'\n' in p_value) > 0 or position(E'\r' in p_value) > 0 then
+    return '';
+  end if;
+  v := btrim(p_value);
+  if v = '' or v = '0' or lower(v) in ('false', 'null', 'undefined') then
+    return '';
+  end if;
+  if left(v, 1) in ('{', '[') then
+    return '';
+  end if;
+  if lower(v) ~ ('"(' || keys || ')"')
+    or lower(v) ~ ('(^|[^a-z0-9_])(' || keys || ')[[:space:]]*:')
+    or lower(v) ~ ('\\*"(' || keys || ')\\*"[[:space:]]*:')
+  then
+    return '';
+  end if;
   v := public.buyer_profile_clip(p_value, 200);
-  if v = '' then
+  if v = '' or v = '0' or lower(v) in ('false', 'null', 'undefined') then
     return '';
   end if;
   if v ~* '[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}' then
@@ -191,6 +209,17 @@ begin
   end if;
   return v;
 end;
+$$;
+
+create or replace function public.buyer_profile_tracking(p_value text, p_max integer)
+returns text
+language sql
+immutable
+as $$
+  select case
+    when length(btrim(coalesce(p_value, ''))) > greatest(coalesce(p_max, 0), 0) then ''
+    else public.buyer_profile_attribution(p_value)
+  end;
 $$;
 
 create or replace function public.buyer_profile_append_unique(p_list jsonb, p_value text)
@@ -414,8 +443,8 @@ as $$
         when p.last_property_id = '' then null
         else jsonb_build_object(
           'property_id', p.last_property_id,
-          'name', p.last_property_name,
-          'neighborhood', p.last_property_neighborhood
+          'name', nullif(p.last_property_name, ''),
+          'neighborhood', nullif(p.last_property_neighborhood, '')
         )
       end,
       'last_search_summary', p.last_search_summary,
@@ -605,14 +634,14 @@ begin
   v_lead_inc := case when v_event_name = 'lead_created' then 1 else 0 end;
   v_declared := v_event_name in ('ai_search', 'ad_entry');
 
-  v_gclid := public.buyer_profile_attribution(p_event->>'gclid');
-  v_gbraid := public.buyer_profile_attribution(p_event->>'gbraid');
-  v_wbraid := public.buyer_profile_attribution(p_event->>'wbraid');
-  v_utm_source := public.buyer_profile_attribution(p_event->>'utm_source');
-  v_utm_medium := public.buyer_profile_attribution(p_event->>'utm_medium');
-  v_utm_campaign := public.buyer_profile_attribution(p_event->>'utm_campaign');
-  v_utm_term := public.buyer_profile_attribution(p_event->>'utm_term');
-  v_utm_content := public.buyer_profile_attribution(p_event->>'utm_content');
+  v_gclid := public.buyer_profile_tracking(p_event->>'gclid', 200);
+  v_gbraid := public.buyer_profile_tracking(p_event->>'gbraid', 200);
+  v_wbraid := public.buyer_profile_tracking(p_event->>'wbraid', 200);
+  v_utm_source := public.buyer_profile_tracking(p_event->>'utm_source', 120);
+  v_utm_medium := public.buyer_profile_tracking(p_event->>'utm_medium', 120);
+  v_utm_campaign := public.buyer_profile_tracking(p_event->>'utm_campaign', 120);
+  v_utm_term := public.buyer_profile_tracking(p_event->>'utm_term', 120);
+  v_utm_content := public.buyer_profile_tracking(p_event->>'utm_content', 120);
   if v_gclid <> '' then v_touch := v_touch || jsonb_build_object('gclid', v_gclid); end if;
   if v_gbraid <> '' then v_touch := v_touch || jsonb_build_object('gbraid', v_gbraid); end if;
   if v_wbraid <> '' then v_touch := v_touch || jsonb_build_object('wbraid', v_wbraid); end if;
@@ -745,6 +774,10 @@ begin
       v_observed := public.buyer_profile_append_unique(v_observed, v_property_neighborhood);
     end if;
     if v_property_event and v_property_id <> '' and public.buyer_profile_is_newer(v_time, v_event_id, v_property_time, v_property_event_id) then
+      if v_property_id is distinct from v_property_value then
+        v_property_name_value := '';
+        v_property_neighborhood_value := '';
+      end if;
       v_property_value := v_property_id;
       if v_property_name <> '' then
         v_property_name_value := v_property_name;

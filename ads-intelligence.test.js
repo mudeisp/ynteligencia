@@ -1227,6 +1227,68 @@ test("retry deduplicado não reprojeta o payload novo", async () => {
   assert.equal(JSON.stringify(store.rpcCalls[0]).includes("maria@example.com"), false);
 });
 
+test("duas projeções do mesmo evento compartilham um único prazo", async () => {
+  const store = memory();
+  await ads.recordAdsEvent(base({
+    event_name: "property_view",
+    property: { property_id: "orulo:a", name: "Astorga", neighborhood: "Perdizes" }
+  }), store.rest, new Date("2026-10-08T12:00:00.000Z"));
+  let slowCalls = 0;
+  const rest = (requestPath, options = {}) => {
+    if (requestPath.split("?")[0] === "rpc/apply_buyer_profile_event") {
+      slowCalls += 1;
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => resolve({ ok: true, status: 200, data: { status: "applied" } }), 5000);
+        if (options.signal) {
+          options.signal.addEventListener("abort", () => {
+            clearTimeout(timer);
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        }
+      });
+    }
+    return store.rest(requestPath, options);
+  };
+  const budget = 80;
+  const started = Date.now();
+  const result = await ads.recordAdsEvent(base({
+    event_name: "property_view",
+    property: { property_id: "orulo:b" }
+  }), rest, new Date("2026-10-08T12:01:00.000Z"), undefined, { buyerProfileTimeoutMs: budget });
+  const elapsed = Date.now() - started;
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.property_view_multiple, true);
+  assert.equal(slowCalls, 1);
+  assert.ok(elapsed < budget * 2, `elapsed ${elapsed}`);
+  assert.ok(elapsed >= budget - 25, `elapsed ${elapsed}`);
+});
+
+test("prazo da projeção não quebra handoff, agent_opened nem lead_created", async () => {
+  const store = memory();
+  const handoff = await ads.createHandoff(handoffBody(), store.rest, new Date("2026-10-09T18:00:00.000Z"), enabled);
+  assert.equal(handoff.status, 200);
+  assert.equal(handoff.body.success, true);
+  const opened = await ads.recordAdsEvent({
+    product: "agente_yincorp",
+    event_name: "agent_opened",
+    visitor_id: visitor,
+    session_id: session
+  }, store.rest, new Date("2026-10-09T18:01:00.000Z"));
+  assert.equal(opened.status, 200);
+  assert.equal(opened.body.success, true);
+  const lead = await ads.recordAdsEvent(base({
+    event_name: "lead_created"
+  }), store.rest, new Date("2026-10-09T18:02:00.000Z"));
+  assert.equal(lead.status, 200);
+  assert.equal(lead.body.success, true);
+  assert.equal(store.events.some(item => item.event_name === "agent_handoff_created"), true);
+  assert.equal(store.events.some(item => item.event_name === "agent_opened"), true);
+  assert.equal(store.events.some(item => item.event_name === "lead_created"), true);
+});
+
 test("timeout da projeção não muda a resposta do evento", async () => {
   const store = memory();
   const rest = (requestPath, options = {}) => {
