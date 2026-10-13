@@ -52,6 +52,7 @@
   const VISITOR_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const EXPLICIT_SEARCH_EVENTS = new Set(["ai_search", "ad_entry"]);
   const buyerProfiles = loadBuyerProfiles();
+  const qualityScores = loadQualityScores();
   const LEAD_CONVERSION_NAME = "Lead Created";
   /*
     15 minutos é a identidade lógica quando a YNTELIGENCIA e o Agent não
@@ -107,6 +108,15 @@
     if (typeof require !== "function") return null;
     try {
       return require("./buyer-profile.js");
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function loadQualityScores() {
+    if (typeof require !== "function") return null;
+    try {
+      return require("./quality-scoring.js");
     } catch (error) {
       return null;
     }
@@ -1386,6 +1396,10 @@
       const saved = await rest("ads_events", { method: "POST", body: eventRow(extra, observed) });
       if (!saved.ok) return supabaseFailure(saved);
       highIntentId = extra.event_id;
+    }
+
+    if (qualityScores && qualityScores.QUALITY_RECOMPUTE_EVENTS.has(event.event_name)) {
+      await qualityScores.syncQualityScore(event.visitor_id, rest);
     }
 
     return {
