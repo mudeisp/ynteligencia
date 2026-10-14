@@ -151,13 +151,31 @@ function plain(value, max = 500) {
   return value.replace(/[\u0000-\u001f]/g, "").trim().slice(0, max);
 }
 
-function preferenceValue(value) {
-  const text = plain(value, 80);
-  if (!text) return "";
-  if (text.includes("@")) return "";
-  if (/whatsapp|wa\.me/i.test(text)) return "";
-  if (/\d{8,}/.test(text)) return "";
+function containsPersonalData(value) {
+  const text = String(value);
+  if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text)) return true;
+  if (/whatsapp|wa\.me|mailto:|tel:/i.test(text)) return true;
+  if (/https?:\/\/|www\./i.test(text)) return true;
+  if (/\d{3}\.\d{3}\.\d{3}-\d{2}/.test(text)) return true;
+  if (/\(\d{2}\)\s*9?\d{4}-?\d{4}/.test(text)) return true;
+  if (/(?:\+55[\s.-]*)?\(?\d{2}\)?[\s.-]+9?\d{4}[\s.-]?\d{4}/.test(text)) return true;
+  const compact = text.trim();
+  if (!/^[+\d\s().-]+$/.test(compact)) return false;
+  const digits = compact.replace(/\D/g, "");
+  if (digits.length === 11) return true;
+  if (digits.length === 10 && /^[1-9][1-9]/.test(digits)) return true;
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) return true;
+  return false;
+}
+
+function publicText(value, max = 500) {
+  const text = plain(value, max);
+  if (!text || containsPersonalData(text)) return "";
   return text;
+}
+
+function preferenceValue(value) {
+  return publicText(value, 80);
 }
 
 function nullableNumber(value) {
@@ -194,14 +212,14 @@ function queryString(pairs) {
 
 function stringList(value) {
   if (!Array.isArray(value)) return [];
-  return value.map(item => plain(item, 80)).filter(Boolean);
+  return value.map(item => publicText(item, 80)).filter(Boolean);
 }
 
 function projectDeclared(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const intent = {
-    neighborhood: plain(value.neighborhood, 80),
-    development: plain(value.development, 180),
+    neighborhood: publicText(value.neighborhood, 80),
+    development: publicText(value.development, 180),
     bedrooms: nullableNumber(value.bedrooms),
     min_price: nullableNumber(value.min_price),
     max_price: nullableNumber(value.max_price),
@@ -215,7 +233,7 @@ function projectDeclared(value) {
 function projectObserved(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const intent = {
-    neighborhood: plain(value.neighborhood, 80),
+    neighborhood: publicText(value.neighborhood, 80),
     bedrooms: nullableNumber(value.bedrooms),
     price_min: nullableNumber(value.price_min),
     price_max: nullableNumber(value.price_max)
@@ -228,7 +246,8 @@ function projectTouch(value) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const touch = {};
   for (const key of TOUCH_KEYS) {
-    const text = plain(source[key], 200);
+    const opaque = key === "gclid" || key === "gbraid" || key === "wbraid";
+    const text = opaque ? plain(source[key], 200) : publicText(source[key], 200);
     if (text) touch[key] = text;
   }
   return touch;
@@ -303,24 +322,24 @@ export function projectEvent(row) {
     gclid: plain(source.gclid, 200),
     gbraid: plain(source.gbraid, 200),
     wbraid: plain(source.wbraid, 200),
-    utm_source: plain(source.utm_source, 120),
-    utm_medium: plain(source.utm_medium, 120),
-    utm_campaign: plain(source.utm_campaign, 120),
-    utm_term: plain(source.utm_term, 120),
-    utm_content: plain(source.utm_content, 120),
-    declared_neighborhood: plain(source.declared_neighborhood, 80),
-    declared_development: plain(source.declared_development, 180),
+    utm_source: publicText(source.utm_source, 120),
+    utm_medium: publicText(source.utm_medium, 120),
+    utm_campaign: publicText(source.utm_campaign, 120),
+    utm_term: publicText(source.utm_term, 120),
+    utm_content: publicText(source.utm_content, 120),
+    declared_neighborhood: publicText(source.declared_neighborhood, 80),
+    declared_development: publicText(source.declared_development, 180),
     declared_bedrooms: nullableNumber(source.declared_bedrooms),
     declared_min_price: nullableNumber(source.declared_min_price),
     declared_max_price: nullableNumber(source.declared_max_price),
     declared_inventory_source: plain(source.declared_inventory_source, 20),
     property_id: plain(source.property_id, 80),
-    property_neighborhood: plain(source.property_neighborhood, 80),
-    property_development: plain(source.property_development, 180),
+    property_neighborhood: publicText(source.property_neighborhood, 80),
+    property_development: publicText(source.property_development, 180),
     property_bedrooms: nullableNumber(source.property_bedrooms),
     property_price: nullableNumber(source.property_price),
     property_inventory_source: plain(source.property_inventory_source, 20),
-    observed_neighborhood: plain(source.observed_neighborhood, 80),
+    observed_neighborhood: publicText(source.observed_neighborhood, 80),
     observed_bedrooms: nullableNumber(source.observed_bedrooms),
     observed_price_min: nullableNumber(source.observed_price_min),
     observed_price_max: nullableNumber(source.observed_price_max),
@@ -345,8 +364,8 @@ export function projectProfile(row) {
     buyer_id: plain(row.buyer_id, 80) || null,
     stage: plain(row.stage, 40),
     preferences: {
-      city: plain(row.city, 80),
-      state: plain(row.state, 40),
+      city: publicText(row.city, 80),
+      state: publicText(row.state, 40),
       regions: stringList(row.regions),
       neighborhoods: stringList(row.neighborhoods),
       property_types: stringList(row.property_types),
@@ -355,7 +374,7 @@ export function projectProfile(row) {
       min_price: nullableNumber(row.min_price),
       max_price: nullableNumber(row.max_price),
       inventory_sources: stringList(row.inventory_sources),
-      purpose: plain(row.purpose, 80)
+      purpose: publicText(row.purpose, 80)
     },
     behavior: {
       total_sessions: count(row.total_sessions),
@@ -366,7 +385,7 @@ export function projectProfile(row) {
       total_leads: count(row.total_leads),
       last_property: propertyId ? {
         property_id: propertyId,
-        neighborhood: plain(row.last_property_neighborhood, 80)
+        neighborhood: publicText(row.last_property_neighborhood, 80)
       } : null,
       observed_neighborhoods: stringList(row.observed_neighborhoods)
     },
@@ -374,9 +393,9 @@ export function projectProfile(row) {
       first_touch: projectTouch(row.first_touch),
       current_touch: projectTouch(row.current_touch),
       last_gclid: plain(row.last_gclid, 200),
-      last_utm_source: plain(row.last_utm_source, 120),
-      last_utm_medium: plain(row.last_utm_medium, 120),
-      last_utm_campaign: plain(row.last_utm_campaign, 120)
+      last_utm_source: publicText(row.last_utm_source, 120),
+      last_utm_medium: publicText(row.last_utm_medium, 120),
+      last_utm_campaign: publicText(row.last_utm_campaign, 120)
     },
     first_seen_at: timeOrNull(row.first_seen_at),
     last_seen_at: timeOrNull(row.last_seen_at)
@@ -420,12 +439,12 @@ function projectVisitor(visitorId, row, profile, quality) {
     },
     utm: {
       first: {
-        utm_source: plain(row.first_utm_source, 120),
-        utm_campaign: plain(row.first_utm_campaign, 120)
+        utm_source: publicText(row.first_utm_source, 120),
+        utm_campaign: publicText(row.first_utm_campaign, 120)
       },
       last: {
-        utm_source: plain(row.last_utm_source, 120),
-        utm_campaign: plain(row.last_utm_campaign, 120)
+        utm_source: publicText(row.last_utm_source, 120),
+        utm_campaign: publicText(row.last_utm_campaign, 120)
       }
     },
     declared_intent: {

@@ -714,6 +714,121 @@ test("feed, intent-feed, sheet e google-conversions continuam nos próprios cont
   });
 });
 
+test("token unicode com o mesmo tamanho em caracteres não derruba a autenticação", async () => {
+  const store = await import("./ads-store.js");
+  const previousExport = process.env.ADS_EXPORT_TOKEN;
+  process.env.ADS_EXPORT_TOKEN = "bbbb";
+  try {
+    assert.equal(store.authorizedExport({
+      headers: { authorization: "Bearer ábbb" }
+    }), false);
+    assert.equal(store.authorizedExport({
+      headers: { authorization: "Bearer bbbb" }
+    }), true);
+  } finally {
+    if (previousExport === undefined) delete process.env.ADS_EXPORT_TOKEN;
+    else process.env.ADS_EXPORT_TOKEN = previousExport;
+  }
+
+  await withServer(serverEnv({
+    MIA_READ_TOKEN: "aaaa",
+    MIA_READ_TOKEN_PREVIOUS: "cccc"
+  }), () => jsonResponse([]), async calls => {
+    const current = await invoke(handler, miaRequest({}, { authorization: "Bearer áaaa" }));
+    assert.equal(current.error, undefined);
+    assert.equal(current.code, 401);
+    const previous = await invoke(handler, miaRequest({}, { authorization: "Bearer áccc" }));
+    assert.equal(previous.error, undefined);
+    assert.equal(previous.code, 401);
+    assert.equal(calls.length, 0);
+  });
+});
+
+test("pii dentro de campos textuais permitidos não sai na resposta", () => {
+  const event = mia.projectEvent({
+    event_id: "evt-pii-valor",
+    event_name: "property_view",
+    event_time: "2026-10-13T18:00:00.000Z",
+    product: "ynteligencia",
+    visitor_id: visitor,
+    session_id: "sess-1",
+    gclid: "EAIaIQobChMI-click",
+    gbraid: "",
+    wbraid: "",
+    utm_source: "google",
+    utm_medium: "cpc",
+    utm_campaign: "12345678",
+    utm_term: "moema",
+    utm_content: "ana@example.com",
+    declared_neighborhood: "ana@example.com",
+    declared_development: "11999999999",
+    declared_inventory_source: "novos",
+    property_id: "orulo-astorga",
+    property_neighborhood: "Moema",
+    property_development: "(11) 98888-7777",
+    observed_neighborhood: "123.456.789-09",
+    conversion_gclid: "EAIa-conversao",
+    conversion_gbraid: "",
+    conversion_wbraid: "",
+    conversion_click_source: ""
+  });
+  const profile = mia.projectProfile({
+    visitor_id: visitor,
+    buyer_id: "buyer-1",
+    stage: "exploring",
+    city: "São Paulo",
+    state: "SP",
+    regions: [],
+    neighborhoods: ["11988887777", "Moema"],
+    property_types: ["apartamento"],
+    purpose: "morar",
+    last_property_id: "orulo-astorga",
+    last_property_neighborhood: "Moema",
+    observed_neighborhoods: ["Moema"],
+    first_touch: {
+      gclid: "EAIaIQobChMI-click",
+      utm_term: "ana@example.com",
+      utm_campaign: "12345678"
+    },
+    current_touch: { utm_source: "wa.me/5511999999999" },
+    last_gclid: "EAIaIQobChMI-click",
+    last_utm_source: "google",
+    last_utm_medium: "cpc",
+    last_utm_campaign: "12345678",
+    first_seen_at: "2026-10-13T18:00:00.000Z",
+    last_seen_at: "2026-10-13T18:00:00.000Z"
+  });
+  assert.equal(event.declared_neighborhood, "");
+  assert.equal(event.declared_development, "");
+  assert.equal(event.utm_content, "");
+  assert.equal(event.property_development, "");
+  assert.equal(event.observed_neighborhood, "");
+  assert.equal(event.utm_campaign, "12345678");
+  assert.equal(event.gclid, "EAIaIQobChMI-click");
+  assert.equal(event.conversion_attribution.gclid, "EAIa-conversao");
+  assert.equal(event.property_id, "orulo-astorga");
+  assert.equal(event.visitor_id, visitor);
+  assert.equal(event.property_neighborhood, "Moema");
+  assert.deepEqual(profile.preferences.neighborhoods, ["Moema"]);
+  assert.equal(profile.buyer_id, "buyer-1");
+  assert.deepEqual(profile.attribution.first_touch, {
+    gclid: "EAIaIQobChMI-click",
+    utm_campaign: "12345678"
+  });
+  assert.deepEqual(profile.attribution.current_touch, {});
+  const dumped = JSON.stringify({ event, profile });
+  for (const secret of [
+    "ana@example.com",
+    "11999999999",
+    "11988887777",
+    "98888-7777",
+    "123.456.789-09",
+    "wa.me"
+  ]) {
+    assert.equal(dumped.includes(secret), false, secret);
+  }
+});
+
 test("a função de anúncios continua sendo um único arquivo", () => {
   const files = fs.readdirSync(path.join(__dirname, "api")).filter(name => name.endsWith(".js"));
   assert.equal(files.filter(name => name.startsWith("ads")).join(), "ads.js");

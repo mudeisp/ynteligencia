@@ -87,8 +87,15 @@ function bearerToken(req) {
 }
 
 function tokenEquals(provided, expected) {
-  if (!expected || !provided || provided.length !== expected.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+  if (!expected || !provided) return false;
+  try {
+    const providedBuffer = Buffer.from(provided);
+    const expectedBuffer = Buffer.from(expected);
+    if (providedBuffer.length !== expectedBuffer.length) return false;
+    return crypto.timingSafeEqual(providedBuffer, expectedBuffer);
+  } catch (error) {
+    return false;
+  }
 }
 
 export function authorizedExport(req) {
