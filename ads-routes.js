@@ -2,11 +2,22 @@ import {
   ads,
   applyCors,
   authorizedExport,
+  authorizedMiaRead,
   deploymentOrigins,
   readBody,
   rest,
   supabaseConfigured
 } from "./ads-store.js";
+import {
+  eventsPath,
+  parseMiaReadQuery,
+  profilesPath,
+  projectMiaRead,
+  scoresPath,
+  sliceEventPage,
+  uniqueVisitorIds,
+  visitorsPath
+} from "./mia-read.js";
 
 function unavailable(res) {
   return res.status(500).json({
@@ -303,4 +314,102 @@ export async function handleAdsGoogleConversions(req, res) {
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.status(200);
   return res.end(ads.googleAdsConversionsCsv(rows));
+}
+
+function miaReply(res, status, body) {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  return res.status(status).json(body);
+}
+
+function miaQuery(req) {
+  const query = {};
+  if (req.query && typeof req.query === "object") {
+    Object.assign(query, req.query);
+  }
+  if (!req.url) return query;
+  try {
+    const url = new URL(req.url, "https://app.yincorp.com.br");
+    for (const [key, value] of url.searchParams.entries()) {
+      if (query[key] === undefined) query[key] = value;
+    }
+  } catch (error) {
+    return null;
+  }
+  return query;
+}
+
+function miaRows(result) {
+  if (!result || !result.ok || !Array.isArray(result.data)) return null;
+  return result.data;
+}
+
+export async function handleAdsMiaRead(req, res) {
+  if (req.method !== "GET") {
+    return miaReply(res, 405, { success: false, error: "Method not allowed" });
+  }
+  if (!process.env.MIA_READ_TOKEN) {
+    return miaReply(res, 503, { success: false, error: "MIA_READ_TOKEN não configurado" });
+  }
+  if (!authorizedMiaRead(req)) {
+    return miaReply(res, 401, { success: false, error: "Não autorizado" });
+  }
+  if (!supabaseConfigured()) {
+    return miaReply(res, 503, {
+      success: false,
+      error: "Supabase não configurado para a camada de anúncios"
+    });
+  }
+
+  const query = miaQuery(req);
+  if (!query) {
+    return miaReply(res, 400, { success: false, error: "from ou to inválido" });
+  }
+  const parsed = parseMiaReadQuery(query, new Date());
+  if (!parsed.ok) {
+    return miaReply(res, 400, { success: false, error: parsed.error });
+  }
+
+  try {
+    const eventsResult = miaRows(await rest(eventsPath(parsed), { method: "GET" }));
+    if (!eventsResult) {
+      return miaReply(res, 502, { success: false, error: "Não foi possível ler os eventos de anúncio" });
+    }
+    const pageSlice = sliceEventPage(eventsResult, parsed.limit);
+    const visitorIds = uniqueVisitorIds(pageSlice.rows);
+    let visitorRows = [];
+    let profileRows = [];
+    let scoreRows = [];
+    if (visitorIds.length) {
+      const [visitors, profiles, scores] = await Promise.all([
+        rest(visitorsPath(visitorIds), { method: "GET" }),
+        rest(profilesPath(visitorIds), { method: "GET" }),
+        rest(scoresPath(visitorIds), { method: "GET" })
+      ]);
+      visitorRows = miaRows(visitors);
+      profileRows = miaRows(profiles);
+      scoreRows = miaRows(scores);
+      if (!visitorRows || !profileRows || !scoreRows) {
+        return miaReply(res, 502, { success: false, error: "Não foi possível ler os eventos de anúncio" });
+      }
+    }
+    return miaReply(res, 200, projectMiaRead({
+      visitorIds,
+      events: pageSlice.rows,
+      visitors: visitorRows,
+      profiles: profileRows,
+      scores: scoreRows,
+      generatedAt: new Date().toISOString(),
+      page: {
+        limit: parsed.limit,
+        from: parsed.from,
+        to: parsed.to,
+        has_more: pageSlice.hasMore,
+        next_cursor: pageSlice.nextCursor
+      }
+    }));
+  } catch (error) {
+    console.error("ADS_MIA_READ_ERROR", error && error.name ? error.name : "Error");
+    return miaReply(res, 502, { success: false, error: "Não foi possível ler os eventos de anúncio" });
+  }
 }

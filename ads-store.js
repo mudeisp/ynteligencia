@@ -80,14 +80,25 @@ export function readBody(req) {
   return req.body;
 }
 
-export function authorizedExport(req) {
-  const expected = process.env.ADS_EXPORT_TOKEN || "";
-  const header = String(req.headers.authorization || "");
-  const provided = header.toLowerCase().startsWith("bearer ")
-    ? header.slice(7).trim()
-    : "";
+function bearerToken(req) {
+  const headers = req && req.headers ? req.headers : {};
+  const header = String(headers.authorization || headers.Authorization || "");
+  return header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
+}
+
+function tokenEquals(provided, expected) {
   if (!expected || !provided || provided.length !== expected.length) return false;
   return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+}
+
+export function authorizedExport(req) {
+  return tokenEquals(bearerToken(req), process.env.ADS_EXPORT_TOKEN || "");
+}
+
+export function authorizedMiaRead(req) {
+  const provided = bearerToken(req);
+  if (tokenEquals(provided, process.env.MIA_READ_TOKEN || "")) return true;
+  return tokenEquals(provided, process.env.MIA_READ_TOKEN_PREVIOUS || "");
 }
 
 export { ads };

@@ -3,6 +3,7 @@ import {
   handleAdsFeed,
   handleAdsGoogleConversions,
   handleAdsIntentFeed,
+  handleAdsMiaRead,
   handleAdsSheet,
   handleCreateHandoff,
   handleGetHandoff
@@ -15,7 +16,8 @@ const actions = {
   sheet: handleAdsSheet,
   "google-conversions": handleAdsGoogleConversions,
   "create-handoff": handleCreateHandoff,
-  "get-handoff": handleGetHandoff
+  "get-handoff": handleGetHandoff,
+  "mia-read": handleAdsMiaRead
 };
 
 function requestAction(req) {
