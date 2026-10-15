@@ -60,6 +60,9 @@ test("o formulário reutiliza /api/lead, sessão e visitante existentes", () => 
   assert.match(html, /fetch\(\s*"\/api\/lead"/);
   assert.match(html, /session_id:\s*YNTELIGENCIA_SESSION_ID/);
   assert.match(html, /visitor_id:\s*YNTELIGENCIA_VISITOR_ID/);
+  assert.match(html, /lead_event_id:\s*leadEventId/);
+  assert.equal(html.includes("supabaseCreateLead"), false);
+  assert.equal(html.includes("/rest/v1/leads"), false);
   assert.match(html, /ai_lead_submitted/);
   assert.match(html, /ai_lead_success/);
   assert.match(html, /ai_lead_error/);
@@ -438,4 +441,272 @@ test("origens do lead", async () => {
   assert.equal(preview.code, 400);
   assert.equal(random.code, 403);
   assert.equal(other.code, 403);
+});
+
+test("telemetria de lead não leva PII e o fluxo para se a API não confirma", () => {
+  const { html } = loadHelpers();
+  const submit = html.indexOf('fetch(\n              "/api/lead"');
+  const persisted = html.indexOf("if(!leadPersisted)", submit);
+  const ads = html.indexOf('yntAdsTrack("lead_created"', submit);
+  const conversion = html.indexOf("'transaction_id': conversionId", submit);
+  const telemetry = html.indexOf('supabaseTrack(\n            "lead_created"', submit);
+  const meta = html.indexOf("fbq(", submit);
+  const failure = html.indexOf("Não foi possível enviar agora", submit);
+  assert.ok(submit > 0 && persisted > submit && ads > persisted && conversion > ads && telemetry > conversion && meta > telemetry && failure > meta);
+  const block = html.slice(telemetry, meta);
+  for (const forbidden of ["lead.name", "lead.phone", "lead.email", "lead.lead_summary", "lead.conversation", "conversation_text", "...profile"]) {
+    assert.equal(block.includes(forbidden), false, forbidden);
+  }
+  assert.match(block, /lead_event_id:\s*\n\s*leadEventId/);
+  assert.match(block, /success:\s*true/);
+  assert.match(html, /visitor_id:\s*\n\s*YNTELIGENCIA_VISITOR_ID/);
+  assert.match(html, /session_id:\s*\n\s*YNTELIGENCIA_SESSION_ID/);
+  assert.match(html.slice(submit, ads), /lead_event_id:\s*\n\s*leadEventId/);
+  assert.match(html.slice(ads, conversion), /event_id:\s*leadEventId/);
+  assert.match(html.slice(ads, conversion), /recordedLead && recordedLead\.event_id/);
+  for (const name of [
+    "session_start",
+    "catalog_search_results",
+    "catalog_load_more",
+    "property_view",
+    "property_interest",
+    "property_whatsapp_click",
+    "ai_assistant_open",
+    "ai_assistant_message",
+    "push_subscribed",
+    "push_click"
+  ]) {
+    assert.equal(html.includes(`"${name}"`), true, name);
+  }
+});
+
+function leadRequest(body) {
+  return {
+    method: "POST",
+    headers: { origin: "https://app.yincorp.com.br" },
+    body
+  };
+}
+
+async function withLeadFetch(fetchImpl, body) {
+  const original = global.fetch;
+  const keys = [
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_SECRET_KEY",
+    "PRAEDIUM_WEBHOOK_URL",
+    "PRAEDIUM_URL",
+    "RESEND_API_KEY",
+    "META_CAPI_TOKEN"
+  ];
+  const saved = Object.fromEntries(keys.map(key => [key, process.env[key]]));
+  global.fetch = fetchImpl;
+  process.env.SUPABASE_URL = "https://supabase.test";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "service-test";
+  delete process.env.SUPABASE_SECRET_KEY;
+  delete process.env.PRAEDIUM_WEBHOOK_URL;
+  delete process.env.PRAEDIUM_URL;
+  delete process.env.RESEND_API_KEY;
+  delete process.env.META_CAPI_TOKEN;
+  try {
+    const { default: handler } = await import(`./api/lead.js?hygiene=${Date.now()}-${Math.random()}`);
+    return await new Promise((resolve, reject) => {
+      const res = {
+        setHeader() {},
+        status(code) { this.statusCode = code; return this; },
+        json(value) { resolve({ ...value, httpStatus: this.statusCode || 200 }); }
+      };
+      Promise.resolve(handler(leadRequest(body), res)).catch(reject);
+    });
+  } finally {
+    global.fetch = original;
+    for (const key of keys) {
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
+  }
+}
+
+function baseLead(extra = {}) {
+  return {
+    nome: "Ana Teste",
+    telefone: "11999999999",
+    email: "ana@example.com",
+    origem: "ynteligencia",
+    property_id: "orulo:76171:118181",
+    property_name: "Marka Perdizes",
+    neighborhood: "Perdizes",
+    property_value: 799000,
+    bedrooms: 2,
+    inventory_source: "novos",
+    session_id: "session-atual",
+    visitor_id: "11111111-1111-4111-8111-111111111111",
+    gclid: "gclid-teste",
+    lead_summary: "Cliente busca imóvel em Perdizes.",
+    perfil: "investidor",
+    ...extra
+  };
+}
+
+test("um lead_event_id cria uma linha e o retry não insere de novo", async () => {
+  const rows = [];
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    const method = options.method || "GET";
+    const body = options.body ? JSON.parse(options.body) : null;
+    calls.push({ url: String(url), method, body });
+    if (String(url).includes("/rest/v1/leads") && method === "GET") {
+      return { ok: true, status: 200, text: async () => JSON.stringify(rows), json: async () => rows };
+    }
+    if (String(url).includes("/rest/v1/leads") && method === "POST") {
+      rows.push({
+        session_id: body.session_id,
+        visitor_id: body.metadata.visitor_id,
+        property_id: body.metadata.property.id
+      });
+      return { ok: true, status: 201, text: async () => "", json: async () => ({}) };
+    }
+    return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
+  };
+  const leadEventId = "11111111-2222-4333-8444-555555555555";
+  const first = await withLeadFetch(fetchImpl, baseLead({
+    lead_event_id: leadEventId,
+    session: { number: 2, is_returning: true, previous_session_id: "session-anterior", days_since_last_visit: 3 },
+    declared_profile: {
+      region: "Perdizes",
+      budget: 900000,
+      bedrooms: 2,
+      feature: ["varanda", "11999999999"]
+    },
+    touches: {
+      current_touch: { gclid: "Cj0KCQjw12345678", utm_campaign: "marca", landing_page: "https://app.yincorp.com.br/?gclid=Cj0KCQjw12345678" }
+    }
+  }));
+  const postsAfterFirst = calls.filter(call => call.url.includes("/rest/v1/leads") && call.method === "POST");
+  const second = await withLeadFetch(fetchImpl, baseLead({ lead_event_id: leadEventId }));
+  const posts = calls.filter(call => call.url.includes("/rest/v1/leads") && call.method === "POST");
+  const row = postsAfterFirst[0].body;
+
+  assert.equal(first.success, true);
+  assert.equal(first.supabase, true);
+  assert.equal(second.success, true);
+  assert.equal(second.supabase, true);
+  assert.equal(posts.length, 1);
+  assert.equal(row.name, "Ana Teste");
+  assert.equal(row.phone, "11999999999");
+  assert.equal(row.email, "ana@example.com");
+  assert.equal(row.session_id, "session-atual");
+  assert.equal(row.metadata.visitor_id, "11111111-1111-4111-8111-111111111111");
+  assert.equal(row.metadata.lead_event_id, leadEventId);
+  assert.equal(row.metadata.profile, "investidor");
+  assert.equal(row.metadata.property.id, "orulo:76171:118181");
+  assert.equal(row.metadata.attribution.gclid, "gclid-teste");
+  assert.equal(row.metadata.session.number, 2);
+  assert.equal(row.metadata.session.is_returning, true);
+  assert.equal(row.metadata.declared_profile.region, "Perdizes");
+  assert.equal(row.metadata.declared_profile.feature.includes("11999999999"), false);
+  assert.equal(row.metadata.touches.current_touch.gclid, "Cj0KCQjw12345678");
+  assert.equal(JSON.stringify(row.metadata).includes("lead.conversation"), false);
+});
+
+test("falha da busca por lead_event_id ainda grava a linha operacional", async () => {
+  const calls = [];
+  const payload = await withLeadFetch(async (url, options = {}) => {
+    const method = options.method || "GET";
+    calls.push({ url: String(url), method, body: options.body ? JSON.parse(options.body) : null });
+    if (String(url).includes("/rest/v1/leads") && method === "GET") {
+      return { ok: false, status: 400, text: async () => "schema", json: async () => ({}) };
+    }
+    if (String(url).includes("/rest/v1/leads") && method === "POST") {
+      return { ok: true, status: 201, text: async () => "", json: async () => ({}) };
+    }
+    return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
+  }, baseLead({ lead_event_id: "lead-abc123def" }));
+
+  const posts = calls.filter(call => call.url.includes("/rest/v1/leads") && call.method === "POST");
+  assert.equal(payload.success, true);
+  assert.equal(payload.supabase, true);
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].body.metadata.lead_event_id, "lead-abc123def");
+});
+
+test("lead_event_id inválido não vira chave e não consulta a tabela", async () => {
+  const calls = [];
+  await withLeadFetch(async (url, options = {}) => {
+    calls.push({ url: String(url), method: options.method || "GET", body: options.body ? JSON.parse(options.body) : null });
+    return { ok: true, status: 201, text: async () => "", json: async () => ({}) };
+  }, baseLead({ lead_event_id: "ana@example.com" }));
+
+  const leads = calls.filter(call => call.url.includes("/rest/v1/leads"));
+  assert.equal(leads.some(call => call.method === "GET"), false);
+  assert.equal(leads.filter(call => call.method === "POST").length, 1);
+  assert.equal(leads.find(call => call.method === "POST").body.metadata.lead_event_id, undefined);
+});
+
+const storedLead = {
+  session_id: "session-atual",
+  visitor_id: "11111111-1111-4111-8111-111111111111",
+  property_id: "orulo:76171:118181"
+};
+
+async function postAgainstStoredLead(override) {
+  const calls = [];
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    warnings.push(args.map(item => String(item)).join(" "));
+  };
+  try {
+    const payload = await withLeadFetch(async (url, options = {}) => {
+      const method = options.method || "GET";
+      const body = options.body ? JSON.parse(options.body) : null;
+      calls.push({ url: String(url), method, body });
+      if (String(url).includes("/rest/v1/leads") && method === "GET") {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify([storedLead]),
+          json: async () => [storedLead]
+        };
+      }
+      if (String(url).includes("/rest/v1/leads") && method === "POST") {
+        return { ok: true, status: 201, text: async () => "", json: async () => ({}) };
+      }
+      return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
+    }, baseLead({
+      lead_event_id: "11111111-2222-4333-8444-555555555555",
+      ...override
+    }));
+    return { payload, calls, warnings };
+  } finally {
+    console.warn = originalWarn;
+  }
+}
+
+function assertLeadConflict(result) {
+  const posts = result.calls.filter(call => call.url.includes("/rest/v1/leads") && call.method === "POST");
+  const serialized = JSON.stringify(result.payload) + result.warnings.join("\n");
+  assert.equal(posts.length, 0);
+  assert.equal(result.payload.httpStatus, 409);
+  assert.equal(result.payload.success, false);
+  assert.equal(result.payload.supabase, false);
+  assert.equal(result.payload.error, "lead_event_id_conflict");
+  assert.equal(serialized.includes("Ana Teste"), false);
+  assert.equal(serialized.includes("11999999999"), false);
+  assert.equal(serialized.includes("ana@example.com"), false);
+  assert.equal(result.calls.some(call => call.url.includes("api.resend.com")), false);
+}
+
+test("mesmo lead_event_id com outra sessão não deduplica", async () => {
+  assertLeadConflict(await postAgainstStoredLead({ session_id: "session-outra" }));
+});
+
+test("mesmo lead_event_id com outro visitante não deduplica", async () => {
+  assertLeadConflict(await postAgainstStoredLead({
+    visitor_id: "22222222-2222-4222-8222-222222222222"
+  }));
+});
+
+test("mesmo lead_event_id com outro imóvel não deduplica", async () => {
+  assertLeadConflict(await postAgainstStoredLead({ property_id: "orulo:outro" }));
 });
