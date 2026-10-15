@@ -848,6 +848,9 @@ export default async function handler(req, res) {
     let supabaseOk =
       false;
 
+    let leadConflict =
+      false;
+
 
     if (
       supabaseUrl &&
@@ -855,6 +858,51 @@ export default async function handler(req, res) {
     ) {
 
       try {
+
+        const leadEventId =
+          logicalLeadEventId(
+            body.lead_event_id
+          );
+
+        const sessionContext =
+          leadSessionContext(
+            body.session
+          );
+
+        const profileAnswers =
+          declaredProfile(
+            body.declared_profile
+          );
+
+        const touches =
+          leadTouches(
+            body.touches
+          );
+
+        const leadLookup =
+          leadEventId
+            ? await findOperationalLead(
+                supabaseUrl,
+                supabaseKey,
+                leadEventId,
+                sessionId,
+                visitorId,
+                propertyId
+              )
+            : "absent";
+
+
+        if (leadLookup === "match") {
+
+          supabaseOk =
+            true;
+
+        } else if (leadLookup === "conflict") {
+
+          leadConflict =
+            true;
+
+        } else {
 
         const supabasePayload = {
 
@@ -977,7 +1025,19 @@ export default async function handler(req, res) {
               source:
                 inventorySource
 
-            }
+            },
+
+            ...leadCorrelation(
+
+              leadEventId,
+
+              sessionContext,
+
+              profileAnswers,
+
+              touches
+
+            )
 
           }
 
@@ -1071,6 +1131,8 @@ export default async function handler(req, res) {
 
         }
 
+        }
+
 
       } catch (error) {
 
@@ -1092,6 +1154,28 @@ export default async function handler(req, res) {
         "SUPABASE_URL/SUPABASE_SECRET_KEY não configurado."
 
       );
+
+    }
+
+
+    if (leadConflict) {
+
+      console.warn(
+        "SUPABASE_LEAD_EVENT_CONFLICT"
+      );
+
+      return res
+        .status(409)
+        .json({
+
+          success: false,
+
+          error:
+            "lead_event_id_conflict",
+
+          supabase: false
+
+        });
 
     }
 
@@ -1757,6 +1841,153 @@ function currentDeploymentOrigins() {
 function isYnteligenciaV2Lead(origem) {
   const value = String(origem || "").trim().toLowerCase();
   return value === "ynteligencia" || value.startsWith("ynteligencia_");
+}
+
+function logicalLeadEventId(value) {
+  const id = clean(value);
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(id)) return "";
+  return id;
+}
+
+function leadText(value, max) {
+  const text = clean(value).slice(0, max);
+  if (!text || /@|whatsapp|wa\.me|\d{8,}/i.test(text)) return "";
+  return text;
+}
+
+function leadSessionContext(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const number = Number(value.number);
+  const days = Number(value.days_since_last_visit);
+  const previous = clean(value.previous_session_id || "").slice(0, 120);
+  const stored = {};
+  if (Number.isFinite(number) && number >= 1 && number < 100000) {
+    stored.number = Math.floor(number);
+  }
+  if (typeof value.is_returning === "boolean") stored.is_returning = value.is_returning;
+  if (/^[A-Za-z0-9_-]{8,120}$/.test(previous)) stored.previous_session_id = previous;
+  if (Number.isFinite(days) && days >= 0 && days < 10000) stored.days_since_last_visit = days;
+  return Object.keys(stored).length ? stored : null;
+}
+
+function declaredProfile(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const list = items => Array.isArray(items)
+    ? items.map(item => leadText(item, 40)).filter(Boolean).slice(0, 12)
+    : [];
+  const amount = item => {
+    const number = Number(item);
+    return Number.isFinite(number) && number >= 0 && number < 1e12 ? number : 0;
+  };
+  const bedrooms = Number(value.bedrooms);
+  const stored = {
+    purpose: leadText(value.purpose, 40),
+    region: leadText(value.region, 80),
+    budget: amount(value.budget),
+    budget_min: amount(value.budget_min ?? value.budgetMin),
+    budget_max: amount(value.budget_max ?? value.budgetMax),
+    budget_label: leadText(value.budget_label ?? value.budgetLabel, 40),
+    bedrooms: Number.isFinite(bedrooms) ? Math.max(0, Math.min(20, Math.floor(bedrooms))) : null,
+    timing: leadText(value.timing, 40),
+    types: list(value.types),
+    feature: list(value.feature)
+  };
+  const filled = Object.entries(stored).filter(([, item]) => {
+    if (Array.isArray(item)) return item.length > 0;
+    return item !== "" && item !== 0 && item !== null;
+  });
+  return filled.length ? Object.fromEntries(filled) : null;
+}
+
+function leadTouch(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const attribution = [
+    "gclid", "gbraid", "wbraid",
+    "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"
+  ];
+  const context = ["source", "medium", "referrer", "landing_page", "captured_at"];
+  const stored = {};
+  for (const key of attribution) {
+    const text = clean(value[key]).slice(0, 500);
+    if (text) stored[key] = text;
+  }
+  for (const key of context) {
+    const text = clean(value[key]).slice(0, 500);
+    if (!text || /@|\d{8,}/.test(text)) continue;
+    stored[key] = text;
+  }
+  return Object.keys(stored).length ? stored : null;
+}
+
+function leadTouches(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const stored = {
+    first_touch: leadTouch(value.first_touch),
+    current_touch: leadTouch(value.current_touch),
+    previous_touch: leadTouch(value.previous_touch)
+  };
+  const filled = Object.fromEntries(Object.entries(stored).filter(([, item]) => item));
+  return Object.keys(filled).length ? filled : null;
+}
+
+function leadCorrelation(leadEventId, sessionContext, profileAnswers, touches) {
+  return {
+    ...(leadEventId ? { lead_event_id: leadEventId } : {}),
+    ...(sessionContext ? { session: sessionContext } : {}),
+    ...(profileAnswers ? { declared_profile: profileAnswers } : {}),
+    ...(touches ? { touches } : {})
+  };
+}
+
+function classifyOperationalLead(rows, sessionId, visitorId, propertyId) {
+  if (!Array.isArray(rows)) return "unavailable";
+  if (rows.length === 0) return "absent";
+  const wantedSession = clean(sessionId);
+  const wantedVisitor = clean(visitorId);
+  const wantedProperty = clean(propertyId);
+  const match = rows.some(row =>
+    clean(row && row.session_id) === wantedSession &&
+    clean(row && row.visitor_id) === wantedVisitor &&
+    clean(row && row.property_id) === wantedProperty
+  );
+  return match ? "match" : "conflict";
+}
+
+async function findOperationalLead(supabaseUrl, supabaseKey, leadEventId, sessionId, visitorId, propertyId) {
+  const params = new URLSearchParams();
+  params.set(
+    "select",
+    "session_id,visitor_id:metadata->>visitor_id,property_id:metadata->property->>id"
+  );
+  params.set("metadata->>lead_event_id", `eq.${leadEventId}`);
+  params.set("limit", "20");
+  const url = `${supabaseUrl}/rest/v1/leads?${params.toString()}`;
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        Accept: "application/json"
+      }
+    });
+    if (!response.ok) {
+      console.warn("SUPABASE_LEAD_LOOKUP_SKIPPED", response.status);
+      return "unavailable";
+    }
+    const text = await response.text().catch(() => "");
+    let rows = null;
+    try {
+      rows = JSON.parse(text);
+    } catch (error) {
+      console.warn("SUPABASE_LEAD_LOOKUP_SKIPPED", "invalid_json");
+      return "unavailable";
+    }
+    return classifyOperationalLead(rows, sessionId, visitorId, propertyId);
+  } catch (error) {
+    console.warn("SUPABASE_LEAD_LOOKUP_ERROR");
+    return "unavailable";
+  }
 }
 
 

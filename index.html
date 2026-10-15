@@ -8175,214 +8175,6 @@ document
 initializeYnteligenciaPush();
 
 
-async function supabaseCreateLead(lead){
-
-  try{
-
-    const response=await fetch(
-      `${SUPABASE_URL}/rest/v1/leads`,
-      {
-
-        method:"POST",
-
-        headers:{
-
-          "apikey":
-            SUPABASE_PUBLISHABLE_KEY,
-
-          "Content-Type":
-            "application/json",
-
-          "Prefer":
-            "return=minimal"
-        },
-
-        body:JSON.stringify({
-
-          name:
-            lead.name || "",
-
-          email:
-            lead.email || "",
-
-          phone:
-            lead.phone || "",
-
-          status:
-            "novo",
-
-          lead_score:
-            Number(lead.match_score) || 0,
-
-          destination:
-            "yincorp",
-
-          notes:
-            lead.lead_summary ||
-            (
-              `Interesse gerado na Ynteligencia | ` +
-              `Código: ${lead.property_id || ""} | ` +
-              `Imóvel: ${lead.property_name || ""}`
-            ),
-
-          session_id:
-            YNTELIGENCIA_SESSION_ID,
-
-          metadata:{
-
-            source:
-              "ynteligencia",
-
-            crm:
-              "praedium",
-
-            visitor_id:
-              YNTELIGENCIA_VISITOR_ID,
-
-            lead_summary:
-              lead.lead_summary || "",
-
-            ai_context:
-              lead.ai_context || null,
-
-            bedrooms:
-              Number(lead.bedrooms)||0,
-
-            inventory_source:
-              lead.inventory_source || "",
-
-            session:{
-              id:
-                YNTELIGENCIA_SESSION_ID,
-
-              number:
-                Number(
-                  YNTELIGENCIA_SESSION
-                    .session_number
-                ) || 1,
-
-              is_returning:
-                Boolean(
-                  YNTELIGENCIA_SESSION
-                    .is_returning
-                ),
-
-              previous_session_id:
-                YNTELIGENCIA_SESSION
-                  .previous_session_id ||
-                "",
-
-              days_since_last_visit:
-                Number.isFinite(
-                  Number(
-                    YNTELIGENCIA_SESSION
-                      .days_since_last_visit
-                  )
-                )
-                  ? Number(
-                      YNTELIGENCIA_SESSION
-                        .days_since_last_visit
-                    )
-                  : null
-            },
-
-            attribution:{
-              ...YNTELIGENCIA_ATTRIBUTION,
-
-              landing_page:
-                window.location.href
-            },
-
-            first_touch:{
-              ...YNTELIGENCIA_TOUCHES
-                .first_touch
-            },
-
-            current_touch:{
-              ...YNTELIGENCIA_TOUCHES
-                .current_touch
-            },
-
-            previous_touch:
-              YNTELIGENCIA_TOUCHES
-                .previous_touch
-                ? {
-                    ...YNTELIGENCIA_TOUCHES
-                      .previous_touch
-                  }
-                : null,
-
-            property:{
-
-              id:
-                lead.property_id || "",
-
-              name:
-                lead.property_name || "",
-
-              neighborhood:
-                lead.neighborhood || "",
-
-              value:
-                Number(
-                  lead.property_value
-                ) || 0
-            },
-
-            match:{
-
-              score:
-                Number(
-                  lead.match_score
-                ) || 0
-            },
-
-            profile:{
-              ...profile
-            }
-
-          }
-
-        })
-
-      }
-    );
-
-
-    if(!response.ok){
-
-      const detail=
-        await response.text();
-
-      console.warn(
-        "Supabase não gravou o lead:",
-        response.status,
-        detail
-      );
-
-      return false;
-    }
-
-
-    console.log(
-      "Lead gravado no Supabase."
-    );
-
-    return true;
-
-
-  }catch(error){
-
-    console.warn(
-      "Falha ao gravar lead no Supabase:",
-      error
-    );
-
-    return false;
-  }
-}
-
-
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -20922,6 +20714,15 @@ function openLeadCapture(p,prefill={}){
 
         try{
 
+          /*
+            O mesmo id segue para /api/lead, ads_events.lead_created
+            e a telemetria sem PII. Não é a chave primária de public.leads.
+          */
+          const leadEventId=
+            yntLeadConversionId(
+              lead.property_id
+            );
+
           /* =================================================
              PRAEDIUM
           ================================================= */
@@ -21006,6 +20807,67 @@ function openLeadCapture(p,prefill={}){
                   visitor_id:
                     YNTELIGENCIA_VISITOR_ID,
 
+                  lead_event_id:
+                    leadEventId,
+
+                  session:{
+                    number:
+                      Number(
+                        YNTELIGENCIA_SESSION
+                          .session_number
+                      ) || 1,
+
+                    is_returning:
+                      Boolean(
+                        YNTELIGENCIA_SESSION
+                          .is_returning
+                      ),
+
+                    previous_session_id:
+                      YNTELIGENCIA_SESSION
+                        .previous_session_id ||
+                      "",
+
+                    days_since_last_visit:
+                      Number.isFinite(
+                        Number(
+                          YNTELIGENCIA_SESSION
+                            .days_since_last_visit
+                        )
+                      )
+                        ? Number(
+                            YNTELIGENCIA_SESSION
+                              .days_since_last_visit
+                          )
+                        : null
+                  },
+
+                  declared_profile:{
+                    purpose: profile.purpose || "",
+                    region: profile.region || "",
+                    budget: Number(profile.budget) || 0,
+                    budget_min: Number(profile.budgetMin) || 0,
+                    budget_max: Number(profile.budgetMax) || 0,
+                    budget_label: profile.budgetLabel || "",
+                    bedrooms: profile.bedrooms,
+                    timing: profile.timing || "",
+                    types: Array.isArray(profile.types) ? profile.types : [],
+                    feature: Array.isArray(profile.feature) ? profile.feature : []
+                  },
+
+                  touches:{
+                    first_touch:{
+                      ...YNTELIGENCIA_TOUCHES.first_touch
+                    },
+                    current_touch:{
+                      ...YNTELIGENCIA_TOUCHES.current_touch
+                    },
+                    previous_touch:
+                      YNTELIGENCIA_TOUCHES.previous_touch
+                        ? { ...YNTELIGENCIA_TOUCHES.previous_touch }
+                        : null
+                  },
+
                   lead_summary:
                     lead.lead_summary,
 
@@ -21074,7 +20936,7 @@ function openLeadCapture(p,prefill={}){
           }
 
           const recordedLead = await yntAdsTrack("lead_created", {
-            event_id: yntLeadConversionId(lead.property_id),
+            event_id: leadEventId,
             intent: yntAdsIntentFromState(),
             property:{
               property_id: lead.property_id || "",
@@ -21182,50 +21044,34 @@ function openLeadCapture(p,prefill={}){
           supabaseTrack(
             "lead_created",
             {
+              property_id:
+                String(lead.property_id || ""),
 
-              lead:{
+              property_name:
+                lead.property_name || "",
 
-                name:
-                  lead.name,
+              neighborhood:
+                lead.neighborhood || "",
 
-                phone:
-                  lead.phone,
+              property_value:
+                Number(lead.property_value) || 0,
 
-                email:
-                  lead.email,
+              match_score:
+                Number(lead.match_score) || 0,
 
-                property_id:
-                  lead.property_id,
+              inventory_source:
+                lead.inventory_source || "",
 
-                property_name:
-                  lead.property_name,
+              lead_event_id:
+                leadEventId,
 
-                neighborhood:
-                  lead.neighborhood,
+              source:
+                prefill.source==="match_ia_phone"
+                  ? "ynteligencia_match_ia"
+                  : "ynteligencia",
 
-                property_value:
-                  lead.property_value,
-
-                match_score:
-                  lead.match_score,
-
-                crm:
-                  "praedium"
-              },
-
-              profile:{
-                ...profile
-              }
+              success: true
             }
-          );
-
-
-          /* =================================================
-             SUPABASE LEADS
-          ================================================= */
-
-          await supabaseCreateLead(
-            lead
           );
 
 
