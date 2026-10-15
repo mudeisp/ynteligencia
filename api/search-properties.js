@@ -1,6 +1,11 @@
+import { handleInventorySummary } from "../inventory-summary-route.js";
 import neighborhoodCatalog from "../ai-neighborhood-catalog.js";
 
 export default async function handler(req, res) {
+  // Internal summary uses the same deployed function; existing POST search is unchanged.
+  if (req.query?.action === "inventory-summary") {
+    return handleInventorySummary(req, res);
+  }
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
