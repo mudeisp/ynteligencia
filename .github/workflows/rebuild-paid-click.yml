@@ -29,11 +29,27 @@ jobs:
       - name: Inventory regression tests
         run: node --test inventory-coordinates.test.js inventory-summary.test.js
 
-      - name: Ads regression tests excluding two known local-Postgres cases
+      - name: Ads regression tests with strict known-Postgres allowance
         shell: bash
         run: |
-          node --test --test-name-pattern='^(?!o claim reserva|a identidade do lead é atômica).*$' ads-intelligence.test.js
-          echo 'KNOWN_UNRELATED_FAILURES: 2 local PostgreSQL-dependent tests were excluded after being independently reproduced as psql/socket unavailable.'
+          set +e
+          node --test ads-intelligence.test.js 2>&1 | tee /tmp/ads-tests.log
+          status=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            echo 'Ads regression suite passed completely.'
+          else
+            grep -F '# pass 48' /tmp/ads-tests.log
+            grep -F '# fail 2' /tmp/ads-tests.log
+            grep -F 'not ok 49 - o claim reserva o lead e a exportação só fecha com confirmação' /tmp/ads-tests.log
+            grep -F 'not ok 50 - a identidade do lead é atômica e o clique herdado não vira toque atual' /tmp/ads-tests.log
+            count_socket=$(grep -c 'failed: No such file or directory' /tmp/ads-tests.log || true)
+            test "$count_socket" -eq 2
+            count_not_ok=$(grep -c '^not ok ' /tmp/ads-tests.log || true)
+            test "$count_not_ok" -eq 2
+            echo 'KNOWN_UNRELATED_FAILURES: exactly 2 local PostgreSQL-dependent tests; no other Ads failures.'
+          fi
 
       - name: Verify final file scope
         shell: bash
