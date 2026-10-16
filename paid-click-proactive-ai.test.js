@@ -4,16 +4,22 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const paid = require('./paid-click-experience.js');
 const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
-const scheduler = html.slice(html.indexOf('function yntHasPaidClickContext()'), html.indexOf('function extractAllPropertyImages('));
+const scheduler = html.slice(html.indexOf('const YNT_PAID_UTM_MEDIA='), html.indexOf('function extractAllPropertyImages('));
 
-function runtime(search = '', active = false) {
+function runtime(search = '', active = false, currentTouch = {}) {
   const timers = new Map();
   const opened = [];
+  const bodyClasses = new Set();
   let serial = 0;
   const context = {
     paidSearch: paid.readSearchParams(search), adIntent: {active},
+    YNTELIGENCIA_TOUCHES: {current_touch:currentTouch},
+    URLSearchParams, window: {location: {search}},
     aiAssistantTriggerTimer: null, aiResumeChatAfterDetail: false,
-    document: {body: {contains: () => true, classList: {contains: () => false}}},
+    document: {body: {contains: () => true, classList: {
+      contains: name => bodyClasses.has(name),
+      toggle: (name, enabled) => enabled ? bodyClasses.add(name) : bodyClasses.delete(name)
+    }}},
     setTimeout: (fn, delay) => { timers.set(++serial, {fn, delay}); return serial; },
     clearTimeout: id => timers.delete(id),
     yntIsPaidDirectPropertyEntry: () => true,
@@ -22,12 +28,74 @@ function runtime(search = '', active = false) {
   };
   vm.createContext(context);
   vm.runInContext(scheduler, context);
-  return {context, timers, opened, flush() {
+  return {context, timers, opened, bodyClasses, flush() {
     const pending = [...timers.values()]; timers.clear();
     for (const {fn} of pending) fn();
   }};
 }
 const example = '?modo=explorar&cidade=São+Paulo&estado=SP&regiao=oeste&bairro=Pinheiros&dormitorios=2';
+
+test('live URL click IDs override an organic touch without mutating attribution', () => {
+  for (const key of ['gclid', 'gbraid', 'wbraid']) {
+    const touch = Object.freeze({source:'direct', medium:'(none)'});
+    const r = runtime('', false, touch);
+    assert.equal(r.context.yntHasPaidClickContext(), false);
+    r.context.window.location.search = `?${key}=abc`;
+    assert.equal(r.context.yntHasPaidClickContext(), true, key);
+    r.context.scheduleAiAssistantForProperty({id:key}, {});
+    assert.equal(r.timers.size, 0);
+    assert.strictEqual(r.context.YNTELIGENCIA_TOUCHES.current_touch, touch);
+    assert.deepEqual(touch, {source:'direct', medium:'(none)'});
+  }
+});
+
+test('live URL recognizes paid media with existing normalization', () => {
+  const r = runtime('', false, Object.freeze({medium:'organic'}));
+  for (const medium of ['cpc','ppc','paid','paid_search','paid_social','paid_display','paid_video','cpm','cpv','cpa','cpl','sem','display','retargeting','remarketing','PAID SOCIAL','Paid-Search']) {
+    r.context.window.location.search = `?utm_medium=${encodeURIComponent(medium)}`;
+    assert.equal(r.context.yntHasPaidClickContext(), true, medium);
+  }
+});
+
+test('email URL alone remains organic', () => {
+  const r = runtime('?utm_medium=email', false, Object.freeze({medium:'organic'}));
+  assert.equal(r.context.yntHasPaidClickContext(), false);
+  r.context.scheduleAiAssistantForProperty({id:'email'}, {});
+  assert.equal([...r.timers.values()][0].delay, 5000);
+});
+
+test('reload without paid URL signals respects the original touch', () => {
+  for (const touch of [{medium:'organic'}, {gclid:'original'}, {gbraid:'original'}, {wbraid:'original'}, {utm_medium:'cpc'}]) {
+    Object.freeze(touch);
+    const expected = touch.medium !== 'organic';
+    const r = runtime('', false, touch);
+    r.context.window.location.search = '?gclid=later';
+    assert.equal(r.context.yntHasPaidClickContext(), true);
+    r.context.window.location.search = '';
+    assert.equal(r.context.yntHasPaidClickContext(), expected);
+    const reloaded = runtime('', false, touch);
+    assert.equal(reloaded.context.yntHasPaidClickContext(), expected);
+    assert.strictEqual(r.context.YNTELIGENCIA_TOUCHES.current_touch, touch);
+  }
+});
+
+test('paidSearch and adIntent still work without current URL attribution', () => {
+  const r = runtime('?bairro=Pinheiros');
+  r.context.window.location.search = '';
+  assert.equal(r.context.yntHasPaidClickContext(), true);
+  assert.equal(runtime('', true).context.yntHasPaidClickContext(), true);
+});
+
+test('UI sync follows live URL changes while keeping organic touch intact', () => {
+  const touch = Object.freeze({medium:'organic'});
+  const r = runtime('', false, touch);
+  for (const [search, expected] of [['?gclid=abc',true], ['?utm_medium=cpc',true], ['?utm_medium=email',false], ['',false]]) {
+    r.context.window.location.search = search;
+    r.context.syncPaidClickContextUi();
+    assert.equal(r.bodyClasses.has('paid-click-context'), expected, search);
+  }
+  assert.strictEqual(r.context.YNTELIGENCIA_TOUCHES.current_touch, touch);
+});
 
 test('paid explorar: first and second detail never schedule automatic AI', () => {
   const r = runtime(example);
@@ -38,6 +106,34 @@ test('paid explorar: first and second detail never schedule automatic AI', () =>
   }
   assert.deepEqual(r.opened, []);
 });
+test('paid UI sync adds class when current touch receives a click ID later', () => {
+  const r = runtime();
+  assert.equal(r.bodyClasses.has('paid-click-context'), false);
+  r.context.YNTELIGENCIA_TOUCHES.current_touch = {gclid:'late-click-id'};
+  r.context.syncPaidClickContextUi();
+  assert.equal(r.bodyClasses.has('paid-click-context'), true);
+});
+
+test('paid click IDs block automatic AI without search intent', () => {
+  const r = runtime();
+  r.context.YNTELIGENCIA_TOUCHES.current_touch = {gclid:'click-id'};
+  r.context.scheduleAiAssistantForProperty({id:'paid-click'}, {});
+  assert.equal(r.timers.size, 0);
+  assert.deepEqual(r.opened, []);
+});
+
+test('paid campaign UTMs block automatic AI but email UTMs do not', () => {
+  const paidCampaign = runtime();
+  paidCampaign.context.YNTELIGENCIA_TOUCHES.current_touch = {utm_source:'google', utm_medium:'cpc'};
+  paidCampaign.context.scheduleAiAssistantForProperty({id:'paid-utm'}, {});
+  assert.equal(paidCampaign.timers.size, 0);
+
+  const emailCampaign = runtime();
+  emailCampaign.context.YNTELIGENCIA_TOUCHES.current_touch = {utm_source:'newsletter', utm_medium:'email'};
+  emailCampaign.context.scheduleAiAssistantForProperty({id:'email'}, {});
+  assert.equal([...emailCampaign.timers.values()][0].delay, 5000);
+});
+
 test('active ad intent cancels an already pending organic AI timer', () => {
   const r = runtime();
   r.context.scheduleAiAssistantForProperty({id:'first'}, {});
@@ -89,3 +185,4 @@ test('Ads aliases and explorar routing remain unchanged; no native permission on
   assert.equal(paid.readSearchParams('?neighborhood=Pinheiros&bedrooms=2&max_price=900000').directToResults, true);
   assert.equal(html.includes('Notification.requestPermission('), false);
 });
+

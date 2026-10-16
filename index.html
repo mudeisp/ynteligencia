@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -4807,9 +4806,9 @@ body.ad-match-mode.paid-push-prompt .specialist-float{
 <div class="paid-push-sheet" id="paidPushSheet" hidden>
   <div class="paid-push-card" role="dialog" aria-labelledby="paidPushTitle">
     <button class="paid-push-close" id="paidPushClose" type="button" aria-label="Fechar">×</button>
-    <p id="paidPushTitle">Quer que eu te avise quando aparecer uma nova opção dentro desta busca?</p>
-    <button class="paid-push-accept" id="paidPushAccept" type="button">SIM, QUERO SER AVISADO</button>
-    <button class="paid-push-dismiss" id="paidPushDismiss" type="button">Agora não</button>
+    <p id="paidPushTitle"></p>
+    <button class="paid-push-accept" id="paidPushAccept" type="button"></button>
+    <button class="paid-push-dismiss" id="paidPushDismiss" type="button"></button>
   </div>
 </div>
 
@@ -15916,12 +15915,34 @@ async function yntOpenProactiveAiForProperty(
 
 // Reutiliza a intenção normalizada da entrada, inclusive em modo=explorar.
 // A classe visual do feed não representa a origem da sessão.
+const YNT_PAID_UTM_MEDIA=new Set(["cpc","ppc","paid","paid_search","paid_social","paid_display","paid_video","cpm","cpv","cpa","cpl","sem","display","retargeting","remarketing"]);
+
+function yntCurrentUrlHasPaidAttribution(){
+  const params=new URLSearchParams(window.location.search);
+  const paidMedium=String(params.get("utm_medium") || "").toLowerCase().replace(/[ -]+/g,"_");
+  return Boolean(
+    params.get("gclid") || params.get("gbraid") || params.get("wbraid") ||
+    YNT_PAID_UTM_MEDIA.has(paidMedium)
+  );
+}
+
 function yntHasPaidClickContext(){
-  return Boolean(adIntent.active ||
+  const touch=YNTELIGENCIA_TOUCHES?.current_touch || {};
+  const paidMedium=String(touch.utm_medium || "").toLowerCase().replace(/[ -]+/g,"_");
+  const paidAttribution=Boolean(
+    touch.gclid || touch.gbraid || touch.wbraid || YNT_PAID_UTM_MEDIA.has(paidMedium)
+  );
+  return Boolean(yntCurrentUrlHasPaidAttribution() || paidAttribution || adIntent.active ||
     paidSearch.neighborhood || paidSearch.region || paidSearch.bedrooms ||
     paidSearch.minPrice || paidSearch.maxPrice || paidSearch.type ||
     paidSearch.search || paidSearch.development);
 }
+
+function syncPaidClickContextUi(){
+  document.body.classList.toggle("paid-click-context", yntHasPaidClickContext());
+}
+
+syncPaidClickContextUi();
 
 function scheduleAiAssistantForProperty(
   p,
@@ -19958,6 +19979,7 @@ function clearAdEntryIntent(){
   adIntent.minPrice=0;
   adIntent.maxPrice=0;
   adIntent.active=false;
+  syncPaidClickContextUi();
 
   document.body.classList.remove("ad-match-mode");
   $("results")?.classList.remove("visible");
@@ -21143,6 +21165,7 @@ function reconcilePaidPushState(){
 }
 
 function startPaidClickExperience(){
+  syncPaidClickContextUi();
   const memory=paidMemory();
   let denied=memory.permissionDenied===true;
   try{
@@ -21392,6 +21415,7 @@ document.querySelectorAll(".ad-budget-option").forEach(button=>{
     const max=Number(button.dataset.budgetMax||0)||0;
     adIntent.minPrice=min;
     adIntent.maxPrice=max;
+    syncPaidClickContextUi();
     updateAdIntentPriceInUrl();
     updateAdMatchUI();
     closeAdBudgetQuestion();
@@ -21453,6 +21477,7 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.minPrice=min;
   adIntent.maxPrice=max;
   adIntent.active=Boolean(neighborhood || bedrooms || min || max || adIntent.type || adIntent.search || adIntent.development);
+  syncPaidClickContextUi();
   notePaidSignal("refined");
   updateAdIntentPriceInUrl();
   updateAdMatchUI();
@@ -21467,6 +21492,7 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   adIntent.minPrice=0;
   adIntent.maxPrice=0;
   adIntent.active=false;
+  syncPaidClickContextUi();
 
   const url=new URL(window.location.href);
   ["bairro","neighborhood","region","dormitorios","bedrooms","valor_min","min_price","valor_max","max_price"].forEach(key=>url.searchParams.delete(key));
@@ -22168,6 +22194,7 @@ loadInventory()
         adIntent.development=memory.development || "";
         adIntent.active=true;
         adIntent.restored=true;
+        syncPaidClickContextUi();
       }
     }
 
@@ -22385,6 +22412,8 @@ loadInventory()
     .neighborhood-compare-title{font-size:12px}
     .neighborhood-compare-subtitle{font-size:9px}
   }
+  body.paid-click-context #navExplore,
+  body.paid-click-context .neighborhood-compare-fab{display:none!important}
 </style>
 
 <a id="neighborhoodCompareFab" class="neighborhood-compare-fab" href="#" aria-label="Comparar imóveis em outro bairro">

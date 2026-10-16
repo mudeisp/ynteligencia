@@ -183,7 +183,7 @@ function createExperience(input) {
 }
 
 function valuePerceived(state) {
-  if (!state.resultsShown) return false;
+  if (!state.resultsShown || !state.returnedToResults) return false;
   return state.propertiesSeen >= 2;
 }
 
@@ -225,6 +225,7 @@ function reducePaidExperience(state, action) {
   if (type === "results_shown") next.resultsShown = true;
   if (type === "detail_opened") {
     next.detailOpened = true;
+    next.returnedToResults = false;
     const id = String(action.propertyId || "");
     if (id && !next.seenIds.includes(id)) next.seenIds.push(id);
     next.propertiesSeen = next.seenIds.length;
