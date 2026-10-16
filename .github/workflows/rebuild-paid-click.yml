@@ -1,0 +1,49 @@
+name: Rebuild Paid Click Experience V1
+
+on:
+  push:
+    branches:
+      - cursor/paid-click-experience-v1-rebuild
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Rebuild Paid Click Experience
+        run: python .rebuild/rebuild_paid_click.py
+
+      - name: Related Ads Intelligence tests
+        run: node --test ads-intelligence.test.js
+
+      - name: Verify final file scope
+        shell: bash
+        run: |
+          rm -rf .rebuild
+          rm -f .github/workflows/rebuild-paid-click.yml
+          changed="$(git diff --name-only 713a9299cb2f3fb1771718817c6ba3b2e092ae49 -- | sort)"
+          expected="$(printf '%s\n' 'docs/paid-click-push-experience-v1.md' 'index.html' 'paid-click-experience.js' 'paid-click-experience.test.js' | sort)"
+          printf 'Changed files:\n%s\n' "$changed"
+          test "$changed" = "$expected"
+
+      - name: Commit rebuilt files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Paid Click Experience V1 — Push First Retention (rebuild)"
+          git push origin HEAD:cursor/paid-click-experience-v1-rebuild
