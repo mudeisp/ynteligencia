@@ -4372,6 +4372,7 @@ body.match-results-mode #results{
         <p id="resultSummary">
           Encontramos opções compatíveis com o seu perfil.
         </p>
+        <p class="paid-push-status" id="paidPushStatus" hidden></p>
       </div>
 
       <button
@@ -4718,7 +4719,99 @@ body.match-results-mode #results{
 </div>
 
 
+<style>
+body.ad-match-mode #match,
+body.ad-match-mode #explore,
+body.ad-match-mode #inicio,
+body.ad-match-mode #catalogPushWrap{
+  display:none !important;
+}
+body.ad-match-mode.paid-push-prompt .specialist-float{
+  visibility:hidden;
+  pointer-events:none;
+}
+.paid-push-status{
+  margin:8px 0 0;
+  color:#5E5548;
+  font-size:14px;
+  line-height:1.4;
+}
+.paid-push-sheet{
+  position:fixed;
+  inset:auto 0 0 0;
+  z-index:240;
+  display:flex;
+  justify-content:center;
+  padding:12px 12px calc(12px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, rgba(9,10,9,0), rgba(9,10,9,.28) 28%, rgba(9,10,9,.45));
+}
+.paid-push-sheet[hidden]{display:none !important;}
+.paid-push-card{
+  position:relative;
+  width:min(520px, 100%);
+  background:#FCFAF6;
+  color:#171513;
+  border-radius:22px;
+  padding:18px 16px 16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.28);
+}
+.paid-push-card p{
+  margin:0 34px 14px 0;
+  font-size:18px;
+  line-height:1.25;
+  font-weight:750;
+}
+.paid-push-accept,
+.paid-push-dismiss,
+.paid-push-close{
+  font:inherit;
+}
+.paid-push-accept{
+  width:100%;
+  min-height:52px;
+  border:0;
+  border-radius:14px;
+  background:#171513;
+  color:#fff;
+  font-weight:800;
+}
+.paid-push-dismiss{
+  width:100%;
+  min-height:44px;
+  margin-top:8px;
+  border:0;
+  background:transparent;
+  color:#5E5548;
+  font-weight:700;
+}
+.paid-push-close{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:40px;
+  height:40px;
+  border:0;
+  border-radius:50%;
+  background:#E7E0D5;
+  color:#171513;
+  font-size:22px;
+}
+@media (max-width:700px){
+  .paid-push-card p{font-size:17px;}
+  .paid-push-accept{min-height:54px;}
+}
+</style>
+
 <!-- Entrada direta de anúncios: refinamento opcional sem bloquear o feed -->
+
+<div class="paid-push-sheet" id="paidPushSheet" hidden>
+  <div class="paid-push-card" role="dialog" aria-labelledby="paidPushTitle">
+    <button class="paid-push-close" id="paidPushClose" type="button" aria-label="Fechar">×</button>
+    <p id="paidPushTitle">Quer que eu te avise quando aparecer uma nova opção dentro desta busca?</p>
+    <button class="paid-push-accept" id="paidPushAccept" type="button">SIM, QUERO SER AVISADO</button>
+    <button class="paid-push-dismiss" id="paidPushDismiss" type="button">Agora não</button>
+  </div>
+</div>
 
 <div class="ad-budget-shell" id="adBudgetShell" aria-hidden="true">
   <div class="ad-budget-card" role="dialog" aria-modal="true" aria-labelledby="adBudgetTitle">
@@ -4782,6 +4875,7 @@ body.match-results-mode #results{
 <script src="ai-neighborhood-catalog.js"></script>
 <script src="ai-search-routing.js"></script>
 <script src="ai-commercial-intent.js"></script>
+<script src="paid-click-experience.js"></script>
 <script>
 
 const CSV_FILE="Remax.teste.2.csv";
@@ -4841,28 +4935,18 @@ let activeState=
    ?bairro=Brooklin&dormitorios=3&valor_min=1500000
    ?bairro=Perdizes&dormitorios=2
    Também aceita neighborhood/region, bedrooms, min_price e max_price para compatibilidade. */
-const adParams=new URLSearchParams(window.location.search);
-const initialViewMode=(adParams.get("modo") || "").toLowerCase();
-
+const paidSearch=PaidClickExperience.readSearchParams(window.location.search);
 const adIntent={
-  neighborhood:formatNeighborhoodName(cleanAdParam(adParams.get("bairro") || adParams.get("neighborhood") || adParams.get("region") || "")),
-  bedrooms:Number(adParams.get("dormitorios") || adParams.get("bedrooms") || 0) || 0,
-  minPrice:Number(adParams.get("valor_min") || adParams.get("min_price") || 0) || 0,
-  maxPrice:Number(adParams.get("valor_max") || adParams.get("max_price") || 0) || 0
+  neighborhood:paidSearch.neighborhood,
+  region:paidSearch.region,
+  bedrooms:paidSearch.bedrooms,
+  minPrice:paidSearch.minPrice,
+  maxPrice:paidSearch.maxPrice,
+  type:paidSearch.type,
+  search:paidSearch.search,
+  development:paidSearch.development,
+  active:paidSearch.directToResults
 };
-
-/*
-  URLs com modo=explorar pertencem ao catálogo.
-  Assim bairro/valor da campanha não entram no fluxo de MATCH.
-*/
-adIntent.active=
-  initialViewMode!=="explorar" &&
-  Boolean(
-    adIntent.neighborhood ||
-    adIntent.bedrooms ||
-    adIntent.minPrice ||
-    adIntent.maxPrice
-  );
 
 function cleanAdParam(value){
   return String(value||"").replace(/[-_]+/g," ").trim();
@@ -4901,6 +4985,9 @@ function propertyMatchesAdRequirements(p){
   if(adIntent.bedrooms && Number(p.bedrooms)<Number(adIntent.bedrooms)) return false;
   if(adIntent.minPrice && (!p.value || Number(p.value)<adIntent.minPrice)) return false;
   if(adIntent.maxPrice && (!p.value || Number(p.value)>adIntent.maxPrice)) return false;
+  if(adIntent.type && !norm(`${p.type||""} ${p.name||""}`).includes(norm(adIntent.type))) return false;
+  const named=adIntent.development || adIntent.search;
+  if(named && !norm(`${p.name||""} ${p.development||""}`).includes(norm(named))) return false;
   return true;
 }
 
@@ -6601,173 +6688,36 @@ function yntPushConfigured(){
   );
 }
 
-function yntCurrentPushProfile(){
-  const params=
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const getValue=(id)=>{
-    const el=
-      document.getElementById(id);
-
-    return clean(
-      el?.value ||
-      ""
-    );
+function yntCurrentPushProfile(intentOverride=null){
+  const params=new URLSearchParams(window.location.search);
+  const override=intentOverride && typeof intentOverride==="object" ? intentOverride : null;
+  const has=(key)=>Boolean(override && Object.prototype.hasOwnProperty.call(override,key));
+  const getValue=(id)=>clean(document.getElementById(id)?.value || "");
+  const numberValue=(value)=>{ const n=Number(value); return Number.isFinite(n) ? n : 0; };
+  const paramNumber=(...keys)=>{
+    for(const key of keys){ const value=params.get(key); if(value!==null && value!=="") return numberValue(value); }
+    return 0;
   };
-
-  const numberValue=(value)=>{
-    const n=
-      Number(value);
-
-    return Number.isFinite(n)
-      ? n
-      : 0;
-  };
-
-  const minPrice=
-    (
-      typeof parseBRLInput==="function"
-        ? parseBRLInput(
-            getValue(
-              "catalogMinPrice"
-            ) ||
-            getValue(
-              "minPrice"
-            )
-          )
-        : 0
-    ) ||
-    numberValue(
-      params.get("valor_min")
-    );
-
-  const maxPrice=
-    (
-      typeof parseBRLInput==="function"
-        ? parseBRLInput(
-            getValue(
-              "catalogMaxPrice"
-            ) ||
-            getValue(
-              "maxPrice"
-            )
-          )
-        : 0
-    ) ||
-    numberValue(
-      params.get("valor_max")
-    );
-
+  const minPrice=has("minPrice")
+    ? numberValue(override.minPrice)
+    : ((typeof parseBRLInput==="function" ? parseBRLInput(getValue("catalogMinPrice") || getValue("minPrice")) : 0) || paramNumber("valor_min","min_price"));
+  const maxPrice=has("maxPrice")
+    ? numberValue(override.maxPrice)
+    : ((typeof parseBRLInput==="function" ? parseBRLInput(getValue("catalogMaxPrice") || getValue("maxPrice")) : 0) || paramNumber("valor_max","max_price"));
   return {
-    city:
-      clean(
-        getValue(
-          "catalogCity"
-        ) ||
-        params.get("cidade") ||
-        params.get("city") ||
-        (
-          typeof activeCity!=="undefined"
-            ? activeCity
-            : ""
-        ) ||
-        "São Paulo"
-      ),
-
-    state:
-      clean(
-        getValue(
-          "catalogState"
-        ) ||
-        params.get("estado") ||
-        params.get("state") ||
-        (
-          typeof activeState!=="undefined"
-            ? activeState
-            : ""
-        ) ||
-        "SP"
-      ),
-
-    region:
-      clean(
-        getValue(
-          "catalogRegionSelect"
-        ) ||
-        params.get("regiao") ||
-        (
-          typeof catalogRegion!=="undefined"
-            ? catalogRegion
-            : ""
-        ) ||
-        ""
-      ),
-
-    neighborhood:
-      clean(
-        getValue(
-          "catalogNeighborhood"
-        ) ||
-        params.get("bairro") ||
-        params.get("busca") ||
-        (
-          typeof adIntent!=="undefined"
-            ? adIntent?.neighborhood
-            : ""
-        ) ||
-        ""
-      ),
-
-    type:
-      clean(
-        getValue(
-          "catalogType"
-        ) ||
-        params.get("tipo") ||
-        ""
-      ),
-
-    source:
-      clean(
-        getValue(
-          "catalogSource"
-        ) ||
-        params.get("source") ||
-        "todos"
-      ) || "todos",
-
-    bedrooms:
-      numberValue(
-        getValue(
-          "catalogBedrooms"
-        ) ||
-        getValue(
-          "bedrooms"
-        ) ||
-        params.get(
-          "dormitorios"
-        ) ||
-        (
-          typeof adIntent!=="undefined"
-            ? adIntent?.bedrooms
-            : 0
-        ) ||
-        0
-      ),
-
-    min_price:
-      Number(minPrice) || 0,
-
-    max_price:
-      Number(maxPrice) || 0,
-
-    cadence:
-      "daily",
-
-    max_pushes:
-      30
+    city:clean(getValue("catalogCity") || params.get("cidade") || params.get("city") || (typeof activeCity!=="undefined" ? activeCity : "") || "São Paulo"),
+    state:clean(getValue("catalogState") || params.get("estado") || params.get("state") || (typeof activeState!=="undefined" ? activeState : "") || "SP"),
+    region:has("region") ? clean(override.region) : clean(getValue("catalogRegionSelect") || params.get("regiao") || params.get("region") || (typeof catalogRegion!=="undefined" ? catalogRegion : "") || ""),
+    neighborhood:has("neighborhood") ? clean(override.neighborhood) : clean(getValue("catalogNeighborhood") || params.get("bairro") || params.get("neighborhood") || params.get("busca") || ""),
+    type:has("type") ? clean(override.type) : clean(getValue("catalogType") || params.get("tipo") || params.get("type") || ""),
+    search:has("search") ? clean(override.search) : clean(params.get("busca") || params.get("search") || ""),
+    development:has("development") ? clean(override.development) : clean(params.get("empreendimento") || params.get("development") || ""),
+    source:clean(getValue("catalogSource") || params.get("source") || "todos") || "todos",
+    bedrooms:has("bedrooms") ? numberValue(override.bedrooms) : numberValue(getValue("catalogBedrooms") || getValue("bedrooms") || params.get("dormitorios") || params.get("bedrooms") || 0),
+    min_price:Number(minPrice)||0,
+    max_price:Number(maxPrice)||0,
+    cadence:"daily",
+    max_pushes:30
   };
 }
 
@@ -6822,6 +6772,12 @@ function yntPushTagsFromProfile(
         profile.source ||
         "todos"
       ),
+
+    ynt_search:
+      String(profile.search || ""),
+
+    ynt_development:
+      String(profile.development || ""),
 
     ynt_bedrooms:
       String(
@@ -7206,6 +7162,10 @@ async function initializeYnteligenciaPush(){
         YNT_ONESIGNAL_READY=
           true;
 
+        queueMicrotask(()=>{
+          try{reconcilePaidPushState();}catch{}
+        });
+
         console.log(
           "YNT_ONESIGNAL_READY",
           {
@@ -7298,6 +7258,8 @@ async function initializeYnteligenciaPush(){
                     "0"
                   );
                 }
+
+                try{reconcilePaidPushState();}catch{}
               }
             );
         }catch(error){}
@@ -7893,272 +7855,67 @@ async function waitForYnteligenciaPushReady(
 }
 
 
-async function activateYnteligenciaPush(){
-  const btn=
-    document.getElementById(
-      "catalogPushBtn"
-    );
+async function activateYnteligenciaPush(intentOverride=null,{quiet=false}={}){
+  const btn=document.getElementById("catalogPushBtn");
+  const notify=(message)=>{ if(!quiet) showToast(message); };
+  const fail=(reason,extra={})=>({success:false,permission:"unknown",optedIn:false,subscriptionId:"",alertConfigured:false,reason,...extra});
 
   if(!yntPushConfigured()){
-    showToast(
-      "Falta configurar o OneSignal App ID."
-    );
-
-    return;
+    notify("Falta configurar o OneSignal App ID.");
+    return fail("not_configured");
   }
-
-  if(
-    !YNT_ONESIGNAL_READY ||
-    !YNT_ONESIGNAL_INSTANCE
-  ){
-    if(btn){
-      btn.disabled=true;
-      btn.textContent=
-        "CARREGANDO ALERTAS...";
-    }
-
-    const becameReady=
-      await waitForYnteligenciaPushReady(
-        8000
-      );
-
-    if(btn){
-      btn.disabled=false;
-    }
-
+  if(!YNT_ONESIGNAL_READY || !YNT_ONESIGNAL_INSTANCE){
+    if(btn){btn.disabled=true;btn.textContent="CARREGANDO ALERTAS...";}
+    const becameReady=await waitForYnteligenciaPushReady(8000);
+    if(btn) btn.disabled=false;
     if(!becameReady){
-      console.error(
-        "YNT_PUSH_NOT_READY",
-        {
-          configured:
-            yntPushConfigured(),
-          ready:
-            YNT_ONESIGNAL_READY,
-          hasInstance:
-            Boolean(
-              YNT_ONESIGNAL_INSTANCE
-            ),
-          lastError:
-            window
-              .YNT_ONESIGNAL_LAST_ERROR ||
-            ""
-        }
-      );
-
-      showToast(
-        "Não foi possível iniciar os alertas. Recarregue a página e tente novamente."
-      );
-
+      console.error("YNT_PUSH_NOT_READY",{configured:yntPushConfigured(),ready:YNT_ONESIGNAL_READY,hasInstance:Boolean(YNT_ONESIGNAL_INSTANCE),lastError:window.YNT_ONESIGNAL_LAST_ERROR||""});
+      notify("Não foi possível iniciar os alertas. Recarregue a página e tente novamente.");
       refreshPushAlertCTA();
-      return;
+      return fail("sdk_not_ready");
     }
   }
 
-  const OneSignal=
-    YNT_ONESIGNAL_INSTANCE;
-
-  const profile=
-    yntCurrentPushProfile();
-
-  if(
-    !yntPushProfileHasIntent(
-      profile
-    )
-  ){
-    showToast(
-      "Faça uma busca antes de ativar o alerta."
-    );
-
-    return;
+  const OneSignal=YNT_ONESIGNAL_INSTANCE;
+  const profile=yntCurrentPushProfile(intentOverride);
+  if(!yntPushProfileHasIntent(profile)){
+    notify("Faça uma busca antes de ativar o alerta.");
+    return fail("missing_intent",{profile});
   }
 
   try{
-    if(btn){
-      btn.disabled=true;
-      btn.textContent=
-        "ATIVANDO ALERTA...";
-    }
-
-    /*
-      A permissão é solicitada SOMENTE após clique do usuário.
-    */
-    const granted=
-      OneSignal
-        .Notifications
-        .permission
-        ? true
-        : await OneSignal
-            .Notifications
-            .requestPermission();
-
+    if(btn){btn.disabled=true;btn.textContent="ATIVANDO ALERTA...";}
+    const granted=OneSignal.Notifications.permission ? true : await OneSignal.Notifications.requestPermission();
     if(!granted){
-      await supabaseTrack(
-        "push_permission_denied",
-        {
-          push_profile:
-            profile
-        }
-      );
-
-      showToast(
-        "As notificações não foram autorizadas neste navegador."
-      );
-
-      return;
+      try{await supabaseTrack("push_permission_denied",{push_profile:profile});}catch{}
+      notify("As notificações não foram autorizadas neste navegador.");
+      return fail("permission_denied",{permission:"denied",profile});
     }
 
-    await yntSyncOneSignalIdentity(
-      OneSignal,
-      "before_optin"
-    );
-
-    await OneSignal
-      .User
-      .PushSubscription
-      .optIn();
-
-    const pushConfirmation=
-      await yntWaitForConfirmedPushSubscription(
-        OneSignal
-      );
-
-    if(
-      !pushConfirmation.confirmed
-    ){
-      await supabaseTrack(
-        "push_subscription_failed",
-        {
-          push:{
-            enabled:false,
-
-            provider:
-              "onesignal",
-
-            permission:
-              Boolean(
-                OneSignal
-                  ?.Notifications
-                  ?.permission
-              ),
-
-            opted_in:
-              pushConfirmation.optedIn,
-
-            subscription_id:
-              pushConfirmation.subscriptionId
-          },
-
-          visitor_id:
-            YNTELIGENCIA_VISITOR_ID,
-
-          push_profile:
-            profile,
-
-          push_origin:
-            "catalog"
-        }
-      );
-
-      showToast(
-        "A permissão foi aceita, mas o alerta ainda não foi confirmado."
-      );
-
-      return;
+    await yntSyncOneSignalIdentity(OneSignal,"before_optin");
+    await OneSignal.User.PushSubscription.optIn();
+    const pushConfirmation=await yntWaitForConfirmedPushSubscription(OneSignal);
+    if(!pushConfirmation.confirmed){
+      try{await supabaseTrack("push_subscription_failed",{push:{enabled:false,provider:"onesignal",permission:Boolean(OneSignal?.Notifications?.permission),opted_in:pushConfirmation.optedIn,subscription_id:pushConfirmation.subscriptionId},visitor_id:YNTELIGENCIA_VISITOR_ID,push_profile:profile,push_origin:"catalog"});}catch{}
+      notify("A permissão foi aceita, mas o alerta ainda não foi confirmado.");
+      return fail("subscription_unconfirmed",{permission:"granted",optedIn:pushConfirmation.optedIn,subscriptionId:pushConfirmation.subscriptionId,profile});
     }
 
-    await OneSignal
-      .User
-      .addTags(
-        yntPushTagsFromProfile(
-          profile
-        )
-      );
-
-    const subscriptionId=
-      pushConfirmation
-        .subscriptionId;
-
-    await supabaseTrack(
-      "push_subscribed",
-      {
-        push:{
-          enabled:true,
-
-          provider:
-            "onesignal",
-
-          permission:true,
-
-          opted_in:true,
-
-          subscription_id:
-            subscriptionId,
-
-          cadence:
-            "daily",
-
-          max_pushes:
-            30,
-
-          subscribed_at:
-            new Date()
-              .toISOString()
-        },
-
-        visitor_id:
-          YNTELIGENCIA_VISITOR_ID,
-
-        push_profile:
-          profile,
-
-        attribution_at_subscription:{
-          first_touch:{
-            ...YNTELIGENCIA_TOUCHES
-              .first_touch
-          },
-
-          current_touch:{
-            ...YNTELIGENCIA_TOUCHES
-              .current_touch
-          }
-        }
-      }
-    );
-
-    showToast(
-      "Alerta ativado: até 1 imóvel por dia."
-    );
-
+    await OneSignal.User.addTags(yntPushTagsFromProfile(profile));
+    const subscriptionId=clean(pushConfirmation.subscriptionId||"");
+    const result={success:true,permission:"granted",optedIn:true,subscriptionId,alertConfigured:true,reason:"subscribed",profile};
+    try{
+      await supabaseTrack("push_subscribed",{push:{enabled:true,provider:"onesignal",permission:true,opted_in:true,subscription_id:subscriptionId,cadence:"daily",max_pushes:30,subscribed_at:new Date().toISOString()},visitor_id:YNTELIGENCIA_VISITOR_ID,push_profile:profile,attribution_at_subscription:{first_touch:{...YNTELIGENCIA_TOUCHES.first_touch},current_touch:{...YNTELIGENCIA_TOUCHES.current_touch}}});
+    }catch(trackError){console.warn("PUSH_SUBSCRIBED_TRACK_ERROR",trackError);}
+    notify("Alerta ativado: até 1 imóvel por dia.");
+    return result;
   }catch(error){
-    console.warn(
-      "PUSH_OPTIN_ERROR",
-      error
-    );
-
-    await supabaseTrack(
-      "push_subscription_error",
-      {
-        error:
-          String(
-            error?.message ||
-            error ||
-            ""
-          ),
-
-        push_profile:
-          profile
-      }
-    );
-
-    showToast(
-      "Não foi possível ativar o alerta agora."
-    );
-
+    console.warn("PUSH_OPTIN_ERROR",error);
+    try{await supabaseTrack("push_subscription_error",{error:String(error?.message||error||""),push_profile:profile});}catch{}
+    notify("Não foi possível ativar o alerta agora.");
+    return fail("subscription_error",{permission:OneSignal?.Notifications?.permission ? "granted" : "unknown",optedIn:Boolean(OneSignal?.User?.PushSubscription?.optedIn),subscriptionId:clean(OneSignal?.User?.PushSubscription?.id||""),profile});
   }finally{
-    if(btn){
-      btn.disabled=false;
-    }
-
+    if(btn) btn.disabled=false;
     refreshPushAlertCTA();
   }
 }
@@ -10265,15 +10022,18 @@ function showMatches(){
   setRefineMatchOpen(false);
 
 
-  $("resultSummary")
-    .textContent=
-      adIntent.active
-        ? (scored.length
-            ? `${scored.length} imóveis · ${adIntent.neighborhood || "sua região"}${adIntent.bedrooms ? ` · ${adIntent.bedrooms}+ dormitórios` : ""}${(adIntent.minPrice||adIntent.maxPrice) ? ` · ${adIntent.minPrice ? "de "+money(adIntent.minPrice) : ""}${adIntent.maxPrice ? " até "+money(adIntent.maxPrice) : ""}` : ""}${scored.some(p=>p.adAlternative) ? " · incluindo alternativas próximas" : ""}`
-            : "Não encontramos imóveis nessa combinação. Refine ou amplie a faixa de valor.")
-        : (scored.length
-            ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
-            : "Não encontramos uma combinação forte. Vamos ampliar sua busca.");
+  if(adIntent.active){
+    const copy=PaidClickExperience.contextCopy(adIntent);
+    const heading=document.querySelector("#results .result-top h2");
+    if(heading) heading.textContent=copy.title;
+    const memory=typeof paidExperience==="undefined" ? "" : PaidClickExperience.memoryLine(paidExperience);
+    $("resultSummary").textContent=[copy.subtitle, memory].filter(Boolean).join(" · ")
+      || (scored.length ? `${scored.length} imóveis` : "Não encontramos imóveis nessa combinação.");
+  }else{
+    $("resultSummary").textContent=scored.length
+      ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
+      : "Não encontramos uma combinação forte. Vamos ampliar sua busca.";
+  }
 
 
   $("matchGrid")
@@ -16154,6 +15914,15 @@ async function yntOpenProactiveAiForProperty(
   );
 }
 
+// Reutiliza a intenção normalizada da entrada, inclusive em modo=explorar.
+// A classe visual do feed não representa a origem da sessão.
+function yntHasPaidClickContext(){
+  return Boolean(adIntent.active ||
+    paidSearch.neighborhood || paidSearch.region || paidSearch.bedrooms ||
+    paidSearch.minPrice || paidSearch.maxPrice || paidSearch.type ||
+    paidSearch.search || paidSearch.development);
+}
+
 function scheduleAiAssistantForProperty(
   p,
   modal
@@ -16161,6 +15930,9 @@ function scheduleAiAssistantForProperty(
   clearTimeout(
     aiAssistantTriggerTimer
   );
+
+  // Cancela também um timer anterior; IA paga permanece somente manual.
+  if(yntHasPaidClickContext()) return;
 
   /*
     O detalhe foi aberto a partir da conversa.
@@ -16173,7 +15945,7 @@ function scheduleAiAssistantForProperty(
   const proactive=
     yntIsPaidDirectPropertyEntry();
 
-  if(proactive){
+  if(proactive && !document.body.classList.contains("ad-match-mode")){
     /*
       Registra a entrada do experimento assim que o detalhe existe.
     */
@@ -16216,6 +15988,7 @@ function scheduleAiAssistantForProperty(
             return;
           }
 
+          if(yntHasPaidClickContext()) return;
           yntOpenProactiveAiForProperty(
             p
           );
@@ -16817,6 +16590,8 @@ function closePropertyDetail({fromPopState=false}={}){
   ){
     history.back();
   }
+
+  notePaidSignal("returned_to_results");
 }
 
 const fullNewPropertyCache=new Map();
@@ -18365,6 +18140,7 @@ async function showPhotoModal(id){
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAgentConversation(p));
   modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   document.body.appendChild(modal);
+  notePaidSignal("detail_opened", p.id);
 
   /*
     Camada adicional de empreendimento.
@@ -21326,6 +21102,186 @@ function regionDisplayName(regionKey){
   return names[norm(regionKey)] || "região escolhida";
 }
 
+let paidExperience=null;
+
+function paidMemory(){
+  return safeStorageGetJSON("ynt_paid_search_memory") || {};
+}
+
+function rememberPaidSearch(){
+  if(!yntHasPaidClickContext()) return;
+  safeStorageSetJSON("ynt_paid_search_memory", {
+    neighborhood:adIntent.neighborhood || "",
+    region:adIntent.region || "",
+    bedrooms:adIntent.bedrooms || 0,
+    minPrice:adIntent.minPrice || 0,
+    maxPrice:adIntent.maxPrice || 0,
+    type:adIntent.type || "",
+    search:adIntent.search || "",
+    development:adIntent.development || "",
+    subscribed:safeStorageGet("ynt_push_last_opted_in")==="1",
+    permissionDenied:safeStorageGet("ynt_paid_permission_denied")==="1",
+    dismissedSessionId:safeStorageGet("ynt_paid_push_dismissed_session") || ""
+  });
+}
+
+function paidOneSignalAuthority(){
+  return PaidClickExperience.subscriptionAuthority({
+    sdkReady:Boolean(YNT_ONESIGNAL_READY && YNT_ONESIGNAL_INSTANCE),
+    optedIn:Boolean(YNT_ONESIGNAL_INSTANCE?.User?.PushSubscription?.optedIn),
+    subscriptionId:clean(YNT_ONESIGNAL_INSTANCE?.User?.PushSubscription?.id || "")
+  });
+}
+
+function reconcilePaidPushState(){
+  if(!paidExperience || !yntHasPaidClickContext()) return;
+  paidExperience=PaidClickExperience.reducePaidExperience(paidExperience,{
+    type:"subscription_reconciled",
+    authority:paidOneSignalAuthority()
+  });
+  renderPaidPush();
+}
+
+function startPaidClickExperience(){
+  const memory=paidMemory();
+  let denied=memory.permissionDenied===true;
+  try{
+    if(typeof Notification!=="undefined" && Notification.permission==="denied") denied=true;
+  }catch(error){}
+  paidExperience=PaidClickExperience.createExperience({
+    intent:adIntent,
+    remembered:memory,
+    sessionId:typeof YNTELIGENCIA_SESSION_ID==="undefined" ? "" : YNTELIGENCIA_SESSION_ID,
+    dismissedSessionId:memory.dismissedSessionId || "",
+    subscriptionAuthority:paidOneSignalAuthority(),
+    permissionDenied:denied
+  });
+  renderPaidPush();
+}
+
+function notePaidSignal(type, propertyId){
+  if(!paidExperience || !yntHasPaidClickContext()) return;
+  paidExperience=PaidClickExperience.reducePaidExperience(paidExperience, {type, propertyId});
+  if(type==="dismiss"){
+    safeStorageSet("ynt_paid_push_dismissed_session", YNTELIGENCIA_SESSION_ID);
+    rememberPaidSearch();
+  }
+  if(type==="permission_denied"){
+    safeStorageSet("ynt_paid_permission_denied", "1");
+    rememberPaidSearch();
+  }
+  if(type==="subscribed"){
+    safeStorageSet("ynt_push_last_opted_in", "1");
+    safeStorageSet("ynt_paid_permission_denied", "");
+    rememberPaidSearch();
+  }
+  if(type==="subscription_unresolved"){
+    rememberPaidSearch();
+  }
+  renderPaidPush();
+}
+
+function notePaidArrival(){
+  rememberPaidSearch();
+  notePaidSignal("results_shown");
+  if(adIntent.restored) return;
+  supabaseTrack("paid_entry", PaidClickExperience.sanitizeEvent({
+    neighborhood:adIntent.neighborhood || "",
+    bedrooms:adIntent.bedrooms || 0,
+    min_price:adIntent.minPrice || 0,
+    max_price:adIntent.maxPrice || 0
+  }));
+}
+
+function renderPaidPush(){
+  const sheet=$("paidPushSheet");
+  const status=$("paidPushStatus");
+  if(!paidExperience || !sheet || !status) return;
+  const prompt=PaidClickExperience.promptCopy();
+  const title=$("paidPushTitle");
+  if(title) title.textContent=prompt.headline;
+  const accept=$("paidPushAccept");
+  const dismiss=$("paidPushDismiss");
+  if(accept) accept.textContent=prompt.primary;
+  if(dismiss) dismiss.textContent=prompt.secondary;
+  const detail=document.getElementById("photoModal");
+  const detailOpen=Boolean(detail && !detail.hidden &&
+    detail.getAttribute("aria-hidden")!=="true" &&
+    detail.getClientRects().length &&
+    getComputedStyle(detail).visibility!=="hidden");
+  const presentation=PaidClickExperience.evaluatePushPrompt(paidExperience,{detailOpen});
+  const showPrompt=paidExperience.promptEligible && !detailOpen;
+  if(showPrompt && !paidExperience.promptVisible){
+    supabaseTrack("push_prompt_shown", PaidClickExperience.sanitizeEvent({
+      neighborhood:adIntent.neighborhood || "",
+      bedrooms:adIntent.bedrooms || 0
+    }));
+    notePaidSignal("prompt_shown");
+    return;
+  }
+  sheet.hidden=!presentation.visible;
+  document.body.classList.toggle("paid-push-prompt", presentation.visible);
+  if(paidExperience.phase==="E" || paidExperience.phase==="H"){
+    status.hidden=false;
+    status.textContent=paidExperience.phase==="E"
+      ? PaidClickExperience.acceptanceCopy()
+      : PaidClickExperience.subscribedNote();
+  }else if(paidExperience.phase==="G"){
+    status.hidden=false;
+    status.textContent=PaidClickExperience.deniedNote();
+  }else if(paidExperience.phase==="J"){
+    status.hidden=false;
+    status.textContent=PaidClickExperience.unresolvedNote();
+  }else{
+    status.hidden=true;
+    status.textContent="";
+  }
+  if(paidExperience.phase==="D") sheet.hidden=true;
+}
+
+async function acceptPaidPush(){
+  if(!paidExperience) return;
+  notePaidSignal("accept");
+  supabaseTrack("push_prompt_accepted", PaidClickExperience.sanitizeEvent({
+    neighborhood:adIntent.neighborhood || "",
+    bedrooms:adIntent.bedrooms || 0
+  }));
+
+  const activation=await activateYnteligenciaPush(adIntent,{quiet:true});
+  const decision=PaidClickExperience.paidPushDecision(activation);
+
+  if(decision==="permission_denied"){
+    notePaidSignal("permission_denied");
+    return;
+  }
+  if(decision==="subscribed"){
+    supabaseTrack("push_permission_granted", PaidClickExperience.sanitizeEvent({origin:"paid_click"}));
+    notePaidSignal("subscribed");
+    return;
+  }
+  notePaidSignal("subscription_unresolved");
+}
+
+function dismissPaidPush(){
+  supabaseTrack("push_prompt_dismissed", PaidClickExperience.sanitizeEvent({
+    neighborhood:adIntent.neighborhood || "",
+    bedrooms:adIntent.bedrooms || 0
+  }));
+  notePaidSignal("dismiss");
+}
+
+$("paidPushAccept")?.addEventListener("click", ()=>acceptPaidPush());
+$("paidPushDismiss")?.addEventListener("click", dismissPaidPush);
+$("paidPushClose")?.addEventListener("click", dismissPaidPush);
+$("paidPushSheet")?.addEventListener("click", event=>{
+  if(event.target===$("paidPushSheet")) dismissPaidPush();
+});
+
+const paidDetailObserver=new MutationObserver(()=>{
+  if(paidExperience) renderPaidPush();
+});
+paidDetailObserver.observe(document.body,{childList:true});
+
 function updateAdMatchUI(){
   document.body.classList.toggle("ad-match-mode",Boolean(adIntent.active));
 
@@ -21496,7 +21452,8 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.bedrooms=bedrooms;
   adIntent.minPrice=min;
   adIntent.maxPrice=max;
-  adIntent.active=Boolean(neighborhood || bedrooms || min || max);
+  adIntent.active=Boolean(neighborhood || bedrooms || min || max || adIntent.type || adIntent.search || adIntent.development);
+  notePaidSignal("refined");
   updateAdIntentPriceInUrl();
   updateAdMatchUI();
   setRefineMatchOpen(false);
@@ -22198,6 +22155,27 @@ loadInventory()
       document.body.classList.add("campaign-catalog-mode");
     }
 
+    if(!openedCatalogFromUrl && !sharedPropertyId && !adIntent.active){
+      const memory=paidMemory();
+      if(memory.neighborhood || memory.bedrooms || memory.minPrice || memory.maxPrice){
+        adIntent.neighborhood=memory.neighborhood || "";
+        adIntent.region=memory.region || "";
+        adIntent.bedrooms=Number(memory.bedrooms)||0;
+        adIntent.minPrice=Number(memory.minPrice)||0;
+        adIntent.maxPrice=Number(memory.maxPrice)||0;
+        adIntent.type=memory.type || "";
+        adIntent.search=memory.search || "";
+        adIntent.development=memory.development || "";
+        adIntent.active=true;
+        adIntent.restored=true;
+      }
+    }
+
+    startPaidClickExperience();
+    if(openedCatalogFromUrl && yntHasPaidClickContext()){
+      notePaidArrival();
+    }
+
     /* Se o clique veio de um anúncio com intenção conhecida, entrega
        os imóveis imediatamente. A home e o wizard continuam intactos
        para acessos normais ao domínio.
@@ -22209,11 +22187,8 @@ loadInventory()
     ){
       updateAdMatchUI();
       document.body.classList.remove("home-mode");
-      if(adIntentHasPrice()){
-        showMatches();
-      }else{
-        openAdBudgetQuestion();
-      }
+      showMatches();
+      notePaidArrival();
     }
 
     /*
