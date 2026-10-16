@@ -89,6 +89,8 @@ test('detail signal is emitted after modal insertion so the second opening canno
 function explorarPage(search, currentTouch = {}) {
   const p = page();
   const c = p.context;
+  c.URLSearchParams = URLSearchParams;
+  c.window = {location:{search}};
   c.YNTELIGENCIA_TOUCHES = {current_touch:currentTouch};
   c.paidSearch = paid.readSearchParams(search);
   c.adIntent = {...c.paidSearch, active:c.paidSearch.directToResults};
@@ -165,3 +167,4 @@ test('explorar without normalized paid intent ignores paid signals', () => {
   assert.equal(c.paidExperience.propertiesSeen, 0);
   assert.equal(p.elements.paidPushSheet.hidden, true);
 });
+

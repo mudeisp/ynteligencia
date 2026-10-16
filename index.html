@@ -15917,13 +15917,22 @@ async function yntOpenProactiveAiForProperty(
 // A classe visual do feed não representa a origem da sessão.
 const YNT_PAID_UTM_MEDIA=new Set(["cpc","ppc","paid","paid_search","paid_social","paid_display","paid_video","cpm","cpv","cpa","cpl","sem","display","retargeting","remarketing"]);
 
+function yntCurrentUrlHasPaidAttribution(){
+  const params=new URLSearchParams(window.location.search);
+  const paidMedium=String(params.get("utm_medium") || "").toLowerCase().replace(/[ -]+/g,"_");
+  return Boolean(
+    params.get("gclid") || params.get("gbraid") || params.get("wbraid") ||
+    YNT_PAID_UTM_MEDIA.has(paidMedium)
+  );
+}
+
 function yntHasPaidClickContext(){
   const touch=YNTELIGENCIA_TOUCHES?.current_touch || {};
   const paidMedium=String(touch.utm_medium || "").toLowerCase().replace(/[ -]+/g,"_");
   const paidAttribution=Boolean(
     touch.gclid || touch.gbraid || touch.wbraid || YNT_PAID_UTM_MEDIA.has(paidMedium)
   );
-  return Boolean(paidAttribution || adIntent.active ||
+  return Boolean(yntCurrentUrlHasPaidAttribution() || paidAttribution || adIntent.active ||
     paidSearch.neighborhood || paidSearch.region || paidSearch.bedrooms ||
     paidSearch.minPrice || paidSearch.maxPrice || paidSearch.type ||
     paidSearch.search || paidSearch.development);
