@@ -156,3 +156,52 @@ test("request timeout opens local fallback and never schedules a redirect",async
 test("paidSearch remains an additional paid signal without attribution changes",async()=>{
  const f=harness({search:""});f.c.paidSearch.neighborhood="Brooklin";await f.open();assert.deepEqual(f.requests[0].paidContext,{isPaid:true,intent:null});assert.equal(f.requests[0].tracking.current_touch.gclid,"");
 });
+async function with409RouteFixture(run){
+  const keys=["ADS_AGENT_HANDOFF_ENABLED","SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"];
+  const saved=Object.fromEntries(keys.map(k=>[k,process.env[k]])),oldFetch=globalThis.fetch,s=store();
+  Object.assign(process.env,{SUPABASE_URL:"https://supabase.example.test",SUPABASE_SERVICE_ROLE_KEY:"test-only"});
+  const f={store:s,failToken:false,fetches:0};
+  globalThis.fetch=async(url,init)=>{
+    f.fetches++;assert.ok(String(url).startsWith("https://supabase.example.test/rest/v1/"));
+    const path=String(url).split("/rest/v1/")[1];
+    if(f.failToken&&path==="ads_handoffs"&&init.method==="POST")return Response.json({code:"23505",message:"duplicate key"},{status:409});
+    const result=await s.rest(path,{method:init.method,body:init.body?JSON.parse(init.body):undefined});
+    return new Response(result.data==null?null:JSON.stringify(result.data),{status:result.status});
+  };
+  try{
+    const {default:handler}=await import("./api/ads.js");
+    f.post=async body=>{
+      const response={setHeader(){},status(code){this.code=code;return this;},json(value){this.body=value;return this;}};
+      await handler({method:"POST",headers:{origin:"https://app.yincorp.com.br"},query:{action:"create-handoff"},body},response);
+      return response;
+    };
+    await run(f);
+  }finally{globalThis.fetch=oldFetch;for(const [k,v]of Object.entries(saved)){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
+}
+test("409 Preview regression: identical native/legacy fixtures are disabled before storage and succeed only with the exact flag",async()=>{
+  const native={...handoff.buildEnvelope(property,options),tracking:{current_touch:{gclid:"original-click",utm_medium:"cpc"}}};
+  const legacy={visitor_id:visitor,session_id:session,source_product:"ynteligencia",return_origin:options.origin,
+    property:{external_id:property.id,db_id:db,name:property.name,inventory_source:"novos"},current_touch:native.tracking.current_touch};
+  for(const body of [native,legacy])await with409RouteFixture(async f=>{
+    for(const flag of [undefined,"false","TRUE","1"," true "]){
+      if(flag===undefined)delete process.env.ADS_AGENT_HANDOFF_ENABLED;else process.env.ADS_AGENT_HANDOFF_ENABLED=flag;
+      const result=await f.post(body);assert.equal(result.code,409);assert.deepEqual(result.body,{success:false,error:"handoff_disabled"});
+      assert.equal(f.fetches,0);assert.equal(f.store.handoffs.length,0);assert.equal(f.store.events.length,0);
+    }
+    process.env.ADS_AGENT_HANDOFF_ENABLED="true";
+    const result=await f.post(body);assert.equal(result.code,200);assert.equal(result.body.success,true);
+    assert.equal(f.store.handoffs.length,1);assert.equal(f.store.events.filter(x=>x.event_name==="agent_handoff_created").length,1);
+    const row=f.store.handoffs[0];assert.equal(row.visitor_id,visitor);assert.equal(row.session_id,session);assert.equal(row.source_product,"ynteligencia");
+    assert.equal(new Date(row.expires_at)-new Date(row.created_at),ads.HANDOFF_TTL_MS);
+    assert.equal(row.context.property.property_id,property.id);assert.equal(row.context.property.db_id,db);assert.equal(row.context.attribution.gclid,"original-click");
+    if(body.version){assert.equal(row.context.property_handoff_v1.context.currentProperty.external_id,property.id);assert.equal(row.context.property_handoff_v1.context.currentProperty.db_id,db);assert.equal(row.context.property_handoff_v1.returnUrl,native.returnUrl);}
+    assert.equal(f.store.calls.some(x=>x.path==="rpc/record_ads_lead"),false);
+  });
+});
+test("409 Preview regression: upstream Supabase token constraint 409 is a 502 creation failure, never handoff_disabled or success",async()=>{
+  await with409RouteFixture(async f=>{
+    process.env.ADS_AGENT_HANDOFF_ENABLED="true";f.failToken=true;
+    const result=await f.post(handoff.buildEnvelope(property,options));assert.equal(result.code,502);
+    assert.deepEqual(result.body,{success:false,error:"Não foi possível criar o handoff"});assert.equal(f.store.handoffs.length,0);assert.equal(f.store.events.length,0);
+  });
+});

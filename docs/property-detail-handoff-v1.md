@@ -80,3 +80,47 @@ Essas interceptações pertencem apenas ao harness de QA, não ao produto. Elas 
 7. No Preview desligado, ambos os controles devem abrir a IA local sem navegar ao AGENTE. No harness, simular falha/timeout/500/JSON sem token no `create-handoff` e confirmar o mesmo fallback. Verificar que home, empreendimento, MATCH, catálogo e IA proativa continuam locais e que o CTA humano e Push conservam as ações anteriores.
 
 Sem as etapas integradas acima e o banco local para os checks PostgreSQL, não afirmar paridade E2E ou autorização para merge/deploy.
+
+## Investigação do 409 observado no Preview
+
+No deployment do PR #24 em `ynteligencia-git-property-detail-handoff-v1-rafael-8f11.vercel.app`, foram capturadas duas requisições POST com Origin desse mesmo Preview: uma entrada nativa (`version:1/kind:property`) e uma entrada legada. Ambas responderam exatamente:
+
+```http
+HTTP 409
+{"success":false,"error":"handoff_disabled"}
+```
+
+Não foi criado token real nessas sondagens. A causa comprovada é `ads.agentHandoffEnabled() === false` no runtime: o valor efetivo de `ADS_AGENT_HANDOFF_ENABLED` não é exatamente a string `true`. A consulta de metadados Vercel do projeto `ynteligencia`, branch `property-detail-handoff-v1`, retornou 403 para o escopo `rafael-8f11`; não foi possível distinguir variável ausente, valor diferente, override da branch ou deployment anterior à configuração. Não confundir essa limitação com dúvida sobre o guard que gerou a resposta: o body e o código identificam esse guard de forma determinística.
+
+### Todos os 409 e caminhos excluídos
+
+| Condição | Resultado relevante |
+| --- | --- |
+| `handleCreateHandoff`: flag efetiva desligada | 409 `handoff_disabled`, antes de `supabaseConfigured`, leitura/validação do body, bridge, visitor/session, token ou RPC |
+| `ads.createHandoff`: flag desligada, quando chamado diretamente | Mesmo 409 `handoff_disabled`; guard adicional da infraestrutura existente |
+| `createPropertyHandoff`: envelope inválido | 400 `handoff_malformed`; nenhum 409 próprio |
+| visitor/source/session legados inválidos | 400; native exige UUIDs e o bridge mapeia camelCase para `visitor_id`/`session_id`, fixando `source_product=ynteligencia` |
+| Origem HTTP não permitida | 403 `Origin not allowed`, antes do guard da flag. O Origin do Preview usado na sondagem foi aceito, pois a resposta chegou a `handoff_disabled` |
+| `return_origin` não permitido no legado | Retorno canônico em `app.yincorp.com.br`, sem 409; no nativo o bridge deriva a origem do returnUrl já validado |
+| Colisão da chave de token / Supabase responde 409 | `ads.createHandoff` converte falha de persistência em 502; não é o 409 observado |
+| Falha de leitura/atribuição/RPC que interrompa a criação | 502/500 conforme o caminho; inacessível no request observado, que retorna antes do storage |
+| Deduplicação de evento | Resposta de duplicata 200, sem 409 de sessão/visitor |
+| Handoff ativo do mesmo visitor/session | Não existe esse bloqueio no fluxo nem unique constraint desse par na tabela; a chave de `ads_handoffs` é o token e o índice adicional é de expiração |
+| `recordAdsEvent`: conflito `event_id` com outra conversão | Há 409 `event_id já pertence a outra conversão`, mas exclusivamente no ramo `event_name=lead_created`/`record_ads_lead`; create-handoff usa o nome interno fixo `agent_handoff_created` e não chama essa RPC |
+
+O bridge já fornece `visitor_id`, `session_id`, `source_product`, `return_origin`, `property` e `current_property` no contrato legado aceito. `external_id` comercial e `db_id` são preservados separadamente no envelope `context.property_handoff_v1`. A fixture real do roteador verifica também esses campos, TTL e evento único. Não foi encontrada incompatibilidade que justificasse mudar `agent-handoff-v1.js` ou `ads-routes.js`.
+
+O 500 relatado de `/api/assistant` é posterior ao fallback e não participa do caminho create-handoff. O 500 relatado de `action=event` não explica o guard da flag; uma sondagem atual com body inválido `{}` retornou 400 `product inválido`, sem consultar/gravar dados. Isso não comprova funcionamento do banco/RPC para eventos válidos e não foi usado para mascarar o relato anterior.
+
+### Reprodução, testes e ação operacional pendente
+
+- Dois testes específicos `409 Preview regression` adicionados: mesma fixture nativa/legada bloqueada sem qualquer acesso REST para flag ausente, `false`, `TRUE`, `1` ou ` true `; criação 200 apenas com `true`, uma gravação de token, um `agent_handoff_created`, TTL inalterado e IDs/atribuição/retorno preservados. O segundo teste injeta 409/23505 do Supabase e exige 502 sem token/evento ou sucesso falso.
+- Readiness local com o mesmo handler/fixture e expectativa de status 200: flag `false` falha com `409 handoff_disabled` (zero tokens/eventos); flag `true` passa com 200 (um token/evento). Essa é uma demonstração vermelho/verde por configuração local, não uma alegação de correção do deployment remoto.
+- `node --test agent-property-handoff.test.js`: 27/27.
+- Testes focados existentes de ads-intelligence: 12/12.
+- Suíte disponível sem PostgreSQL, com o mesmo comando documentado acima: 233/233.
+- `node --test --test-name-pattern='409 Preview regression' agent-property-handoff.test.js`: 2/2.
+
+Nenhuma mudança funcional de código ou ambiente foi aplicada. A correção necessária é ativar `ADS_AGENT_HANDOFF_ENABLED=true` no ambiente **Preview**, no projeto **ynteligencia**, preferencialmente restrita à branch **property-detail-handoff-v1**, respeitando qualquer override de branch. O deployment que executará o teste precisa receber esse valor. [Alterações de variáveis Vercel só se aplicam a deployments novos](https://vercel.com/docs/environment-variables), não ao Preview já publicado.
+
+Como foi solicitado não fazer deploy e o acesso Vercel está sem autorização, essa ação operacional não foi executada. O PR ainda não voltou a estar pronto para E2E manual neste Preview: o 409 real permanece até que um Preview autorizado receba a flag correta. Não habilitar por default, por campo do body ou por bypass do guard; manter o 409 e o fallback legítimos quando a feature estiver desligada. Nenhuma alteração em AGENTE, tracking, Supabase, dependências, lockfile ou outros CTAs.
