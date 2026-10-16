@@ -9,12 +9,16 @@ const scheduler = html.slice(html.indexOf('const YNT_PAID_UTM_MEDIA='), html.ind
 function runtime(search = '', active = false) {
   const timers = new Map();
   const opened = [];
+  const bodyClasses = new Set();
   let serial = 0;
   const context = {
     paidSearch: paid.readSearchParams(search), adIntent: {active},
     YNTELIGENCIA_TOUCHES: {},
     aiAssistantTriggerTimer: null, aiResumeChatAfterDetail: false,
-    document: {body: {contains: () => true, classList: {contains: () => false, toggle: () => {}}}},
+    document: {body: {contains: () => true, classList: {
+      contains: name => bodyClasses.has(name),
+      toggle: (name, enabled) => enabled ? bodyClasses.add(name) : bodyClasses.delete(name)
+    }}},
     setTimeout: (fn, delay) => { timers.set(++serial, {fn, delay}); return serial; },
     clearTimeout: id => timers.delete(id),
     yntIsPaidDirectPropertyEntry: () => true,
@@ -23,7 +27,7 @@ function runtime(search = '', active = false) {
   };
   vm.createContext(context);
   vm.runInContext(scheduler, context);
-  return {context, timers, opened, flush() {
+  return {context, timers, opened, bodyClasses, flush() {
     const pending = [...timers.values()]; timers.clear();
     for (const {fn} of pending) fn();
   }};
@@ -39,6 +43,14 @@ test('paid explorar: first and second detail never schedule automatic AI', () =>
   }
   assert.deepEqual(r.opened, []);
 });
+test('paid UI sync adds class when current touch receives a click ID later', () => {
+  const r = runtime();
+  assert.equal(r.bodyClasses.has('paid-click-context'), false);
+  r.context.YNTELIGENCIA_TOUCHES.current_touch = {gclid:'late-click-id'};
+  r.context.syncPaidClickContextUi();
+  assert.equal(r.bodyClasses.has('paid-click-context'), true);
+});
+
 test('paid click IDs block automatic AI without search intent', () => {
   const r = runtime();
   r.context.YNTELIGENCIA_TOUCHES.current_touch = {gclid:'click-id'};

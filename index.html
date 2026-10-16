@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -15930,7 +15929,11 @@ function yntHasPaidClickContext(){
     paidSearch.search || paidSearch.development);
 }
 
-document.body.classList.toggle("paid-click-context", yntHasPaidClickContext());
+function syncPaidClickContextUi(){
+  document.body.classList.toggle("paid-click-context", yntHasPaidClickContext());
+}
+
+syncPaidClickContextUi();
 
 function scheduleAiAssistantForProperty(
   p,
@@ -19967,6 +19970,7 @@ function clearAdEntryIntent(){
   adIntent.minPrice=0;
   adIntent.maxPrice=0;
   adIntent.active=false;
+  syncPaidClickContextUi();
 
   document.body.classList.remove("ad-match-mode");
   $("results")?.classList.remove("visible");
@@ -21152,6 +21156,7 @@ function reconcilePaidPushState(){
 }
 
 function startPaidClickExperience(){
+  syncPaidClickContextUi();
   const memory=paidMemory();
   let denied=memory.permissionDenied===true;
   try{
@@ -21401,6 +21406,7 @@ document.querySelectorAll(".ad-budget-option").forEach(button=>{
     const max=Number(button.dataset.budgetMax||0)||0;
     adIntent.minPrice=min;
     adIntent.maxPrice=max;
+    syncPaidClickContextUi();
     updateAdIntentPriceInUrl();
     updateAdMatchUI();
     closeAdBudgetQuestion();
@@ -21462,6 +21468,7 @@ $("applyRefineMatch")?.addEventListener("click",()=>{
   adIntent.minPrice=min;
   adIntent.maxPrice=max;
   adIntent.active=Boolean(neighborhood || bedrooms || min || max || adIntent.type || adIntent.search || adIntent.development);
+  syncPaidClickContextUi();
   notePaidSignal("refined");
   updateAdIntentPriceInUrl();
   updateAdMatchUI();
@@ -21476,6 +21483,7 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   adIntent.minPrice=0;
   adIntent.maxPrice=0;
   adIntent.active=false;
+  syncPaidClickContextUi();
 
   const url=new URL(window.location.href);
   ["bairro","neighborhood","region","dormitorios","bedrooms","valor_min","min_price","valor_max","max_price"].forEach(key=>url.searchParams.delete(key));
@@ -22177,6 +22185,7 @@ loadInventory()
         adIntent.development=memory.development || "";
         adIntent.active=true;
         adIntent.restored=true;
+        syncPaidClickContextUi();
       }
     }
 
