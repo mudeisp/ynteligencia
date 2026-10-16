@@ -15914,6 +15914,15 @@ async function yntOpenProactiveAiForProperty(
   );
 }
 
+// Reutiliza a intenção normalizada da entrada, inclusive em modo=explorar.
+// A classe visual do feed não representa a origem da sessão.
+function yntHasPaidClickContext(){
+  return Boolean(adIntent.active ||
+    paidSearch.neighborhood || paidSearch.region || paidSearch.bedrooms ||
+    paidSearch.minPrice || paidSearch.maxPrice || paidSearch.type ||
+    paidSearch.search || paidSearch.development);
+}
+
 function scheduleAiAssistantForProperty(
   p,
   modal
@@ -15921,6 +15930,9 @@ function scheduleAiAssistantForProperty(
   clearTimeout(
     aiAssistantTriggerTimer
   );
+
+  // Cancela também um timer anterior; IA paga permanece somente manual.
+  if(yntHasPaidClickContext()) return;
 
   /*
     O detalhe foi aberto a partir da conversa.
@@ -15976,6 +15988,7 @@ function scheduleAiAssistantForProperty(
             return;
           }
 
+          if(yntHasPaidClickContext()) return;
           yntOpenProactiveAiForProperty(
             p
           );
