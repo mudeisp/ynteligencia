@@ -184,10 +184,7 @@ function createExperience(input) {
 
 function valuePerceived(state) {
   if (!state.resultsShown) return false;
-  if (state.propertiesSeen >= 2) return true;
-  if (state.detailOpened && state.returnedToResults) return true;
-  if (state.refined && (state.detailOpened || state.propertiesSeen >= 1)) return true;
-  return false;
+  return state.propertiesSeen >= 2;
 }
 
 function canPrompt(state) {
@@ -291,7 +288,7 @@ function evaluatePushPrompt(state, options) {
 
 function promptCopy() {
   return {
-    headline: "Quer que eu te avise quando aparecer outro imóvel como estes?",
+    headline: "Quer que eu te avise quando aparecer uma nova opção dentro desta busca?",
     primary: "SIM, QUERO SER AVISADO",
     secondary: "Agora não"
   };
