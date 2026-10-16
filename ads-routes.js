@@ -1,3 +1,4 @@
+import { createPropertyHandoff, deliverPropertyHandoff, isNativePropertyRequest } from "./agent-handoff-v1.js";
 import {
   ads,
   applyCors,
@@ -47,7 +48,9 @@ export async function handleCreateHandoff(req, res) {
   if (!supabaseConfigured()) return unavailable(res);
 
   try {
-    const result = await ads.createHandoff(readBody(req), rest, new Date(), {
+    const body = readBody(req);
+    const create = isNativePropertyRequest(body) ? createPropertyHandoff : ads.createHandoff;
+    const result = await create(body, rest, new Date(), {
       allowedOrigins: handoffOrigins()
     });
     return res.status(result.status).json(result.body);
@@ -69,7 +72,7 @@ export async function handleGetHandoff(req, res) {
   if (!supabaseConfigured()) return unavailable(res);
 
   try {
-    const result = await ads.readHandoff(readBody(req), rest);
+    const result = deliverPropertyHandoff(await ads.readHandoff(readBody(req), rest));
     return res.status(result.status).json(result.body);
   } catch (error) {
     console.error("ADS_HANDOFF_READ_ERROR", error && error.name ? error.name : "Error");

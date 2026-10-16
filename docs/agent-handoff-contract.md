@@ -1,5 +1,7 @@
 # Contrato de handoff entre YNTELIGENCIA e AGENTE.YINCORP
 
+> O CTA manual da ficha agora produz o contrato nativo v1 `kind=property`. Transporte, separação de tracking, fallback e validação em Preview estão em [property-detail-handoff-v1.md](./property-detail-handoff-v1.md). As seções de contexto/identidade e `agent_opened` abaixo documentam o caminho legado, que continua aceito para tokens antigos; não devem ser usadas para fabricar esse evento no fluxo nativo.
+
 A YNTELIGENCIA continua a descoberta de imóveis. O AGENTE.YINCORP continua o projeto conversacional, na URL `https://agente.yincorp.com.br/`. Este repositório não contém o código do agente e não o incorpora.
 
 O handoff transporta contexto sem PII e sem aumentar o número de Serverless Functions. Tudo passa pela function já consolidada `/api/ads`.
