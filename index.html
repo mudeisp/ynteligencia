@@ -4807,7 +4807,7 @@ body.ad-match-mode.paid-push-prompt .specialist-float{
 <div class="paid-push-sheet" id="paidPushSheet" hidden>
   <div class="paid-push-card" role="dialog" aria-labelledby="paidPushTitle">
     <button class="paid-push-close" id="paidPushClose" type="button" aria-label="Fechar">×</button>
-    <p id="paidPushTitle">Quer que eu te avise quando aparecer outro imóvel como estes?</p>
+    <p id="paidPushTitle">Quer que eu te avise quando aparecer uma nova opção dentro desta busca?</p>
     <button class="paid-push-accept" id="paidPushAccept" type="button">SIM, QUERO SER AVISADO</button>
     <button class="paid-push-dismiss" id="paidPushDismiss" type="button">Agora não</button>
   </div>
@@ -17642,7 +17642,6 @@ async function hydrateDevelopmentRichModal(
 async function showPhotoModal(id){
   let p=propertyForInteraction(id);
   if(!p)return;
-  notePaidSignal("detail_opened", p.id);
 
   /*
     PERFORMANCE:
@@ -18141,6 +18140,7 @@ async function showPhotoModal(id){
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAgentConversation(p));
   modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   document.body.appendChild(modal);
+  notePaidSignal("detail_opened", p.id);
 
   /*
     Camada adicional de empreendimento.
@@ -21204,7 +21204,11 @@ function renderPaidPush(){
   const dismiss=$("paidPushDismiss");
   if(accept) accept.textContent=prompt.primary;
   if(dismiss) dismiss.textContent=prompt.secondary;
-  const detailOpen=Boolean(document.getElementById("photoModal"));
+  const detail=document.getElementById("photoModal");
+  const detailOpen=Boolean(detail && !detail.hidden &&
+    detail.getAttribute("aria-hidden")!=="true" &&
+    detail.getClientRects().length &&
+    getComputedStyle(detail).visibility!=="hidden");
   const presentation=PaidClickExperience.evaluatePushPrompt(paidExperience,{detailOpen});
   const showPrompt=paidExperience.promptEligible && !detailOpen;
   if(showPrompt && !paidExperience.promptVisible){
