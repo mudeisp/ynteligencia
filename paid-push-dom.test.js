@@ -148,3 +148,67 @@ test('explorar without normalized paid intent ignores paid signals', () => {
   assert.equal(c.paidExperience.propertiesSeen, 0);
   assert.equal(p.elements.paidPushSheet.hidden, true);
 });
+
+test('one paid retention surface: real scheduler and legacy opener cannot compete with Paid Push', async () => {
+  const p = explorarPage('?modo=explorar&bairro=Pinheiros&dormitorios=2');
+  const c = p.context;
+  const timers = new Map();
+  let serial = 0;
+  let legacyShellCalls = 0;
+  c.aiAssistantTriggerTimer = null;
+  c.aiResumeChatAfterDetail = false;
+  c.setTimeout = (fn, delay) => {timers.set(++serial, {fn, delay}); return serial;};
+  c.clearTimeout = id => timers.delete(id);
+  c.ensureAiAssistantShell = () => {legacyShellCalls++; throw new Error('unexpected legacy shell');};
+  const source = html.slice(html.indexOf('async function yntOpenProactiveAiForProperty('), html.indexOf('function extractAllPropertyImages('));
+  vm.runInContext(source, c);
+  for (const id of ['first','second']) {
+    p.modal.hidden = false;
+    c.notePaidSignal('detail_opened', id);
+    c.scheduleAiAssistantForProperty({id}, p.modal);
+    // Advance all scheduled callbacks, including any five-second opener.
+    for (const {fn} of [...timers.values()]) fn();
+    timers.clear();
+    await c.yntOpenProactiveAiForProperty({id});
+    assert.equal(legacyShellCalls, 0);
+    assert.equal(p.elements.paidPushSheet.hidden, true);
+    p.modal.hidden = true;
+    c.notePaidSignal('returned_to_results');
+    assert.equal(p.elements.paidPushSheet.hidden, id === 'first');
+  }
+  assert.equal(p.elements.paidPushAccept.textContent, 'SIM, QUERO SER AVISADO');
+  assert.equal(p.elements.paidPushDismiss.textContent, 'Agora não');
+  assert.match(html, /id="paidPushSheet" data-retention-experience="paid-push"/);
+  assert.match(html, /shell\.dataset\.retentionExperience="match-ai"/);
+});
+
+test('actual subscription reconciliation hides prompt for already subscribed visitor', () => {
+  const p = explorarPage('?modo=explorar&bairro=Pinheiros&dormitorios=2');
+  const c = p.context;
+  c.YNT_ONESIGNAL_INSTANCE.User.PushSubscription = {optedIn:true, id:'valid-subscription-id'};
+  c.reconcilePaidPushState();
+  c.notePaidSignal('detail_opened', 'first');
+  c.notePaidSignal('returned_to_results');
+  c.notePaidSignal('detail_opened', 'second');
+  p.modal.hidden = true;
+  c.notePaidSignal('returned_to_results');
+  assert.equal(c.paidExperience.subscribed, true);
+  assert.equal(p.elements.paidPushSheet.hidden, true);
+});
+
+test('dismissal does not prompt again in the same session after further properties', () => {
+  const p = explorarPage('?modo=explorar&bairro=Pinheiros&dormitorios=2');
+  const c = p.context;
+  c.notePaidSignal('detail_opened', 'first');
+  c.notePaidSignal('detail_opened', 'second');
+  p.modal.hidden = true;
+  c.notePaidSignal('returned_to_results');
+  assert.equal(p.elements.paidPushSheet.hidden, false);
+  c.notePaidSignal('dismiss');
+  for (const id of ['third','fourth']) {
+    c.notePaidSignal('detail_opened', id);
+    c.notePaidSignal('returned_to_results');
+  }
+  assert.equal(c.paidExperience.dismissed, true);
+  assert.equal(p.elements.paidPushSheet.hidden, true);
+});

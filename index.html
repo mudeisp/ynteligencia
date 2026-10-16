@@ -4804,7 +4804,7 @@ body.ad-match-mode.paid-push-prompt .specialist-float{
 
 <!-- Entrada direta de anúncios: refinamento opcional sem bloquear o feed -->
 
-<div class="paid-push-sheet" id="paidPushSheet" hidden>
+<div class="paid-push-sheet" id="paidPushSheet" data-retention-experience="paid-push" hidden>
   <div class="paid-push-card" role="dialog" aria-labelledby="paidPushTitle">
     <button class="paid-push-close" id="paidPushClose" type="button" aria-label="Fechar">×</button>
     <p id="paidPushTitle">Quer que eu te avise quando aparecer uma nova opção dentro desta busca?</p>
@@ -11103,6 +11103,7 @@ function ensureAiAssistantShell(){
 
   shell=document.createElement("div");
   shell.id="aiAssistantShell";
+  shell.dataset.retentionExperience="match-ai";
   shell.className="ai-assistant-shell";
   shell.innerHTML=`
     <div class="ai-assistant-card" role="dialog" aria-modal="true" aria-label="Assistente de compra">
@@ -15808,6 +15809,9 @@ function yntAppendProactiveVipActions(
 async function yntOpenProactiveAiForProperty(
   p
 ){
+  // Proteção no ponto de abertura: nenhum chamador automático pode
+  // reutilizar a Match IA como retenção da sessão paga.
+  if(yntHasPaidClickContext()) return;
   if(!p){
     return;
   }

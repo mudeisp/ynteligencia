@@ -89,3 +89,33 @@ test('Ads aliases and explorar routing remain unchanged; no native permission on
   assert.equal(paid.readSearchParams('?neighborhood=Pinheiros&bedrooms=2&max_price=900000').directToResults, true);
   assert.equal(html.includes('Notification.requestPermission('), false);
 });
+
+const legacyOpener = html.slice(html.indexOf('async function yntOpenProactiveAiForProperty('), html.indexOf('// Reutiliza a intenção normalizada da entrada'));
+
+test('actual legacy opener refuses every normalized paid URL even if called directly', async () => {
+  for (const query of ['bairro=Pinheiros','neighborhood=Pinheiros','regiao=oeste','region=west','dormitorios=2','bedrooms=2','valor_min=100000','min_price=100000','valor_max=900000','max_price=900000','tipo=casa','type=house','busca=Pinheiros','search=Pinheiros','empreendimento=Well','development=Well']) {
+    const r = runtime(`?modo=explorar&${query}`);
+    r.context.ensureAiAssistantShell = () => { throw new Error('legacy shell must not be touched'); };
+    r.context.resetAiLeadConversation = () => { throw new Error('manual AI state must not be reset'); };
+    vm.runInContext(legacyOpener, r.context);
+    await r.context.yntOpenProactiveAiForProperty({id:'first'});
+    await r.context.yntOpenProactiveAiForProperty({id:'second'});
+    assert.equal(r.timers.size, 0, query);
+  }
+});
+
+test('actual legacy opener preserves contextless organic behavior', async () => {
+  const r = runtime('?modo=explorar&cidade=São+Paulo&estado=SP');
+  const messages = [];
+  const opens = [];
+  r.context.resetAiLeadConversation = () => {};
+  r.context.ensureAiAssistantShell = () => ({querySelector:() => ({innerHTML:''}), classList:{add:name => opens.push(name)}});
+  r.context.document.body.style = {};
+  r.context.appendAiMessage = (role, message) => messages.push(message);
+  r.context.yntAppendProactiveVipActions = () => {};
+  r.context.clean = x => x;
+  vm.runInContext(legacyOpener, r.context);
+  await r.context.yntOpenProactiveAiForProperty({id:'organic', neighborhood:'Pinheiros'});
+  assert.deepEqual(opens, ['open']);
+  assert.equal(messages[0], 'Quer que te mando outras opções por dia sem deixar email ou whatsapp?');
+});
