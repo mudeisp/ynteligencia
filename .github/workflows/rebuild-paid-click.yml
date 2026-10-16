@@ -56,7 +56,9 @@ jobs:
         run: |
           rm -rf .rebuild
           rm -f .github/workflows/rebuild-paid-click.yml
-          changed="$(git diff --name-only 713a9299cb2f3fb1771718817c6ba3b2e092ae49 -- | sort)"
+          tracked="$(git diff --name-only 713a9299cb2f3fb1771718817c6ba3b2e092ae49 --)"
+          untracked="$(git ls-files --others --exclude-standard)"
+          changed="$(printf '%s\n%s\n' "$tracked" "$untracked" | sed '/^$/d' | sort -u)"
           expected="$(printf '%s\n' 'docs/paid-click-push-experience-v1.md' 'index.html' 'paid-click-experience.js' 'paid-click-experience.test.js' | sort)"
           printf 'Changed files:\n%s\n' "$changed"
           test "$changed" = "$expected"
