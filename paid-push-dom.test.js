@@ -18,6 +18,7 @@ function page() {
     PaidClickExperience:paid,
     paidExperience:paid.createExperience({intent:{neighborhood:'Pinheiros'}, sessionId:'s', subscriptionAuthority:'not_subscribed'}),
     adIntent:{neighborhood:'Pinheiros', bedrooms:2},
+    YNTELIGENCIA_TOUCHES:{current_touch:{}},
     $:id => elements[id],
     document:{getElementById:id => elements[id] || null, body:{classList:{toggle(){}}}},
     getComputedStyle:element => ({visibility:element.visibility}),
@@ -50,7 +51,8 @@ test('real render: prompt appears only on returning from second distinct propert
   p.signal('detail_opened', 'first');
   assert.equal(p.context.paidExperience.promptEligible, false);
   p.signal('detail_opened', 'second');
-  assert.equal(p.context.paidExperience.promptEligible, true);
+  assert.equal(p.context.paidExperience.promptEligible, false);
+  assert.equal(p.context.paidExperience.returnedToResults, false);
   assert.equal(p.elements.paidPushSheet.hidden, true);
   p.modal.hidden = true;
   p.signal('returned_to_results');
@@ -84,9 +86,10 @@ test('detail signal is emitted after modal insertion so the second opening canno
   assert.equal((html.match(/notePaidSignal\("detail_opened", p.id\)/g) || []).length, 1);
 });
 
-function explorarPage(search) {
+function explorarPage(search, currentTouch = {}) {
   const p = page();
   const c = p.context;
+  c.YNTELIGENCIA_TOUCHES = {current_touch:currentTouch};
   c.paidSearch = paid.readSearchParams(search);
   c.adIntent = {...c.paidSearch, active:c.paidSearch.directToResults};
   c.safeStorageGetJSON = () => ({});
@@ -100,7 +103,7 @@ function explorarPage(search) {
   c.sharedPropertyId = null;
   c.loadCatalogFromUrl = () => c.paidSearch.mode === 'explorar';
   c.document.body.classList.add = () => {};
-  const helper = html.slice(html.indexOf('function yntHasPaidClickContext(){'), html.indexOf('function scheduleAiAssistantForProperty('));
+  const helper = html.slice(html.indexOf('const YNT_PAID_UTM_MEDIA='), html.indexOf('function scheduleAiAssistantForProperty('));
   const integration = html.slice(html.indexOf('let paidExperience=null;'), html.indexOf('async function acceptPaidPush(){'));
   // Reuse the production functions with the harness's inspectable global state.
   vm.runInContext(helper + integration.replace('let paidExperience=null;', 'paidExperience=null;'), c);
@@ -126,13 +129,27 @@ test('integrated explorar paid context records real arrival and detail signals w
   p.modal.hidden = false;
   c.notePaidSignal('detail_opened', 'second');
   assert.equal(c.paidExperience.propertiesSeen, 2);
-  assert.equal(c.paidExperience.promptEligible, true);
+  assert.equal(c.paidExperience.promptEligible, false);
   assert.equal(p.elements.paidPushSheet.hidden, true);
   p.modal.hidden = true;
   c.notePaidSignal('returned_to_results');
+  assert.equal(c.paidExperience.promptVisible, true);
   assert.equal(p.elements.paidPushSheet.hidden, false);
   assert.equal(p.elements.paidPushTitle.textContent, 'Quer que eu te avise quando aparecer uma nova opção dentro desta busca?');
   assert.equal(c.adIntent.active, false);
+});
+
+test('paid click attribution activates paid context without search filters', () => {
+  const p = explorarPage('?modo=explorar&cidade=São+Paulo', {gclid:'click-id'});
+  assert.equal(p.context.yntHasPaidClickContext(), true);
+  assert.equal(p.context.paidExperience.resultsShown, true);
+});
+
+test('paid medium UTM activates context while non-paid email medium does not', () => {
+  const paidUtm = explorarPage('?modo=explorar&cidade=São+Paulo', {utm_source:'google',utm_medium:'cpc'});
+  const emailUtm = explorarPage('?modo=explorar&cidade=São+Paulo', {utm_source:'newsletter',utm_medium:'email'});
+  assert.equal(paidUtm.context.yntHasPaidClickContext(), true);
+  assert.equal(emailUtm.context.yntHasPaidClickContext(), false);
 });
 
 test('explorar without normalized paid intent ignores paid signals', () => {

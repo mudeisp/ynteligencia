@@ -4807,9 +4807,9 @@ body.ad-match-mode.paid-push-prompt .specialist-float{
 <div class="paid-push-sheet" id="paidPushSheet" hidden>
   <div class="paid-push-card" role="dialog" aria-labelledby="paidPushTitle">
     <button class="paid-push-close" id="paidPushClose" type="button" aria-label="Fechar">×</button>
-    <p id="paidPushTitle">Quer que eu te avise quando aparecer uma nova opção dentro desta busca?</p>
-    <button class="paid-push-accept" id="paidPushAccept" type="button">SIM, QUERO SER AVISADO</button>
-    <button class="paid-push-dismiss" id="paidPushDismiss" type="button">Agora não</button>
+    <p id="paidPushTitle"></p>
+    <button class="paid-push-accept" id="paidPushAccept" type="button"></button>
+    <button class="paid-push-dismiss" id="paidPushDismiss" type="button"></button>
   </div>
 </div>
 
@@ -15916,12 +15916,21 @@ async function yntOpenProactiveAiForProperty(
 
 // Reutiliza a intenção normalizada da entrada, inclusive em modo=explorar.
 // A classe visual do feed não representa a origem da sessão.
+const YNT_PAID_UTM_MEDIA=new Set(["cpc","ppc","paid","paid_search","paid_social","paid_display","paid_video","cpm","cpv","cpa","cpl","sem","display","retargeting","remarketing"]);
+
 function yntHasPaidClickContext(){
-  return Boolean(adIntent.active ||
+  const touch=YNTELIGENCIA_TOUCHES?.current_touch || {};
+  const paidMedium=String(touch.utm_medium || "").toLowerCase().replace(/[ -]+/g,"_");
+  const paidAttribution=Boolean(
+    touch.gclid || touch.gbraid || touch.wbraid || YNT_PAID_UTM_MEDIA.has(paidMedium)
+  );
+  return Boolean(paidAttribution || adIntent.active ||
     paidSearch.neighborhood || paidSearch.region || paidSearch.bedrooms ||
     paidSearch.minPrice || paidSearch.maxPrice || paidSearch.type ||
     paidSearch.search || paidSearch.development);
 }
+
+document.body.classList.toggle("paid-click-context", yntHasPaidClickContext());
 
 function scheduleAiAssistantForProperty(
   p,
@@ -22385,6 +22394,8 @@ loadInventory()
     .neighborhood-compare-title{font-size:12px}
     .neighborhood-compare-subtitle{font-size:9px}
   }
+  body.paid-click-context #navExplore,
+  body.paid-click-context .neighborhood-compare-fab{display:none!important}
 </style>
 
 <a id="neighborhoodCompareFab" class="neighborhood-compare-fab" href="#" aria-label="Comparar imóveis em outro bairro">

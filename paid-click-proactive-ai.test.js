@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const paid = require('./paid-click-experience.js');
 const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
-const scheduler = html.slice(html.indexOf('function yntHasPaidClickContext()'), html.indexOf('function extractAllPropertyImages('));
+const scheduler = html.slice(html.indexOf('const YNT_PAID_UTM_MEDIA='), html.indexOf('function extractAllPropertyImages('));
 
 function runtime(search = '', active = false) {
   const timers = new Map();
@@ -12,8 +12,9 @@ function runtime(search = '', active = false) {
   let serial = 0;
   const context = {
     paidSearch: paid.readSearchParams(search), adIntent: {active},
+    YNTELIGENCIA_TOUCHES: {},
     aiAssistantTriggerTimer: null, aiResumeChatAfterDetail: false,
-    document: {body: {contains: () => true, classList: {contains: () => false}}},
+    document: {body: {contains: () => true, classList: {contains: () => false, toggle: () => {}}}},
     setTimeout: (fn, delay) => { timers.set(++serial, {fn, delay}); return serial; },
     clearTimeout: id => timers.delete(id),
     yntIsPaidDirectPropertyEntry: () => true,
@@ -38,6 +39,26 @@ test('paid explorar: first and second detail never schedule automatic AI', () =>
   }
   assert.deepEqual(r.opened, []);
 });
+test('paid click IDs block automatic AI without search intent', () => {
+  const r = runtime();
+  r.context.YNTELIGENCIA_TOUCHES.current_touch = {gclid:'click-id'};
+  r.context.scheduleAiAssistantForProperty({id:'paid-click'}, {});
+  assert.equal(r.timers.size, 0);
+  assert.deepEqual(r.opened, []);
+});
+
+test('paid campaign UTMs block automatic AI but email UTMs do not', () => {
+  const paidCampaign = runtime();
+  paidCampaign.context.YNTELIGENCIA_TOUCHES.current_touch = {utm_source:'google', utm_medium:'cpc'};
+  paidCampaign.context.scheduleAiAssistantForProperty({id:'paid-utm'}, {});
+  assert.equal(paidCampaign.timers.size, 0);
+
+  const emailCampaign = runtime();
+  emailCampaign.context.YNTELIGENCIA_TOUCHES.current_touch = {utm_source:'newsletter', utm_medium:'email'};
+  emailCampaign.context.scheduleAiAssistantForProperty({id:'email'}, {});
+  assert.equal([...emailCampaign.timers.values()][0].delay, 5000);
+});
+
 test('active ad intent cancels an already pending organic AI timer', () => {
   const r = runtime();
   r.context.scheduleAiAssistantForProperty({id:'first'}, {});
