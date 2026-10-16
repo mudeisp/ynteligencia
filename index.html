@@ -21109,7 +21109,7 @@ function paidMemory(){
 }
 
 function rememberPaidSearch(){
-  if(!adIntent.active) return;
+  if(!yntHasPaidClickContext()) return;
   safeStorageSetJSON("ynt_paid_search_memory", {
     neighborhood:adIntent.neighborhood || "",
     region:adIntent.region || "",
@@ -21134,7 +21134,7 @@ function paidOneSignalAuthority(){
 }
 
 function reconcilePaidPushState(){
-  if(!paidExperience || !adIntent.active) return;
+  if(!paidExperience || !yntHasPaidClickContext()) return;
   paidExperience=PaidClickExperience.reducePaidExperience(paidExperience,{
     type:"subscription_reconciled",
     authority:paidOneSignalAuthority()
@@ -21160,7 +21160,7 @@ function startPaidClickExperience(){
 }
 
 function notePaidSignal(type, propertyId){
-  if(!paidExperience || !adIntent.active) return;
+  if(!paidExperience || !yntHasPaidClickContext()) return;
   paidExperience=PaidClickExperience.reducePaidExperience(paidExperience, {type, propertyId});
   if(type==="dismiss"){
     safeStorageSet("ynt_paid_push_dismissed_session", YNTELIGENCIA_SESSION_ID);
@@ -22172,6 +22172,9 @@ loadInventory()
     }
 
     startPaidClickExperience();
+    if(openedCatalogFromUrl && yntHasPaidClickContext()){
+      notePaidArrival();
+    }
 
     /* Se o clique veio de um anúncio com intenção conhecida, entrega
        os imóveis imediatamente. A home e o wizard continuam intactos
