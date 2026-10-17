@@ -34,7 +34,10 @@ export async function rest(path, options = {}) {
       data = text;
     }
   }
-  return { ok: response.ok, status: response.status, data };
+  const result = { ok: response.ok, status: response.status, data };
+  // Opt-in evidence for internal readers; existing callers retain their shape.
+  if (options.includeContentRange) result.contentRange = response.headers.get("content-range");
+  return result;
 }
 
 export function deploymentOrigins() {
