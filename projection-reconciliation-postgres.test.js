@@ -85,7 +85,9 @@ test("real PostgreSQL: missing and stale quality scores recompute, but ad_entry 
  const before=snapshot(),calls=writes;
  const dry=await reconcile("quality",options([],env),request);
  assert.equal(dry.total_candidates,3);assert.equal(dry.by_reason.missing_score,2);assert.equal(dry.by_reason.stale_score,1);assert.equal(writes,calls);
- const applied=await reconcile("quality",options(["--apply","--batch-size=2"],env),request);assert.equal(applied.results.recomputed,3);
+ // These deliberately repetitive local visitor IDs are now correctly classified as fixtures.
+ assert.equal(dry.test_candidates,3);assert.equal(dry.planned,0);
+ const applied=await reconcile("quality",options(["--apply","--batch-size=2","--include-test-data"],env),request);assert.equal(applied.results.recomputed,3);
  assert.equal((await reconcile("quality",options(["--apply"],env),request)).total_candidates,0);
  assert.equal(psql(`select count(*) from buyer_quality_scores where visitor_id=${quote(a)}`),"0");
  assert.equal(snapshot(),before);

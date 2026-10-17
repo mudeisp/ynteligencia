@@ -2,7 +2,7 @@ const test=require("node:test"),assert=require("node:assert/strict");
 const buyer=require("./buyer-profile.js"),quality=require("./quality-scoring.js");
 const {options,reconcile,cli,client,Failure,compare,inList}=require("./scripts/projection-reconciliation.js");
 const IDs=["a3f4e185-c0fe-41cf-aed3-d1bf06a82b1c","1dfe4c51-058d-4189-ba89-3819eb1ac560","ba669591-46cb-46af-a5e4-9bf07a379370"];
-const v="11111111-1111-4111-8111-111111111111",v2="22222222-2222-4222-8222-222222222222",v3="33333333-3333-4333-8333-333333333333";
+const v="28b63f94-d187-46a5-9c02-e3b740fa865d",v2="5d8ec320-74af-4b19-a652-c9f086e3d147",v3="c7e4a961-0b53-48df-b2a8-6d159fe30472";
 function row(id,name="property_view_multiple",visitor=v,at="2026-10-08T12:00:00.000Z"){
  return {event_id:id,event_name:name,visitor_id:visitor,event_time:at,created_at:"2026-10-08T12:00:00Z",session_id:"s-one",product:"ynteligencia",property_id:"p-one",property_name:"Property",declared_neighborhood:"",metadata:{}};
 }
@@ -178,4 +178,49 @@ test("a successful HTTP response carrying a rejected scoring RPC is still a fail
  const r=await reconcile("quality",opts(["--apply"],write),request);
  assert.equal(r.ok,false);assert.equal(r.failures[0].code,"quality_rpc_rejected_or_stale");
  assert.doesNotMatch(JSON.stringify(r),/secret@example/);
+});
+
+async function classified(patch){
+ const s=store([{...row("arrival","property_view"),...patch}]);
+ const report=await reconcile("quality",opts(),s.request);
+ assert.equal(report.total_candidates,1);assert.equal(s.writes.length,0);
+ return report.test_candidates===1;
+}
+const syntheticUuids=[
+ "abababab-abab-4bab-8bab-abababababab",
+ "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1",
+ "d4d4d4d4-d4d4-4d4d-8d4d-d4d4d4d4d4d4",
+ "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+ "11111111-1111-4111-8111-111111111111",
+ "11111111-1111-4111-8111-111111111116",
+ "22222222-2222-4222-8222-222222222216"
+];
+for(const id of syntheticUuids)test(`synthetic UUID: ${id} in visitor/session/event identifiers`,async()=>{
+ for(const field of ["visitor_id","session_id","event_id"])assert.equal(await classified({[field]:id}),true,field);
+ assert.equal(await classified({session_id:id.toUpperCase()}),true,"case insensitive");
+});
+test("synthetic UUID: normal v4 IDs and occasional repetitions stay unmarked",async()=>{
+ for(const id of [v,v2,v3,...IDs,"ababc98f-1d37-4ea6-8b42-6c8df7a01239","1111d28e-3b65-49c7-a8f0-12ed90bc456a"])
+  for(const field of ["visitor_id","session_id","event_id"])assert.equal(await classified({[field]:id}),false,id);
+});
+test("synthetic UUID: strict shape and near-total repetition boundary",async()=>{
+ // 28/30 free nibbles match; version and variant are structural, not entropy.
+ assert.equal(await classified({session_id:"23111111-1111-4111-8111-111111111111"}),true);
+ assert.equal(await classified({session_id:"23411111-1111-4111-8111-111111111111"}),false);
+ for(const id of ["abababab","abababababab4bab8bababababababab","prefix-abababab-abab-4bab-8bab-abababababab","abababab-abab-0bab-8bab-abababababab",null,123])
+  assert.equal(await classified({session_id:id}),false,String(id));
+});
+test("synthetic markers: metadata.test and existing textual signals remain effective",async()=>{
+ for(const flag of [true,1,"TRUE","1"])assert.equal(await classified({metadata:{test:flag}}),true);
+ for(const marker of ["test","fixture","playwright","puppeteer","selenium","automation","qa-"])
+  assert.equal(await classified({session_id:marker+"-arrival"}),true,marker);
+ for(const field of ["property_id","gclid","gbraid","wbraid","utm_campaign"])
+  assert.equal(await classified({[field]:"fixture-marker"}),true,field);
+});
+test("synthetic UUID: skipped by default, explicit fixture inclusion still works",async()=>{
+ const s=store([row("arrival","property_view",syntheticUuids[0])]);
+ const skipped=await reconcile("quality",opts(["--apply"],write),s.request);
+ assert.equal(skipped.test_candidates,1);assert.equal(skipped.planned,0);assert.equal(s.writes.length,0);
+ const included=await reconcile("quality",opts(["--apply","--include-test-data"],write),s.request);
+ assert.equal(included.results.recomputed,1);
 });
