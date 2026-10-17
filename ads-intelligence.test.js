@@ -447,7 +447,7 @@ test("a YNTELIGENCIA reutiliza visitor e sessão e aceita property_id na URL", (
   assert.match(html, /openAgentConversation\(p\)/);
   assert.match(html, /openAiAssistant\(property\)/);
   assert.match(html, /data\.error==="handoff_disabled"/);
-  assert.match(html, /current_touch:currentTouch/);
+  assert.match(html, /current_touch:attribution,attribution/);
   assert.equal(html.includes("ADS_AGENT_HANDOFF_ENABLED"), false);
   assert.equal(html.includes("NEXT_PUBLIC"), false);
   assert.match(html, /openPropertySpecialist\(p\)/);
@@ -1169,6 +1169,8 @@ function agentOpenHarness(openImpl, responseBody, responseOk = true) {
     URLSearchParams,
     navigations,
     window: {
+      YntPropertyHandoff:require("./agent-property-handoff.js"),
+      crypto:require("node:crypto").webcrypto,
       open(...args) {
         const features = String(args[2] || "");
         if (features.includes("noopener") || features.includes("noreferrer")) {
@@ -1190,12 +1192,13 @@ function agentOpenHarness(openImpl, responseBody, responseOk = true) {
       });
     },
     YNTELIGENCIA_VISITOR_ID: visitor,
-    YNTELIGENCIA_SESSION_ID: session,
+    YNTELIGENCIA_SESSION_ID: "22222222-2222-4222-8222-222222222222",
     YNTELIGENCIA_TOUCHES: { current_touch: { gclid: "CURRENT-GCLID" } },
     aiOpenedProperties: [],
     openAiAssistant(property) { navigations.push({ type: "assistant", id: property && property.id }); }
   });
   vm.runInContext(`${html.slice(start, end)}
+function yntHasPaidClickContext(){ return true; }
 function yntAdsIntentFromState(){ return {}; }
 function yntAdsAttribution(){ return { gclid: "CURRENT-GCLID" }; }
 `, context);

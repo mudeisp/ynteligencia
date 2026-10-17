@@ -4875,6 +4875,7 @@ body.ad-match-mode.paid-push-prompt .specialist-float{
 <script src="ai-search-routing.js"></script>
 <script src="ai-commercial-intent.js"></script>
 <script src="paid-click-experience.js"></script>
+<script src="agent-property-handoff.js"></script>
 <script>
 
 const CSV_FILE="Remax.teste.2.csv";
@@ -6362,6 +6363,7 @@ function yntAgentHandoffUrl(value){
 }
 
 let yntAgentHandoffPending=false;
+let yntAgentHandoffLastAttempt=null;
 
 function yntOpenAgentOnce(url){
   const popup=window.open("about:blank","_blank");
@@ -6385,50 +6387,32 @@ function yntOpenAgentOnce(url){
 }
 
 async function openAgentConversation(property){
-  if(!property||yntAgentHandoffPending)return;
+  const attemptAt=Date.now();
+  if(!property||yntAgentHandoffPending||
+    (yntAgentHandoffLastAttempt!==null&&attemptAt-yntAgentHandoffLastAttempt<750))return;
   yntAgentHandoffPending=true;
+  yntAgentHandoffLastAttempt=attemptAt;
   const status=document.querySelector("#photoModal .detail-agent-status");
   if(status){
     status.hidden=true;
     status.textContent="";
   }
 
-  const propertyPayload=item=>{
-    const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    const external=[item&&item.external_id,item&&item.id,item&&item.property_id]
-      .map(value=>String(value||"").trim())
-      .find(value=>value&&!uuid.test(value))||"";
-    const dbId=String(item&&item.db_id||"").trim();
-    return {
-      external_id:external,
-      property_id:external,
-      db_id:uuid.test(dbId)?dbId:"",
-      name:item&&(item.name||item.property_name)||"",
-      neighborhood:item&&item.neighborhood||"",
-      development:item&&(item.development||item.development_name)||"",
-      bedrooms:Number(item&&item.bedrooms)||0,
-      price:Number(item&&(item.value||item.price||item.property_value))||0,
-      inventory_source:item&&(item.source||item.inventory_source)||""
-    };
-  };
-
   try{
-    const currentTouch=(YNTELIGENCIA_TOUCHES&&YNTELIGENCIA_TOUCHES.current_touch)||{};
+    const envelope=window.YntPropertyHandoff?.buildEnvelope(property,{
+      visitorId:YNTELIGENCIA_VISITOR_ID,sessionId:YNTELIGENCIA_SESSION_ID,
+      crypto:window.crypto,origin:location.origin,isPaid:yntHasPaidClickContext()
+    });
+    if(!envelope)throw new Error("handoff_context");
+    const attribution=yntAdsAttribution();
     const response=await fetch("/api/ads?action=create-handoff",{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        visitor_id:YNTELIGENCIA_VISITOR_ID,
-        session_id:YNTELIGENCIA_SESSION_ID,
-        source_product:"ynteligencia",
-        return_origin:location.origin,
-        property:propertyPayload(property),
-        current_property:propertyPayload(property),
-        recent_properties:(aiOpenedProperties||[]).map(propertyPayload),
-        declared_intent:yntAdsIntentFromState(),
-        current_touch:currentTouch,
-        attribution:yntAdsAttribution()
-      })
+      signal:typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?AbortSignal.timeout(8000):undefined,
+      body:JSON.stringify({...envelope,tracking:{
+        declared_intent:yntAdsIntentFromState(),current_touch:attribution,attribution,
+        property:{development:window.YntPropertyHandoff.safeText(property.development||property.development_name)||""}
+      }})
     });
     const data=await response.json().catch(()=>null);
     if(data&&data.error==="handoff_disabled"){
@@ -6436,13 +6420,10 @@ async function openAgentConversation(property){
       return;
     }
     const url=yntAgentHandoffUrl(data&&data.url);
-    if(!response.ok||!url)throw new Error("handoff");
+    if(!response.ok||data?.success!==true||!url)throw new Error("handoff");
     yntOpenAgentOnce(url);
   }catch(error){
-    if(status){
-      status.hidden=false;
-      status.textContent="Não foi possível abrir a conversa agora. Você pode falar com um especialista.";
-    }
+    openAiAssistant(property);
   }finally{
     yntAgentHandoffPending=false;
   }
