@@ -29,9 +29,30 @@ function groups(values){
  part.push(value);if(encodeURIComponent(inList(part)).length>3000)throw new Failure("identifier_too_long");}
  if(part.length)out.push(part);return out;
 }
+function looksSyntheticUuid(value){
+ if(typeof value!=="string"||!UUID.test(value))return false;
+ // Ignore fixed version/variant nibbles. Fixture generators can restart a motif per group.
+ const segments=value.toLowerCase().split("-").map((part,i)=>i===2||i===3?part.slice(1):part);
+ const counts=Array(16).fill(0);
+ for(const digit of segments.join(""))counts[parseInt(digit,16)]++;
+ const [a,b]=counts.map((count,digit)=>({count,digit:digit.toString(16)})).sort((x,y)=>y.count-x.count);
+ if(a.count>=28)return true;
+ if(a.count+b.count<28)return false;
+ let matches=0;
+ for(const part of segments){
+  let forward=0,reverse=0;
+  for(let i=0;i<part.length;i++){
+   if(part[i]===(i%2?b.digit:a.digit))forward++;
+   if(part[i]===(i%2?a.digit:b.digit))reverse++;
+  }
+  matches+=Math.max(forward,reverse);
+ }
+ return matches>=28; // At most two outliers across all 30 free nibbles.
+}
 function synthetic(row){
  const flag=row.test??row.metadata?.test;
  return String(flag).toLowerCase()==="true"||String(flag)==="1"||
+ [row.visitor_id,row.session_id,row.event_id].some(looksSyntheticUuid)||
  /test|fixture|playwright|puppeteer|selenium|automation|qa[-_:]/i.test(
  [row.event_id,row.visitor_id,row.session_id,row.property_id,row.gclid,row.gbraid,row.wbraid,row.utm_campaign].join(" "));
 }
