@@ -49,9 +49,8 @@ window), finish all read pages, and supply only persisted Ads event rows.
 `complete: true` is a trusted internal precondition, not an authentication claim.
 Never accept it from a public request or synthesize an empty array after a failed
 read. The adapter cannot independently prove provenance/completeness.
-Future delivery must retain this boundary and carry the observation scope in its
-surrounding internal transport. This PR deliberately adds no transport; M.I.A.
-cannot fetch the signal automatically yet.
+The YNT-only transport below enforces this precondition and retains the period
+in its server-side request. M.I.A. runtime consumption is not wired here.
 
 Counts are observations **inside that slice**, not lifetime registry totals or
 all site traffic. Rows outside Ads ingestion, missing historical events, browser
@@ -119,3 +118,103 @@ and actual isolated runtime module loading. Related Ads, Buyer Profile, Quality
 Score, M.I.A. read and reconciliation tests should also be run. This repository
 has no package manifest, TypeScript configuration, lint or build command; report
 those as unavailable rather than claiming they passed.
+
+## Server-to-server transport
+
+Transport audited against main `78fdb808a4a952756560eab9e48da34a29403bf5`
+(which already includes the original producer). `projectAudiencePersistence` is
+unchanged, including its original source blob and contract. Existing `mia-read`
+authentication and period validation are reused, **not** its individual payload
+or wide event column selection. `ads-store.rest` exposes `Content-Range` only
+when explicitly requested; existing callers retain their previous return shape.
+
+`GET /api/ads?action=audience-persistence&from=<ISO>&to=<ISO>` is an internal
+server-to-server action inside the existing Ads function, not an additional
+Serverless Function. Both bounds are required canonical UTC ISO strings with
+milliseconds (for example `2026-10-13T00:00:00.000Z`); interval is `[from, to)`,
+at most seven days, with `to` no later than request start. The period has no
+implicit default. Unknown parameters, public cursors/page sizes, duplicate or
+contradictory bounds, malformed/future/oversized periods fail closed.
+
+### Authentication and response
+
+Send only `Authorization: Bearer <MIA_READ_TOKEN>` from a trusted server.
+The existing `MIA_READ_TOKEN_PREVIOUS` rotation path is accepted when the primary
+token is configured. No query token, cookie, browser credential, public token or
+`ADS_EXPORT_TOKEN` authenticates this action. No environment variables are added
+or changed by this PR. Provisioning/rotation remains a separate operator action.
+Reusing the existing token does not narrow that credential's access to the
+legacy `mia-read` action; store it exclusively server-side.
+
+Any `Origin`, `Sec-Fetch-Site`, `Sec-Fetch-Dest` or `Sec-Fetch-User` header is
+rejected, including same-origin browser requests. `Sec-Fetch-Mode: cors` alone
+is tolerated because Node's native server fetch sends it too; it does not replace
+Bearer authentication. OPTIONS is rejected; no `applyCors` or Access-Control headers are used.
+The route is network-addressable for trusted servers, but has no unauthenticated
+browser access. Responses are `private, no-store` JSON with `nosniff`.
+
+**Every response body**, including HTTP failures, is only the ten-field
+`audience-persistence/1` object. No wrapper, error text, source page, ID, URL,
+cursor, debug metadata or upstream exception is serialized. HTTP status conveys
+failure; consumers must require HTTP 200 and `status: observed` to use counts.
+
+### Pagination and completion protocol
+
+1. Fix the validated period once. Read only `id,event_id,visitor_id,session_id,
+   event_time` from `ads_events`, ordered by its physical UUID primary key `id`.
+   Physical ID and event time are internal completeness evidence only.
+2. Request pages of 200 with `Prefer: count=exact` and offset. Require a valid
+   numeric `Content-Range` total on **every** response, with the exact start/end
+   matching the returned array. A missing/wildcard count is not completeness.
+3. Continue after server-capped short pages until accumulated rows equal that
+   exact total. Require stable totals, strictly increasing physical IDs, valid
+   in-period event times and no gap/overlap/non-progress. Only `*/0` plus an empty
+   successful response establishes zero, never a failed read or truncated page.
+4. Independently read the same complete period a second time. Require identical
+   totals and identical ordered selected evidence, not just matching counts.
+   Inserts, changed identities, reordered/overlapping pages or a failed verification
+   invalidate the observation. No partial producer call occurs on these paths.
+5. Only after both scans complete, call the original producer **once** with
+   `source: ads_events`, `complete: true` and its three identity fields. Its
+   existing validation/deduplication remains authoritative. No side effects.
+
+The count/range behavior follows the official
+[PostgREST pagination documentation](https://docs.postgrest.org/en/stable/references/api/pagination_count.html).
+Exact counts, rather than planned/estimated counts, are mandatory.
+
+### Failure modes and limits
+
+| HTTP | Body / reason |
+| --- | --- |
+| 200 | Original producer's observed signal; valid empty data has real zeros. |
+| 400 | Unknown/null counts: invalid or absent explicit period/query. |
+| 401 / 403 | Unknown/null counts: failed Bearer authentication / browser headers. |
+| 405 / 503 | Unknown/null counts: wrong method / missing server configuration. |
+| 502 | Unknown/null counts: HTTP/network/storage error, absent count, bad range, changed data, page/time/row budget exhaustion. |
+| 502 | Original producer's invalid/null-count signal after complete but inconsistent identity evidence. |
+
+Both scans share a 20-second abort deadline. Each scan permits at most 20,000
+rows and 200 pages. Exhaustion returns unknown, never a truncated aggregate;
+callers can request a narrower period explicitly. There are no automatic retries,
+timers that redirect users, writes, sends, workers or background execution.
+
+This is a verified complete **read observation**, not a PostgreSQL repeatable-read
+snapshot across HTTP requests. Two concordant scans detect observed drift but
+cannot promise serializable history against arbitrary concurrent administrative
+rewrites. Existing Ads runtime appends events; this PR neither locks the table
+nor changes ingestion. If an application requires a transactional snapshot under
+arbitrary rewrites, that requires a separately authorized database read interface;
+do not interpret these counts as such a guarantee or new return authority.
+
+`audience-persistence-transport.test.js` covers complete single/multiple/capped
+pages, real zero, intermediate/verification failures, malformed/missing evidence,
+changing totals/content, identity duplicates/conflicts, privacy, auth/CORS,
+budgets, producer immutability and actual allowlisted runtime module resolution.
+A loopback HTTP integration simulates persisted Ads rows through the real REST
+adapter and API action to the original producer and final sanitized payload.
+It performs GET only and does not access Production or a database.
+
+Only the **YNT side** of transport is implemented. Runtime fetching/authenticated
+delivery in M.I.A., scheduling and any downstream decisions are outside this PR.
+NO WRITE / NO SEND / NO EXECUTION. No migration, Vercel environment change or
+manual deployment is needed for the tests.

@@ -8,6 +8,7 @@ import {
   handleCreateHandoff,
   handleGetHandoff
 } from "../ads-routes.js";
+import { handleAudiencePersistence } from "../audience-persistence-transport.js";
 
 const actions = {
   event: handleAdsEvent,
@@ -17,7 +18,8 @@ const actions = {
   "google-conversions": handleAdsGoogleConversions,
   "create-handoff": handleCreateHandoff,
   "get-handoff": handleGetHandoff,
-  "mia-read": handleAdsMiaRead
+  "mia-read": handleAdsMiaRead,
+  "audience-persistence": handleAudiencePersistence
 };
 
 function requestAction(req) {
