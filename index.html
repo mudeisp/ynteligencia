@@ -6365,7 +6365,7 @@ function yntOpenAgentOnce(url){
 }
 
 /* Versão local de teste: general requer suporte do bridge no servidor.
-   Não simular property nem contornar rejeições: usar o fallback existente. */
+   Sem suporte a general, abrir o AGENTE diretamente; nunca abrir a IA interna. */
 async function openHomeAgentConversation(){
   const attemptAt=Date.now();
   if(yntAgentHandoffPending ||
@@ -6399,8 +6399,12 @@ async function openHomeAgentConversation(){
     if(!response.ok || data?.success!==true || data?.error==="handoff_disabled" || !url)throw new Error("handoff");
     yntOpenAgentOnce(url);
   }catch(error){
-    console.warn("YNT_HOME_AGENT_FALLBACK");
-    openHomeAiSearch();
+    console.warn("YNT_HOME_AGENT_DIRECT_OPEN");
+    try{
+      yntOpenAgentOnce("https://agente.yincorp.com.br/");
+    }catch(navigationError){
+      window.location.assign("https://agente.yincorp.com.br/");
+    }
   }finally{
     yntAgentHandoffPending=false;
   }
