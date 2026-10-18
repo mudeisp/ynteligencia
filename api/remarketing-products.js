@@ -18,16 +18,15 @@ export default async function handler(req, res) {
 
   try {
     const params = new URLSearchParams({
-      select: "external_id,development_name,title,neighborhood,city,state,source,price,bedrooms,active",
+      select: "id,development_name,title,neighborhood,city,state,source,price,bedrooms,area,active",
       active: "eq.true",
       state: "eq.SP",
       city: "ilike.São Paulo",
-      order: "external_id.asc",
+      order: "id.asc",
       limit: String(MAX_ROWS),
     });
     const result = await rest(`properties?${params.toString()}`, { signal: AbortSignal.timeout(15000) });
     if (!result.ok || !Array.isArray(result.data)) return res.status(503).json({ success: false, error: "remarketing_products_unavailable" });
-    // Fail closed rather than silently serving a potentially truncated catalog.
     if (result.data.length >= MAX_ROWS) return res.status(503).json({ success: false, error: "remarketing_products_incomplete" });
     const projected = projectRemarketingProducts(result.data);
     if (!projected) return res.status(502).json({ success: false, error: "invalid_remarketing_products" });
