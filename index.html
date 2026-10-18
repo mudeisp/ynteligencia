@@ -4391,6 +4391,9 @@ body.match-results-mode #results{
       <input id="catalogCity" type="hidden" value="São Paulo">
       <input id="catalogState" type="hidden" value="SP">
 
+      <div class="unified-search-separator" id="catalogLocationTitle">
+        <span>ONDE VOCÊ PROCURA?</span>
+      </div>
       <div class="unified-search-main">
         <label class="unified-field">
           <span>Região</span>
@@ -4421,7 +4424,7 @@ body.match-results-mode #results{
       </div>
 
       <div class="unified-search-separator">
-        <span>Filtros de compra</span>
+        <span>FILTROS DE COMPRA</span>
       </div>
 
       <div class="catalog-filters unified-catalog-filters" id="catalogFilters" aria-label="Filtros de compra">
@@ -9387,7 +9390,21 @@ function setFiltersOpen(open){
   backdrop.classList.toggle("open",open);
   backdrop.setAttribute("aria-hidden",String(!open));
   if(window.matchMedia("(max-width:700px)").matches){
-    document.body.style.overflow=open ? "hidden" : "";
+    // Mobile filters are inline, not a fixed sheet: keep the document scrollable.
+    document.body.style.overflow="";
+    if(open){
+      sheet.scrollTop=0;
+      const panel=$("unifiedSearchPanel");
+      if(panel)panel.scrollTop=0;
+      if(panel?.contains(document.activeElement))document.activeElement.blur();
+      requestAnimationFrame(()=>{
+        if(!sheet.classList.contains("open") || !panel)return;
+        sheet.scrollTop=0;
+        panel.scrollTop=0;
+        const headerHeight=document.querySelector("header")?.getBoundingClientRect().height || 0;
+        window.scrollTo({top:Math.max(0,window.scrollY+panel.getBoundingClientRect().top-headerHeight-12),behavior:"instant"});
+      });
+    }
   }
 }
 
@@ -19487,7 +19504,7 @@ function openGeneralCatalog(openFilters=true){
     O mobile agora usa o formulário inline completo.
     Mantemos o estado legado fechado para não bloquear Região/Bairro.
   */
-  setFiltersOpen(false);
+  setFiltersOpen(Boolean(openFilters && window.matchMedia("(max-width:700px)").matches));
 
   $("explore")?.scrollIntoView({
     behavior:"smooth",
@@ -20567,6 +20584,31 @@ function regionDisplayName(regionKey){
 
 let paidExperience=null;
 
+let yntDeferredSearch=null;
+
+// Explicit user resume only. Existing MATCH/display routines remain unchanged.
+function yntRestoreSavedResults(){
+  const memory=yntDeferredSearch || paidMemory();
+  if(!memory.neighborhood && !memory.region && !memory.bedrooms && !memory.minPrice &&
+    !memory.maxPrice && !memory.type && !memory.search && !memory.development)return false;
+  adIntent.neighborhood=memory.neighborhood || "";
+  adIntent.region=memory.region || "";
+  adIntent.bedrooms=Number(memory.bedrooms)||0;
+  adIntent.minPrice=Number(memory.minPrice)||0;
+  adIntent.maxPrice=Number(memory.maxPrice)||0;
+  adIntent.type=memory.type || "";
+  adIntent.search=memory.search || "";
+  adIntent.development=memory.development || "";
+  adIntent.active=true;
+  adIntent.restored=true;
+  syncPaidClickContextUi();
+  startPaidClickExperience();
+  updateAdMatchUI();
+  document.body.classList.remove("home-mode");
+  showMatches();
+  return true;
+}
+
 function paidMemory(){
   return safeStorageGetJSON("ynt_paid_search_memory") || {};
 }
@@ -21622,22 +21664,8 @@ loadInventory()
       document.body.classList.add("campaign-catalog-mode");
     }
 
-    if(!openedCatalogFromUrl && !sharedPropertyId && !adIntent.active){
-      const memory=paidMemory();
-      if(memory.neighborhood || memory.bedrooms || memory.minPrice || memory.maxPrice){
-        adIntent.neighborhood=memory.neighborhood || "";
-        adIntent.region=memory.region || "";
-        adIntent.bedrooms=Number(memory.bedrooms)||0;
-        adIntent.minPrice=Number(memory.minPrice)||0;
-        adIntent.maxPrice=Number(memory.maxPrice)||0;
-        adIntent.type=memory.type || "";
-        adIntent.search=memory.search || "";
-        adIntent.development=memory.development || "";
-        adIntent.active=true;
-        adIntent.restored=true;
-        syncPaidClickContextUi();
-      }
-    }
+    // Persisted search is deferred; loading it does not activate the initial UI.
+    yntDeferredSearch=paidMemory();
 
     startPaidClickExperience();
     if(openedCatalogFromUrl && yntHasPaidClickContext()){
@@ -21736,6 +21764,7 @@ loadInventory()
         if(id==='match') enterMatchMode();
         else if(id==='explore') openGeneralCatalog();
         else if(id==='results'){
+          if(!document.querySelector('#matchGrid .card') && yntRestoreSavedResults())return;
           const results=document.getElementById('results');
           if(!document.querySelector('#matchGrid .card')){
             showToast('Você ainda não tem resultados nesta sessão. Explore imóveis para começar.');
