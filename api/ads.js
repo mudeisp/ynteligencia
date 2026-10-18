@@ -9,6 +9,7 @@ import {
   handleGetHandoff
 } from "../ads-routes.js";
 import { handleAudiencePersistence } from "../audience-persistence-transport.js";
+import handleObservedSessionDiagnostic from "../observed-session-reader-diagnostic.js";
 
 const actions = {
   event: handleAdsEvent,
@@ -19,7 +20,8 @@ const actions = {
   "create-handoff": handleCreateHandoff,
   "get-handoff": handleGetHandoff,
   "mia-read": handleAdsMiaRead,
-  "audience-persistence": handleAudiencePersistence
+  "audience-persistence": handleAudiencePersistence,
+  "observed-session-reader-diagnostic": handleObservedSessionDiagnostic
 };
 
 function requestAction(req) {
