@@ -1,4 +1,5 @@
 import { readObservedSessionReturnProjection } from "./observed-session-return-reader.js";
+import { authorizedMiaRead } from "./ads-store.js";
 
 const COUNTS = ["sessions_observed", "sessions_ended_by_inactivity", "sessions_active",
   "sessions_unknown", "sessions_ambiguous", "visitors_observed", "returning_visitors_observed",
@@ -53,7 +54,7 @@ function aggregate(value, window) {
 }
 
 // Dependency seam is for unit tests only; the deployed default always uses the real reader.
-export function createObservedSessionDiagnostic({ env = process.env, read = readObservedSessionReturnProjection, now = Date.now } = {}) {
+export function createObservedSessionDiagnostic({ env = process.env, read = readObservedSessionReturnProjection, authorize = authorizedMiaRead, now = Date.now } = {}) {
   return async function handler(req, res) {
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("CDN-Cache-Control", "no-store");
@@ -63,7 +64,7 @@ export function createObservedSessionDiagnostic({ env = process.env, read = read
     const reply = (code, status, window = null, projection = null) =>
       res.status(code).json({ status, coverage: coverage(window, status === "OK"), projection });
 
-    // Vercel Authentication is the project perimeter. Exclude custom-domain exceptions and aliases.
+    // Preserve platform protection; also require existing server-side MIA read authorization.
     const host = env.VERCEL_URL;
     if (env.VERCEL_ENV !== "preview" || env.VERCEL !== "1" ||
         (env.VERCEL_TARGET_ENV && env.VERCEL_TARGET_ENV !== "preview") ||
@@ -75,6 +76,7 @@ export function createObservedSessionDiagnostic({ env = process.env, read = read
       url = new URL(req.url, "https://" + host);
       if (url.host !== host || url.protocol !== "https:" || url.username || url.password) return reply(404, "NOT_FOUND");
     } catch { return reply(404, "NOT_FOUND"); }
+    if (!authorize(req)) return reply(401, "AUTH_REQUIRED");
     if (req.method !== "GET") return reply(405, "METHOD_NOT_ALLOWED");
     const window = period(req, url, now());
     if (!window) return reply(400, "INVALID_INPUT");
