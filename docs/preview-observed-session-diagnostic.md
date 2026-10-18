@@ -16,12 +16,20 @@ before input validation/reader invocation. No new Vercel Function is introduced.
 
 ## Private perimeter and environment
 
-Reuses the existing project Vercel Authentication required by the operator. Host
-checks alone are not authentication: keep Preview protection enabled and do not
-serve this through an unprotected proxy. This PR does not add a secret, weaken
-protection or change settings. Management API access currently returns 403, so
-the existing protection configuration must not be described as independently
-reverified by that API during implementation.
+Preserves existing Vercel protection settings and adds mandatory server-side
+Bearer authorization through the unchanged `authorizedMiaRead` helper. This
+reuses `MIA_READ_TOKEN` and its existing previous-token compatibility; no secret
+or env is created or changed. Never put tokens in URLs, logs, browser source or
+reports. Missing/wrong credentials (including missing configured tokens) return
+HTTP 401/AUTH_REQUIRED before input handling or reader execution.
+
+An unauthenticated negative probe of the first Preview reached INVALID_INPUT;
+therefore Vercel Authentication alone was not an effective perimeter for this
+path. The operator explicitly authorized reuse of MIA_READ_TOKEN as an additional
+barrier. Host checks are not authentication. Do not use the superseded Preview;
+verify the final PR head denies unauthenticated requests before attempting a
+real read. Management API access returned 403; protection settings were not
+changed or independently reverified.
 
 The handler independently requires all of:
 
@@ -66,7 +74,8 @@ HTTP 200/status OK returns the sanitized original aggregate. READ_FAILED,
 INCOMPLETE and other known reader failures return HTTP 502 with preserved safe
 status, unverified/incomplete coverage and projection:null. Exceptions or malformed
 successes become READ_FAILED; no raw error, stack, env or storage body is returned.
-Invalid input is HTTP 400; denied environment/host is HTTP 404.
+Invalid input is HTTP 400; denied environment/host is HTTP 404. Authorization
+is checked after the environment/host guard, before method/input handling.
 
 No individual IDs, raw events, PII, click IDs, Supabase URLs/keys, Authorization
 headers or arbitrary configuration are returned or logged. The factory export
@@ -77,6 +86,10 @@ is a unit-test dependency seam; deployed HTTP requests cannot select dependencie
 1. Verify the PR's automatic deployment is Preview/READY and matches its head SHA.
 2. Open the **immutable** Preview host using an existing authorized Vercel session.
    A login/protection response is not an application result. Do not weaken auth.
+   Use a trusted server-side client with the existing MIA_READ_TOKEN supplied as
+   a Bearer header in memory; do not paste secrets into the browser or query.
+   First confirm an unauthenticated request returns 401 without invoking the reader.
+   If a safe authenticated caller is unavailable, stop and report BLOCKED — AUTH.
 3. Choose as_of at least ten minutes in the past (prefer fifteen); request one
    hour of receipt coverage ending at that cutoff.
 4. Only after status OK, request six hours, then 24 hours ending at the same as_of.

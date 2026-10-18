@@ -41,7 +41,7 @@ async function run(req = request(), { env = ENV, result = success(), error } = {
     if (error) throw error;
     return result;
   };
-  await factory({ env, read: reader, now: () => NOW })(req, res);
+  await factory({ env, read: reader, authorize: () => true, now: () => NOW })(req, res);
   return { ...res, calls };
 }
 function blocked(result, code) {
@@ -56,6 +56,51 @@ test("Preview immutable host invokes reader exactly once with only validated UTC
   assert.deepEqual(result.calls, [WINDOW]);
   assert.deepEqual(result.body, success());
   assert.deepEqual(Object.keys(result.body), ["status", "coverage", "projection"]);
+});
+
+test("existing MIA authorization rejects missing/wrong/query credentials before reader or input", async () => {
+  const saved = { token: process.env.MIA_READ_TOKEN, previous: process.env.MIA_READ_TOKEN_PREVIOUS };
+  process.env.MIA_READ_TOKEN = "diagnostic-unit-fixture-current";
+  process.env.MIA_READ_TOKEN_PREVIOUS = "diagnostic-unit-fixture-previous";
+  let calls = 0;
+  const read = async args => { calls++; assert.deepEqual(args, WINDOW); return success(); };
+  const handler = factory({ env: ENV, read, now: () => NOW });
+  try {
+    for (const req of [request(), request({ headers: { host: HOST, authorization: "Bearer wrong" } }),
+      request({ url: PATH + "&token=diagnostic-unit-fixture-current" })]) {
+      const res = response();
+      await handler(req, res);
+      assert.equal(res.code, 401);
+      assert.deepEqual(res.body, { status: "AUTH_REQUIRED", coverage: null, projection: null });
+      assert.equal(calls, 0);
+    }
+    for (const token of [process.env.MIA_READ_TOKEN, process.env.MIA_READ_TOKEN_PREVIOUS]) {
+      const res = response();
+      await handler(request({ headers: { host: HOST, authorization: "Bearer " + token } }), res);
+      assert.equal(res.code, 200);
+      assert.equal(JSON.stringify(res.body).includes(token), false);
+    }
+    assert.equal(calls, 2);
+    delete process.env.MIA_READ_TOKEN;
+    delete process.env.MIA_READ_TOKEN_PREVIOUS;
+    const res = response();
+    await handler(request({ headers: { host: HOST, authorization: "Bearer diagnostic-unit-fixture-current" } }), res);
+    assert.equal(res.code, 401);
+    assert.equal(calls, 2);
+  } finally {
+    for (const [key, value] of [["MIA_READ_TOKEN", saved.token], ["MIA_READ_TOKEN_PREVIOUS", saved.previous]]) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});
+
+test("environment/host denial happens before authorization and any reader access", async () => {
+  for (const env of [{ ...ENV, VERCEL_ENV: "production" }, {}]) {
+    const res = response();
+    await factory({ env, authorize() { assert.fail("must not authorize outside Preview"); },
+      read() { assert.fail("must not read outside Preview"); } })(request(), res);
+    assert.equal(res.code, 404);
+  }
 });
 
 test("Production and custom targets deny before reader, method or query handling", async () => {
@@ -215,7 +260,7 @@ test("caller does not mutate reader/producer/public contracts/tracking or make a
     const source = fs.readFileSync(__dirname + "/observed-session-reader-diagnostic.js", "utf8");
     assert.match(source, /read = readObservedSessionReturnProjection/);
     assert.match(source, /export default createObservedSessionDiagnostic\(\)/);
-    assert.equal(source.includes("ads-store"), false);
+    assert.match(source, /authorizedMiaRead/);
     assert.equal(source.includes("fetch("), false);
     assert.equal(source.includes("console."), false);
     const res = response();
