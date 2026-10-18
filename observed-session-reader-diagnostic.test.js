@@ -8,19 +8,19 @@ const HOST = "ynteligencia-immutable-team.vercel.app";
 const ENV = { VERCEL: "1", VERCEL_ENV: "preview", VERCEL_URL: HOST };
 const WINDOW = { coverage_start: "2026-10-13T00:00:00.000000Z", as_of: "2026-10-14T00:00:00.000000Z" };
 const NOW = Date.parse("2026-10-15T00:00:00Z");
-const PATH = "/api/diagnostics/observed-session-reader";
+const PATH = "/api/ads?action=observed-session-reader-diagnostic";
 let factory, deployed;
 before(async () => {
   const original = global.fetch;
   let calls = 0;
   global.fetch = async () => { calls++; throw new Error("No import-time network"); };
   try {
-    ({ createObservedSessionDiagnostic: factory, default: deployed } = await import("./api/diagnostics/observed-session-reader.js"));
+    ({ createObservedSessionDiagnostic: factory, default: deployed } = await import("./observed-session-reader-diagnostic.js"));
     assert.equal(calls, 0);
   } finally { global.fetch = original; }
 });
 function request(extra = {}) {
-  return { method: "GET", url: PATH + "?" + new URLSearchParams(WINDOW),
+  return { method: "GET", url: PATH + "&" + new URLSearchParams(WINDOW),
     headers: { host: HOST }, ...extra };
 }
 function projected(events = []) {
@@ -90,12 +90,13 @@ test("absolute URL cannot replace the real host and non-HTTPS/userinfo URLs are 
 
 test("invalid input, duplicate/extra keys, arrays and conflicting query sources never call reader", async () => {
   const invalid = [
-    PATH, PATH + "?coverage_start=private@example.invalid&as_of=secret",
-    PATH + "?" + new URLSearchParams({ ...WINDOW, as_of: WINDOW.coverage_start }),
-    PATH + "?" + new URLSearchParams({ ...WINDOW, as_of: "2026-02-30T00:00:00Z" }),
-    PATH + "?" + new URLSearchParams({ ...WINDOW, as_of: "2026-10-14T00:00:00.000001Z" }),
-    PATH + "?" + new URLSearchParams({ ...WINDOW, as_of: "2026-10-16T00:00:00Z" }),
+    PATH, PATH + "&coverage_start=private@example.invalid&as_of=secret",
+    PATH + "&" + new URLSearchParams({ ...WINDOW, as_of: WINDOW.coverage_start }),
+    PATH + "&" + new URLSearchParams({ ...WINDOW, as_of: "2026-02-30T00:00:00Z" }),
+    PATH + "&" + new URLSearchParams({ ...WINDOW, as_of: "2026-10-14T00:00:00.000001Z" }),
+    PATH + "&" + new URLSearchParams({ ...WINDOW, as_of: "2026-10-16T00:00:00Z" }),
     request().url + "&token=secret",
+    request().url + "&action=observed-session-reader-diagnostic",
     request().url + "&as_of=" + encodeURIComponent(WINDOW.as_of)
   ];
   for (const url of invalid) {
@@ -107,6 +108,25 @@ test("invalid input, duplicate/extra keys, arrays and conflicting query sources 
   blocked(await run(request({ query: { ...WINDOW, as_of: [WINDOW.as_of] } })), 400);
   blocked(await run(request({ query: { ...WINDOW, as_of: "2026-10-13T12:00:00Z" } })), 400);
   blocked(await run(request({ query: { ...WINDOW, unknown: "secret" } })), 400);
+});
+
+test("existing dispatcher selects the protected diagnostic without adding a Vercel Function", async () => {
+  const { default: adsHandler } = await import("./api/ads.js");
+  const originalFetch = global.fetch;
+  let reads = 0;
+  global.fetch = async () => { reads++; throw new Error("No network allowed"); };
+  try {
+    const res = response();
+    await adsHandler({ ...request(), headers: {}, query: { action: "observed-session-reader-diagnostic" } }, res);
+    assert.equal(res.code, 404);
+    assert.equal(res.body.status, "NOT_FOUND");
+    assert.equal(reads, 0);
+  } finally { global.fetch = originalFetch; }
+  function apiFiles(dir) {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry =>
+      entry.isDirectory() ? apiFiles(dir + "/" + entry.name) : entry.name.endsWith(".js") ? [entry.name] : []);
+  }
+  assert.equal(apiFiles(__dirname + "/api").length, 12);
 });
 
 test("the diagnostic accepts 24 hours and UTC microseconds without broadening the reader contract", async () => {
@@ -192,7 +212,7 @@ test("caller does not mutate reader/producer/public contracts/tracking or make a
   try {
     assert.equal((await run()).code, 200);
     assert.deepEqual(hashes(), prior);
-    const source = fs.readFileSync(__dirname + "/api/diagnostics/observed-session-reader.js", "utf8");
+    const source = fs.readFileSync(__dirname + "/observed-session-reader-diagnostic.js", "utf8");
     assert.match(source, /read = readObservedSessionReturnProjection/);
     assert.match(source, /export default createObservedSessionDiagnostic\(\)/);
     assert.equal(source.includes("ads-store"), false);

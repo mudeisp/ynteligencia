@@ -1,4 +1,4 @@
-import { readObservedSessionReturnProjection } from "../../observed-session-return-reader.js";
+import { readObservedSessionReturnProjection } from "./observed-session-return-reader.js";
 
 const COUNTS = ["sessions_observed", "sessions_ended_by_inactivity", "sessions_active",
   "sessions_unknown", "sessions_ambiguous", "visitors_observed", "returning_visitors_observed",
@@ -23,6 +23,9 @@ function period(req, url, now) {
     if (url.searchParams.getAll(key).length !== 1 || (query[key] !== undefined && query[key] !== value)) return null;
     query[key] = value;
   }
+  // Fixed dispatcher selector is routing metadata, never input to the reader.
+  if (query.action !== "observed-session-reader-diagnostic") return null;
+  delete query.action;
   if (Object.keys(query).length !== 2 || Object.keys(query).some(key => !["coverage_start", "as_of"].includes(key))) return null;
   const start = time(query.coverage_start), end = time(query.as_of);
   if (start === null || end === null || start >= end || end - start > 86400000000n || end > BigInt(now) * 1000n) return null;

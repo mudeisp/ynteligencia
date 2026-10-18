@@ -3,7 +3,7 @@
 Private manual GET:
 
 ```text
-https://<immutable-preview-host>/api/diagnostics/observed-session-reader?coverage_start=<UTC ISO>&as_of=<UTC ISO>
+https://<immutable-preview-host>/api/ads?action=observed-session-reader-diagnostic&coverage_start=<UTC ISO>&as_of=<UTC ISO>
 ```
 
 The deployed default invokes the unchanged
@@ -11,6 +11,8 @@ The deployed default invokes the unchanged
 query storage itself, copy pagination or modify the original projection. The
 reader retains its receipt-time cursor, two scans, final count and limitations.
 No scheduler, persistence, writer/sender/executor, env or schema change is added.
+The fixed action selects this handler in the existing dispatcher; it is removed
+before input validation/reader invocation. No new Vercel Function is introduced.
 
 ## Private perimeter and environment
 
@@ -36,7 +38,8 @@ No CORS is enabled, and browser/CDN caching is disabled for all responses.
 
 ## Input and response
 
-Accept exactly `coverage_start` and `as_of`; no auth query token or arbitrary
+Accept exactly `coverage_start` and `as_of` as diagnostic data, in addition to the
+fixed routing action above; no auth query token or arbitrary
 keys. Reject duplicates, arrays, conflicting URL/query values, invalid UTC dates,
 future as_of, reversed/empty windows and windows over **24 hours**, before reader
 execution. Supports UTC Z/+00:00 and up to six fractional digits, preserving the
