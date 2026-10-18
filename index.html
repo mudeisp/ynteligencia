@@ -4654,23 +4654,21 @@ body.match-results-mode #results{
 
   <nav class="side-menu-links">
     <button type="button" data-scroll-target="inicio"><span>⌂</span><b>Início</b><em>›</em></button>
-    <button type="button" data-scroll-target="match"><span>✦</span><b>Meu MATCH</b><em>›</em></button>
     <button type="button" data-scroll-target="explore"><span>⌕</span><b>Explorar imóveis</b><em>›</em></button>
     <button type="button" data-scroll-target="results"><span>♡</span><b>Meus resultados</b><em>›</em></button>
-    <button type="button" onclick="window.location.href='https://www.yincorp.com.br'"><span>◎</span><b>Quem está por trás</b><em>›</em></button>
   </nav>
 
   <button type="button" class="install-menu-card" id="installAppButton">
     <span class="install-menu-icon">⇩</span>
     <span class="install-menu-copy">
-      <strong>Instalar o Ynteligencia</strong>
+      <strong>Instalar Ynteligencia</strong>
       <small>Mais rápido, em tela cheia e sempre à mão.</small>
     </span>
     <span class="install-menu-arrow">›</span>
   </button>
 
   <div class="side-menu-footer">
-    <a href="#match" data-scroll-target="match">Fale com um especialista</a>
+    <a href="#specialistFloat" id="menuSpecialistButton">Falar com especialista</a>
     <div class="menu-version">
       <img src="/icon-192.png" alt="">
       <span><strong>Ynteligencia</strong><small>Versão 1.0</small></span>
@@ -6381,7 +6379,7 @@ async function openHomeAgentConversation(){
     back.searchParams.set("vid",YNTELIGENCIA_VISITOR_ID);
     const returnUrl=window.YntPropertyHandoff?.safeReturnUrl(back.toString());
     if(!returnUrl)throw new Error("handoff_return");
-    const envelope={version:1,kind:"general",entryPoint:"home.manual_ai",
+    const envelope={version:1,kind:"general",entryPoint:"home.manual_ai",source_product:"ynteligencia",
       visitorId:YNTELIGENCIA_VISITOR_ID,sessionId:YNTELIGENCIA_SESSION_ID,
       transitionId,returnUrl,context:{}};
     if(yntHasPaidClickContext())envelope.paidContext={isPaid:true,intent:null};
@@ -6390,7 +6388,7 @@ async function openHomeAgentConversation(){
     const response=await fetch("/api/ads?action=create-handoff",{
       method:"POST",headers:{"Content-Type":"application/json"},
       signal:typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?AbortSignal.timeout(8000):undefined,
-      body:JSON.stringify({...envelope,tracking:{declared_intent:yntAdsIntentFromState(),
+      body:JSON.stringify({...envelope,tracking:{context:"home",declared_intent:yntAdsIntentFromState(),
         current_touch:attribution,attribution}})
     });
     const data=await response.json().catch(()=>null);
@@ -6398,6 +6396,7 @@ async function openHomeAgentConversation(){
     if(!response.ok || data?.success!==true || data?.error==="handoff_disabled" || !url)throw new Error("handoff");
     yntOpenAgentOnce(url);
   }catch(error){
+    console.warn("YNT_HOME_AGENT_FALLBACK");
     openHomeAiSearch();
   }finally{
     yntAgentHandoffPending=false;
@@ -16850,7 +16849,7 @@ function renderDevelopmentRichModal(
         class="development-lp-cta whatsapp"
         type="button"
         data-development-human="true">
-        FALAR COM RAFAEL
+        FALAR COM ESPECIALISTA
       </button>
     </div>
 
@@ -16968,6 +16967,8 @@ function renderDevelopmentRichModal(
   // One visible AI action per detail: rich development CTA replaces its duplicate.
   const detailAi=modal.querySelector(".detail-specialist-btn");
   if(detailAi && target.querySelector("[data-development-ai]"))detailAi.hidden=true;
+  const detailHuman=modal.querySelector(".detail-specialist-human-btn");
+  if(detailHuman && target.querySelector("[data-development-human]"))detailHuman.hidden=true;
 
   target
     .querySelector(
@@ -17581,8 +17582,8 @@ async function showPhotoModal(id){
           <p>Escolha conversar com a IA sobre este imóvel ou falar com um especialista.</p>
         </div>
         <div class="detail-specialist-actions">
-          <button class="detail-specialist-btn" type="button">Conversar com a IA</button>
-          <button class="detail-specialist-human-btn" type="button">Falar com especialista</button>
+          <button class="detail-specialist-btn" type="button">CONVERSAR COM A IA</button>
+          <button class="detail-specialist-human-btn" type="button">FALAR COM ESPECIALISTA</button>
           <p class="detail-agent-status" hidden></p>
         </div>
       </section>
@@ -17593,61 +17594,10 @@ async function showPhotoModal(id){
         <div class="detail-similar-grid" id="detailSimilarGrid"></div>
       </section>
     </main>
-
-    <div
-      class="detail-sticky-cta"
-      aria-label="Ações do imóvel">
-
-      <button
-        class="detail-float-btn detail-share-btn"
-        type="button"
-        aria-label="Compartilhar imóvel">
-        <span class="detail-float-btn-icon">↗</span>
-        <span>Compartilhar</span>
-      </button>
-
-      <button
-        class="detail-float-btn detail-opportunities-btn"
-        type="button"
-        aria-label="Receber oportunidades parecidas">
-        <span class="detail-float-btn-icon">🔔</span>
-        <span>LISTA V.I.P</span>
-      </button>
-
-
-    </div>`;
+`;
 
   const track=modal.querySelector(".detail-gallery-track");
   track?.addEventListener("scroll",()=>window.requestAnimationFrame(updateDetailGallery),{passive:true});
-  modal.querySelector(".detail-share-btn")?.addEventListener("click",()=>{
-    const shareText=[
-      p.name || "Imóvel na Ynteligencia",
-      p.neighborhood ? `${p.neighborhood} • São Paulo` : "São Paulo",
-      Number(p.value)>0 ? money(p.value) : "",
-      p.area ? `${area(p.area)} m²` : "",
-      p.bedrooms ? `${p.bedrooms} dorms.` : "",
-      "Veja este imóvel na Ynteligencia:",
-      (()=>{
-        const shareUrl=new URL(window.location.origin + window.location.pathname);
-        shareUrl.searchParams.set("imovel",String(p.id||""));
-        return shareUrl.toString();
-      })()
-    ].filter(Boolean).join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank","noopener,noreferrer");
-  });
-  modal
-    .querySelector(
-      ".detail-opportunities-btn"
-    )
-    ?.addEventListener(
-      "click",
-      event=>
-        activateYnteligenciaPushForProperty(
-          p,
-          event.currentTarget
-        )
-    );
-
 
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAgentConversation(p));
   modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
@@ -21769,6 +21719,12 @@ loadInventory()
   closeBtn?.addEventListener('click',closeMenu);
   backdrop?.addEventListener('click',closeMenu);
   installCard?.addEventListener('click',openInstall);
+  document.getElementById('menuSpecialistButton')?.addEventListener('click',event=>{
+    event.preventDefault();
+    closeMenu();
+    // Reuse the existing human flow and its tracking; never route to MATCH/AI.
+    document.getElementById('specialistFloat')?.click();
+  });
   installClose?.addEventListener('click',closeInstall);
   installModal?.addEventListener('click',e=>{if(e.target===installModal) closeInstall();});
 
@@ -21779,6 +21735,16 @@ loadInventory()
       setTimeout(()=>{
         if(id==='match') enterMatchMode();
         else if(id==='explore') openGeneralCatalog();
+        else if(id==='results'){
+          const results=document.getElementById('results');
+          if(!document.querySelector('#matchGrid .card')){
+            showToast('Você ainda não tem resultados nesta sessão. Explore imóveis para começar.');
+            return;
+          }
+          document.body.classList.remove('home-mode','match-mode');
+          results?.classList.add('visible');
+          results?.scrollIntoView({behavior:'smooth'});
+        }
         else{
           if(id==='inicio'){goHome();return;}
           document.body.classList.toggle('home-mode',id==='inicio');
