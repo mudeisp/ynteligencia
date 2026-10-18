@@ -3897,33 +3897,10 @@ body.match-results-mode #results{
     background:rgba(255,255,255,.45);
   }
 
-  .detail-ai-float-btn{
-    background:#171717;
-    border-color:#171717;
-    color:#fff;
-  }
 
-  .detail-ai-float-btn .detail-float-btn-icon{
-    background:rgba(255,255,255,.12);
-    color:#E4D0A3;
-  }
 
-  .detail-ai-float-btn.ai-pulse{
-    animation:yntAiFloatPulse 1.6s ease 2;
-  }
 
-  @keyframes yntAiFloatPulse{
-    0%,100%{
-      box-shadow:0 8px 24px rgba(25,22,18,.14);
-      transform:translateY(0);
-    }
-    50%{
-      box-shadow:0 10px 32px rgba(198,167,107,.34);
-      transform:translateY(-2px);
-    }
-  }
-
-  .detail-opportunities-btn.is-active{
+.detail-opportunities-btn.is-active{
     background:#C6A76B;
     color:#241D13;
   }
@@ -6383,6 +6360,47 @@ function yntOpenAgentOnce(url){
   }catch(error){
     try{ popup.close(); }catch(closeError){}
     throw error;
+  }
+}
+
+/* Versão local de teste: general requer suporte do bridge no servidor.
+   Não simular property nem contornar rejeições: usar o fallback existente. */
+async function openHomeAgentConversation(){
+  const attemptAt=Date.now();
+  if(yntAgentHandoffPending ||
+    (yntAgentHandoffLastAttempt!==null && attemptAt-yntAgentHandoffLastAttempt<750))return;
+  yntAgentHandoffPending=true;
+  yntAgentHandoffLastAttempt=attemptAt;
+  try{
+    const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if(!uuid.test(YNTELIGENCIA_VISITOR_ID) || !uuid.test(YNTELIGENCIA_SESSION_ID))throw new Error("handoff_identity");
+    const transitionId=window.crypto?.randomUUID?.();
+    if(!uuid.test(transitionId||""))throw new Error("handoff_transition");
+    const origins=new Set(["https://app.yincorp.com.br","https://www.yincorp.com.br","https://yincorp.com.br"]);
+    const back=new URL("/",origins.has(location.origin)?location.origin:"https://app.yincorp.com.br");
+    back.searchParams.set("vid",YNTELIGENCIA_VISITOR_ID);
+    const returnUrl=window.YntPropertyHandoff?.safeReturnUrl(back.toString());
+    if(!returnUrl)throw new Error("handoff_return");
+    const envelope={version:1,kind:"general",entryPoint:"home.manual_ai",
+      visitorId:YNTELIGENCIA_VISITOR_ID,sessionId:YNTELIGENCIA_SESSION_ID,
+      transitionId,returnUrl,context:{}};
+    if(yntHasPaidClickContext())envelope.paidContext={isPaid:true,intent:null};
+    // Attribution and already declared intent stay on the existing tracking lane.
+    const attribution=yntAdsAttribution();
+    const response=await fetch("/api/ads?action=create-handoff",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      signal:typeof AbortSignal!=="undefined"&&typeof AbortSignal.timeout==="function"?AbortSignal.timeout(8000):undefined,
+      body:JSON.stringify({...envelope,tracking:{declared_intent:yntAdsIntentFromState(),
+        current_touch:attribution,attribution}})
+    });
+    const data=await response.json().catch(()=>null);
+    const url=yntAgentHandoffUrl(data?.url);
+    if(!response.ok || data?.success!==true || data?.error==="handoff_disabled" || !url)throw new Error("handoff");
+    yntOpenAgentOnce(url);
+  }catch(error){
+    openHomeAiSearch();
+  }finally{
+    yntAgentHandoffPending=false;
   }
 }
 
@@ -15376,35 +15394,13 @@ async function sendAiAssistantMessage(text){
 }
 
 /* =========================================================
-   FASE 26 · IA PROATIVA PARA TRÁFEGO PAGO EM IMÓVEL DIRETO
-
-   Objetivo do teste:
-   Google Ads -> imóvel específico -> IA proativa -> LISTA V.I.P
-
-   REGRAS:
-   - Só abre automaticamente quando a sessão veio do Google Ads e o usuário abre um imóvel.
-   - Usa apenas dados reais do imóvel/Supabase.
-   - Conta outros lançamentos ativos no mesmo bairro.
-   - Não altera a IA manual nem a esteira existente.
+   HELPERS LEGADOS · PRESERVADOS PARA COMPATIBILIDADE
+   Nesta versão de teste não há abertura automática de conversa.
+   Push continua nos CTAs próprios da interface.
 ========================================================= */
 
 function yntIsPaidDirectPropertyEntry(){
-  /*
-    FASE 29:
-    IA proativa ativa em TODO o app.
-
-    Sempre que o usuário abrir DETALHES de um imóvel,
-    scheduleAiAssistantForProperty() poderá abrir a IA
-    automaticamente após o tempo configurado.
-
-    Não depende mais de:
-    - gclid
-    - gbraid
-    - wbraid
-    - gad_source
-    - gad_campaignid
-    - ia_proativa=1
-  */
+  // Compatibilidade legada; o scheduler de teste não abre IA automaticamente.
   return true;
 }
 
@@ -15563,336 +15559,10 @@ async function yntCountOtherLaunchesInNeighborhood(
 }
 
 
-function yntAppendProactiveVipActions(
-  p,
-  box
-){
-  if(!box){
-    return;
-  }
 
-  const existing=
-    box.querySelector(
-      ".ynt-ai-vip-actions"
-    );
 
-  existing?.remove();
 
-  const wrap=
-    document.createElement(
-      "div"
-    );
 
-  wrap.className=
-    "ynt-ai-vip-actions";
-
-  const vip=
-    document.createElement(
-      "button"
-    );
-
-  vip.type=
-    "button";
-
-  vip.className=
-    "ynt-ai-vip-primary";
-
-  vip.innerHTML=
-    `<span>🔔</span><span>SIM</span>`;
-
-  const no=
-    document.createElement(
-      "button"
-    );
-
-  no.type=
-    "button";
-
-  no.className=
-    "ynt-ai-vip-secondary";
-
-  no.textContent=
-    "AGORA NÃO";
-
-  wrap.append(
-    vip,
-    no
-  );
-
-  const aiShell=
-    document.getElementById(
-      "aiAssistantShell"
-    );
-
-  if(aiShell){
-    aiShell.dataset.forceChoice=
-      "1";
-
-    const closeBtn=
-      aiShell.querySelector(
-        ".ai-assistant-close"
-      );
-
-    if(closeBtn){
-      closeBtn.style.visibility=
-        "hidden";
-    }
-  }
-
-  box.appendChild(
-    wrap
-  );
-
-  box.scrollTop=
-    box.scrollHeight;
-
-  supabaseTrack(
-    "vip_offer_shown",
-    {
-      property_id:
-        String(
-          p?.id ||
-          ""
-        ),
-
-      property_uuid:
-        String(
-          p?.db_id ||
-          ""
-        ),
-
-      property_name:
-        p?.name ||
-        "",
-
-      neighborhood:
-        p?.neighborhood ||
-        "",
-
-      offer_origin:
-        "ai_proactive_property_detail"
-    }
-  );
-
-  vip.addEventListener(
-    "click",
-    async ()=>{
-      supabaseTrack(
-        "vip_offer_click",
-        {
-          property_id:
-            String(
-              p?.id ||
-              ""
-            ),
-
-          property_uuid:
-            String(
-              p?.db_id ||
-              ""
-            ),
-
-          property_name:
-            p?.name ||
-            "",
-
-          neighborhood:
-            p?.neighborhood ||
-            "",
-
-          offer_origin:
-            "ai_proactive_property_detail"
-        }
-      );
-
-      const aiShell=
-        document.getElementById(
-          "aiAssistantShell"
-        );
-
-      await activateYnteligenciaPushForProperty(
-        p,
-        vip
-      );
-
-      if(aiShell){
-        aiShell.dataset.forceChoice=
-          "0";
-
-        const closeBtn=
-          aiShell.querySelector(
-            ".ai-assistant-close"
-          );
-
-        if(closeBtn){
-          closeBtn.style.visibility=
-            "";
-        }
-      }
-    }
-  );
-
-  no.addEventListener(
-    "click",
-    ()=>{
-      supabaseTrack(
-        "vip_offer_declined",
-        {
-          property_id:
-            String(
-              p?.id ||
-              ""
-            ),
-
-          property_uuid:
-            String(
-              p?.db_id ||
-              ""
-            ),
-
-          property_name:
-            p?.name ||
-            "",
-
-          offer_origin:
-            "ai_proactive_property_detail"
-        }
-      );
-
-      const aiShell=
-        document.getElementById(
-          "aiAssistantShell"
-        );
-
-      if(aiShell){
-        aiShell.dataset.forceChoice=
-          "0";
-
-        const closeBtn=
-          aiShell.querySelector(
-            ".ai-assistant-close"
-          );
-
-        if(closeBtn){
-          closeBtn.style.visibility=
-            "";
-        }
-      }
-
-      wrap.remove();
-    }
-  );
-}
-
-
-async function yntOpenProactiveAiForProperty(
-  p
-){
-  if(!p){
-    return;
-  }
-
-  aiAssistantProperty=
-    p;
-
-  aiAssistantHistory=
-    [];
-
-  resetAiLeadConversation();
-
-  const shell=
-    ensureAiAssistantShell();
-
-  const box=
-    shell.querySelector(
-      "#aiAssistantMessages"
-    );
-
-  if(box){
-    box.innerHTML=
-      "";
-  }
-
-  shell.classList.add(
-    "open"
-  );
-
-  document.body.style.overflow=
-    "hidden";
-
-  /*
-    Oferta simples:
-    não pede e-mail nem WhatsApp.
-    O botão SIM chama exatamente a mesma inscrição OneSignal já existente.
-  */
-  appendAiMessage(
-    "assistant",
-    "Quer que te mando outras opções por dia sem deixar email ou whatsapp?"
-  );
-
-  yntAppendProactiveVipActions(
-    p,
-    box
-  );
-
-  const neighborhood=
-    clean(
-      p?.neighborhood ||
-      p?.rawData
-        ?.building
-        ?.address
-        ?.neighborhood ||
-      ""
-    );
-
-  try{
-    gtag(
-      "event",
-      "ai_proactive_shown",
-      {
-        property_id:
-          String(
-            p?.id ||
-            ""
-          ),
-
-        property_name:
-          p?.name ||
-          "",
-
-        neighborhood:
-          neighborhood
-      }
-    );
-  }catch(error){}
-
-  supabaseTrack(
-    "ai_proactive_shown",
-    {
-      property_id:
-        String(
-          p?.id ||
-          ""
-        ),
-
-      property_uuid:
-        String(
-          p?.db_id ||
-          ""
-        ),
-
-      property_name:
-        p?.name ||
-        "",
-
-      neighborhood:
-        neighborhood,
-
-      trigger:
-        "property_detail_open"
-    }
-  );
-}
 
 // Reutiliza a intenção normalizada da entrada, inclusive em modo=explorar.
 // A classe visual do feed não representa a origem da sessão.
@@ -15925,160 +15595,11 @@ function syncPaidClickContextUi(){
 
 syncPaidClickContextUi();
 
-function scheduleAiAssistantForProperty(
-  p,
-  modal
-){
-  clearTimeout(
-    aiAssistantTriggerTimer
-  );
-
-  // Cancela também um timer anterior; IA paga permanece somente manual.
-  if(yntHasPaidClickContext()) return;
-
-  /*
-    O detalhe foi aberto a partir da conversa.
-    A oferta proativa apagaria os cards ao substituir o chat.
-  */
-  if(aiResumeChatAfterDetail){
-    return;
-  }
-
-  const proactive=
-    yntIsPaidDirectPropertyEntry();
-
-  if(proactive && !document.body.classList.contains("ad-match-mode")){
-    /*
-      Registra a entrada do experimento assim que o detalhe existe.
-    */
-    supabaseTrack(
-      "ad_property_entry",
-      {
-        property_id:
-          String(
-            p?.id ||
-            ""
-          ),
-
-        property_uuid:
-          String(
-            p?.db_id ||
-            ""
-          ),
-
-        property_name:
-          p?.name ||
-          "",
-
-        neighborhood:
-          p?.neighborhood ||
-          "",
-
-        trigger:
-          "property_detail_open"
-      }
-    );
-
-    aiAssistantTriggerTimer=
-      setTimeout(
-        ()=>{
-          if(
-            !document.body.contains(
-              modal
-            )
-          ){
-            return;
-          }
-
-          if(yntHasPaidClickContext()) return;
-          yntOpenProactiveAiForProperty(
-            p
-          );
-        },
-        5000
-      );
-
-    return;
-  }
-
-  /*
-    Jornada normal:
-    mantém exatamente o comportamento da FASE 25.
-    A IA não abre sozinha; apenas destaca o botão após 3 segundos.
-  */
-  aiAssistantTriggerTimer=
-    setTimeout(
-      ()=>{
-        if(
-          !document.body.contains(
-            modal
-          )
-        ){
-          return;
-        }
-
-        const trigger=
-          modal?.querySelector(
-            ".detail-ai-float-btn"
-          );
-
-        trigger
-          ?.classList
-          .add(
-            "ai-pulse"
-          );
-
-        setTimeout(
-          ()=>
-            trigger
-              ?.classList
-              .remove(
-                "ai-pulse"
-              ),
-          3600
-        );
-
-        try{
-          gtag(
-            "event",
-            "ai_assistant_prompt_view",
-            {
-              property_id:
-                String(
-                  p.id ||
-                  ""
-                ),
-
-              property_name:
-                p.name ||
-                ""
-            }
-          );
-        }catch(error){}
-
-        supabaseTrack(
-          "ai_assistant_prompt_view",
-          {
-            property_id:
-              String(
-                p.id ||
-                ""
-              ),
-
-            property_uuid:
-              String(
-                p.db_id ||
-                ""
-              ),
-
-            property_name:
-              p.name ||
-              ""
-          }
-        );
-      },
-      3000
-    );
+function scheduleAiAssistantForProperty(p,modal){
+  // Test edition: retain the hook, cancel stale timers, never auto-open a chat/tab.
+  // Help is available through the existing manual CONVERSAR COM A IA action.
+  clearTimeout(aiAssistantTriggerTimer);
+  aiAssistantTriggerTimer=null;
 }
 
 
@@ -17322,7 +16843,7 @@ function renderDevelopmentRichModal(
         class="development-lp-cta primary"
         type="button"
         data-development-ai="true">
-        ✦ PERGUNTAR À MATCH IA
+        ✦ CONVERSAR COM A IA
       </button>
 
       <button
@@ -17444,6 +16965,10 @@ function renderDevelopmentRichModal(
       );
     });
 
+  // One visible AI action per detail: rich development CTA replaces its duplicate.
+  const detailAi=modal.querySelector(".detail-specialist-btn");
+  if(detailAi && target.querySelector("[data-development-ai]"))detailAi.hidden=true;
+
   target
     .querySelector(
       "[data-development-ai]"
@@ -17451,7 +16976,7 @@ function renderDevelopmentRichModal(
     ?.addEventListener(
       "click",
       ()=>{
-        openAiAssistant(p);
+        openAgentConversation(p);
       }
     );
 
@@ -18089,13 +17614,6 @@ async function showPhotoModal(id){
         <span>LISTA V.I.P</span>
       </button>
 
-      <button
-        class="detail-float-btn detail-ai-float-btn"
-        type="button"
-        aria-label="Pedir ajuda à inteligência artificial">
-        <span class="detail-float-btn-icon">✦</span>
-        <span>I.A ajuda</span>
-      </button>
 
     </div>`;
 
@@ -18130,14 +17648,6 @@ async function showPhotoModal(id){
         )
     );
 
-  modal
-    .querySelector(
-      ".detail-ai-float-btn"
-    )
-    ?.addEventListener(
-      "click",
-      ()=>openAgentConversation(p)
-    );
 
   modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAgentConversation(p));
   modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
@@ -22308,55 +21818,9 @@ loadInventory()
 </script>
 
 
-<!-- =========================================================
-     COMPARAÇÃO CONTEXTUAL ENTRE BAIRROS · ZONA OESTE
-
-     NÍVEL 1 · PREMIUM
-     Pinheiros → Vila Madalena → Perdizes → Pompéia → Pinheiros
-
-     NÍVEL 2 · MÉDIO / MÉDIO-ALTO
-     Vila Romana → Lapa → Água Branca → Barra Funda → Vila Romana
-
-     Preserva dormitórios, faixa de valor, UTMs, GCLID/GBRAID/WBRAID
-     e demais parâmetros da campanha. Troca somente o bairro.
-========================================================== -->
+<!-- Estilos compartilhados do Refinar MATCH preservados. -->
 <style>
-  .neighborhood-compare-fab{
-    position:fixed;
-    left:14px;
-    bottom:88px;
-    z-index:940;
-    display:none;
-    align-items:center;
-    gap:10px;
-    width:min(300px,calc(100vw - 28px));
-    padding:11px 13px;
-    border:1px solid rgba(198,167,107,.52);
-    border-radius:16px;
-    background:rgba(252,250,246,.96);
-    color:#4A443C;
-    box-shadow:0 14px 34px rgba(32,28,23,.14);
-    text-decoration:none;
-    -webkit-backdrop-filter:blur(14px);
-    backdrop-filter:blur(14px);
-    opacity:0;
-    transform:translateY(12px);
-    pointer-events:none;
-    transition:opacity .22s ease,transform .22s ease,box-shadow .22s ease;
-  }
-  .neighborhood-compare-fab.is-ready{display:flex}
-  .neighborhood-compare-fab.is-visible{opacity:1;transform:translateY(0);pointer-events:auto}
-  .neighborhood-compare-fab:hover{box-shadow:0 18px 42px rgba(32,28,23,.19);transform:translateY(-2px)}
 
-  .neighborhood-compare-icon{
-    width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;
-    border-radius:50%;background:#F0ECE3;border:1px solid #DED8CD;color:#6A635A;font-size:15px;
-  }
-  .neighborhood-compare-copy{min-width:0;display:flex;flex-direction:column;gap:1px}
-  .neighborhood-compare-kicker{font-size:9px;line-height:1.2;letter-spacing:.11em;font-weight:800;color:#7D776E;text-transform:uppercase}
-  .neighborhood-compare-title{font-size:13px;line-height:1.25;font-weight:800;color:#4A443C}
-  .neighborhood-compare-subtitle{margin-top:1px;font-size:10px;line-height:1.25;color:#7D776E}
-  .neighborhood-compare-arrow{margin-left:auto;flex:0 0 auto;font-size:18px;line-height:1;color:#9A7D46}
 
   /* Refinar MATCH minimizado no desktop. */
   @media(min-width:769px){
@@ -22387,416 +21851,12 @@ loadInventory()
     body.match-results-mode{padding-bottom:78px!important}
   }
 
-  @media(max-width:768px){
-    .neighborhood-compare-fab{left:10px;bottom:82px;width:min(262px,calc(100vw - 20px));padding:9px 11px;border-radius:14px}
-    .neighborhood-compare-icon{width:30px;height:30px;flex-basis:30px;font-size:13px}
-    .neighborhood-compare-title{font-size:12px}
-    .neighborhood-compare-subtitle{font-size:9px}
-  }
-  body.paid-click-context #navExplore,
-  body.paid-click-context .neighborhood-compare-fab{display:none!important}
+  body.paid-click-context #navExplore{display:none!important}
 </style>
 
-<a id="neighborhoodCompareFab" class="neighborhood-compare-fab" href="#" aria-label="Comparar imóveis em outro bairro">
-  <span class="neighborhood-compare-icon" aria-hidden="true">↔</span>
-  <span class="neighborhood-compare-copy">
-    <span class="neighborhood-compare-kicker" id="neighborhoodCompareKicker">COMPARE A REGIÃO</span>
-    <strong class="neighborhood-compare-title" id="neighborhoodCompareTitle"></strong>
-    <span class="neighborhood-compare-subtitle" id="neighborhoodCompareSubtitle"></span>
-  </span>
-  <span class="neighborhood-compare-arrow" aria-hidden="true">›</span>
-</a>
 
-<script>
-(() => {
-  const fab = document.getElementById("neighborhoodCompareFab");
-  const kicker = document.getElementById("neighborhoodCompareKicker");
-  const title = document.getElementById("neighborhoodCompareTitle");
-  const subtitle = document.getElementById("neighborhoodCompareSubtitle");
-  if(!fab || !kicker || !title || !subtitle) return;
 
-  const normalizeNeighborhood = value => String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 
-  const circuit = {
-    "pinheiros": {zone:"oeste",next:"Vila Madalena",tier:"premium",label:"Ver imóveis na Vila Madalena",reason:"Continue comparando no circuito premium"},
-    "vila madalena": {zone:"oeste",next:"Perdizes",tier:"premium",label:"Ver imóveis em Perdizes",reason:"Continue comparando no circuito premium"},
-    "perdizes": {zone:"oeste",next:"Pompéia",tier:"premium",label:"Ver imóveis na Pompéia",reason:"Compare opções próximas na Zona Oeste"},
-    "pompeia": {zone:"oeste",next:"Pinheiros",tier:"premium",label:"Ver imóveis em Pinheiros",reason:"Continue comparando no circuito premium"},
-    "vila romana": {zone:"oeste",next:"Lapa",tier:"medio",label:"Ver imóveis na Lapa",reason:"Compare alternativas na mesma faixa regional"},
-    "lapa": {zone:"oeste",next:"Água Branca",tier:"medio",label:"Ver imóveis na Água Branca",reason:"Compare alternativas na mesma faixa regional"},
-    "agua branca": {zone:"oeste",next:"Barra Funda",tier:"medio",label:"Ver imóveis na Barra Funda",reason:"Compare mobilidade, metragem e valor"},
-    "barra funda": {zone:"oeste",next:"Vila Romana",tier:"medio",label:"Ver imóveis na Vila Romana",reason:"Compare alternativas na mesma faixa regional"},
-    "moema": {zone:"sul",next:"Campo Belo",tier:"premium",label:"Ver imóveis no Campo Belo",reason:"Compare outra opção premium da Zona Sul"},
-    "campo belo": {zone:"sul",next:"Brooklin",tier:"premium",label:"Ver imóveis no Brooklin",reason:"Compare localização, metragem e mobilidade"},
-    "brooklin": {zone:"sul",next:"Vila Olímpia",tier:"premium",label:"Ver imóveis na Vila Olímpia",reason:"Continue comparando no eixo premium"},
-    "vila olimpia": {zone:"sul",next:"Moema",tier:"premium",label:"Ver imóveis em Moema",reason:"Compare outra referência premium da Zona Sul"},
-    "vila mariana": {zone:"sul",next:"Vila Clementino",tier:"medio",label:"Ver imóveis na Vila Clementino",reason:"Compare bairros próximos com perfil semelhante"},
-    "vila clementino": {zone:"sul",next:"Saúde",tier:"medio",label:"Ver imóveis na Saúde",reason:"Compare metragem, mobilidade e valor"},
-    "saude": {zone:"sul",next:"Chácara Santo Antônio",tier:"medio",label:"Ver imóveis na Chácara Santo Antônio",reason:"Compare alternativas no eixo da Zona Sul"},
-    "chacara santo antonio": {zone:"sul",next:"Santo Amaro",tier:"medio",label:"Ver imóveis em Santo Amaro",reason:"Compare mobilidade, estoque e faixa de valor"},
-    "santo amaro": {zone:"sul",next:"Vila Mariana",tier:"medio",label:"Ver imóveis na Vila Mariana",reason:"Volte ao circuito de comparação da Zona Sul"}
-  };
-
-  const satelliteMap = {
-    "sumarezinho": {zone:"oeste",next:"Vila Madalena",tier:"resgate"},
-    "alto da lapa": {zone:"oeste",next:"Vila Romana",tier:"resgate"},
-    "vila ipojuca": {zone:"oeste",next:"Vila Romana",tier:"resgate"},
-    "jaguare": {zone:"oeste",next:"Vila Leopoldina",tier:"resgate"},
-    "vila leopoldina": {zone:"oeste",next:"Lapa",tier:"resgate"},
-    "butanta": {zone:"oeste",next:"Pinheiros",tier:"resgate"},
-    "rio pequeno": {zone:"oeste",next:"Butantã",tier:"resgate"},
-    "morumbi": {zone:"sul",next:"Brooklin",tier:"resgate"},
-    "planalto paulista": {zone:"sul",next:"Saúde",tier:"resgate"},
-    "mirandopolis": {zone:"sul",next:"Vila Mariana",tier:"resgate"},
-    "jabaquara": {zone:"sul",next:"Saúde",tier:"resgate"},
-    "ibirapuera": {zone:"sul",next:"Moema",tier:"resgate"},
-    "itaim bibi": {zone:"sul",next:"Vila Olímpia",tier:"resgate"}
-  };
-
-  const zoneNeighborhoods = {
-    oeste: ["Pinheiros","Vila Madalena","Perdizes","Pompéia","Vila Romana","Lapa","Água Branca","Barra Funda","Vila Leopoldina","Butantã","Sumarezinho","Alto da Lapa","Vila Ipojuca","Jaguaré"],
-    sul: ["Moema","Campo Belo","Brooklin","Vila Olímpia","Vila Mariana","Vila Clementino","Saúde","Chácara Santo Antônio","Santo Amaro","Morumbi","Planalto Paulista","Mirandópolis","Jabaquara","Ibirapuera","Itaim Bibi"]
-  };
-
-  const anchorPriority = [
-    "Pinheiros","Perdizes","Vila Madalena","Pompéia","Vila Romana","Lapa",
-    "Moema","Brooklin","Campo Belo","Vila Olímpia","Vila Mariana","Saúde","Santo Amaro"
-  ];
-
-  function getAvailableNeighborhoods(){
-    const select = document.getElementById("refineNeighborhood");
-    if(!select) return [];
-    return [...select.options]
-      .map(option => String(option.value || "").trim())
-      .filter(Boolean)
-      .filter((value,index,array) => array.findIndex(v => normalizeNeighborhood(v) === normalizeNeighborhood(value)) === index);
-  }
-
-  function findAvailable(name, available){
-    const key = normalizeNeighborhood(name);
-    return available.find(item => normalizeNeighborhood(item) === key) || null;
-  }
-
-  function inferZone(current){
-    const key = normalizeNeighborhood(current);
-    for(const [zone,names] of Object.entries(zoneNeighborhoods)){
-      if(names.some(name => normalizeNeighborhood(name) === key)) return zone;
-    }
-    return null;
-  }
-
-  function firstAvailable(candidates, available, current){
-    const currentKey = normalizeNeighborhood(current);
-    for(const candidate of candidates){
-      const found = findAvailable(candidate, available);
-      if(found && normalizeNeighborhood(found) !== currentKey) return found;
-    }
-    return null;
-  }
-
-  function getActiveZone(currentRaw){
-    const url = new URL(window.location.href);
-
-    // 1) Região explícita na URL tem prioridade.
-    const regionRaw = normalizeNeighborhood(
-      url.searchParams.get("region") ||
-      url.searchParams.get("regiao") ||
-      url.searchParams.get("zona") ||
-      ""
-    );
-
-    if(regionRaw){
-      if(regionRaw.includes("oeste")) return "oeste";
-      if(regionRaw.includes("sul")) return "sul";
-    }
-
-    // 2) Se a URL já está em um bairro conhecido, a zona desse bairro vale.
-    const neighborhoodZone = inferZone(currentRaw);
-    if(neighborhoodZone) return neighborhoodZone;
-
-    // 3) Preserva a intenção regional escolhida na sessão.
-    try{
-      const stored = sessionStorage.getItem("ynteligencia_active_zone");
-      if(stored === "oeste" || stored === "sul") return stored;
-    }catch(e){}
-
-    return null;
-  }
-
-  function rememberActiveZone(zone){
-    if(zone !== "oeste" && zone !== "sul") return;
-    try{
-      sessionStorage.setItem("ynteligencia_active_zone", zone);
-    }catch(e){}
-  }
-
-  function getCompassRoute(currentRaw){
-    const currentKey = normalizeNeighborhood(currentRaw);
-    const available = getAvailableNeighborhoods();
-    if(!available.length) return null;
-
-    // A zona ativa é uma trava. Enquanto existir contexto regional,
-    // a Bússola nunca recomenda bairro de outra zona.
-    const activeZone = getActiveZone(currentRaw);
-    if(activeZone) rememberActiveZone(activeZone);
-
-    const zoneCandidates = activeZone
-      ? (zoneNeighborhoods[activeZone] || [])
-      : [];
-
-    const direct = circuit[currentKey];
-
-    // 1. Circuito conhecido, respeitando obrigatoriamente a zona ativa.
-    if(direct){
-      const lockedZone = activeZone || direct.zone;
-      rememberActiveZone(lockedZone);
-
-      // Só aceita o próximo bairro se ele também pertencer à zona travada.
-      const nextZone = inferZone(direct.next);
-      const exact = nextZone === lockedZone
-        ? findAvailable(direct.next, available)
-        : null;
-
-      if(exact){
-        return {...direct,zone:lockedZone,next:exact,mode:"circuit"};
-      }
-
-      const sameZone = firstAvailable(
-        zoneNeighborhoods[lockedZone] || [],
-        available,
-        currentRaw
-      );
-
-      if(sameZone){
-        return {
-          zone:lockedZone,
-          next:sameZone,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${sameZone}`,
-          reason:"A Bússola encontrou outra opção disponível na mesma região"
-        };
-      }
-
-      // Não cruza de zona automaticamente.
-      return null;
-    }
-
-    // 2. Bairro satélite: também permanece preso à zona ativa.
-    const satellite = satelliteMap[currentKey];
-    if(satellite){
-      const lockedZone = activeZone || satellite.zone;
-      rememberActiveZone(lockedZone);
-
-      const targetZone = inferZone(satellite.next);
-      const exact = targetZone === lockedZone
-        ? findAvailable(satellite.next, available)
-        : null;
-
-      const fallback = exact || firstAvailable(
-        zoneNeighborhoods[lockedZone] || [],
-        available,
-        currentRaw
-      );
-
-      if(fallback){
-        return {
-          zone:lockedZone,
-          next:fallback,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${fallback}`,
-          reason:"A Bússola encontrou um bairro próximo para continuar sua busca"
-        };
-      }
-
-      return null;
-    }
-
-    // 3. Região selecionada sem bairro atual:
-    // recomenda SOMENTE bairros daquela região.
-    if(activeZone){
-      const fallback = firstAvailable(
-        zoneCandidates,
-        available,
-        currentRaw
-      );
-
-      if(fallback){
-        return {
-          zone:activeZone,
-          next:fallback,
-          tier:"resgate",
-          mode:"rescue",
-          label:`Ver imóveis em ${fallback}`,
-          reason:"Continue explorando imóveis na região selecionada"
-        };
-      }
-
-      // Se não houver opção naquela zona, não manda para outra zona.
-      return null;
-    }
-
-    // 4. Sem qualquer intenção regional:
-    // mantém o comportamento aberto da Bússola.
-    const globalFallback =
-      firstAvailable(anchorPriority, available, currentRaw) ||
-      available.find(item => normalizeNeighborhood(item) !== currentKey);
-
-    if(globalFallback){
-      const fallbackZone = inferZone(globalFallback);
-      if(fallbackZone) rememberActiveZone(fallbackZone);
-
-      return {
-        zone:fallbackZone || "explorar",
-        next:globalFallback,
-        tier:"resgate",
-        mode:"rescue",
-        label:`Explorar ${globalFallback}`,
-        reason:"A Bússola encontrou uma nova região para você comparar"
-      };
-    }
-
-    return null;
-  }
-
-  let activeRoute = null;
-  let activeCurrent = "";
-
-  function renderCompass(){
-    const url = new URL(window.location.href);
-    const currentRaw = url.searchParams.get("bairro") || url.searchParams.get("neighborhood") || "";
-    const route = getCompassRoute(currentRaw);
-
-    activeRoute = route;
-    activeCurrent = currentRaw;
-
-    if(!route){
-      fab.classList.remove("is-ready","is-visible");
-      return;
-    }
-
-    const bedrooms = url.searchParams.get("dormitorios") || url.searchParams.get("bedrooms") || "";
-    url.searchParams.delete("bairro");
-    url.searchParams.delete("neighborhood");
-    url.searchParams.delete("region");
-    url.searchParams.set("bairro", route.next);
-
-    fab.href = url.pathname + url.search + url.hash;
-    fab.dataset.fromNeighborhood = currentRaw;
-    fab.dataset.toNeighborhood = route.next;
-    fab.dataset.tier = route.tier;
-
-    if(route.mode === "circuit"){
-      const zoneLabel = route.zone === "sul" ? "ZONA SUL" : "ZONA OESTE";
-      kicker.textContent = route.tier === "premium" ? `COMPARE · ${zoneLabel} PREMIUM` : `COMPARE · ${zoneLabel}`;
-    }else{
-      kicker.textContent = "BÚSSOLA · CONTINUE EXPLORANDO";
-    }
-
-    title.textContent = route.label || `Ver imóveis em ${route.next}`;
-    subtitle.textContent = bedrooms ? `${route.reason} · ${bedrooms}+ dormitórios` : route.reason;
-    fab.classList.add("is-ready");
-    fab.classList.toggle("is-visible", window.scrollY > 420);
-  }
-
-  window.addEventListener("scroll", () => {
-    if(activeRoute) fab.classList.toggle("is-visible", window.scrollY > 420);
-  }, {passive:true});
-
-  window.addEventListener("popstate", () => setTimeout(renderCompass, 50));
-
-  // O MATCH atualiza a URL sem necessariamente recarregar a página.
-  // Esta checagem leve mantém a Bússola sincronizada após Aplicar.
-  let lastSearch = window.location.search;
-  setInterval(() => {
-    if(window.location.search !== lastSearch){
-      lastSearch = window.location.search;
-      renderCompass();
-    }
-  }, 400);
-
-  fab.addEventListener("click", event => {
-    event.preventDefault();
-    const route = activeRoute;
-    const currentRaw = activeCurrent;
-    if(!route) return;
-
-    // Se a Bússola for acionada dentro da ficha do imóvel,
-    // fecha a ficha antes de abrir o Refinar MATCH.
-    const propertyDetail = document.getElementById("photoModal");
-    if(propertyDetail){
-      propertyDetail.remove();
-    }
-
-    try{
-      if(typeof updateAdMatchUI === "function") updateAdMatchUI();
-      const neighborhoodSelect = document.getElementById("refineNeighborhood");
-      const nextOption = neighborhoodSelect
-        ? [...neighborhoodSelect.options].find(option => normalizeNeighborhood(option.value) === normalizeNeighborhood(route.next))
-        : null;
-
-      if(!nextOption){
-        renderCompass();
-        if(typeof showToast === "function") showToast("Atualizamos as opções disponíveis. Escolha outra região.");
-        return;
-      }
-
-      neighborhoodSelect.value = nextOption.value;
-      window.__pendingNeighborhoodComparison = {
-        from_neighborhood: currentRaw,
-        to_neighborhood: route.next,
-        circuit_tier: route.tier,
-        circuit_zone: route.zone,
-        compass_mode: route.mode
-      };
-
-      if(typeof setRefineMatchOpen === "function") setRefineMatchOpen(true);
-    }catch(e){
-      console.warn("Falha ao abrir a Bússola:", e);
-      window.location.href = fab.href;
-      return;
-    }
-
-    try{
-      if(typeof gtag === "function"){
-        gtag("event", route.mode === "circuit" ? "neighborhood_compare_open" : "neighborhood_compass_open", {
-          from_neighborhood: currentRaw,
-          to_neighborhood: route.next,
-          circuit_tier: route.tier,
-          circuit_zone: route.zone,
-          compass_mode: route.mode,
-          page_location: window.location.href
-        });
-      }
-    }catch(e){}
-
-    try{
-      if(typeof supabaseTrack === "function"){
-        supabaseTrack(route.mode === "circuit" ? "neighborhood_compare_open" : "neighborhood_compass_open", {
-          from_neighborhood: currentRaw,
-          to_neighborhood: route.next,
-          circuit_tier: route.tier,
-          circuit_zone: route.zone,
-          compass_mode: route.mode,
-          pathname: window.location.pathname,
-          search: window.location.search
-        });
-      }
-    }catch(e){}
-  });
-
-  // Espera o catálogo preencher o select antes da primeira decisão.
-  setTimeout(renderCompass, 250);
-  setTimeout(renderCompass, 1200);
-})();
-</script>
 
 
 <script>
@@ -22814,7 +21874,6 @@ if ("serviceWorker" in navigator) {
 
 <!-- =========================================================
      UX MOBILE · REFINAR MATCH MINIMIZADO
-     O circuito de bairros permanece como ação principal.
      Refinar MATCH vira um botão circular e abre somente ao toque.
 ========================================================== -->
 <style>
@@ -22871,15 +21930,6 @@ if ("serviceWorker" in navigator) {
 
   body.match-results-mode .refine-match-fab:active{
     transform:scale(.96) !important;
-  }
-
-  /*
-     Reserva espaço para o botão circular do MATCH.
-     Assim o super botão de comparação continua sendo o protagonista
-     sem sobreposição mesmo em celulares estreitos.
-  */
-  .neighborhood-compare-fab{
-    width:min(262px,calc(100vw - 78px)) !important;
   }
 
   /* Painel fechado por padrão. */
@@ -23209,54 +22259,6 @@ body.ad-match-mode .refine-match-shell{
   }
 }
 
-/* =========================================================
-   FASE 26 · CTA LISTA V.I.P DENTRO DA IA PROATIVA
-========================================================= */
-.ynt-ai-vip-actions{
-  display:grid;
-  gap:8px;
-  margin:10px 0 16px;
-  max-width:88%;
-}
-.ynt-ai-vip-primary,
-.ynt-ai-vip-secondary{
-  min-height:48px;
-  border-radius:14px;
-  padding:10px 14px;
-  font:inherit;
-  font-size:12px;
-  font-weight:900;
-  letter-spacing:.15px;
-  cursor:pointer;
-}
-.ynt-ai-vip-primary{
-  border:1px solid #B99A5E;
-  background:#E4D0A3;
-  color:#171513;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
-}
-.ynt-ai-vip-primary:disabled{
-  opacity:.58;
-  cursor:wait;
-}
-.ynt-ai-vip-primary.is-active{
-  background:#171513;
-  color:#fff;
-  border-color:#171513;
-}
-.ynt-ai-vip-secondary{
-  border:1px solid #D8D0C4;
-  background:#FCFAF6;
-  color:#6B655C;
-}
-@media(max-width:640px){
-  .ynt-ai-vip-actions{
-    max-width:100%;
-  }
-}
 
 </style>
 
@@ -23333,8 +22335,8 @@ body.ad-match-mode .refine-match-shell{
 
   ai?.addEventListener("click",function(event){
     event.preventDefault();
-    if(typeof openHomeAiSearch==="function"){
-      openHomeAiSearch();
+    if(typeof openHomeAgentConversation==="function"){
+      openHomeAgentConversation();
     }
   });
 })();
