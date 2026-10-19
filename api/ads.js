@@ -9,6 +9,7 @@ import {
   handleGetHandoff
 } from "../ads-routes.js";
 import { handleAudiencePersistence } from "../audience-persistence-transport.js";
+import { handleMiaGoogleConversions } from "../mia-google-conversions.js";
 
 const actions = {
   event: handleAdsEvent,
@@ -16,6 +17,7 @@ const actions = {
   "intent-feed": handleAdsIntentFeed,
   sheet: handleAdsSheet,
   "google-conversions": handleAdsGoogleConversions,
+  "mia-google-conversions": handleMiaGoogleConversions,
   "create-handoff": handleCreateHandoff,
   "get-handoff": handleGetHandoff,
   "mia-read": handleAdsMiaRead,
