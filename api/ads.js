@@ -9,6 +9,7 @@ import {
   handleGetHandoff
 } from "../ads-routes.js";
 import { handleAudiencePersistence } from "../audience-persistence-transport.js";
+import { handleAdsGoogleHighIntentConversions } from "../google-high-intent-export-route.js";
 
 const actions = {
   event: handleAdsEvent,
@@ -16,6 +17,7 @@ const actions = {
   "intent-feed": handleAdsIntentFeed,
   sheet: handleAdsSheet,
   "google-conversions": handleAdsGoogleConversions,
+  "google-high-intent-conversions": handleAdsGoogleHighIntentConversions,
   "create-handoff": handleCreateHandoff,
   "get-handoff": handleGetHandoff,
   "mia-read": handleAdsMiaRead,
