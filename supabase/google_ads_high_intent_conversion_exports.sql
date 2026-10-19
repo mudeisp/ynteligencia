@@ -3,6 +3,11 @@
   "High Intent Buyer". Reutiliza o ledger google_ads_conversion_exports,
   mas mantém claim/confirm/fail separados do fluxo Lead Created.
 
+  O evento high_intent_buyer é derivado no fim da sessão e pode não carregar
+  o click id no próprio registro. Quando isso ocorrer, o claim usa somente o
+  click Google mais recente da MESMA sessão e anterior/igual ao high intent.
+  Não atravessa sessões nem visitantes para fabricar atribuição.
+
   Não executar em Production automaticamente.
   Aplicar manualmente no SQL editor, como service role, depois da revisão.
 
@@ -38,49 +43,94 @@ begin
   end if;
 
   return query
-  with clicks as (
+  with high_intent as (
     select
       event.event_id,
       event.event_time,
       event.product,
-      case
-        when btrim(coalesce(event.conversion_gclid, '')) <> ''
-          or btrim(coalesce(event.conversion_gbraid, '')) <> ''
-          or btrim(coalesce(event.conversion_wbraid, '')) <> ''
-        then btrim(coalesce(event.conversion_gclid, ''))
-        when btrim(coalesce(event.conversion_click_source, '')) in ('', 'current_session')
-        then btrim(coalesce(event.gclid, ''))
-        else ''
-      end as gclid,
-      case
-        when btrim(coalesce(event.conversion_gclid, '')) <> ''
-          or btrim(coalesce(event.conversion_gbraid, '')) <> ''
-          or btrim(coalesce(event.conversion_wbraid, '')) <> ''
-        then btrim(coalesce(event.conversion_gbraid, ''))
-        when btrim(coalesce(event.conversion_click_source, '')) in ('', 'current_session')
-        then btrim(coalesce(event.gbraid, ''))
-        else ''
-      end as gbraid,
-      case
-        when btrim(coalesce(event.conversion_gclid, '')) <> ''
-          or btrim(coalesce(event.conversion_gbraid, '')) <> ''
-          or btrim(coalesce(event.conversion_wbraid, '')) <> ''
-        then btrim(coalesce(event.conversion_wbraid, ''))
-        when btrim(coalesce(event.conversion_click_source, '')) in ('', 'current_session')
-        then btrim(coalesce(event.wbraid, ''))
-        else ''
-      end as wbraid
+      event.visitor_id,
+      event.session_id,
+      btrim(coalesce(event.conversion_gclid, '')) as conversion_gclid,
+      btrim(coalesce(event.conversion_gbraid, '')) as conversion_gbraid,
+      btrim(coalesce(event.conversion_wbraid, '')) as conversion_wbraid,
+      btrim(coalesce(event.conversion_click_source, '')) as conversion_click_source,
+      btrim(coalesce(event.gclid, '')) as event_gclid,
+      btrim(coalesce(event.gbraid, '')) as event_gbraid,
+      btrim(coalesce(event.wbraid, '')) as event_wbraid
     from public.ads_events as event
     where event.event_name = 'high_intent_buyer'
   ),
+  resolved as (
+    select
+      high_intent.event_id,
+      high_intent.event_time,
+      high_intent.product,
+      case
+        when high_intent.conversion_gclid <> ''
+          or high_intent.conversion_gbraid <> ''
+          or high_intent.conversion_wbraid <> ''
+        then high_intent.conversion_gclid
+        when high_intent.conversion_click_source in ('prior_session', 'prior_visitor')
+        then ''
+        when high_intent.event_gclid <> ''
+          or high_intent.event_gbraid <> ''
+          or high_intent.event_wbraid <> ''
+        then high_intent.event_gclid
+        else coalesce(session_click.gclid, '')
+      end as gclid,
+      case
+        when high_intent.conversion_gclid <> ''
+          or high_intent.conversion_gbraid <> ''
+          or high_intent.conversion_wbraid <> ''
+        then high_intent.conversion_gbraid
+        when high_intent.conversion_click_source in ('prior_session', 'prior_visitor')
+        then ''
+        when high_intent.event_gclid <> ''
+          or high_intent.event_gbraid <> ''
+          or high_intent.event_wbraid <> ''
+        then high_intent.event_gbraid
+        else coalesce(session_click.gbraid, '')
+      end as gbraid,
+      case
+        when high_intent.conversion_gclid <> ''
+          or high_intent.conversion_gbraid <> ''
+          or high_intent.conversion_wbraid <> ''
+        then high_intent.conversion_wbraid
+        when high_intent.conversion_click_source in ('prior_session', 'prior_visitor')
+        then ''
+        when high_intent.event_gclid <> ''
+          or high_intent.event_gbraid <> ''
+          or high_intent.event_wbraid <> ''
+        then high_intent.event_wbraid
+        else coalesce(session_click.wbraid, '')
+      end as wbraid
+    from high_intent
+    left join lateral (
+      select
+        btrim(coalesce(prior.gclid, '')) as gclid,
+        btrim(coalesce(prior.gbraid, '')) as gbraid,
+        btrim(coalesce(prior.wbraid, '')) as wbraid
+      from public.ads_events as prior
+      where prior.visitor_id = high_intent.visitor_id
+        and prior.session_id = high_intent.session_id
+        and prior.event_time <= high_intent.event_time
+        and (
+          btrim(coalesce(prior.gclid, '')) <> ''
+          or btrim(coalesce(prior.gbraid, '')) <> ''
+          or btrim(coalesce(prior.wbraid, '')) <> ''
+        )
+      order by prior.event_time desc, prior.event_id desc
+      limit 1
+    ) as session_click on true
+  ),
   candidates as (
-    select clicks.*
-    from clicks
-    where (clicks.gclid <> '' or clicks.gbraid <> '' or clicks.wbraid <> '')
+    select resolved.*
+    from resolved
+    where (resolved.gclid <> '' or resolved.gbraid <> '' or resolved.wbraid <> '')
       and not exists (
         select 1
         from public.google_ads_conversion_exports as prior
-        where prior.event_id = clicks.event_id
+        where prior.event_id = resolved.event_id
           and prior.conversion_name = 'High Intent Buyer'
           and (
             prior.status = 'exported'
@@ -90,7 +140,7 @@ begin
             )
           )
       )
-    order by clicks.event_time asc, clicks.event_id asc
+    order by resolved.event_time asc, resolved.event_id asc
     limit v_limit
   ),
   upserted as (
