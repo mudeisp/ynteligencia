@@ -106,3 +106,36 @@ test("AGENTE primary CTA returns without invoking property handoff or creating i
   assert.equal(h.calls.closed[0].fromJourneyReturn,true);
   assert.equal(h.calls.hydrated.length,0);
 });
+
+test("late rich development hydration cannot reintroduce a competing AI CTA or hide human help",()=>{
+  const target={querySelector:()=>null,querySelectorAll:()=>[]};
+  const selected=[];
+  const modal={querySelector:selector=>{selected.push(selector);return selector==="#developmentRichSection"?target:null;}};
+  const context=vm.createContext({clean:x=>x||"",esc:escape,findDevelopmentBook:()=>null,developmentVideoEmbedUrl:()=>"",developmentSummaryItem:()=>"",developmentFeatureName:x=>x});
+  vm.runInContext(declaration("renderDevelopmentRichModal"),context);
+  context.renderDevelopmentRichModal(modal,property,{success:true,development:{name:"MAC Brooklin"}});
+  assert.match(target.innerHTML,/MAC Brooklin/);
+  assert.match(target.innerHTML,/Solicitar tabela atualizada/);
+  assert.doesNotMatch(target.innerHTML,/data-development-ai|data-development-human|CONVERSAR COM A IA/);
+  assert.deepEqual(selected,["#developmentRichSection"]);
+});
+
+test("closing cleans up once; returning to AGENTE does not fabricate a catalog return",()=>{
+  for(const returning of [false,true]){
+    const events=[],backs=[],focus=[];let removed=false;
+    const modal={yntPreviousFocus:{isConnected:true,focus:()=>focus.push(true)},remove(){removed=true;}};
+    const document={getElementById:id=>id==="photoModal"?modal:null,body:{style:{overflow:"hidden"}}};
+    const context=vm.createContext({clearTimeout(){},aiAssistantTriggerTimer:null,aiResumeChatAfterDetail:false,document,
+      YNT_ACTIVE_PROPERTY_JOURNEY:{property_id:"unit-42",opened_at_ms:Date.now()-1000},
+      history:{state:{ynteligenciaPropertyDetail:true},back:()=>backs.push(true)},gtag(){},supabaseTrack:(...args)=>events.push(args),notePaidSignal(){}});
+    vm.runInContext(declaration("closePropertyDetail"),context);
+    context.closePropertyDetail({fromJourneyReturn:returning});
+    context.closePropertyDetail({fromPopState:true,fromJourneyReturn:returning});
+    assert.equal(events.filter(e=>e[0]==="property_close").length,1);
+    assert.equal(events.filter(e=>e[0]==="catalog_return").length,returning?0:1);
+    assert.equal(events[0][1].close_method,returning?"agent_return":"ui_close");
+    assert.equal(document.body.style.overflow,"");
+    assert.equal(backs.length,returning?0:1);
+    assert.equal(removed,true);
+  }
+});

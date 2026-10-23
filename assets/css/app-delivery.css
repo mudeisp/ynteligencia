@@ -4343,6 +4343,7 @@ body.ad-match-mode .refine-match-shell{
 
 
 /* Coordinated property UX: presentation only; inventory and selection untouched. */
+.hero .container:after{content:none}
 .card,.results .card,.catalog .card{min-height:0;border:1px solid #e3ddd1;border-radius:18px;background:#fffdfa;overflow:hidden;box-shadow:0 4px 18px #17151308}
 .card .cover{height:auto;aspect-ratio:4/3;min-height:0}
 .card .cover-location{display:none}

@@ -1,6 +1,5 @@
 const test=require("node:test");
 const assert=require("node:assert/strict");
-const fs=require("node:fs");
 const vm=require("node:vm");
 const crypto=require("node:crypto");
 const handoff=require("./agent-property-handoff.js");
@@ -14,7 +13,11 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
 const token="a".repeat(43);
 const tokenUrl="https://agente.yincorp.com.br/?handoff="+token;
 const options={visitorId:visitor,sessionId:session,crypto:crypto.webcrypto,origin:"https://app.yincorp.com.br"};
-const html=fs.readFileSync("index.html","utf8");
+const html=require("./test-support/browser-source.cjs")();
+function browserFunction(name){
+  const found=html.match(new RegExp("(?:async )?function "+name+"\\([\\s\\S]*?\\n\\}"));
+  assert.ok(found,name);return found[0];
+}
 function harness(input={}){
   const requests=[],navigations=[],fallbacks=[];let now=10000;
   const touch=Object.freeze({utm_medium:"organic",gclid:"",...input.touch});
@@ -29,9 +32,11 @@ function harness(input={}){
     YNTELIGENCIA_VISITOR_ID:visitor,YNTELIGENCIA_SESSION_ID:session,YNTELIGENCIA_TOUCHES:{current_touch:touch},adIntent:{active:false},paidSearch:{},
     openAiAssistant(p){fallbacks.push(p);},
     async fetch(url,init){requests.push({url,...JSON.parse(init.body)});if(input.fetch) return input.fetch(url,init);if(input.error)throw new Error("network");return {ok:input.ok??true,json:async()=>input.response??{success:true,url:tokenUrl}};}});
-  const start=html.indexOf("function yntAgentHandoffUrl"),end=html.indexOf("function yntAdsTrack");
-  const paidStart=html.indexOf("const YNT_PAID_UTM_MEDIA"),paidEnd=html.indexOf("function syncPaidClickContextUi",paidStart);
-  vm.runInContext(html.slice(start,end)+"\n"+html.slice(paidStart,paidEnd)+`
+  const functions=["yntAgentHandoffUrl","yntOpenAgentOnce","openAgentConversation","yntCurrentUrlHasPaidAttribution","yntHasPaidClickContext"].map(browserFunction).join("\n");
+  const paid=html.match(/const YNT_PAID_UTM_MEDIA=[^\n]+/)[0];
+  vm.runInContext(functions+"\n"+paid+`
+    let yntAgentHandoffPending=false;
+    let yntAgentHandoffLastAttempt=null;
     function yntAdsIntentFromState(){return {neighborhood:"Brooklin",bedrooms:2,max_price:900000,inventory_source:"novos"};}
     function yntAdsAttribution(){return {gclid:YNTELIGENCIA_TOUCHES.current_touch.gclid,utm_medium:YNTELIGENCIA_TOUCHES.current_touch.utm_medium};}
   `,c);
@@ -98,7 +103,7 @@ test("missing shared script or secure UUID support keeps the local fallback",asy
 });
 test("popup blocked uses the same tab exactly once; no timer navigates later",async()=>{
   const f=harness({blocked:true});await f.open();assert.deepEqual(f.navigations,[["open","about:blank"],["same-tab",tokenUrl]]);assert.equal(f.fallbacks.length,0);
-  const source=html.slice(html.indexOf("function yntAgentHandoffUrl"),html.indexOf("function yntAdsTrack"));assert.doesNotMatch(source,/setTimeout|setInterval/);
+  const source=browserFunction("openAgentConversation");assert.doesNotMatch(source,/setTimeout|setInterval/);
 });
 test("popup failure closes the unused window and opens local fallback",async()=>{
  const f=harness({popupError:true});await f.open();assert.equal(f.fallbacks.length,1);assert.ok(f.navigations.some(x=>x[0]==="close"));assert.equal(f.navigations.some(x=>x[0]==="same-tab"),false);
@@ -106,14 +111,15 @@ test("popup failure closes the unused window and opens local fallback",async()=>
 test("double click creates one token while pending and suppresses a fast completed double click",async()=>{
   let release;const f=harness({fetch:()=>new Promise(resolve=>{release=resolve;})});const first=f.open();await f.open();assert.equal(f.requests.length,1);release({ok:true,json:async()=>({success:true,url:tokenUrl})});await first;await f.open();assert.equal(f.requests.length,1);assert.equal(f.navigations.filter(x=>x[0]==="popup").length,1);
 });
-test("both manual bindings remain the only callers; other AI and human CTAs keep their local handlers",()=>{
-  assert.equal((html.match(/openAgentConversation\(p\)/g)||[]).length,2);
-  assert.match(html,/detail-ai-float-btn[\s\S]{0,120}openAgentConversation\(p\)/);
-  assert.match(html,/detail-specialist-btn[^\n]+openAgentConversation\(p\)/);
+test("the contextual primary action is the sole property handoff caller; human integration stays available",()=>{
+  assert.equal((html.match(/openAgentConversation\(p\)/g)||[]).length,1);
+  assert.match(html,/detail-primary-cta/);
+  assert.match(html,/if\(!journey.fromAgent\)\{openAgentConversation\(p\);return;\}/);
   assert.match(html,/detail-specialist-human-btn[^\n]+openPropertySpecialist\(p\)/);
   assert.match(html,/function openHomeAiSearch\(/);assert.match(html,/function openAiAssistant\(/);assert.match(html,/function scheduleAiAssistantForProperty\(/);
-  assert.equal((html.match(/action=create-handoff/g)||[]).length,1);
-  assert.match(html,/Conversar com a IA/);assert.match(html,/<span>I\.A ajuda<\/span>/);
+  assert.equal((browserFunction("openAgentConversation").match(/action=create-handoff/g)||[]).length,1);
+  assert.match(html,/QUERO SABER MAIS/);assert.match(html,/VOLTAR À CONVERSA/);
+  assert.doesNotMatch(html,/data-development-ai/);
 });
 test("existing token/event implementation round-trips root native v1 without exposing attribution",async()=>{
   const {createPropertyHandoff,deliverPropertyHandoff}=await adapters();const f=harness();await f.open();const body=f.requests[0],s=store();

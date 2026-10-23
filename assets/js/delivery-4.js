@@ -3003,7 +3003,7 @@ function closePropertyDetail({fromPopState=false,fromJourneyReturn=false}={}){
       O retorno ao catálogo também é um passo comercial importante:
       mostra que o comprador continuou comparando opções.
     */
-    supabaseTrack(
+    if(!fromJourneyReturn)supabaseTrack(
       "catalog_return",
       {
         from_property_id:
@@ -3611,22 +3611,6 @@ function renderDevelopmentRichModal(
       </div>
     ` : ""}
 
-    <div class="development-lp-cta-row">
-      <button
-        class="development-lp-cta primary"
-        type="button"
-        data-development-ai="true">
-        ✦ CONVERSAR COM A IA
-      </button>
-
-      <button
-        class="development-lp-cta whatsapp"
-        type="button"
-        data-development-human="true">
-        FALAR COM ESPECIALISTA
-      </button>
-    </div>
-
     ${typologyHtml ? `
       <div class="development-section-block">
         <div class="detail-section-title">Tipologias disponíveis</div>
@@ -3737,34 +3721,6 @@ function renderDevelopmentRichModal(
         }
       );
     });
-
-  // One visible AI action per detail: rich development CTA replaces its duplicate.
-  const detailAi=modal.querySelector(".detail-specialist-btn");
-  if(detailAi && target.querySelector("[data-development-ai]"))detailAi.hidden=true;
-  const detailHuman=modal.querySelector(".detail-specialist-human-btn");
-  if(detailHuman && target.querySelector("[data-development-human]"))detailHuman.hidden=true;
-
-  target
-    .querySelector(
-      "[data-development-ai]"
-    )
-    ?.addEventListener(
-      "click",
-      ()=>{
-        openAgentConversation(p);
-      }
-    );
-
-  target
-    .querySelector(
-      "[data-development-human]"
-    )
-    ?.addEventListener(
-      "click",
-      ()=>{
-        openPropertySpecialist(p);
-      }
-    );
 
   target
     .querySelectorAll(
