@@ -156,7 +156,7 @@
       <div class="wizard-inner">
 
         <div class="search-mode-switch" aria-label="Modo de busca">
-          <button type="button" class="search-mode-btn active" id="wizardMatchMode">✦ Encontrar meu MATCH</button>
+          <button type="button" class="search-mode-btn active" id="wizardMatchMode">✦ Encontrar meu imóvel</button>
           <button type="button" class="search-mode-btn" id="wizardExploreMode">⌕ Explorar imóveis</button>
         </div>
 
@@ -279,8 +279,8 @@
           </h2>
 
           <p>
-            Usaremos esse valor como referência, mas o MATCH
-            também encontra oportunidades próximas.
+            Usaremos esse valor como referência para encontrar
+            oportunidades próximas.
           </p>
 
           <div class="options">
@@ -404,7 +404,7 @@
           <h2>Escolha suas prioridades.</h2>
 
           <p>
-            Esses critérios terão peso maior no seu MATCH.
+            Esses critérios ajudam a selecionar os imóveis para você.
           </p>
 
           <div class="options">
@@ -776,7 +776,7 @@
 <div class="match-processing" id="matchProcessing" role="status" aria-live="polite">
   <div>
     <div class="match-processing-mark">Y</div>
-    <h2>Construindo seu MATCH</h2>
+    <h2>Construindo seu perfil</h2>
     <p id="matchProcessingText">Analisando seu perfil...</p>
     <div class="match-processing-line"><span></span></div>
   </div>
@@ -868,7 +868,7 @@
 
 <div class="ad-budget-shell" id="adBudgetShell" aria-hidden="true">
   <div class="ad-budget-card" role="dialog" aria-modal="true" aria-labelledby="adBudgetTitle">
-    <p class="ad-budget-eyebrow">SEU MATCH IMOBILIÁRIO</p>
+    <p class="ad-budget-eyebrow">SUA BUSCA IMOBILIÁRIA</p>
     <h2 id="adBudgetTitle">Até qual valor você procura?</h2>
     <p class="ad-budget-context" id="adBudgetContext">Escolha seu teto de valor para mostrarmos imóveis que realmente fazem sentido para você.</p>
     <div class="ad-budget-options">
@@ -882,12 +882,12 @@
   </div>
 </div>
 
-<button class="refine-match-fab" id="refineMatchFab" type="button">✦ Refinar MATCH</button>
+<button class="refine-match-fab" id="refineMatchFab" type="button">✦ Refinar busca</button>
 <div class="refine-match-shell" id="refineMatchShell" aria-hidden="true">
   <div class="refine-match-card" aria-labelledby="refineMatchTitle">
     <div class="refine-match-head">
       <div>
-        <h2 id="refineMatchTitle">✦ Refinar MATCH</h2>
+        <h2 id="refineMatchTitle">✦ Refinar busca</h2>
         <p>Ajuste os critérios sem sair dos resultados.</p>
       </div>
       <button class="refine-match-close" id="refineMatchClose" type="button" aria-label="Fechar">×</button>
@@ -925,6 +925,7 @@
   </div>
 </div>
 
+<script src="property-detail-journey.js"></script>
 <script src="assets/js/delivery-1.js"></script>
 <script src="assets/js/delivery-2.js"></script>
 <script src="assets/js/delivery-3.js"></script>

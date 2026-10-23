@@ -3428,8 +3428,7 @@ function openLeadCapture(p,prefill={}){
             money(lead.property_value)==="Valor sob consulta"
               ? "Valor sob consulta."
               : `Valor: ${money(lead.property_value)}.`,
-            lead.property_id ? `Código: ${lead.property_id}.` : "",
-            lead.match_score ? `MATCH: ${lead.match_score}%.` : ""
+            lead.property_id ? `Código: ${lead.property_id}.` : ""
           ]
           .filter(Boolean)
           .join("\n");

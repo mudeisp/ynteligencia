@@ -626,7 +626,7 @@ function showMatches(){
       || (scored.length ? `${scored.length} imóveis` : "Não encontramos imóveis nessa combinação.");
   }else{
     $("resultSummary").textContent=scored.length
-      ? `Encontramos ${scored.length} imóveis com maior compatibilidade com o seu perfil.`
+      ? `Encontramos ${scored.length} imóveis para a sua busca.`
       : "Não encontramos uma combinação forte. Vamos ampliar sua busca.";
   }
 
@@ -649,7 +649,7 @@ function showMatches(){
           <div class="empty">
 
             <h3>
-              Vamos ampliar o MATCH
+              Vamos ampliar a busca
             </h3>
 
             <p>

@@ -1,10 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
 
 function loadHtmlHelpers() {
-  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const html = require("./test-support/browser-source.cjs")();
   const display = html.match(/function aiDisplayPrice\(value\)\{[\s\S]*?\n\}/);
   const select = html.match(/function aiSelectableSearchCards\(assistantProperties, searchMatches\)\{[\s\S]*?\n\}/);
   assert.ok(display);

@@ -350,7 +350,7 @@ async function showPhotoModal(id){
     : "";
   const isNew=String(p.source||"").toLowerCase()==="novos";
   const updatedLabel=isNew ? detailUpdatedLabel(p,building,typology) : "";
-  const detailReasons=(p.match?.reasons || []).slice(0,4);
+  const journey=window.YntPropertyJourney.context(window.location.search);
 
   const status=detailValue(building.stage || building.status);
   const developer=detailValue(building.developer || building.developer_data || building.publisher);
@@ -393,6 +393,10 @@ async function showPhotoModal(id){
   const modal=document.createElement("div");
   modal.id="photoModal";
   modal.className="photo-detail-shell";
+  modal.setAttribute("role","dialog");
+  modal.setAttribute("aria-modal","true");
+  modal.setAttribute("aria-label",p.name || "Detalhes do imóvel");
+  modal.yntPreviousFocus=old?.yntPreviousFocus || document.activeElement;
   modal.dataset.propertyId=String(p.id||"");
 
   modal.innerHTML=`
@@ -414,40 +418,10 @@ async function showPhotoModal(id){
     </div>
 
     <main class="detail-property">
-      <div class="detail-top-labels">
-        ${p.match ? `<span class="detail-match">${Number(p.match.score)||0}% MATCH</span>` : ""}
-        ${isNew ? `<span class="detail-builder-stamp">Unidade da construtora</span>` : ""}
-        <span class="detail-source">${isNew?"Novo":"Usado"}</span>
-        ${status ? `<span class="detail-status">${esc(status)}</span>` : ""}
-        ${isNew ? `<span class="detail-updated">${esc(updatedLabel)}</span>` : ""}
-      </div>
-
+      <div class="detail-location">${esc(p.neighborhood || "São Paulo")}</div>
       <h1>${esc(p.name)}</h1>
-      <div class="detail-location">${esc(p.neighborhood || "São Paulo")}${isNew && addressData.city ? ` • ${esc(addressData.city)}` : ""}</div>
       <div class="detail-price">${money(p.value)}</div>
-      ${m2Value>0 ? `<div class="detail-price-m2">${money(m2Value)} / m²</div>` : ""}
-
-      <div class="detail-main-specs">
-        ${p.area ? `<div class="detail-spec"><strong>${area(p.area)} m²</strong><span>ÁREA</span></div>` : ""}
-        ${p.bedrooms ? `<div class="detail-spec"><strong>${p.bedrooms}</strong><span>DORMITÓRIOS</span></div>` : ""}
-        ${p.suites ? `<div class="detail-spec"><strong>${p.suites}</strong><span>SUÍTE${p.suites===1?"":"S"}</span></div>` : ""}
-        ${p.parking ? `<div class="detail-spec"><strong>${p.parking}</strong><span>VAGA${p.parking===1?"":"S"}</span></div>` : ""}
-      </div>
-
-      ${detailReasons.length ? `
-        <section class="detail-section">
-          <div class="detail-section-title">Seu MATCH</div>
-          <h3>Por que combina com você</h3>
-          <div class="detail-match-reasons">
-            ${detailReasons.map(reason=>`<div class="detail-match-reason"><b>✓</b><span>${esc(reason)}</span></div>`).join("")}
-          </div>
-        </section>` : ""}
-
-      ${techRows ? `
-        <section class="detail-section">
-          <div class="detail-section-title">Ficha do imóvel</div>
-          <div class="detail-tech-grid">${techRows}</div>
-        </section>` : ""}
+      <p class="property-facts">${propertyFacts(p).map(esc).join(" • ")}</p>
 
       ${isNew ? `
         <section class="detail-section development-rich-section" id="developmentRichSection">
@@ -529,18 +503,27 @@ async function showPhotoModal(id){
           <p>${esc(fullAddress)}</p>
         </section>` : "")}
 
-      <section class="detail-specialist">
-        <img src="/PERFIL.jfif" alt="Especialista Ynteligencia">
-        <div class="detail-specialist-copy">
-          <small>Atendimento personalizado</small>
-          <strong>Quer entender melhor este imóvel?</strong>
-          <p>Escolha conversar com a IA sobre este imóvel ou falar com um especialista.</p>
+      <section class="detail-section detail-complementary">
+        <h3>Informações complementares</h3>
+        <div class="detail-tech-grid">
+          ${detailRow("Estoque",isNew?"Novo":"Usado")}
+          ${isNew ? detailRow("Origem","Unidade da construtora") : ""}
+          ${status ? detailRow("Status",status) : ""}
+          ${updatedLabel ? detailRow("Atualização",updatedLabel) : ""}
+          ${m2Value>0 ? detailRow("Preço por m²",money(m2Value)) : ""}
         </div>
-        <div class="detail-specialist-actions">
-          <button class="detail-specialist-btn" type="button">CONVERSAR COM A IA</button>
-          <button class="detail-specialist-human-btn" type="button">FALAR COM ESPECIALISTA</button>
-          <p class="detail-agent-status" hidden></p>
-        </div>
+      </section>
+      ${techRows ? `
+        <section class="detail-section">
+          <div class="detail-section-title">Ficha do imóvel</div>
+          <div class="detail-tech-grid">${techRows}</div>
+        </section>` : ""}
+
+
+      <section class="detail-human-help">
+        <h3>Pronto para o próximo passo?</h3>
+        <p>Para disponibilidade, visita ou negociação, fale com um especialista.</p>
+        <button class="detail-specialist-human-btn" type="button">FALAR COM ESPECIALISTA</button>
       </section>
 
       <section class="detail-similar" id="detailSimilarSection">
@@ -549,14 +532,38 @@ async function showPhotoModal(id){
         <div class="detail-similar-grid" id="detailSimilarGrid"></div>
       </section>
     </main>
+    <div class="detail-primary-bar">
+      <button class="detail-primary-cta" type="button">${journey.fromAgent?"VOLTAR À CONVERSA":"QUERO SABER MAIS"}</button>
+      <p class="detail-agent-status" role="status" hidden></p>
+    </div>
 `;
 
   const track=modal.querySelector(".detail-gallery-track");
   track?.addEventListener("scroll",()=>window.requestAnimationFrame(updateDetailGallery),{passive:true});
 
-  modal.querySelector(".detail-specialist-btn")?.addEventListener("click",()=>openAgentConversation(p));
+  modal.querySelector(".detail-primary-cta")?.addEventListener("click",()=>{
+    if(!journey.fromAgent){openAgentConversation(p);return;}
+    const plan=window.YntPropertyJourney.returnPlan({
+      search:window.location.search,referrer:document.referrer,
+      historyLength:history.length,detailState:Boolean(history.state?.ynteligenciaPropertyDetail)
+    });
+    closePropertyDetail({fromJourneyReturn:true});
+    if(plan.delta)history.go(plan.delta);
+    else window.location.assign(plan.href);
+  });
   modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   document.body.appendChild(modal);
+  document.body.style.overflow="hidden";
+  modal.querySelector(".detail-gallery-close")?.focus({preventScroll:true});
+  modal.addEventListener("keydown",event=>{
+    if(event.key==="Escape"){event.preventDefault();closePropertyDetail();return;}
+    if(event.key!=="Tab")return;
+    const controls=Array.from(modal.querySelectorAll('button:not([disabled]),a[href],input,textarea,select,[tabindex="0"]'))
+      .filter(element=>element.getClientRects().length);
+    const first=controls[0],last=controls[controls.length-1];
+    if(event.shiftKey && document.activeElement===first){event.preventDefault();last?.focus();}
+    else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first?.focus();}
+  });
   notePaidSignal("detail_opened", p.id);
 
   /*

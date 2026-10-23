@@ -167,7 +167,7 @@ document
 
 // Original main L9212
 $("skipStep")?.addEventListener("click",()=>{
-  showToast("Cada resposta melhora a precisão do seu MATCH.");
+  showToast("Cada resposta ajuda a encontrar seu imóvel.");
 });
 
 // Original main L9237
@@ -244,7 +244,7 @@ $("back")?.addEventListener(
 // Original main L9330
 $("clearMatch")?.addEventListener("click",()=>{
   resetMatchProfile();
-  showToast("MATCH limpo. Comece novamente pelo tipo de imóvel.");
+  showToast("Busca limpa. Comece novamente pelo tipo de imóvel.");
 });
 
 // Original main L9335
@@ -843,7 +843,7 @@ $("clearRefineMatch")?.addEventListener("click",()=>{
   updateAdMatchUI();
   setRefineMatchOpen(false);
   showMatches();
-  showToast("Refinamento limpo. Voltamos ao seu MATCH original.");
+  showToast("Refinamento limpo. Voltamos à sua busca original.");
 });
 
 // Original main L21303
