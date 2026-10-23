@@ -4342,3 +4342,53 @@ body.ad-match-mode .refine-match-shell{
 
 
 
+/* Coordinated property UX: presentation only; inventory and selection untouched. */
+.card,.results .card,.catalog .card{min-height:0;border:1px solid #e3ddd1;border-radius:18px;background:#fffdfa;overflow:hidden;box-shadow:0 4px 18px #17151308}
+.card .cover{height:auto;aspect-ratio:4/3;min-height:0}
+.card .cover-location{display:none}
+.card .cover::after{background:none}
+.card .card-body{padding:22px;background:#fffdfa;color:#171513}
+.card .card-neighborhood{margin:0 0 8px;color:#58534b;font-size:17px;line-height:1.4}
+.card .card-body h3{margin:0;color:#171513;font-size:23px;line-height:1.25;letter-spacing:-.02em;overflow-wrap:anywhere}
+.card .price{margin-top:16px;color:#171513;font-size:28px;line-height:1.25;letter-spacing:-.035em}
+.property-facts{margin:12px 0 0;color:#4d4942;font-size:17px;line-height:1.65;overflow-wrap:anywhere}
+.card .card-actions{display:block;margin-top:22px}
+.results .card .card-actions .view,.catalog .card .card-actions .view{width:100%;min-height:54px;padding:14px 16px;border:1px solid #24211e;border-radius:10px;background:#24211e;color:#fffdfa;font-size:17px;font-weight:650;letter-spacing:.03em}
+.card button:focus-visible,.photo-detail-shell button:focus-visible{outline:3px solid #94763e;outline-offset:3px}
+.photo-detail-shell{background:#faf8f3;color:#171513;font-size:18px;isolation:isolate}
+.photo-detail-shell .detail-gallery{height:clamp(240px,42svh,520px);min-height:0}
+.photo-detail-shell .detail-property{width:min(100%,800px);margin:0 auto;padding:28px 24px 36px;border-radius:0;background:#faf8f3;color:#171513}
+.photo-detail-shell .detail-location{margin:0 0 8px;color:#58534b;font-size:18px;line-height:1.4}
+.photo-detail-shell .detail-property h1{font-size:26px;line-height:1.2;letter-spacing:-.025em;color:#171513}
+.photo-detail-shell .detail-price{margin-top:18px;font-size:30px;line-height:1.2;color:#171513}
+.photo-detail-shell .detail-section{margin-top:32px;padding-top:24px;border-color:#e3ddd1}
+.photo-detail-shell .detail-section h3,.detail-human-help h3,.photo-detail-shell .detail-similar h3{font-size:22px;line-height:1.3;color:#171513}
+.photo-detail-shell .detail-section p,.photo-detail-shell .detail-map-address,.detail-human-help p,.photo-detail-shell .detail-similar p{font-size:18px;line-height:1.65;color:#514c44}
+.photo-detail-shell .detail-section-title{font-size:17px;color:#58534b;letter-spacing:.02em}
+.photo-detail-shell .detail-tech-row{font-size:17px;line-height:1.5}
+.photo-detail-shell .detail-tech-row span,.photo-detail-shell .detail-tech-row strong{font-size:17px;color:#514c44}
+.photo-detail-shell .detail-amenity,.photo-detail-shell .detail-chips span{font-size:17px;line-height:1.5}
+.detail-human-help{margin-top:32px;padding-top:24px;border-top:1px solid #e3ddd1}
+.detail-human-help .detail-specialist-human-btn{width:100%;min-height:52px;margin-top:16px;padding:12px 16px;border:1px solid #a49a89;border-radius:10px;background:transparent;color:#24211e;font-size:17px}
+.detail-primary-bar{position:sticky;z-index:8;bottom:0;display:grid;justify-items:center;gap:8px;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:#faf8f3;border-top:1px solid #e3ddd1}
+.detail-primary-cta{width:min(100%,752px);min-height:56px;padding:14px 16px;border:0;border-radius:10px;background:#24211e;color:#fffdfa;font-family:inherit;font-size:17px;font-weight:650;line-height:1.4;letter-spacing:.025em;cursor:pointer}
+.detail-primary-bar .detail-agent-status{margin:0;font-size:17px;line-height:1.45;color:#514c44}
+.photo-detail-shell .detail-gallery-close{position:fixed;z-index:10;min-width:48px;min-height:48px}
+.photo-detail-shell .detail-gallery-arrow{width:48px;height:48px}
+.photo-detail-shell .detail-gallery-all-btn{min-height:48px;font-size:17px;padding:10px 16px}
+.photo-detail-shell .detail-gallery-count,.photo-detail-shell .detail-gallery-counter{font-size:16px}
+.photo-detail-shell .detail-gallery-dots{display:none}
+.photo-detail-shell .detail-similar-card strong{font-size:20px;line-height:1.3}
+.photo-detail-shell .detail-similar-card span,.photo-detail-shell .detail-similar-card b{font-size:17px;line-height:1.5}
+.photo-detail-shell .detail-similar-card em{font-size:17px;line-height:1.5}
+body.ad-match-mode .results .card-body{padding-bottom:22px}
+@media(max-width:600px){
+  .card .card-body{padding:20px}
+  .card .card-body h3{font-size:22px}
+  .card .price{font-size:27px}
+  .photo-detail-shell .detail-property{padding:24px 20px 32px}
+  .photo-detail-shell .detail-property h1{font-size:24px}
+  .photo-detail-shell .detail-price{font-size:28px}
+  .photo-detail-shell .detail-gallery-count{display:none}
+  .photo-detail-shell .detail-tech-grid{grid-template-columns:1fr}
+}

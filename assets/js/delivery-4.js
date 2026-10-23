@@ -606,7 +606,7 @@ function setStep(n,fromHistory=false){
 
   $("next").textContent=
     step===3
-      ? "Encontrar meus MATCHs"
+      ? "Ver meus imóveis"
       : "Continuar";
 
 
@@ -670,8 +670,8 @@ function showMatchProcessing(){
   const messages=[
     "Analisando seu perfil...",
     "Comparando imóveis...",
-    "Calculando compatibilidade...",
-    "Seus MATCHES estão prontos."
+    "Selecionando imóveis...",
+    "Sua seleção está pronta."
   ];
   layer.classList.add("visible");
   messages.forEach((message,index)=>setTimeout(()=>{if(label)label.textContent=message;},index*420));
@@ -1212,14 +1212,6 @@ function coverHTML(p){
 
         </div>
 
-        <span class="match">
-          ${
-            p.match
-              ? `${p.match.score}% MATCH`
-              : "IMÓVEL DISPONÍVEL"
-          }
-        </span>
-
         <span class="cover-location">
           ${esc(p.neighborhood)}
         </span>
@@ -1240,14 +1232,6 @@ function coverHTML(p){
         <span class="building two"></span>
 
       </div>
-
-      <span class="match">
-        ${
-          p.match
-            ? `${p.match.score}% MATCH`
-            : "IMÓVEL DISPONÍVEL"
-        }
-      </span>
 
       <span class="cover-location">
         ${esc(p.neighborhood)}
@@ -1385,251 +1369,29 @@ function updatePhotoUI(
   }
 }
 
-function card(
-  p,
-  isMatch=false
-){
-
-  const features=[];
-
-
-  if(p.area){
-
-    features.push(
-      `${area(p.area)} m²`
-    );
-  }
-
-
-  if(p.bedrooms){
-
-    features.push(
-      `${p.bedrooms} ${
-        p.bedrooms===1
-          ? "dorm."
-          : "dorms."
-      }`
-    );
-  }
-
-
-  if(p.suites){
-
-    features.push(
-      `${p.suites} ${
-        p.suites===1
-          ? "suíte"
-          : "suítes"
-      }`
-    );
-  }
-
-
-  if(p.parking){
-
-    features.push(
-      `${p.parking} ${
-        p.parking===1
-          ? "vaga"
-          : "vagas"
-      }`
-    );
-  }
-
-
-  const addr=
-    [
-      p.address,
-
-      p.unit
-        ? `Unidade ${p.unit}`
-        : ""
-
-    ]
-      .filter(Boolean)
-      .join(" · ");
-
-
-  const priceM2=
-    p.m2 ||
-    (
-      p.value &&
-      p.area
-
-        ? p.value/
-          p.area
-
-        : 0
-    );
-
-
-  const reasons=
-    isMatch &&
-    p.match
-
-      ? [
-          ...(p.adAlternative ? [`Alternativa próxima em ${p.neighborhood || "bairro da mesma região"}`] : []),
-          ...p.match.reasons
-        ].slice(0,3)
-      : [];
-
-
-  const reasonHTML=
-    isMatch
-
-      ? `
-        <div class="reasons">
-
-          <strong>
-            Por que apareceu para você?
-          </strong>
-
-          ${
-            reasons.length
-
-              ? reasons
-                  .map(
-                    r=>
-                      `✓ ${esc(r)}`
-                  )
-                  .join(" · ")
-
-              : "Combinação com seus critérios."
-          }
-
-        </div>
-        `
-
-      : "";
-
-
-  const photos=
-    photoList(p);
-
-
-  const photoButton=
-    photos.length
-
-      ? `
-        <button
-          class="view"
-          type="button"
-          data-property-action="details" data-property-id="${esc(p.id)}">
-          Ver detalhes
-        </button>
-        `
-
-      : `
-        <button
-          class="view"
-          type="button"
-          onclick="showToast('As imagens deste imóvel ainda estão sendo atualizadas.')">
-          Ver detalhes
-        </button>
-        `;
-
-
-  return`
-    <article class="card">
-
-      ${coverHTML(p)}
-
-      <div class="card-body">
-
-        ${p.adAlternative ? `<div class="nearby-alternative">Alternativa próxima · ${esc(p.neighborhood || "mesma região")}</div>` : ""}
-
-        <div class="card-tag">
-          ${p.source==="novos" ? "NOVO" : "USADO"}
-        </div>
-
-        <div class="card-title-line">
-          <h3>${esc(p.name)}</h3>
-          ${p.neighborhood ? `<span class="card-neighborhood-inline">· ${esc(p.neighborhood)}</span>` : ""}
-        </div>
-
-        <p class="card-address">
-          ${
-            esc(
-              addr ||
-              p.neighborhood ||
-              "São Paulo"
-            )
-          }
-        </p>
-
-        <div class="price">
-          ${money(p.value)}
-        </div>
-
-        <div class="m2">
-
-          ${
-            priceM2
-
-              ? `${money(priceM2)} por m²`
-
-              : "Valor por m² não informado"
-          }
-
-        </div>
-
-        <div class="features">
-
-          ${
-            features
-              .map(
-                x=>
-                  `
-                  <span class="feature">
-                    ${esc(x)}
-                  </span>
-                  `
-              )
-              .join("")
-          }
-
-        </div>
-
-        ${
-          p.condominium
-
-            ? `
-              <div class="cost-line">
-
-                Condomínio
-                ${money(p.condominium)}
-
-                ${
-                  p.iptu
-                    ? ` · IPTU ${money(p.iptu)}`
-                    : ""
-                }
-
-              </div>
-              `
-
-            : ""
-        }
-
-        ${reasonHTML}
-
-        <div class="card-actions">
-
-          ${photoButton}
-
-          <button
-            class="interest"
-            type="button"
-            data-property-action="interest" data-property-id="${esc(p.id)}">
-            Quero conhecer
-          </button>
-
-        </div>
-
+function propertyFacts(p){
+  return [
+    p.area ? area(p.area)+" m²" : "",
+    p.bedrooms ? p.bedrooms+" dorm"+(Number(p.bedrooms)===1?"itório":"itórios") : "",
+    p.parking != null ? (Number(p.parking)===0?"Sem vaga":p.parking+" vaga"+(Number(p.parking)===1?"":"s")) : ""
+  ].filter(Boolean);
+}
+
+function card(p,isMatch=false){
+  // Rendering only: selection, scores and the result order stay with the caller.
+  const photos=photoList(p);
+  return `<article class="card">
+    ${coverHTML(p)}
+    <div class="card-body">
+      <p class="card-neighborhood">${esc(p.neighborhood || "São Paulo")}</p>
+      <h3>${esc(p.name)}</h3>
+      <div class="price">${money(p.value)}</div>
+      <p class="property-facts">${propertyFacts(p).map(esc).join(" • ")}</p>
+      <div class="card-actions">
+        <button class="view" type="button" ${photos.length ? `data-property-action="details" data-property-id="${esc(p.id)}"` : `onclick="showToast('As imagens deste imóvel ainda estão sendo atualizadas.')"`}>VER IMÓVEL</button>
       </div>
-
-    </article>
-    `;
+    </div>
+  </article>`;
 }
 
 function updateSpecialistContext(){
@@ -3149,7 +2911,7 @@ function extractPropertyOptions(raw,p=null){
   return options.slice(0,10);
 }
 
-function closePropertyDetail({fromPopState=false}={}){
+function closePropertyDetail({fromPopState=false,fromJourneyReturn=false}={}){
   clearTimeout(aiAssistantTriggerTimer);
   document.getElementById("aiAssistantTrigger")?.remove();
   document.getElementById("aiAssistantShell")?.classList.remove("open");
@@ -3231,9 +2993,9 @@ function closePropertyDetail({fromPopState=false}={}){
           durationSeconds,
 
         close_method:
-          fromPopState
-            ? "browser_back"
-            : "ui_close"
+          fromJourneyReturn
+            ? "agent_return"
+            : fromPopState ? "browser_back" : "ui_close"
       }
     );
 
@@ -3264,6 +3026,9 @@ function closePropertyDetail({fromPopState=false}={}){
 
   if(modal){
     modal.remove();
+    if(!fromJourneyReturn && modal.yntPreviousFocus?.isConnected){
+      modal.yntPreviousFocus.focus({preventScroll:true});
+    }
   }
 
   if(aiResumeChatAfterDetail){
@@ -3278,7 +3043,7 @@ function closePropertyDetail({fromPopState=false}={}){
   }
 
   if(
-    !fromPopState &&
+    !fromPopState && !fromJourneyReturn &&
     history.state
       ?.ynteligenciaPropertyDetail
   ){
