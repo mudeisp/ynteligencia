@@ -1,0 +1,1 @@
+Scope guard: no MATCH score/weight changes; no lead, tracking, inventory mutation, worker or PWA changes.
