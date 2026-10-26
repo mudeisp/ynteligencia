@@ -53,7 +53,6 @@
   document.getElementById('menuSpecialistButton')?.addEventListener('click',event=>{
     event.preventDefault();
     closeMenu();
-    // Reuse the existing human flow and its tracking; never route to MATCH/AI.
     document.getElementById('specialistFloat')?.click();
   });
   installClose?.addEventListener('click',closeInstall);
@@ -367,4 +366,32 @@ if ("serviceWorker" in navigator) {
       button.disabled=false;
     }
   });
+})();
+
+;
+// ES state-wide catalog: render all ES cities when activeCity is intentionally empty.
+// Temporary view-only normalization; property data is restored immediately after render.
+(function(){
+  const originalRenderCatalog=renderCatalog;
+  renderCatalog=function(...args){
+    if(norm(activeState)!=='es' || clean(activeCity)){
+      return originalRenderCatalog.apply(this,args);
+    }
+
+    const changed=[];
+    for(const property of properties){
+      if(property && norm(property.state)==='es' && property.city){
+        changed.push([property,property.city]);
+        property.city='';
+      }
+    }
+
+    try{
+      return originalRenderCatalog.apply(this,args);
+    }finally{
+      for(const [property,city] of changed){
+        property.city=city;
+      }
+    }
+  };
 })();
