@@ -395,3 +395,35 @@ if ("serviceWorker" in navigator) {
     }
   };
 })();
+
+;
+// Campaign URL fix: ES state-wide links intentionally have no city.
+// loadCatalogFromUrl() historically defaulted a blank city to São Paulo,
+// producing the impossible combination city=São Paulo + state=ES.
+(function(){
+  const originalLoadCatalogFromUrl=loadCatalogFromUrl;
+  loadCatalogFromUrl=function(...args){
+    const result=originalLoadCatalogFromUrl.apply(this,args);
+    if(!result) return result;
+
+    const params=new URLSearchParams(window.location.search);
+    const requestedState=String(params.get('estado') ?? params.get('state') ?? '').trim().toUpperCase();
+    const hasCidade=params.has('cidade');
+    const hasCity=params.has('city');
+    const requestedCity=cleanAdParam(hasCidade ? params.get('cidade') : (hasCity ? params.get('city') : ''));
+
+    if(requestedState==='ES' && !requestedCity){
+      activeState='ES';
+      activeCity='';
+      if(document.getElementById('catalogState')) document.getElementById('catalogState').value='ES';
+      if(document.getElementById('catalogCity')) document.getElementById('catalogCity').value='';
+      if(document.getElementById('catalogRegionSelect') && !catalogRegion){
+        catalogRegion='es';
+        document.getElementById('catalogRegionSelect').value='es';
+      }
+      fillCatalogNeighborhoodsForRegion(catalogRegion).catch(()=>{});
+    }
+
+    return result;
+  };
+})();
