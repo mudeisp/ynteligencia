@@ -26,3 +26,75 @@
   }
   return {context,returnPlan};
 });
+
+/*
+ * ES campaign URL guard.
+ * The legacy catalog parser treats cidade= as falsy and falls back to São Paulo.
+ * Install after the delivery scripts are parsed but before inventory startup calls
+ * loadCatalogFromUrl(). During the legacy parser call, suppress its premature
+ * search/URL rewrite; then normalize ES + blank city and run exactly one search.
+ */
+(function(){
+  let installed=false;
+
+  function installEsCampaignGuard(){
+    if(installed || typeof window.loadCatalogFromUrl!=="function") return false;
+    installed=true;
+
+    const innerLoadCatalogFromUrl=window.loadCatalogFromUrl;
+    window.loadCatalogFromUrl=function(...args){
+      const params=new URLSearchParams(window.location.search);
+      const requestedState=String(params.get("estado") ?? params.get("state") ?? "").trim().toUpperCase();
+      const requestedCity=String(params.get("cidade") ?? params.get("city") ?? "").trim();
+      const isEsStatewide=requestedState==="ES" && !requestedCity;
+
+      if(!isEsStatewide){
+        return innerLoadCatalogFromUrl.apply(this,args);
+      }
+
+      const realExecuteCatalogSearch=window.executeCatalogSearch;
+      const realUpdateCatalogUrl=window.updateCatalogUrl;
+
+      window.executeCatalogSearch=async function(){ return undefined; };
+      window.updateCatalogUrl=function(){ return window.location.href; };
+
+      let result;
+      try{
+        result=innerLoadCatalogFromUrl.apply(this,args);
+      }finally{
+        window.executeCatalogSearch=realExecuteCatalogSearch;
+        window.updateCatalogUrl=realUpdateCatalogUrl;
+      }
+
+      // These are shared classic-script lexical bindings used by delivery-4/7.
+      activeState="ES";
+      activeCity="";
+      catalogRegion=params.get("regiao") || "es";
+
+      const state=document.getElementById("catalogState");
+      const city=document.getElementById("catalogCity");
+      const region=document.getElementById("catalogRegionSelect");
+      if(state) state.value="ES";
+      if(city) city.value="";
+      if(region) region.value=catalogRegion;
+
+      Promise.resolve(realExecuteCatalogSearch?.()).catch(error=>{
+        console.error("YNT_ES_CAMPAIGN_SEARCH_ERROR",error);
+      });
+
+      return result;
+    };
+
+    return true;
+  }
+
+  setTimeout(()=>{
+    if(installEsCampaignGuard()) return;
+    let attempts=0;
+    const timer=setInterval(()=>{
+      attempts+=1;
+      if(installEsCampaignGuard() || attempts>=100) clearInterval(timer);
+    },10);
+  },0);
+  document.addEventListener("DOMContentLoaded",installEsCampaignGuard,{once:true});
+})();
