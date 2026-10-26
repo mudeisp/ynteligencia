@@ -422,6 +422,13 @@ if ("serviceWorker" in navigator) {
         document.getElementById('catalogRegionSelect').value='es';
       }
       fillCatalogNeighborhoodsForRegion(catalogRegion).catch(()=>{});
+
+      // The original loader already started a São Paulo+ES request before this
+      // normalization. Start the corrected request immediately. The catalog
+      // request-id guard makes the stale request unable to overwrite this one.
+      executeCatalogSearch().catch(error=>{
+        console.error('YNT_ES_CAMPAIGN_RERUN_ERROR',error);
+      });
     }
 
     return result;
