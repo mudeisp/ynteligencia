@@ -267,9 +267,39 @@ if ("serviceWorker" in navigator) {
   button.innerHTML='Espírito Santo<small>Vitória, Vila Velha, Serra, Guarapari e região</small>';
   regionStep.appendChild(button);
 
-  button.addEventListener('click',()=>{
-    activeState='ES';
-    activeCity='';
-    profile.region='es';
+  const originalPropertyMatchesRegion=propertyMatchesRegion;
+  propertyMatchesRegion=function(property,regionKey){
+    if(norm(regionKey)==='es') return norm(property?.state)==='es';
+    return originalPropertyMatchesRegion(property,regionKey);
+  };
+
+  const originalCatalogServerQuery=catalogServerQuery;
+  catalogServerQuery=function(offset=0){
+    const url=new URL(originalCatalogServerQuery(offset));
+    if(norm(activeState)==='es' && !clean(activeCity)){
+      url.searchParams.delete('city');
+    }
+    return url.toString();
+  };
+
+  button.addEventListener('click',async()=>{
+    button.disabled=true;
+    try{
+      activeState='ES';
+      activeCity='';
+      profile.region='es';
+      await fetchNewCatalogPage({reset:true});
+      while(newCatalogHasMore){
+        await fetchNewCatalogPage();
+      }
+      if(!properties.length){
+        showToast('Não encontramos estoque ativo no Espírito Santo agora.');
+      }
+    }catch(error){
+      console.error('YNT_MATCH_ES_LOAD_ERROR',error);
+      showToast('Não foi possível carregar o estoque do Espírito Santo agora.');
+    }finally{
+      button.disabled=false;
+    }
   });
 })();
