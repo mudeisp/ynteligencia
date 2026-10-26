@@ -55,8 +55,6 @@
       const realExecuteCatalogSearch=window.executeCatalogSearch;
       const realUpdateCatalogUrl=window.updateCatalogUrl;
 
-      // Prevent the legacy loader from firing São Paulo+ES and from rewriting
-      // the campaign URL before the correct geography is installed.
       window.executeCatalogSearch=async function(){ return undefined; };
       window.updateCatalogUrl=function(){ return window.location.href; };
 
@@ -68,16 +66,17 @@
         window.updateCatalogUrl=realUpdateCatalogUrl;
       }
 
-      window.activeState="ES";
-      window.activeCity="";
-      window.catalogRegion=params.get("regiao") || "es";
+      // These are shared classic-script lexical bindings used by delivery-4/7.
+      activeState="ES";
+      activeCity="";
+      catalogRegion=params.get("regiao") || "es";
 
       const state=document.getElementById("catalogState");
       const city=document.getElementById("catalogCity");
       const region=document.getElementById("catalogRegionSelect");
       if(state) state.value="ES";
       if(city) city.value="";
-      if(region) region.value=window.catalogRegion;
+      if(region) region.value=catalogRegion;
 
       Promise.resolve(realExecuteCatalogSearch?.()).catch(error=>{
         console.error("YNT_ES_CAMPAIGN_SEARCH_ERROR",error);
@@ -89,8 +88,6 @@
     return true;
   }
 
-  // setTimeout runs after the parser's current script task; DOMContentLoaded is
-  // the fallback. A short bounded retry covers slower external script loading.
   setTimeout(()=>{
     if(installEsCampaignGuard()) return;
     let attempts=0;
