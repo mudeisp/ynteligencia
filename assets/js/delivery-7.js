@@ -143,7 +143,25 @@ if ("serviceWorker" in navigator) {
 (() => {
   const regionSelect=document.getElementById("catalogRegionSelect");
   if(regionSelect){
+    if(!regionSelect.querySelector('option[value="es"]')){
+      const option=document.createElement('option');
+      option.value='es';
+      option.textContent='Espírito Santo';
+      regionSelect.appendChild(option);
+    }
 
+    // Troca a geografia antes do listener principal do catálogo executar.
+    regionSelect.addEventListener('change',event=>{
+      if(event.target?.value==='es'){
+        activeState='ES';
+        activeCity='';
+      }else{
+        activeState='SP';
+        activeCity='São Paulo';
+      }
+      if(document.getElementById('catalogState')) document.getElementById('catalogState').value=activeState;
+      if(document.getElementById('catalogCity')) document.getElementById('catalogCity').value=activeCity;
+    },true);
 
     /* Sincroniza também quando a busca veio de URL/campanha. */
     const syncRegion=()=>{
@@ -283,6 +301,42 @@ if ("serviceWorker" in navigator) {
       url.searchParams.delete('city');
     }
     return url.toString();
+  };
+
+  const originalLoadCatalogNeighborhoodIndex=loadCatalogNeighborhoodIndex;
+  loadCatalogNeighborhoodIndex=async function(options={}){
+    if(norm(activeState)!=='es' || clean(activeCity)){
+      return originalLoadCatalogNeighborhoodIndex(options);
+    }
+
+    const source=document.getElementById('catalogSource')?.value || 'todos';
+    const neighborhoods=[];
+    const PAGE_SIZE=1000;
+    let offset=0;
+    for(let page=0;page<10;page++){
+      const url=new URL('https://wzaegidwtdjuhqchpdpd.supabase.co/rest/v1/properties');
+      url.searchParams.set('select','neighborhood');
+      url.searchParams.set('active','eq.true');
+      url.searchParams.set('state','eq.ES');
+      if(source==='novos') url.searchParams.set('source','eq.novos');
+      else if(source==='usados') url.searchParams.set('source','eq.usados');
+      url.searchParams.set('neighborhood','not.is.null');
+      url.searchParams.set('limit',String(PAGE_SIZE));
+      url.searchParams.set('offset',String(offset));
+      const response=await fetch(url.toString(),{
+        cache:'no-store',
+        headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`}
+      });
+      if(!response.ok) throw new Error(`Supabase bairros ES: ${response.status}`);
+      const rows=await response.json();
+      if(!Array.isArray(rows) || !rows.length) break;
+      rows.forEach(row=>{const n=clean(row?.neighborhood||'');if(n)neighborhoods.push(n);});
+      offset+=rows.length;
+      if(rows.length<PAGE_SIZE) break;
+    }
+    const list=[...new Set(neighborhoods)].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    catalogNeighborhoodIndexCache.set(catalogNeighborhoodIndexKey(),list);
+    return list;
   };
 
   button.addEventListener('click',async()=>{
