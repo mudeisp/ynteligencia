@@ -257,15 +257,18 @@ if ("serviceWorker" in navigator) {
 // MATCH: opção geográfica ES sem alterar pesos/pontuação.
 (function(){
   const regionStep=document.querySelector('.step[data-step="1"] .options');
-  if(!regionStep || regionStep.querySelector('[data-value="es"]')) return;
+  if(!regionStep) return;
 
-  const button=document.createElement('button');
-  button.type='button';
-  button.className='option';
-  button.dataset.key='region';
-  button.dataset.value='es';
-  button.innerHTML='Espírito Santo<small>Vitória, Vila Velha, Serra, Guarapari e região</small>';
-  regionStep.appendChild(button);
+  let button=regionStep.querySelector('[data-key="region"][data-value="es"]');
+  if(!button){
+    button=document.createElement('button');
+    button.type='button';
+    button.className='option';
+    button.dataset.key='region';
+    button.dataset.value='es';
+    button.innerHTML='Espírito Santo<small>Vitória, Vila Velha, Serra, Guarapari e região</small>';
+    regionStep.appendChild(button);
+  }
 
   const originalPropertyMatchesRegion=propertyMatchesRegion;
   propertyMatchesRegion=function(property,regionKey){
@@ -288,6 +291,12 @@ if ("serviceWorker" in navigator) {
       activeState='ES';
       activeCity='';
       profile.region='es';
+
+      document.querySelectorAll('.option[data-key="region"]:not(.multi)')
+        .forEach(x=>x.classList.remove('selected'));
+      button.classList.add('selected');
+      updateNext();
+
       await fetchNewCatalogPage({reset:true});
       while(newCatalogHasMore){
         await fetchNewCatalogPage();
@@ -295,6 +304,8 @@ if ("serviceWorker" in navigator) {
       if(!properties.length){
         showToast('Não encontramos estoque ativo no Espírito Santo agora.');
       }
+
+      window.setTimeout(()=>setStep(step+1),140);
     }catch(error){
       console.error('YNT_MATCH_ES_LOAD_ERROR',error);
       showToast('Não foi possível carregar o estoque do Espírito Santo agora.');
