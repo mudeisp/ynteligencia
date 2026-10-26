@@ -23,9 +23,8 @@
     Pompeia está sem acento no banco. Butantã está com acento.
 
   city / state
-    Catálogo atual da Ynteligencia é São Paulo / SP.
-    Santana também existe em Porto Alegre. O filtro de cidade
-    segura esse homônimo.
+    São Paulo / SP continua como padrão. Entradas de outros mercados
+    informam cidade e UF explicitamente para evitar homônimos.
 */
 
 (function (root, factory) {
@@ -40,15 +39,15 @@
   const CITY = "São Paulo";
   const STATE = "SP";
 
-  function place(canonical, aliases, familyMembers) {
+  function place(canonical, aliases, familyMembers, city = CITY, state = STATE) {
     return {
       canonical_name: canonical,
       aliases: aliases || [],
       family_members: familyMembers && familyMembers.length
         ? familyMembers
         : [canonical],
-      city: CITY,
-      state: STATE
+      city,
+      state
     };
   }
 
@@ -115,7 +114,54 @@
     place("Itaquera"),
     place("Aricanduva"),
     place("Sapopemba"),
-    place("São Mateus", ["Sao Mateus"])
+    place("São Mateus", ["Sao Mateus"]),
+
+    // Espírito Santo — estoque ativo já existente em public.properties.
+    place("Jardim Camburi", [], null, "Vitória", "ES"),
+    place("Praia do Canto", [], null, "Vitória", "ES"),
+    place("Enseada do Suá", ["Enseada do Sua"], null, "Vitória", "ES"),
+    place("Santa Luíza", ["Santa Luiza"], null, "Vitória", "ES"),
+    place("Santa Helena", [], null, "Vitória", "ES"),
+    place("Jardim da Penha", [], null, "Vitória", "ES"),
+    place("Barro Vermelho", [], null, "Vitória", "ES"),
+    place("Bento Ferreira", [], null, "Vitória", "ES"),
+    place("Praia do Suá", ["Praia do Sua"], null, "Vitória", "ES"),
+    place("Mata da Praia", [], null, "Vitória", "ES"),
+    place("Monte Belo", [], null, "Vitória", "ES"),
+    place("Praia de Itaparica", [], null, "Vila Velha", "ES"),
+    place("Praia da Costa", [], null, "Vila Velha", "ES"),
+    place("Jockey de Itaparica", [], null, "Vila Velha", "ES"),
+    place("Itapuã", ["Itapua"], null, "Vila Velha", "ES"),
+    place("Centro de Vila Velha", [], null, "Vila Velha", "ES"),
+    place("São Conrado", ["Sao Conrado"], null, "Vila Velha", "ES"),
+    place("Barra do Jucu", [], null, "Vila Velha", "ES"),
+    place("Coqueiral de Itaparica", [], null, "Vila Velha", "ES"),
+    place("Vale Encantado", [], null, "Vila Velha", "ES"),
+    place("Cocal", [], null, "Vila Velha", "ES"),
+    place("Santa Paula I", [], null, "Vila Velha", "ES"),
+    place("Santa Inês", ["Santa Ines"], null, "Vila Velha", "ES"),
+    place("Ataíde", ["Ataide"], null, "Vila Velha", "ES"),
+    place("Aribiri", [], null, "Vila Velha", "ES"),
+    place("Soteco", [], null, "Vila Velha", "ES"),
+    place("Valparaíso", ["Valparaiso"], null, "Serra", "ES"),
+    place("Bicanga", [], null, "Serra", "ES"),
+    place("Morada de Laranjeiras", [], null, "Serra", "ES"),
+    place("Planalto de Carapina", [], null, "Serra", "ES"),
+    place("Campinho da Serra II", [], null, "Serra", "ES"),
+    place("Porto Canoa", [], null, "Serra", "ES"),
+    place("Conjunto Carapina I", [], null, "Serra", "ES"),
+    place("de Fátima", ["de Fatima"], null, "Serra", "ES"),
+    place("Manguinhos", [], null, "Serra", "ES"),
+    place("Enseada Azul", [], null, "Guarapari", "ES"),
+    place("Muquiçaba", ["Muquicaba"], null, "Guarapari", "ES"),
+    place("Praia do Morro", [], null, "Guarapari", "ES"),
+    place("Centro", [], null, "Guarapari", "ES"),
+    place("Contorno Norte", [], null, "Aracruz", "ES"),
+    place("João Júlio Migliorelli", ["Joao Julio Migliorelli"], null, "Santa Teresa", "ES"),
+    place("Nova Esperança", ["Nova Esperanca"], null, "Linhares", "ES"),
+    place("Marcílio de Noronha", ["Marcilio de Noronha"], null, "Viana", "ES"),
+    place("Praia Grande", [], null, "Fundão", "ES"),
+    place("Ibiraçu", ["Ibiracu"], null, "Ibiraçu", "ES")
   ];
 
   function normalizeNeighborhood(value) {
