@@ -1,3 +1,5 @@
+import { handlePortal } from "../portal/handler.mjs";
+
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   "https://wzaegidwtdjuhqchpdpd.supabase.co";
@@ -1258,6 +1260,11 @@ export default async function handler(
   req,
   res
 ) {
+
+  // New public portal pages share this function; the existing JSON API is unchanged.
+  if (req.query?.portalPath || new URL(req.url || "/", "https://app.yincorp.com.br").searchParams.has("portalPath")) {
+    return handlePortal(req, res);
+  }
 
   if (
     ![

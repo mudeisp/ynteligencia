@@ -82,9 +82,11 @@ test("existing POST search remains unchanged and unknown GET keeps old 405", asy
     const result = await invoke({ method: "POST", url: "/api/search-properties", query: {}, headers: {}, body: {} }); assert.equal(result.status, 500); assert.equal(result.body.error, "SUPABASE_URL não configurada");
   }, { SUPABASE_URL: undefined });
 });
-test("internal GET operation adds no Serverless Function, deployment config or Ads routing", () => {
+test("internal GET operation adds no Serverless Function or Ads routing; portal rewrites stay scoped", () => {
   const config = JSON.parse(fs.readFileSync("vercel.json", "utf8")); assert.deepEqual(config.crons, [{ path: "/api/push-daily", schedule: "0 13 * * *" }]);
-  assert.equal(config.rewrites, undefined);
+  assert.equal(config.rewrites.length, 3);
+  assert.ok(config.rewrites.every(rule => rule.destination.startsWith("/api/development?portalPath=")));
+  assert.ok(config.rewrites.every(rule => !rule.source.startsWith("/api/")));
   assert.equal(fs.readdirSync("api").filter(file => file.endsWith(".js")).length, 12);
   const code = fs.readFileSync("inventory-summary-route.js", "utf8"); assert.doesNotMatch(code, /console\.|\.insert\(|\.update\(|method:\s*"POST"|select=\*|raw_data/);
 });
