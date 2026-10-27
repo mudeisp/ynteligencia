@@ -35,7 +35,7 @@ test('joint filters cannot combine price from one unit with bedrooms from anothe
 });
 test('listing SSR contains real links, metadata and factual local content without JS',async()=>{
   const res=await page('/es/serra');
-  assert.equal(res.statusCode,200);assert.match(res.body,/<h1>Encontre seu lugar em Serra\./);assert.match(res.body,/<article class="project-card">/);
+  assert.equal(res.statusCode,200);assert.match(res.body,/<h1>Um novo olhar<br>sobre Serra\./);assert.match(res.body,/<article class="project-card">/);
   assert.match(res.body,/\/es\/serra\/empreendimento\/jardim--orulo-200/);assert.doesNotMatch(res.body,/Conhecer Mar/);
   assert.match(res.body,/rel="canonical" href="https:\/\/www.yincorp.com.br\/es\/serra"/);assert.match(res.body,/BreadcrumbList/);
   assert.match(res.body,/O catálogo reúne 1 empreendimento em Serra\/ES, distribuídos por 1 bairro com estoque/);
