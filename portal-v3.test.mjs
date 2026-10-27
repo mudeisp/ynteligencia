@@ -20,7 +20,7 @@ test('missing numeric fields do not turn into zero-room inventory',()=>{
 test('SSR delivers complete gallery, factual sheets and richer typologies without browser fetch',async()=>{
   const images=Array.from({length:31},(_,i)=>`https://example.com/${i}.jpg`),rows=[{...base,building_images:images}];
   const g=groupDevelopments(rows)[0],res=await page(g.path,rows);
-  assert.equal(res.code,200);assert.equal(g.photos.length,31);assert.match(res.body,/Ver todas as fotos \(31\)/);
+  assert.equal(res.code,200);assert.equal(g.photos.length,31);assert.match(res.body,/31 imagens disponíveis/);
   assert.match(res.body,/https:\/\/example.com\/30.jpg/);assert.match(res.body,/loading="lazy"/);
   for(const text of ['Ficha técnica','Piscina','Planta do lazer','30/12/2028','Apartamento · ref. 301','Estoque informado: 2','<del>','Carregar mapa'])assert.ok(res.body.includes(text),text);
   assert.doesNotMatch(res.body,/portal-project-data|\[object Object\]|Opção 1|images\/properties\/large\/999|<iframe|<dt>Torres<\/dt>/);
@@ -37,7 +37,7 @@ test('supplier content is escaped in every rich section and invalid media scheme
 });
 test('Vitória editorial and stocked neighborhood links render server-side with dynamic counts',async()=>{
   const res=await page('/es/vitoria',[base,{...base,id:'2',building_id:'124',external_id:'orulo:124:1',neighborhood:'Jardim da Penha'}]);
-  assert.match(res.body,/Imóveis e lançamentos em Vitória, Espírito Santo/);assert.match(res.body,/VIVER EM VITÓRIA/);
+  assert.match(res.body,/Vitória. Um lugar para viver bem./);assert.match(res.body,/VIVER EM VITÓRIA/);
   assert.match(res.body,/<strong>2<\/strong><span>empreendimentos no catálogo ativo/);assert.match(res.body,/href="\/es\/vitoria\/jardim-da-penha"/);assert.doesNotMatch(res.body,/href="\/es\/vitoria\/jardim-camburi"/);
 });
 test('related projects are real, exclude self, and prioritize matching neighborhood',async()=>{
@@ -48,3 +48,4 @@ test('related projects are real, exclude self, and prioritize matching neighborh
 test('inventory reads an explicit public projection and never supplier private contacts',async()=>{
   await readInventory('ES',{configured:()=>true,request:async path=>{const select=new URLSearchParams(path.split('?')[1]).get('select');for(const field of ['suites:raw_data->typology->suites','address:raw_data->building->address','building_images:raw_data->building->images'])assert.ok(select.includes(field));assert.doesNotMatch(select,/developer_data|publisher|payment_conditions|files|\*/);return {ok:true,data:[]};}});
 });
+
