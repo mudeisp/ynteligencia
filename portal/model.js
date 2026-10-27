@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { normalizeUnit, projectDetails } from './details.js';
 
 export const STATES = Object.freeze({AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'});
 export const PAGE_SIZE = 18;
@@ -24,7 +25,8 @@ function projectId(row) {
 }
 export function groupDevelopments(rows) {
   const groups=new Map();
-  for(const row of rows) {
+  for(const input of rows) {
+    const row=normalizeUnit(input);
     if(row.active!==true || !STATES[row.state] || !row.city || !row.id) continue;
     const token=projectId(row), key=`${row.state}/${slug(row.city)}/${token}`;
     if(!groups.has(key)) groups.set(key,[]);
@@ -36,9 +38,9 @@ export function groupDevelopments(rows) {
     const prices=units.map(u=>positive(u.price)).filter(Boolean);
     const name=String(first.development_name || first.title || 'Imóvel');
     const path=`/${first.state.toLowerCase()}/${slug(first.city)}/empreendimento/${slug(name) || 'imovel'}--${token}`;
-    const photos=[...new Set(units.flatMap(u=>[u.image_url,...(Array.isArray(u.images)?u.images.map(i=>typeof i==='string'?i:i?.url || i?.image_url):[])]).map(imageUrl).filter(Boolean))].slice(0,20);
+    const photos=[...new Set(units.flatMap(u=>[u.image_url,...[u.images,u.building_images].flatMap(images=>Array.isArray(images)?images.map(i=>typeof i==='string'?i:i?.url || i?.image_url):[])]).map(imageUrl).filter(Boolean))];
     const newest=units.map(u=>u.updated_at).filter(v=>Number.isFinite(Date.parse(v))).sort().at(-1);
-    return {token,path,name,city:first.city,state:first.state,neighborhood:first.neighborhood || '',developer:String(first.developer || ''),status:String(first.status || ''),description:String(first.description || '').slice(0,8000),units,photos,price:prices.length?Math.min(...prices):null,area:range(units.map(u=>positive(u.area)),' m²'),bedrooms:range(units.map(u=>u.bedrooms===null?null:Number(u.bedrooms))),parking:range(units.map(u=>u.parking_spaces===null?null:Number(u.parking_spaces))),updatedAt:newest};
+    return {token,path,name,city:first.city,state:first.state,neighborhood:first.neighborhood || '',developer:String(first.developer || ''),status:String(first.status || ''),description:String(first.description || ''),units,photos,price:prices.length?Math.min(...prices):null,area:range(units.map(u=>positive(u.area)),' m²'),bedrooms:range(units.map(u=>u.bedrooms)),parking:range(units.map(u=>u.parking_spaces)),suites:range(units.map(u=>u.suites)),details:projectDetails(units),updatedAt:newest};
   });
 }
 export function parseRoute(path) {

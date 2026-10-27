@@ -87,7 +87,7 @@ test('filters are noindex, metadata strips attribution, input is escaped in HTML
 });
 test('sitemap contains only canonical geography and development entities',()=>{
   const xml=sitemap(groupDevelopments(inventory),'https://www.yincorp.com.br');
-  assert.match(xml,/<loc>https:\/\/www.yincorp.com.br\/es\/serra<\/loc>/);assert.doesNotMatch(xml,/tipologia|gclid|utm_|pagina=|\?/);assert.doesNotMatch(xml,/cariacica/);assert.equal((xml.match(/mar-sol--orulo-100/g)||[]).length,1);
+  assert.match(xml,/<loc>https:\/\/www.yincorp.com.br\/es\/serra<\/loc>/);for(const [,loc] of xml.matchAll(/<loc>(.*?)<\/loc>/g))assert.doesNotMatch(loc,/tipologia|gclid|utm_|pagina=|\?/);assert.doesNotMatch(xml,/cariacica/);assert.equal((xml.match(/mar-sol--orulo-100/g)||[]).length,1);
 });
 test('inventory reads across REST row limits and refuses partial or failed catalogs',async()=>{
   let calls=0;

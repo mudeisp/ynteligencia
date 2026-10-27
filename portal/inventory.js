@@ -1,7 +1,10 @@
 import { STATES } from './model.js';
 
 // Read the existing inventory. No schema, import, credential, or supplier changes.
-const SELECT=['id','external_id','source','title','development_name','city','state','neighborhood','price','area','bedrooms','parking_spaces','image_url','active','updated_at','building_id:raw_data->>building_id','developer:raw_data->building->>developer','status:raw_data->building->>status','description:raw_data->building->>description','images:raw_data->images'].join(',');
+const SELECT=['id','external_id','source','title','development_name','city','state','neighborhood','price','area','bedrooms','parking_spaces','image_url','active','updated_at','building_id:raw_data->>building_id','developer:raw_data->building->>developer','status:raw_data->building->>status','description:raw_data->building->>description','images:raw_data->images',
+  ...['address','features','building_features','unit_features','floor_plans','finality','stage','stock','total_units','number_of_floors','number_of_towers','apts_per_floor','launch_date','opening_date','images','type'].map(field=>`${field==='stock'?'building_stock':field==='images'?'building_images':field==='type'?'building_type':field}:raw_data->building->${field}`),
+  ...['type','reference','stock','features','parking','suites','bathrooms','private_area','discount_price','original_price'].map(field=>`${['type','reference','stock','features','parking'].includes(field)?'typology_':''}${field}:raw_data->typology->${field}`)
+].join(',');
 const cache=new Map();
 export async function readInventory(state,{request,configured,now=Date.now,cacheable=false}={}) {
   if(!STATES[state]) throw new Error('invalid_state');

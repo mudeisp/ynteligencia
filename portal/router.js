@@ -52,7 +52,8 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
         if(!project || (route.unitId && !unit))return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
         const target=project.path+(unit?`/tipologia/${unit.id}`:'');
         if(path!==target)return redirect(target+(url.searchParams.size?'?'+url.searchParams:''));
-        return finish(200,renderDevelopment({project,route,unit,canonical:base+project.path,origin:base,preview:isPreview}));
+        const related=groups.filter(g=>g.token!==project.token && g.city===project.city && g.state===project.state).sort((a,b)=>Number(b.neighborhood===project.neighborhood)-Number(a.neighborhood===project.neighborhood) || Math.abs((a.price??Infinity)-(project.price??0))-Math.abs((b.price??Infinity)-(project.price??0)) || a.path.localeCompare(b.path)).slice(0,3);
+        return finish(200,renderDevelopment({project,route,unit,related,canonical:base+project.path,origin:base,preview:isPreview}));
       }
       const filters=parseFilters(url.searchParams);
       if(url.searchParams.has('cidade') || url.searchParams.has('bairro')) {
