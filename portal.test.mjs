@@ -11,9 +11,9 @@ import { webcrypto } from 'node:crypto';
 const row=(overrides={})=>({id:'00000000-0000-4000-8000-000000000001',external_id:'orulo:100:1',building_id:'100',development_name:'Mar & Sol',city:'Vila Velha',state:'ES',neighborhood:'Praia da Costa',price:600000,area:65,bedrooms:2,parking_spaces:1,image_url:'https://example.com/photo.jpg',active:true,updated_at:'2026-10-26T10:00:00Z',developer:'Construtora A',...overrides});
 const inventory=[row(),row({id:'00000000-0000-4000-8000-000000000002',external_id:'orulo:100:2',price:900000,area:110,bedrooms:3,parking_spaces:2}),row({id:'00000000-0000-4000-8000-000000000003',external_id:'orulo:200:1',building_id:'200',development_name:'Jardim',city:'Serra',neighborhood:'Laranjeiras'})];
 function mockResponse(){return {statusCode:200,headers:{},body:'',setHeader(k,v){this.headers[k.toLowerCase()]=v;},status(n){this.statusCode=n;return this;},send(s){this.body=s;return this;},end(){return this;}};}
-async function page(path,{rows=inventory,method='GET',fail=false,preview=false}={}) {
+async function page(path,{rows=inventory,method='GET',fail=false,preview=false,canonicalOrigin='https://www.yincorp.com.br'}={}) {
   const res=mockResponse();
-  await createPortalHandler({inventory:async()=>{if(fail)throw new Error('Unavailable');return rows;},preview,canonicalOrigin:'https://app.yincorp.com.br'})({method,url:path,query:{}},res);
+  await createPortalHandler({inventory:async()=>{if(fail)throw new Error('Unavailable');return rows;},preview,canonicalOrigin})({method,url:path,query:{}},res);
   return res;
 }
 test('groups by supplier building, never by name; ranges cover active units',()=>{
@@ -33,21 +33,28 @@ test('joint filters cannot combine price from one unit with bedrooms from anothe
   const filtered=listDevelopments(groupDevelopments(inventory),parseRoute('/es/vila-velha'),parseFilters(new URLSearchParams('preco=700000&quartos=3')));
   assert.equal(filtered.total,0);
 });
-test('listing SSR contains real links, metadata and scoped geographic results without JS',async()=>{
+test('listing SSR contains real links, metadata and factual local content without JS',async()=>{
   const res=await page('/es/serra');
   assert.equal(res.statusCode,200);assert.match(res.body,/<h1>Encontre seu lugar em Serra\./);assert.match(res.body,/<article class="project-card">/);
   assert.match(res.body,/\/es\/serra\/empreendimento\/jardim--orulo-200/);assert.doesNotMatch(res.body,/Conhecer Mar/);
-  assert.match(res.body,/rel="canonical" href="https:\/\/app.yincorp.com.br\/es\/serra"/);assert.match(res.body,/BreadcrumbList/);
+  assert.match(res.body,/rel="canonical" href="https:\/\/www.yincorp.com.br\/es\/serra"/);assert.match(res.body,/BreadcrumbList/);
+  assert.match(res.body,/O catálogo reúne 1 empreendimento em Serra\/ES, distribuídos por 1 bairro com estoque/);
 });
-test('development page exposes configurations, not duplicate cards; optional email',async()=>{
+test('development SSR has one H1, canonical www and factual ApartmentComplex entity',async()=>{
   const p=groupDevelopments(inventory)[0],res=await page(p.path);
   assert.equal(res.statusCode,200);assert.match(res.body,/65 a 110 m²/);assert.equal((res.body.match(/class="typology"/g)||[]).length,2);
-  assert.doesNotMatch(res.body,/<input name="email"[^>]*required/);assert.match(res.body,/data-contact="00000000/);
+  assert.equal((res.body.match(/<h1/g)||[]).length,1);assert.ok(res.body.includes(`rel="canonical" href="https://www.yincorp.com.br${p.path}"`));
+  assert.match(res.body,/"@type":"ApartmentComplex"/);assert.match(res.body,/"name":"Incorporadora","value":"Construtora A"/);assert.match(res.body,/"name":"Preço inicial","value":600000,"unitText":"BRL"/);
+  assert.match(res.body,/alt="Mar &amp; Sol em Praia da Costa, Vila Velha\/ES"/);assert.doesNotMatch(res.body,/<input name="email"[^>]*required/);assert.match(res.body,/data-contact="00000000/);
+});
+test('development schema omits unavailable commercial facts instead of inventing them',async()=>{
+  const rows=[row({price:null,developer:'',parking_spaces:null,area:null,bedrooms:null})],p=groupDevelopments(rows)[0],res=await page(p.path,{rows});
+  assert.equal(res.statusCode,200);assert.match(res.body,/"@type":"ApartmentComplex"/);assert.doesNotMatch(res.body,/"name":"Incorporadora"/);assert.doesNotMatch(res.body,/"name":"Preço inicial"/);
 });
 test('unit deep link selects correct option and canonicalizes to its development',async()=>{
   const p=groupDevelopments(inventory)[0],res=await page(p.path+'/tipologia/'+inventory[1].id);
   assert.equal(res.statusCode,200);assert.match(res.body,/noindex,follow/);assert.match(res.body,/<option value="00000000-0000-4000-8000-000000000002" selected>/);
-  assert.ok(res.body.includes(`rel="canonical" href="https://app.yincorp.com.br${p.path}"`));
+  assert.ok(res.body.includes(`rel="canonical" href="https://www.yincorp.com.br${p.path}"`));
 });
 test('obsolete name redirects to stable-ID canonical and preserves campaign parameters',async()=>{
   const p=groupDevelopments(inventory)[0];const res=await page('/es/vila-velha/empreendimento/nome-antigo--orulo-100?gclid=example');
@@ -71,15 +78,16 @@ test('pagination is deterministic, self-canonical and never repeats a project',a
   const rows=Array.from({length:40},(_,i)=>row({id:String(i),building_id:String(i+1),external_id:`orulo:${i+1}:1`,development_name:`Projeto ${i}`}));
   const groups=groupDevelopments(rows),route=parseRoute('/es'),p1=listDevelopments(groups,route,parseFilters(new URLSearchParams())),p2=listDevelopments(groups,route,parseFilters(new URLSearchParams('pagina=2')));
   assert.equal(p1.items.length,18);assert.equal(p2.items.length,18);assert.equal(new Set([...p1.items,...p2.items].map(g=>g.token)).size,36);
-  const res=await page('/es?pagina=2&utm_source=test',{rows});assert.match(res.body,/rel="canonical" href="https:\/\/app.yincorp.com.br\/es\?pagina=2"/);
+  const res=await page('/es?pagina=2&utm_source=test',{rows});assert.match(res.body,/rel="canonical" href="https:\/\/www.yincorp.com.br\/es\?pagina=2"/);
 });
 test('filters are noindex, metadata strips attribution, input is escaped in HTML and JSON-LD',async()=>{
   const res=await page('/es?quartos=2&gclid=example');assert.match(res.body,/noindex,follow/);assert.doesNotMatch(res.body,/<link rel="canonical"[^>]+gclid/);
   const hostile=await page('/es',{rows:[row({development_name:'<script>alert(1)</script>',developer:'" onclick="bad()'})]});
   assert.match(hostile.body,/&lt;script&gt;/);assert.doesNotMatch(hostile.body,/<script>alert/);assert.equal(json('</script>'),'"\\u003c/script>"');
 });
-test('sitemap includes only live geographic and development pages, not typologies or tracking',()=>{
-  const xml=sitemap(groupDevelopments(inventory),'https://app.yincorp.com.br');assert.match(xml,/<loc>https:\/\/app.yincorp.com.br\/es\/serra<\/loc>/);assert.doesNotMatch(xml,/tipologia|gclid|cariacica/);assert.equal((xml.match(/mar-sol--orulo-100/g)||[]).length,1);
+test('sitemap contains only canonical geography and development entities',()=>{
+  const xml=sitemap(groupDevelopments(inventory),'https://www.yincorp.com.br');
+  assert.match(xml,/<loc>https:\/\/www.yincorp.com.br\/es\/serra<\/loc>/);assert.doesNotMatch(xml,/tipologia|gclid|utm_|pagina=|\?/);assert.doesNotMatch(xml,/cariacica/);assert.equal((xml.match(/mar-sol--orulo-100/g)||[]).length,1);
 });
 test('inventory reads across REST row limits and refuses partial or failed catalogs',async()=>{
   let calls=0;
