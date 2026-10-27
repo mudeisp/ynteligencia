@@ -1,3 +1,4 @@
+import {essenceFacts,semanticTechnicalFields,unitNature} from './semantics.js';
 // Presentation planning only: no requests, persistence, prices or inventory mutations.
 export const MODULE_ORDER=Object.freeze(['cover','manifesto','imageStory','film','essence','floorPlans','amenities','location','developer','availability','technical','related']);
 export const IMAGE_COMPOSITIONS=Object.freeze({A:'full-width',B:'vertical-and-text',C:'asymmetric-pair',D:'large-and-detail'});
@@ -42,10 +43,9 @@ export function planComposition(g,profile={},related=[]){
  const used=new Set([cover,...stories.flatMap(s=>s.assets)].filter(Boolean).map(p=>p.url));
  const amenityPhoto=reserved||available.find(p=>!used.has(p.url))||null;
  const media=[...new Map([...(profile.media||[]),...(d.videos||[]),...(d.virtualTour?[{url:d.virtualTour,embed:d.virtualTour,title:'Tour virtual'}]:[])].filter(v=>v?.url).map(v=>[v.url,v])).values()];
- const facts=[['area',g.area],['bedrooms',g.bedrooms],['parking',g.parking],['delivery',d.delivery?.iso?.slice(0,4)]].filter(([,v])=>present(v));
- for(const [key,value] of [['suites',g.suites],['totalUnits',d.totalUnits],['towers',d.towers]])if(facts.length<3 && present(value) && Number(value)!==0)facts.push([key,value]);
+ const facts=essenceFacts(g);
  const plans=d.plans||[],planImages=plans.filter(p=>p.image),amenities=[...(d.amenities||[]),...(d.unitAmenities||[])];
- const technicalFields=[g.developer,g.status,d.finality,d.type,d.stage,d.launch?.label,d.delivery?.label,g.area,g.bedrooms,g.parking,g.suites].filter(present).length+['stock','totalUnits','floors','towers','perFloor'].filter(k=>knownNumber(d[k])).length;
+ const technicalFields=semanticTechnicalFields(g).length;
  const modules={
   cover:{enabled:true,layout:cover?cover.orientation==='landscape'?'landscape':cover.orientation==='auto'?'auto':'portrait':'typographic'},
   manifesto:{enabled:Boolean(profile.headline||g.description||g.neighborhood||g.city),layout:g.description?'full':'compact'},
@@ -64,7 +64,7 @@ export function planComposition(g,profile={},related=[]){
  const highlights=[...new Set(amenities)].sort((a,b)=>Number(priority.test(b))-Number(priority.test(a))).slice(0,8);
  return {approved,cover,photos,stories,amenityPhoto,media,facts,highlights,allAmenities:[...new Set(amenities)],modules,order:MODULE_ORDER.filter(id=>modules[id].enabled),counts:{photos:photos.length,plans:plans.length,planImages:planImages.length,amenities:amenities.length,media:media.length},technicalFields};
 }
-const ordered=['site','rooms-1','rooms-2','rooms-3','rooms-4','rooms-5','garden','penthouse','other'];
+const ordered=['land','studio','site','rooms-1','rooms-2','rooms-3','rooms-4','rooms-5','garden','penthouse','other'];
 function category(description,bedrooms,type='',isPlan=false){
  const text=`${description||''} ${type||''}`;
  if(/garden|jardim privativo/i.test(text))return {id:'garden',name:'Garden'};
@@ -76,4 +76,4 @@ function category(description,bedrooms,type='',isPlan=false){
 }
 function grouped(items,classify){const groups=new Map();items.forEach((item,index)=>{const c=classify(item);if(!groups.has(c.id))groups.set(c.id,{...c,items:[]});groups.get(c.id).items.push({item,index});});return [...groups.values()].sort((a,b)=>ordered.indexOf(a.id)-ordered.indexOf(b.id));}
 export const groupFloorPlans=plans=>grouped(plans,p=>category(p.description,null,p.type,true));
-export const groupConfigurations=units=>grouped(units,u=>category('',u.bedrooms,u.unitType));
+export const groupConfigurations=units=>grouped(units,u=>unitNature(u)==='land'?{id:'land',name:'Terrenos e lotes'}:unitNature(u)==='studio'?{id:'studio',name:'Studios'}:category('',u.bedrooms,u.unitType));

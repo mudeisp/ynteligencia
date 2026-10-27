@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { webcrypto } from 'node:crypto';
 
-const row=(overrides={})=>({id:'00000000-0000-4000-8000-000000000001',external_id:'orulo:100:1',building_id:'100',development_name:'Mar & Sol',city:'Vila Velha',state:'ES',neighborhood:'Praia da Costa',price:600000,area:65,bedrooms:2,parking_spaces:1,image_url:'https://example.com/photo.jpg',active:true,updated_at:'2026-10-26T10:00:00Z',developer:'Construtora A',...overrides});
+const row=(overrides={})=>({id:'00000000-0000-4000-8000-000000000001',external_id:'orulo:100:1',building_id:'100',development_name:'Mar & Sol',city:'Vila Velha',state:'ES',neighborhood:'Praia da Costa',price:600000,area:65,bedrooms:2,parking_spaces:1,image_url:'https://example.com/photo.jpg',active:true,updated_at:'2026-10-26T10:00:00Z',developer:'Construtora A',typology_type:'Apartamento',...overrides});
 const inventory=[row(),row({id:'00000000-0000-4000-8000-000000000002',external_id:'orulo:100:2',price:900000,area:110,bedrooms:3,parking_spaces:2}),row({id:'00000000-0000-4000-8000-000000000003',external_id:'orulo:200:1',building_id:'200',development_name:'Jardim',city:'Serra',neighborhood:'Laranjeiras'})];
 function mockResponse(){return {statusCode:200,headers:{},body:'',setHeader(k,v){this.headers[k.toLowerCase()]=v;},status(n){this.statusCode=n;return this;},send(s){this.body=s;return this;},end(){return this;}};}
 async function page(path,{rows=inventory,method='GET',fail=false,preview=false,canonicalOrigin='https://www.yincorp.com.br'}={}) {

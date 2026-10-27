@@ -1,3 +1,4 @@
+import {productSemantics,semanticTechnicalFields,semanticDescription} from './semantics.js';
 import { architectureComposition } from './architecture.js';
 import { listingComposition, developmentComposition } from './editorial.js';
 import { html as h, json, money, imageUrl, slug, STATES, range, positive } from './model.js';
@@ -29,13 +30,10 @@ export function renderListing({route,filters,cities,results,groups=results.all,c
 }
 function publicUnit(u,g) {return {id:String(u.external_id || u.id),db_id:u.id,name:g.name,neighborhood:g.neighborhood,city:g.city,state:g.state,value:positive(u.price),area:positive(u.area),bedrooms:u.bedrooms,source:String(u.source || 'novos')};}
 function developmentSchema(g,canonical) {
-  const properties=[];
-  if(g.developer) properties.push({'@type':'PropertyValue',name:'Incorporadora',value:g.developer});
-  if(g.area!=='Sob consulta') properties.push({'@type':'PropertyValue',name:'Área privativa',value:g.area});
-  if(g.bedrooms!=='Sob consulta') properties.push({'@type':'PropertyValue',name:'Dormitórios',value:g.bedrooms});
-  if(g.parking!=='Sob consulta') properties.push({'@type':'PropertyValue',name:'Vagas',value:g.parking});
-  if(g.price) properties.push({'@type':'PropertyValue',name:'Preço inicial',value:g.price,unitText:'BRL'});
-  return {'@type':'ApartmentComplex','@id':canonical+'#empreendimento',name:g.name,url:canonical,image:g.photos,description:g.description || undefined,address:{'@type':'PostalAddress',streetAddress:g.details.street || undefined,postalCode:g.details.zip || undefined,addressLocality:g.city,addressRegion:g.state,addressCountry:'BR'},additionalProperty:properties};
+  const semantics=productSemantics(g);
+  const properties=semanticTechnicalFields(g).map(([name,value])=>({'@type':'PropertyValue',name,value}));
+  if(g.price)properties.push({'@type':'PropertyValue',name:'Preço inicial',value:g.price,unitText:'BRL'});
+  return {'@type':semantics.schemaType,'@id':canonical+'#empreendimento',name:g.name,url:canonical,image:g.photos,description:g.description || undefined,address:{'@type':'PostalAddress',streetAddress:g.details.street || undefined,postalCode:g.details.zip || undefined,addressLocality:g.city,addressRegion:g.state,addressCountry:'BR'},additionalProperty:properties};
 }
 export function renderDevelopment({project:g,route,unit,related=[],canonical,origin,preview}) {
   const uf=g.state.toLowerCase(),cityPath=`/${uf}/${slug(g.city)}`;
@@ -43,6 +41,6 @@ export function renderDevelopment({project:g,route,unit,related=[],canonical,ori
   if(unit)breadcrumbs.push({name:unitLabel(unit),path:`${g.path}/tipologia/${unit.id}`});
   const body=architectureComposition(g,unit,related)+`<div class="mobile-contact"><div><small>${unit?'Opção selecionada':'A partir de'}</small><strong>${h(money(unit?unit.price:g.price))}</strong></div><button class="button primary" data-contact="${unit?h(unit.id):''}">Consultar</button></div><dialog id="contact-dialog" aria-labelledby="contact-title"><button class="dialog-close" type="button" aria-label="Fechar formulário">×</button><p class="eyebrow">ATENDIMENTO YINCORP</p><h2 id="contact-title">Vamos conversar sobre este endereço?</h2><p>${h(g.name)}</p><form id="portal-lead"><label>Opção<select name="unit" required><option value="">Selecione a configuração</option>${g.units.map((u,i)=>`<option value="${h(u.id)}"${unit?.id===u.id?' selected':''}>${h(unitLabel(u))} · ${h(money(u.price))}</option>`).join('')}</select></label><label>Seu nome<input name="nome" autocomplete="name" required maxlength="120"></label><label>Seu WhatsApp<input name="telefone" autocomplete="tel" type="tel" inputmode="tel" required maxlength="22" placeholder="(27) 99999-9999"></label><label>E-mail <span>(opcional)</span><input name="email" autocomplete="email" type="email" maxlength="200"></label><p class="form-note">Seus dados serão usados para atender seu pedido sobre este imóvel. Após a confirmação do registro, você poderá continuar no WhatsApp.</p><button class="button primary" type="submit">Enviar interesse e continuar</button><p id="contact-feedback" role="status" aria-live="polite"></p></form></dialog><noscript><p class="wrap">Para enviar seu interesse, habilite JavaScript. Todo o catálogo e as informações dos empreendimentos permanecem acessíveis sem ele.</p></noscript>`;
   const p={token:g.token,path:g.path,name:g.name,city:g.city,state:g.state,neighborhood:g.neighborhood,photos:g.photos,units:g.units.map(u=>publicUnit(u,g))};
-  return layout({title:`${g.name}${unit?` — ${range([positive(unit.area)],' m²')}`:''} em ${g.city} | Yincorp`,description:`${g.name} em ${g.neighborhood?g.neighborhood+', ':''}${g.city}/${g.state}. ${g.area}, ${g.bedrooms} quartos. ${g.price?'Opções a partir de '+money(g.price)+'. ':''}Conheça as configurações e consulte disponibilidade.`,canonical,origin,preview,breadcrumbs,body,noindex:Boolean(unit),schema:[developmentSchema(g,canonical)],data:{state:g.state,kind:route.kind,project:p,selectedUnit:unit?.id}});
+  return layout({title:`${g.name}${unit?` — ${range([positive(unit.area)],' m²')}`:''} em ${g.city} | Yincorp`,description:`${semanticDescription(g)} ${g.price?'Opções a partir de '+money(g.price)+'. ':''}Conheça as configurações e consulte disponibilidade.`,canonical,origin,preview,breadcrumbs,body,noindex:Boolean(unit),schema:[developmentSchema(g,canonical)],data:{state:g.state,kind:route.kind,project:p,selectedUnit:unit?.id}});
 }
 export function renderError(status,{origin,preview,state='ES'}={}) {return layout({title:status===503?'Catálogo temporariamente indisponível | Yincorp':'Página não encontrada | Yincorp',description:'Explore os empreendimentos disponíveis na Yincorp.',canonical:`${origin}/${state.toLowerCase()}`,origin,preview,noindex:true,data:{state},body:`<section class="wrap empty-state"><p class="eyebrow">YINCORP</p><h1>${status===503?'Não conseguimos carregar o catálogo agora.':'Não encontramos este endereço.'}</h1><p>${status===503?'Tente novamente em instantes.':'A página pode ter mudado ou não ter opções disponíveis.'}</p><a class="button primary" href="/${state.toLowerCase()}">Voltar ao catálogo</a></section>`});}

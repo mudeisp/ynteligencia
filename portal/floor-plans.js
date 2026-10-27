@@ -1,3 +1,4 @@
+import {productSemantics} from './semantics.js';
 import {html as h,range,positive} from './model.js';
 import {groupFloorPlans} from './composition.js';
 import {editorialPlanImage} from './editorial-sources.js';
@@ -5,8 +6,8 @@ import {editorialPlanImage} from './editorial-sources.js';
 function metrics(p,g){
  const area=/([\d]+[,.][\d]+)\s*m/i.exec(p.description)?.[1],rooms=/(\d+)\s*(?:dorm|quarto)/i.exec(p.description)?.[1];
  const matches=area?g.units.filter(u=>Math.abs((u.area??-100)-Number(area.replace(',','.')))<.015):[];
- const suites=range(matches.map(u=>positive(u.suites))),parking=range(matches.map(u=>u.parking_spaces));
- return [area?`${area} m²`:'',rooms?`${rooms} ${rooms==='1'?'quarto':'quartos'}`:'',suites!=='Sob consulta'?`${suites} ${suites==='1'?'suíte':'suítes'}`:'',parking!=='Sob consulta'?`${parking} ${parking==='1'?'vaga':'vagas'}`:''].filter(Boolean).join(' · ');
+ const suites=range(matches.map(u=>positive(u.suites))),parking=range(matches.map(u=>positive(u.parking_spaces)));
+ return [area?`${area} m²`:'',rooms && Number(rooms)>0 && !productSemantics(g).land?`${rooms} ${rooms==='1'?'quarto':'quartos'}`:'',suites!=='Sob consulta'?`${suites} ${suites==='1'?'suíte':'suítes'}`:'',parking!=='Sob consulta'?`${parking} ${parking==='1'?'vaga':'vagas'}`:''].filter(Boolean).join(' · ');
 }
 const title=(p,i)=>p.description || p.type || `Planta ${i+1}`;
 const zoom=(p,i)=>`<button class="art-plan-zoom" type="button" data-plan-image="${h(p.image)}" data-plan-title="${h(title(p,i))}" aria-label="Ampliar ${h(title(p,i))}"><img src="${h(p.image)}" alt="${h(title(p,i))}" width="1600" height="1200" loading="lazy" decoding="async"><span>Ampliar desenho ↗</span></button>`;
