@@ -20,6 +20,32 @@ export function featureNames(...sources) {
   return [...names.values()];
 }
 const https=v=>{try{const u=new URL(text(v));return u.protocol==='https:' && !u.username && !u.password?u.href:'';}catch{return '';}};
+const firstHttps=(...values)=>{
+  for(const value of values.flat(Infinity)) {
+    if(typeof value==='string'){const url=https(value);if(url)return url;continue;}
+    if(value && typeof value==='object'){
+      const url=https(value.url || value.image_url || value.src || value.file_url || value.file?.url || value.image?.url);
+      if(url)return url;
+    }
+  }
+  return '';
+};
+function normalizeVideo(value) {
+  const url=firstHttps(typeof value==='string'?value:[value?.url,value?.video_url,value?.link,value?.src,value?.embed_url]);
+  if(!url)return null;
+  let embed='';
+  try {
+    const u=new URL(url),host=u.hostname.replace(/^www\./,'');
+    if(host==='youtu.be')embed=`https://www.youtube.com/embed/${u.pathname.slice(1).split('/')[0]}`;
+    else if(host==='youtube.com' || host==='m.youtube.com'){
+      const id=u.searchParams.get('v') || (/\/shorts\/([^/?#]+)/.exec(u.pathname)||[])[1] || (/\/embed\/([^/?#]+)/.exec(u.pathname)||[])[1];
+      if(id)embed=`https://www.youtube.com/embed/${id}`;
+    } else if(host==='vimeo.com' || host==='player.vimeo.com') {
+      const id=(u.pathname.match(/\d+/)||[])[0];if(id)embed=`https://player.vimeo.com/video/${id}`;
+    }
+  } catch {}
+  return {url,embed,title:text(value?.title || value?.name || value?.description) || 'Vídeo do empreendimento'};
+}
 export function normalizeUnit(row) {
   return {...row,price:number(row.price) || number(row.discount_price) || number(row.original_price),
     area:number(row.area) || number(row.private_area),bedrooms:number(row.bedrooms),
@@ -36,15 +62,20 @@ export function projectDetails(rows) {
   const plans=new Map();
   for(const plan of rows.flatMap(r=>Array.isArray(r.floor_plans)?r.floor_plans:[])) {
     if(!plan || typeof plan!=='object')continue;
-    const description=text(plan.description),type=text(plan.type);
-    // Only an explicit public image URL. IDs never authorize inventing a file URL.
-    const image=https(plan.image_url || plan.image?.url || plan.url);
+    const description=text(plan.description || plan.name || plan.title),type=text(plan.type || plan.category);
+    const image=firstHttps(plan.image_url,plan.url,plan.file_url,plan.src,plan.image,plan.file,plan.images);
     if(description || type || image)plans.set(String(plan.id || `${type}:${description}:${image}`),{description,type,image});
   }
+  const videos=new Map();
+  for(const item of rows.flatMap(r=>Array.isArray(r.videos)?r.videos:(r.videos?[r.videos]:[]))) {
+    const video=normalizeVideo(item);if(video)videos.set(video.url,video);
+  }
+  const virtualTour=firstHttps(...rows.map(r=>r.virtual_tour));
   return {street,zip:text(address.zip_code),coordinates,finality:text(first('finality')),type:text(first('building_type')),
     stage:text(first('stage')),stock:number(first('building_stock')),totalUnits:number(first('total_units')),
     floors:number(first('number_of_floors')),towers:number(first('number_of_towers')),perFloor:number(first('apts_per_floor')),
     launch:supplierDate(first('launch_date')),delivery:supplierDate(first('opening_date')),
     amenities:featureNames(...rows.flatMap(r=>[r.features,r.building_features])),
-    unitAmenities:featureNames(...rows.flatMap(r=>[r.unit_features,r.typology_features])),plans:[...plans.values()]};
+    unitAmenities:featureNames(...rows.flatMap(r=>[r.unit_features,r.typology_features])),plans:[...plans.values()],
+    videos:[...videos.values()],virtualTour,webpage:firstHttps(...rows.map(r=>r.webpage)),oruloUrl:firstHttps(...rows.map(r=>r.orulo_url))};
 }
