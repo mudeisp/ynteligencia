@@ -1,4 +1,22 @@
 {
+  "rewrites": [
+    {
+      "source": "/api/portal/lead",
+      "destination": "/api/lead"
+    },
+    {
+      "source": "/sitemap-portal.xml",
+      "destination": "/api/development?portalPath=/sitemap-portal.xml"
+    },
+    {
+      "source": "/:uf(ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)",
+      "destination": "/api/development?portalPath=/:uf"
+    },
+    {
+      "source": "/:uf(ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)/:rest*",
+      "destination": "/api/development?portalPath=/:uf/:rest*"
+    }
+  ],
   "crons": [
     {
       "path": "/api/push-daily",
