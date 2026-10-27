@@ -30,4 +30,5 @@ h1,h2,.development-price,.card-bottom strong,.city-facts strong,.hero-project-fa
 @media(prefers-reduced-motion:reduce){.card-photo img{transition:none}}
 @media(max-width:800px){.portal-header nav{display:flex!important}.portal-header nav>a:not(.header-contact){display:none}.header-row{flex-wrap:nowrap}.header-contact{font-size:10px!important;padding:12px!important}.portal-brand>span:last-child{font-size:32px!important}}
 @media(max-width:420px){.editorial-metrics>div{padding:0 9px}.editorial-metrics strong{font-size:26px}.editorial-metrics span{font-size:9px}.hero-copy h1{font-size:48px!important}.inventory-hero-photo{height:410px}.feature-photo{height:290px}.feature-copy{padding:24px}.feature-bottom strong{font-size:28px}.search-form{grid-template-columns:1fr!important}}
+.plant-section{margin-left:0!important;margin-right:0!important;padding:38px 24px!important;min-width:0}.plant-rail{margin-left:0!important;margin-right:0!important;padding-left:0!important;padding-right:0!important;max-width:100%;box-sizing:border-box}.development-layout>div{min-width:0}.plant-slide{flex-basis:min(72vw,680px)!important}
 
