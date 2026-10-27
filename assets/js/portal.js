@@ -1,3 +1,4 @@
+import './portal-v2.js';
 import { submitInterest } from './portal-contact.js';
 const config=JSON.parse(document.getElementById('portal-data')?.textContent || '{}');
 const preview=config.preview===true;
