@@ -14,7 +14,7 @@ test('home has a photographic editorial opening, meaningful live metrics and one
 test('project is composed around architecture and actual plan images while preserving lead contract',()=>{
  const g=groupDevelopments([{...row,floor_plans:Array.from({length:27},(_,i)=>({id:String(i),description:`Planta ${i+1}`,image_url:`https://example.com/planta-${i}.jpg`}))}])[0];
  const html=renderDevelopment({project:g,route:{kind:'development'},origin:'https://www.yincorp.com.br',canonical:'https://www.yincorp.com.br'+g.path,preview:true});
- assert.equal((html.match(/data-art-plan="/g)||[]).length,27);assert.match(html,/class="art-cover"/);assert.match(html,/class="art-offer"/);assert.match(html,/class="technical-editorial wrap"/);assert.doesNotMatch(html,/contact-panel|development-layout/);
+ assert.equal((html.match(/data-art-plan="/g)||[]).length,27);assert.match(html,/class="art-cover /);assert.match(html,/class="art-offer"/);assert.match(html,/class="technical-editorial wrap"/);assert.doesNotMatch(html,/contact-panel|development-layout/);
  assert.match(html,/id="portal-lead"/);assert.match(html,/"leadEndpoint":"\/api\/portal\/lead"/);assert.match(html,/"preview":true/);assert.match(html,/"db_id":"00000000-0000-4000-8000-000000000001"/);assert.match(html,/noindex,follow/);
 });
 test('gallery enhancement has no telemetry imports or writes and supports reduced motion',()=>{
