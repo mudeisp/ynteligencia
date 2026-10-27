@@ -11,9 +11,11 @@ export function sitemap(groups,base) {
   const paths=new Map();
   for(const state of new Set(groups.map(g=>g.state))) {
     const root=`/${state.toLowerCase()}`, cities=geography(groups,state);
-    const addListing=(path,count)=>{paths.set(path,null);for(let page=2;page<=Math.ceil(count/18);page++)paths.set(`${path}?pagina=${page}`,null);};
-    addListing(root,groups.filter(g=>g.state===state).length);
-    for(const c of cities) {addListing(`${root}/${c.slug}`,c.count);for(const n of c.neighborhoods.values())addListing(`${root}/${c.slug}/${n.slug}`,n.count);}
+    paths.set(root,null);
+    for(const c of cities) {
+      paths.set(`${root}/${c.slug}`,null);
+      for(const n of c.neighborhoods.values()) paths.set(`${root}/${c.slug}/${n.slug}`,null);
+    }
   }
   for(const g of groups) paths.set(g.path,g.updatedAt);
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...paths].map(([path,updated])=>`<url><loc>${html(base+path)}</loc>${updated?`<lastmod>${new Date(updated).toISOString()}</lastmod>`:''}</url>`).join('')}</urlset>`;
@@ -53,7 +55,6 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
         return finish(200,renderDevelopment({project,route,unit,canonical:base+project.path,origin:base,preview:isPreview}));
       }
       const filters=parseFilters(url.searchParams);
-      // HTML GET forms resolve geography to permanent, crawlable paths.
       if(url.searchParams.has('cidade') || url.searchParams.has('bairro')) {
         const wantedCity=cities.find(c=>c.slug===filters.city),wantedNeighborhood=wantedCity?.neighborhoods.get(filters.neighborhood);
         if((filters.city && !wantedCity) || (filters.neighborhood && !wantedNeighborhood))return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
@@ -78,4 +79,3 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
     }
   };
 }
-
