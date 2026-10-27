@@ -84,9 +84,9 @@ test("existing POST search remains unchanged and unknown GET keeps old 405", asy
 });
 test("internal GET operation adds no Serverless Function or Ads routing; portal rewrites stay scoped", () => {
   const config = JSON.parse(fs.readFileSync("vercel.json", "utf8")); assert.deepEqual(config.crons, [{ path: "/api/push-daily", schedule: "0 13 * * *" }]);
-  assert.equal(config.rewrites.length, 3);
-  assert.ok(config.rewrites.every(rule => rule.destination.startsWith("/api/development?portalPath=")));
-  assert.ok(config.rewrites.every(rule => !rule.source.startsWith("/api/")));
+  assert.equal(config.rewrites.length, 4);
+  assert.ok(config.rewrites.every(rule => rule.destination.startsWith("/api/development?portalPath=") || (rule.source === "/api/portal/lead" && rule.destination === "/api/lead")));
+  assert.ok(config.rewrites.every(rule => !rule.source.startsWith("/api/") || rule.source === "/api/portal/lead"));
   assert.equal(fs.readdirSync("api").filter(file => file.endsWith(".js")).length, 12);
   const code = fs.readFileSync("inventory-summary-route.js", "utf8"); assert.doesNotMatch(code, /console\.|\.insert\(|\.update\(|method:\s*"POST"|select=\*|raw_data/);
 });

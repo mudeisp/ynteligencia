@@ -91,7 +91,7 @@ test('lead continuation requires operational persistence, not email-only success
   const payload={nome:'Teste local',telefone:'27999999999',email:'',property_id:'orulo:100:2',lead_event_id:'test-event-123'};
   for(const result of [{success:true,email_sent:true,supabase:false},{success:false,supabase:true},null])await assert.rejects(submitInterest(payload,{request:async()=>({ok:true,json:async()=>result})}));
   let sent;
-  await submitInterest(payload,{request:async(path,options)=>{assert.equal(path,'/api/lead');sent=JSON.parse(options.body);return {ok:true,json:async()=>({success:true,supabase:true})};}});
+  await submitInterest(payload,{request:async(path,options)=>{assert.equal(path,'/api/portal/lead');sent=JSON.parse(options.body);return {ok:true,json:async()=>({success:true,supabase:true})};}});
   assert.equal(sent.email,'');assert.equal(sent.property_id,'orulo:100:2');assert.equal(sent.lead_event_id,'test-event-123');
 });
 test('portal adapter preserves existing visitor, session and attribution keys across reloads',async()=>{

@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://app.yincorp.com.br/sitemap-portal.xml
+Sitemap: https://www.yincorp.com.br/sitemap-portal.xml
