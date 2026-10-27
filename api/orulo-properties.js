@@ -35,13 +35,22 @@ export default async function handler(req, res) {
       Accept: "application/json"
     };
 
-    // Preview-only, read-only diagnostic. Reuses this existing function so the
-    // deployment remains within the 12 Serverless Functions limit.
+    // Read-only floor plan diagnostic. In Production it is protected by the
+    // existing MIA_READ_TOKEN so no additional secret or public endpoint is needed.
     const floorPlansBuildingId = String(req.query?.floor_plans_building_id || "").trim();
     if (floorPlansBuildingId) {
       if (process.env.VERCEL_ENV === "production") {
-        return res.status(404).json({ ok: false, error: "Not found" });
+        const expectedToken = String(process.env.MIA_READ_TOKEN || "").trim();
+        const authHeader = String(req.headers?.authorization || "");
+        const providedToken = authHeader.startsWith("Bearer ")
+          ? authHeader.slice("Bearer ".length).trim()
+          : "";
+
+        if (!expectedToken || !providedToken || providedToken !== expectedToken) {
+          return res.status(404).json({ ok: false, error: "Not found" });
+        }
       }
+
       if (!/^\d+$/.test(floorPlansBuildingId)) {
         return res.status(400).json({ ok: false, error: "floor_plans_building_id inválido" });
       }
