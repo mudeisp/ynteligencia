@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupDevelopments,parseRoute,parseFilters,listDevelopments,json,slug } from './portal/model.mjs';
-import { createPortalHandler,sitemap } from './portal/handler.mjs';
-import { readInventory } from './portal/data.mjs';
+import { groupDevelopments,parseRoute,parseFilters,listDevelopments,json,slug } from './portal/model.js';
+import { createPortalHandler,sitemap } from './portal/handler.js';
+import { readInventory } from './portal/data.js';
 import { submitInterest } from './assets/js/portal-contact.js';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';

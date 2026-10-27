@@ -1,6 +1,6 @@
-import { readInventory } from './data.mjs';
-import { groupDevelopments, geography, parseRoute, parseFilters, listDevelopments, STATES, slug, html } from './model.mjs';
-import { renderListing, renderDevelopment, renderError } from './render.mjs';
+import { readInventory } from './data.js';
+import { groupDevelopments, geography, parseRoute, parseFilters, listDevelopments, STATES, slug, html } from './model.js';
+import { renderListing, renderDevelopment, renderError } from './render.js';
 
 function origin() {
   const value=process.env.PORTAL_CANONICAL_ORIGIN || 'https://app.yincorp.com.br';

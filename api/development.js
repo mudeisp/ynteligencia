@@ -1,4 +1,4 @@
-import { handlePortal } from "../portal/handler.mjs";
+import { handlePortal } from "../portal/handler.js";
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||

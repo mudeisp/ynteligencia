@@ -1,4 +1,4 @@
-import { html as h, json, money, imageUrl, slug, STATES, range, positive, bedroomLabel, parkingLabel } from './model.mjs';
+import { html as h, json, money, imageUrl, slug, STATES, range, positive, bedroomLabel, parkingLabel } from './model.js';
 
 const icon=(name)=>({arrow:'↗',search:'⌕',pin:'⌖'}[name] || '');
 function photo(src,alt,first=false) {return src?`<img src="${h(imageUrl(src))}" alt="${h(alt)}" width="800" height="560" ${first?'fetchpriority="high" loading="eager"':'loading="lazy"'} decoding="async">`:`<div class="photo-missing">Imagem em atualização</div>`;}

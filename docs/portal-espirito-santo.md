@@ -4,7 +4,7 @@
 
 The existing HTML/JavaScript application, Vercel project, Supabase inventory, supplier sync, lead endpoint and media integration remain in place. The portal adds server-rendered public pages at `/es`. Existing root/campaign URLs are retained, with links to the portal added to the current desktop and side navigation.
 
-`api/development.js` dispatches only requests with `portalPath` to `portal/handler.mjs`. Its existing JSON GET/POST behavior remains unchanged. Three scoped Vercel rewrites use this same function; the API function count stays at 12 and the existing daily cron remains unchanged.
+`api/development.js` dispatches only requests with `portalPath` to `portal/handler.js`. Its existing JSON GET/POST behavior remains unchanged. Three scoped Vercel rewrites use this same function; the API function count stays at 12 and the existing daily cron remains unchanged.
 
 No database schema, index, policy, credential, supplier subscription, domain or production deployment was changed by this implementation.
 
@@ -23,7 +23,7 @@ Development URLs contain a supplier identifier, so changes to the name can redir
 
 ## Reading the existing inventory
 
-`portal/data.mjs` uses the existing `ads-store.js` REST helper and environment variables. It selects public listing fields plus explicit public JSON attributes, never the complete raw supplier object. Commercial contacts, restricted attachments and secret keys are not serialized into HTML.
+`portal/data.js` uses the existing `ads-store.js` REST helper and environment variables. It selects public listing fields plus explicit public JSON attributes, never the complete raw supplier object. Commercial contacts, restricted attachments and secret keys are not serialized into HTML.
 
 All pages are based on active inventory. Each state is read in ordered batches of 500, including responses beyond the default REST limit. Failures return 503; partial data is not presented as a complete catalog. There is a 20-second request budget, a 50,000-record safety ceiling and a 60-second optional per-instance cache. The cache is only an optimization, never durable state. Shared HTML can be cached by the CDN for 60 seconds with a 120-second stale revalidation window.
 

@@ -1,5 +1,5 @@
 import { rest, supabaseConfigured } from '../ads-store.js';
-import { STATES } from './model.mjs';
+import { STATES } from './model.js';
 
 // Read the existing inventory. No schema, import, credential, or supplier changes.
 const SELECT=['id','external_id','source','title','development_name','city','state','neighborhood','price','area','bedrooms','parking_spaces','image_url','active','updated_at','building_id:raw_data->>building_id','developer:raw_data->building->>developer','status:raw_data->building->>status','description:raw_data->building->>description','images:raw_data->images'].join(',');
