@@ -2,8 +2,8 @@ import {html as h,money,slug,STATES,bedroomLabel,parkingLabel,range} from './mod
 import {delivery,typology,unitLabel,plansBlock,mediaBlock,gallery,VITORIA_IMAGE,vitoriaStory} from './presentation.js';
 
 const image=(url,alt,{eager=false,width=1600,height=1000}={})=>url?`<img src="${h(url)}" alt="${h(alt)}" width="${width}" height="${height}" loading="${eager?'eager':'lazy'}" ${eager?'fetchpriority="high"':''} decoding="async">`:'<div class="photo-missing">Imagem em atualização</div>';
-export function editorialCard(g,index=0) {
-  return `<article class="project-card"><a class="card-photo" href="${h(g.path)}" tabindex="-1" aria-hidden="true">${image(g.photos[0],`${g.name} em ${g.neighborhood}, ${g.city}/${g.state}`)}<span class="image-index">${String(index+1).padStart(2,'0')}</span></a><div class="card-copy"><p class="location">${h(g.neighborhood)} · ${h(g.city)}/${h(g.state)}</p><div class="card-title"><h3><a href="${h(g.path)}">${h(g.name)}</a></h3><span aria-hidden="true">↗</span></div>${g.developer?`<p class="developer">${h(g.developer)}</p>`:''}<ul class="facts"><li>${h(g.area)}</li><li>${h(bedroomLabel(g.bedrooms))}</li>${g.parking!=='Sob consulta'?`<li>${h(parkingLabel(g.parking))}</li>`:''}</ul><div class="card-bottom"><p><small>A partir de</small><strong>${h(money(g.price))}</strong></p><span>${h(delivery(g) || g.status)}</span></div>${g.suites!=='Sob consulta' && g.suites!=='0'?`<p class="card-note">${h(g.suites)} ${g.suites==='1'?'suíte':'suítes'}</p>`:''}</div></article>`;
+export function editorialCard(g) {
+  return `<article class="project-card"><a class="card-photo" href="${h(g.path)}" tabindex="-1" aria-hidden="true">${image(g.photos[0],`${g.name} em ${g.neighborhood}, ${g.city}/${g.state}`)}</a><div class="card-copy"><p class="location">${h(g.neighborhood)} · ${h(g.city)}/${h(g.state)}</p><div class="card-title"><h3><a href="${h(g.path)}">${h(g.name)}</a></h3><span aria-hidden="true">↗</span></div><ul class="facts"><li>${h(g.area)}</li><li>${h(bedroomLabel(g.bedrooms))}</li></ul><div class="card-bottom"><p><small>A partir de</small><strong>${h(money(g.price))}</strong></p><span>${h(g.status || delivery(g))}</span></div></div></article>`;
 }
 const photoCredit=()=>`<figcaption>Praia de Camburi, Vitória · <a href="https://commons.wikimedia.org/wiki/File:Praia_de_Camburi_-_Vit%C3%B3ria-ES_-_panoramio_(84).jpg" target="_blank" rel="noopener noreferrer">Vilamir Azevedo / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0 · enquadramento adaptado</a></figcaption>`;
 const sectionHead=(num,label,title,copy='')=>`<header class="section-head"><p class="eyebrow"><span>${num}</span> ${label}</p><div><h2>${title}</h2>${copy?`<p>${copy}</p>`:''}</div></header>`;
@@ -23,7 +23,7 @@ export function listingComposition({route,filters,cities,results,groups,filtersH
   return hero+metrics+cityLinks+catalog+story+facts;
 }
 
-function technicalSheet(g) {
+export function technicalSheet(g) {
   const d=g.details,fields=[['Incorporadora',g.developer],['Status',g.status],['Finalidade',d.finality],['Tipo',d.type],['Estágio',d.stage],['Lançamento',d.launch?.label],['Entrega informada',d.delivery?.label],['Unidades totais',d.totalUnits],['Estoque informado',d.stock],['Torres',d.towers],['Pavimentos',d.floors],['Apartamentos por andar',d.perFloor],['Área privativa',g.area],['Quartos',g.bedrooms],['Suítes',g.suites],['Banheiros',range(g.units.map(u=>u.bathrooms))],['Vagas',g.parking]];
   return `<section class="technical-editorial wrap" id="ficha-tecnica">${sectionHead('05','A ARQUITETURA EM DETALHES','Ficha técnica')}<dl class="technical-grid">${fields.filter(([,v])=>v!==null && v!==undefined && v!=='' && v!=='Sob consulta').map(([label,value])=>`<div><dt>${h(label)}</dt><dd>${h(value)}</dd></div>`).join('')}</dl></section>`;
 }
