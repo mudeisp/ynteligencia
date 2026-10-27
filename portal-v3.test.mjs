@@ -22,7 +22,7 @@ test('SSR delivers complete gallery, factual sheets and richer typologies withou
   const g=groupDevelopments(rows)[0],res=await page(g.path,rows);
   assert.equal(res.code,200);assert.equal(g.photos.length,31);assert.match(res.body,/Ver todas as fotos \(31\)/);
   assert.match(res.body,/https:\/\/example.com\/30.jpg/);assert.match(res.body,/loading="lazy"/);
-  for(const text of ['Ficha técnica','Piscina','Planta do lazer','30/12/2028','Apartamento · ref. 301','Estoque informado: 2','<del>','Carregar mapa'])assert.ok(res.body.includes(text),text);
+  for(const text of ['Ficha técnica','Piscina','Planta do lazer','30/12/2028','Apartamento · ref. 301','Estoque informado: 2','<del>','data-map='])assert.ok(res.body.includes(text),text);
   assert.doesNotMatch(res.body,/portal-project-data|\[object Object\]|Opção 1|images\/properties\/large\/999|<iframe|<dt>Torres<\/dt>/);
   assert.match(res.body,/<dt>Estoque informado<\/dt><dd>0<\/dd>/);
   assert.match(res.body,/noindex,follow/);assert.equal((res.body.match(/<h1/g)||[]).length,1);
@@ -43,7 +43,7 @@ test('Vitória editorial and stocked neighborhood links render server-side with 
 test('related projects are real, exclude self, and prioritize matching neighborhood',async()=>{
   const others=[{...base,id:'2',building_id:'124',development_name:'Vizinho'},{...base,id:'3',building_id:'125',development_name:'Outra cidade',city:'Serra'}];
   const res=await page(groupDevelopments([base])[0].path,[base,...others]);
-  assert.match(res.body,/Mais empreendimentos em Vitória/);assert.match(res.body,/Vizinho/);assert.doesNotMatch(res.body,/Outra cidade/);
+  assert.match(res.body,/Outras formas<br>de viver Vitória/);assert.match(res.body,/Vizinho/);assert.doesNotMatch(res.body,/Outra cidade/);
 });
 test('inventory reads an explicit public projection and never supplier private contacts',async()=>{
   await readInventory('ES',{configured:()=>true,request:async path=>{const select=new URLSearchParams(path.split('?')[1]).get('select');for(const field of ['suites:raw_data->typology->suites','address:raw_data->building->address','building_images:raw_data->building->images'])assert.ok(select.includes(field));assert.doesNotMatch(select,/developer_data|publisher|payment_conditions|files|\*/);return {ok:true,data:[]};}});
