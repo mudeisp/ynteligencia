@@ -72,7 +72,7 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
       const normalized=`/${route.state.toLowerCase()}${route.city?'/'+route.city:''}${route.neighborhood?'/'+route.neighborhood:''}`;
       if(path!==normalized)return redirect(normalized+(url.searchParams.size?'?'+url.searchParams:''));
       const canonical=base+normalized+(canonicalParams.size?'?'+canonicalParams:'');
-      return finish(200,renderListing({route,filters,cities,results,canonical,origin:base,preview:isPreview}));
+      return finish(200,renderListing({route,filters,cities,results,inventoryGroups:groups,canonical,origin:base,preview:isPreview}));
     }catch(error) {
       console.error('PORTAL_CATALOG_ERROR',error?.name || 'Error');
       res.setHeader('Retry-After','60');
@@ -80,3 +80,4 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
     }
   };
 }
+
