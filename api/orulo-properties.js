@@ -35,20 +35,17 @@ export default async function handler(req, res) {
       Accept: "application/json"
     };
 
-    // Read-only floor plan diagnostic. In Production it is protected by the
-    // existing MIA_READ_TOKEN so no additional secret or public endpoint is needed.
     const floorPlansBuildingId = String(req.query?.floor_plans_building_id || "").trim();
-    if (floorPlansBuildingId) {
-      if (process.env.VERCEL_ENV === "production") {
-        const expectedToken = String(process.env.MIA_READ_TOKEN || "").trim();
-        const authHeader = String(req.headers?.authorization || "");
-        const providedToken = authHeader.startsWith("Bearer ")
-          ? authHeader.slice("Bearer ".length).trim()
-          : "";
 
-        if (!expectedToken || !providedToken || providedToken !== expectedToken) {
-          return res.status(404).json({ ok: false, error: "Not found" });
-        }
+    if (floorPlansBuildingId) {
+      const expectedToken = process.env.MIA_READ_TOKEN;
+      const authorization = String(req.headers?.authorization || "");
+      const suppliedToken = authorization.startsWith("Bearer ")
+        ? authorization.slice("Bearer ".length).trim()
+        : "";
+
+      if (!expectedToken || !suppliedToken || suppliedToken !== expectedToken) {
+        return res.status(404).json({ ok: false, error: "Not found" });
       }
 
       if (!/^\d+$/.test(floorPlansBuildingId)) {
@@ -64,6 +61,7 @@ export default async function handler(req, res) {
         `https://www.orulo.com.br/api/v2/buildings/${floorPlansBuildingId}/floor_plans?${dimensions.toString()}`,
         { headers: oruloHeaders }
       );
+
       const plansData = await plansResponse.json().catch(() => ({}));
 
       if (!plansResponse.ok) {
