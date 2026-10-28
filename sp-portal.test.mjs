@@ -62,7 +62,7 @@ test('SP development reuses approved modular property renderer with state-aware 
   assert.match(res.body,/"@type":"ApartmentComplex"/);
   assert.match(res.body,/href="\/sp" aria-label="Yincorp — início"/);
   assert.match(res.body,/placeholder="\(11\) 99999-9999"/);
-  assert.match(res.body,new RegExp(`rel="canonical" href="https://www\\.yincorp\\.com\\.br${project.path.replaceAll('/','\\/')}"`));
+  assert.ok(res.body.includes(`rel="canonical" href="https://www.yincorp.com.br${project.path}"`));
 });
 
 test('portal sitemap can carry ES and SP canonical geography together',()=>{
