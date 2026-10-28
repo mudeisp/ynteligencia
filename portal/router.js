@@ -36,18 +36,22 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
     let route;
     try {
       if(path==='/sitemap-portal.xml') {
-        const states=[...new Set(String(process.env.PORTAL_SITEMAP_STATES || 'ES').toUpperCase().split(',').map(s=>s.trim()))].filter(s=>STATES[s]);
-        const all=(await Promise.all(states.map(s=>inventory(s)))).flat();
+        const states=[...new Set(String(process.env.PORTAL_SITEMAP_STATES || 'ES,SP').toUpperCase().split(',').map(s=>s.trim()))].filter(s=>STATES[s]);
+        const all=(await Promise.all(states.map(s=>inventory(s,{mode:'listing'})))).flat();
         return finish(200,sitemap(groupDevelopments(all),base),'application/xml; charset=utf-8');
       }
       route=parseRoute(path);
       if(!route) return finish(404,renderError(404,{origin:base,preview:isPreview}));
-      const groups=groupDevelopments(await inventory(route.state));
+      const listingRows=await inventory(route.state,{mode:'listing'});
+      const groups=groupDevelopments(listingRows);
       const cities=geography(groups,route.state);
       const city=cities.find(c=>c.slug===route.city);
       if(!groups.length || (route.city && !city) || (route.neighborhood && !city.neighborhoods.has(route.neighborhood))) return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
       if(['development','unit'].includes(route.kind)) {
-        const project=groups.find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
+        const lightProject=groups.find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
+        if(!lightProject)return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
+        const detailRows=await inventory(route.state,{mode:'project',ids:lightProject.units.map(u=>u.id)});
+        const project=groupDevelopments(detailRows).find(g=>g.token===lightProject.token);
         const unit=route.unitId?project?.units.find(u=>u.id===route.unitId):undefined;
         if(!project || (route.unitId && !unit))return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
         const target=project.path+(unit?`/tipologia/${unit.id}`:'');
@@ -74,7 +78,7 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
       const canonical=base+normalized+(canonicalParams.size?'?'+canonicalParams:'');
       return finish(200,renderListing({route,filters,cities,results,groups,canonical,origin:base,preview:isPreview}));
     }catch(error) {
-      console.error('PORTAL_CATALOG_ERROR',error?.name || 'Error');
+      console.error('PORTAL_CATALOG_ERROR',error?.message || error?.name || 'Error');
       res.setHeader('Retry-After','60');
       return finish(503,renderError(503,{origin:base,preview:isPreview,state:route?.state || 'ES'}));
     }
