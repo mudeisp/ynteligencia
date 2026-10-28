@@ -16,14 +16,14 @@ A infraestrutura continua genérica para outras cidades do estado que tenham est
 
 O inventário ativo de SP é muito maior que o ES. Ler `raw_data` completo de milhares de tipologias em cada acesso SSR não escala.
 
-A solução mantém `public.properties` como fonte de verdade, mas separa duas leituras:
+`public.properties` continua sendo a fonte de verdade. O portal separa duas leituras:
 
-1. **listagem/SEO**: RPC `public.portal_inventory_listing_v1(state)`, uma projeção compacta dos campos necessários para cards, geografia, filtros, canonical e ItemList;
-2. **LP do empreendimento**: somente depois que um projeto é aberto, o portal busca as linhas completas daquele `building_id`/conjunto de IDs, preservando fotos, plantas, vídeos, amenidades e ficha técnica.
+1. **listagem/SEO**: `public.portal_development_index`, view `security_invoker` com uma linha por empreendimento e um `unit_facets` compacto com os campos necessários para manter filtros de preço/dormitórios exatos;
+2. **LP do empreendimento**: somente depois que um projeto é aberto, o portal busca as linhas completas das tipologias daquele empreendimento, preservando fotos, plantas, vídeos, amenidades e ficha técnica.
 
-A função é `stable`, `security invoker`, fixa `search_path = public, pg_temp` e só pode ser executada por `service_role`. `public`, `anon` e `authenticated` não recebem `EXECUTE`.
+A view não expõe `raw_data`, contatos ou PII. Ela contém apenas dados já públicos de catálogo. O `www` usa a chave publicável/anon já existente; por isso a view recebe `SELECT` para `anon`, enquanto o RLS da tabela `properties` continua valendo por `security_invoker`.
 
-O leitor antigo permanece como fallback de compatibilidade, com timeout por página e paginação paralela limitada.
+O índice compacto é reidratado em unidades leves no servidor para que a lógica existente de faixa de área, preço, dormitórios, vagas, semântica e filtros continue igual. A LP continua usando os dados completos do projeto, não o resumo.
 
 ## Escopo editorial do catálogo
 
@@ -35,20 +35,20 @@ No recorte auditado em 28/10/2026:
 - `source = novos`: 7.487 linhas / 3.543 `building_id` distintos;
 - `source = usados`: 3.249 linhas sem `building_id`.
 
-Além disso, dentro de `source = novos`, SP continha 1.445 projetos cujo `building.status` e `building.stage` eram `Usado`.
+Dentro de `source = novos`, SP também continha 1.445 projetos cujo `building.status` e `building.stage` eram `Usado`.
 
-Para não transformar imóveis individuais/reatendidos em LPs de empreendimento, o índice editorial de SP exclui esses registros `Usado`. O app continua sendo o produto para exploração de usados.
+Para não transformar imóveis usados em LPs de empreendimento, o índice editorial de SP exclui esses registros `Usado`. O app continua sendo o produto para exploração de usados.
 
 Resultado do índice editorial SP:
 
-- **6.042 linhas de tipologias**;
-- **2.098 empreendimentos**;
+- **2.098 linhas de empreendimentos** no índice;
+- **6.042 facets de tipologia** dentro dessas linhas;
 - **40 cidades**.
 
 O ES é preservado integralmente, sem mudar a regra já aprovada:
 
-- **566 linhas**;
-- **172 empreendimentos**;
+- **172 linhas de empreendimentos** no índice;
+- **566 facets de tipologia**;
 - **10 cidades**.
 
 ## Direção editorial
@@ -69,6 +69,12 @@ Header e footer respeitam `data.state`:
 - LPs de SP não herdam navegação de Espírito Santo;
 - placeholder de WhatsApp usa DDD 11 em SP e mantém DDD 27 no ES.
 
+## Integração www
+
+O adaptador `yincorp-landing/api/portal.js` precisa encaminhar o segundo argumento de `inventory(state, options)` para o núcleo. Isso permite distinguir `mode: listing` de `mode: project` e evita que o landing caia no leitor legado de estado completo.
+
+O adaptador também repassa `method`, `body`, `Prefer` e `Content-Range` para o cliente PostgREST quando necessário.
+
 ## SEO
 
 As regras existentes são preservadas:
@@ -81,7 +87,7 @@ As regras existentes são preservadas:
 - Preview com `noindex`;
 - rotas canônicas por estado/cidade/bairro/projeto.
 
-O sitemap passa a considerar `ES,SP` por padrão e usa o mesmo índice leve. Estados sem estoque não geram URLs.
+O sitemap passa a considerar `ES,SP` por padrão e usa o mesmo índice compacto. Estados sem estoque não geram URLs.
 
 ## Testes adicionados
 
@@ -96,18 +102,16 @@ O sitemap passa a considerar `ES,SP` por padrão e usa o mesmo índice leve. Est
 7. placeholder de telefone compatível com SP;
 8. sitemap conjunto ES + SP.
 
-## Preview validado
+## Validação antes de merge
 
-A infraestrutura passou de 503 por volume de catálogo para HTTP 200 após a separação do índice leve.
+Antes de merge/Production, validar no mesmo Preview:
 
-Antes de merge/Production, a rodada final deve validar:
-
-- `/sp` com o recorte editorial de 2.098 projetos;
+- `/sp` com **2.098 empreendimentos**;
 - `/sp/sao-paulo`;
 - Pinheiros, Vila Mariana, Moema, Perdizes, Campo Belo e Brooklin Paulista;
 - pelo menos um studio, um produto de ticket mais baixo, um produto intermediário, um alto padrão e um caso com pouco material visual;
 - uma LP real de SP com dados completos;
-- regressão `/es` preservando 172 empreendimentos;
-- sitemap, canonical, schema, tracking e lead.
+- regressão `/es` preservando **172 empreendimentos**;
+- sitemap, canonical, schema e formulário em Preview sem envio/tracking.
 
 Esta branch não deve ser mergeada nem promovida para Production antes dessa validação final.
