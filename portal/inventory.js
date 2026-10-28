@@ -22,7 +22,7 @@ async function fetchPage(request,state,select,offset,{count=false}={}) {
   return response;
 }
 async function readListingRpc(request,state) {
-  const response=await request('rpc/portal_inventory_listing_v1',{method:'POST',body:{p_state:state},prefer:'return=representation',signal:AbortSignal.timeout(20000)});
+  const response=await request('rpc/portal_inventory_listing_v2',{method:'POST',body:{p_state:state},prefer:'return=representation',signal:AbortSignal.timeout(20000)});
   return response.ok && Array.isArray(response.data) ? response.data : null;
 }
 
