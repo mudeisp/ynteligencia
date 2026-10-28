@@ -21,9 +21,14 @@ const es=(overrides={})=>({
 });
 const spRows=[
   sp(),
-  sp({id:'10000000-0000-4000-8000-000000000002',external_id:'orulo:902:1',building_id:'902',development_name:'Brooklin House',neighborhood:'Brooklin',price:1200000}),
+  sp({id:'10000000-0000-4000-8000-000000000002',external_id:'orulo:902:1',building_id:'902',development_name:'Brooklin House',neighborhood:'Brooklin Paulista',price:1200000}),
   sp({id:'10000000-0000-4000-8000-000000000003',external_id:'orulo:903:1',building_id:'903',development_name:'Pinheiros Living',neighborhood:'Pinheiros',price:1100000}),
-  sp({id:'10000000-0000-4000-8000-000000000004',external_id:'orulo:904:1',building_id:'904',development_name:'Campo Belo Residences',neighborhood:'Campo Belo',price:1500000})
+  sp({id:'10000000-0000-4000-8000-000000000004',external_id:'orulo:904:1',building_id:'904',development_name:'Campo Belo Residences',neighborhood:'Campo Belo',price:1500000}),
+  sp({id:'10000000-0000-4000-8000-000000000005',external_id:'orulo:905:1',building_id:'905',development_name:'Vila Mariana House',neighborhood:'Vila Mariana',price:1250000}),
+  sp({id:'10000000-0000-4000-8000-000000000006',external_id:'orulo:906:1',building_id:'906',development_name:'Moema Living',neighborhood:'Moema',price:1400000}),
+  sp({id:'10000000-0000-4000-8000-000000000007',external_id:'orulo:907:1',building_id:'907',development_name:'Jardim Paulista Residence',neighborhood:'Jardim Paulista',price:2100000}),
+  sp({id:'10000000-0000-4000-8000-000000000008',external_id:'orulo:908:1',building_id:'908',development_name:'Itaim House',neighborhood:'Itaim Bibi',price:2500000}),
+  sp({id:'10000000-0000-4000-8000-000000000009',external_id:'orulo:909:1',building_id:'909',development_name:'Mooca Extra',neighborhood:'Mooca',price:800000})
 ];
 function mockResponse(){return {statusCode:200,headers:{},body:'',setHeader(k,v){this.headers[k.toLowerCase()]=v;},status(n){this.statusCode=n;return this;},send(s){this.body=s;return this;},end(){return this;}};}
 async function page(path,rows=spRows){const res=mockResponse();await createPortalHandler({inventory:async state=>rows.filter(r=>r.state===state),preview:true,canonicalOrigin:'https://www.yincorp.com.br'})({method:'GET',url:path,query:{}},res);return res;}
@@ -34,12 +39,17 @@ test('São Paulo routes use the same state-city-neighborhood hierarchy',()=>{
   assert.deepEqual(parseRoute('/sp/sao-paulo/perdizes'),{kind:'neighborhood',state:'SP',city:'sao-paulo',neighborhood:'perdizes'});
 });
 
-test('SP state home prioritizes neighborhoods and never inherits Espírito Santo chrome',async()=>{
+test('SP state home uses a curated set of eight editorial neighborhood cards',async()=>{
   const res=await page('/sp');
   assert.equal(res.statusCode,200);
   assert.match(res.body,/São Paulo,<br>bairro a bairro\./);
-  assert.match(res.body,/href="\/sp\/sao-paulo\/perdizes"/);
-  assert.match(res.body,/href="\/sp\/sao-paulo\/brooklin"/);
+  for(const neighborhood of ['pinheiros','vila-mariana','moema','perdizes','jardim-paulista','itaim-bibi','brooklin-paulista','campo-belo']) {
+    assert.match(res.body,new RegExp(`href="\\/sp\\/sao-paulo\\/${neighborhood}"`));
+  }
+  assert.doesNotMatch(res.body,/href="\/sp\/sao-paulo\/mooca"/);
+  assert.match(res.body,/Explorar todos os bairros/);
+  assert.match(res.body,/href="\/sp\/sao-paulo#cidades"/);
+  assert.match(res.body,/class="city-collection"/);
   assert.match(res.body,/href="\/sp" aria-label="Yincorp — início"/);
   assert.match(res.body,/Catálogo de São Paulo/);
   assert.doesNotMatch(res.body,/Encontre o seu próximo capítulo no Espírito Santo/);
