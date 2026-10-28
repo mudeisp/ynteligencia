@@ -21,6 +21,10 @@ async function fetchPage(request,state,select,offset,{count=false}={}) {
   if(!response.ok || !Array.isArray(response.data)) throw new Error('inventory_unavailable');
   return response;
 }
+async function readListingRpc(request,state) {
+  const response=await request('rpc/portal_inventory_listing_v1',{method:'POST',body:{p_state:state},prefer:'return=representation',signal:AbortSignal.timeout(20000)});
+  return response.ok && Array.isArray(response.data) ? response.data : null;
+}
 
 export async function readInventory(state,{request,configured,now=Date.now,cacheable=false,mode='full',ids=[]}={}) {
   if(!STATES[state]) throw new Error('invalid_state');
@@ -41,6 +45,15 @@ export async function readInventory(state,{request,configured,now=Date.now,cache
   const cacheKey=`${state}:${mode}:${PORTAL_SOURCE}`;
   const cached=cache.get(cacheKey);
   if(cacheable && cached && cached.expires>now()) return cached.rows;
+
+  if(mode==='listing') {
+    const rpcRows=await readListingRpc(request,state);
+    if(rpcRows) {
+      if(cacheable)cache.set(cacheKey,{expires:now()+60000,rows:rpcRows});
+      return rpcRows;
+    }
+    // Safe compatibility fallback while deployments/migrations roll independently.
+  }
 
   const first=await fetchPage(request,state,select,0,{count:true});
   const rows=[...first.data];
