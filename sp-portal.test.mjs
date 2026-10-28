@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {groupDevelopments,parseRoute} from './portal/model.js';
+import {groupDevelopments,parseRoute,listDevelopments} from './portal/model.js';
 import {createPortalHandler,sitemap} from './portal/router.js';
 
 const sp=(overrides={})=>({
@@ -63,6 +63,26 @@ test('SP development reuses approved modular property renderer with state-aware 
   assert.match(res.body,/href="\/sp" aria-label="Yincorp — início"/);
   assert.match(res.body,/placeholder="\(11\) 99999-9999"/);
   assert.ok(res.body.includes(`rel="canonical" href="https://www.yincorp.com.br${project.path}"`));
+});
+
+test('compact development index rehydrates exact unit facets and preserves filters',()=>{
+  const summary=sp({
+    id:'10000000-0000-4000-8000-000000000010',external_id:'orulo:910:1',building_id:'910',development_name:'Facet House',neighborhood:'Pinheiros',price:500000,area:35,bedrooms:1,
+    unit_facets:[
+      {id:'10000000-0000-4000-8000-000000000010',external_id:'orulo:910:1',price:500000,area:35,bedrooms:1,parking_spaces:0,suites:0,bathrooms:1,typology_type:'Studio',typology_stock:4},
+      {id:'10000000-0000-4000-8000-000000000011',external_id:'orulo:910:2',price:900000,area:70,bedrooms:2,parking_spaces:1,suites:1,bathrooms:2,typology_type:'Apartamento',typology_stock:2}
+    ]
+  });
+  const groups=groupDevelopments([summary]);
+  assert.equal(groups.length,1);
+  assert.equal(groups[0].units.length,2);
+  assert.equal(groups[0].area,'35 a 70 m²');
+  assert.equal(groups[0].price,500000);
+  const route={kind:'state',state:'SP'};
+  const base={city:'',neighborhood:'',q:'',sort:'recentes',page:1};
+  assert.equal(listDevelopments(groups,route,{...base,max:600000,bedrooms:null}).total,1);
+  assert.equal(listDevelopments(groups,route,{...base,max:600000,bedrooms:2}).total,0);
+  assert.equal(listDevelopments(groups,route,{...base,max:950000,bedrooms:2}).total,1);
 });
 
 test('portal sitemap can carry ES and SP canonical geography together',()=>{
