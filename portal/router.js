@@ -36,7 +36,7 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
     let route;
     try {
       if(path==='/sitemap-portal.xml') {
-        const states=[...new Set(String(process.env.PORTAL_SITEMAP_STATES || 'ES').toUpperCase().split(',').map(s=>s.trim()))].filter(s=>STATES[s]);
+        const states=[...new Set(String(process.env.PORTAL_SITEMAP_STATES || 'ES,SP').toUpperCase().split(',').map(s=>s.trim()))].filter(s=>STATES[s]);
         const all=(await Promise.all(states.map(s=>inventory(s)))).flat();
         return finish(200,sitemap(groupDevelopments(all),base),'application/xml; charset=utf-8');
       }
