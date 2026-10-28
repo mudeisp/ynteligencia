@@ -23,14 +23,32 @@ function projectId(row) {
   if(/^\d+$/.test(id || '')) return `orulo-${id}`;
   return `imovel-${createHash('sha256').update(String(row.external_id || row.id)).digest('hex').slice(0,16)}`;
 }
+function lightweightUnits(input) {
+  if(!Array.isArray(input?.unit_facets) || !input.unit_facets.length)return [normalizeUnit(input)];
+  return input.unit_facets.map(facet=>normalizeUnit({
+    ...input,
+    unit_facets:undefined,
+    id:facet?.id || input.id,
+    external_id:facet?.external_id || input.external_id,
+    price:facet?.price,
+    area:facet?.area,
+    bedrooms:facet?.bedrooms,
+    parking_spaces:facet?.parking_spaces,
+    suites:facet?.suites,
+    bathrooms:facet?.bathrooms,
+    typology_type:facet?.typology_type,
+    typology_stock:facet?.typology_stock
+  }));
+}
 export function groupDevelopments(rows) {
   const groups=new Map();
   for(const input of rows) {
-    const row=normalizeUnit(input);
-    if(row.active!==true || !STATES[row.state] || !row.city || !row.id) continue;
-    const token=projectId(row), key=`${row.state}/${slug(row.city)}/${token}`;
-    if(!groups.has(key)) groups.set(key,[]);
-    groups.get(key).push(row);
+    for(const row of lightweightUnits(input)) {
+      if(row.active!==true || !STATES[row.state] || !row.city || !row.id) continue;
+      const token=projectId(row), key=`${row.state}/${slug(row.city)}/${token}`;
+      if(!groups.has(key)) groups.set(key,[]);
+      groups.get(key).push(row);
+    }
   }
   return [...groups.values()].map(units=>{
     units.sort((a,b)=>String(a.id).localeCompare(String(b.id)));
