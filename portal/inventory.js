@@ -15,7 +15,11 @@ const parseTotal=value=>{const match=/\/(\d+)$/.exec(String(value||''));return m
 async function fetchListingPage(request,state,offset,{count=false}={}) {
   const params=new URLSearchParams({select:'*',state:`eq.${state}`,order:'id.asc',limit:'1000',offset:String(offset)});
   const response=await request(`portal_inventory_listing?${params}`,{method:'GET',signal:AbortSignal.timeout(20000),prefer:count?'count=exact':undefined,includeContentRange:count});
-  if(!response.ok || !Array.isArray(response.data)) throw new Error('portal_listing_unavailable');
+  if(!response.ok || !Array.isArray(response.data)) {
+    const payload=response?.data && typeof response.data==='object' ? response.data : {};
+    console.error('PORTAL_LISTING_VIEW_ERROR',JSON.stringify({state,offset,status:response?.status || null,code:payload.code || null,message:String(payload.message || '').slice(0,180)}));
+    throw new Error('portal_listing_unavailable');
+  }
   return response;
 }
 async function readListingView(request,state) {
