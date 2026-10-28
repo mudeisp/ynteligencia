@@ -12,6 +12,13 @@ const FULL_SELECT=[...BASE,'description:raw_data->building->>description','image
 ].join(',');
 const cache=new Map();
 const chunks=(values,size)=>Array.from({length:Math.ceil(values.length/size)},(_,i)=>values.slice(i*size,(i+1)*size));
+const parseTotal=value=>{const match=/\/(\d+)$/.exec(String(value||''));return match?Number(match[1]):null;};
+const pageParams=(state,select,offset,limit=500)=>new URLSearchParams({select,active:'eq.true',state:`eq.${state}`,order:'id.asc',limit:String(limit),offset:String(offset)});
+async function fetchPage(request,state,select,offset,{count=false}={}) {
+  const response=await request(`properties?${pageParams(state,select,offset)}`,{method:'GET',signal:AbortSignal.timeout(20000),prefer:count?'count=exact':undefined,includeContentRange:count});
+  if(!response.ok || !Array.isArray(response.data)) throw new Error('inventory_unavailable');
+  return response;
+}
 
 export async function readInventory(state,{request,configured,now=Date.now,cacheable=false,mode='full',ids=[]}={}) {
   if(!STATES[state]) throw new Error('invalid_state');
@@ -32,18 +39,35 @@ export async function readInventory(state,{request,configured,now=Date.now,cache
   const cacheKey=`${state}:${mode}`;
   const cached=cache.get(cacheKey);
   if(cacheable && cached && cached.expires>now()) return cached.rows;
-  const rows=[];
-  for(let offset=0;offset<50000;offset+=500) {
-    const params=new URLSearchParams({select,active:'eq.true',state:`eq.${state}`,order:'id.asc',limit:'500',offset:String(offset)});
-    // Timeout is per page. Large states must not share a single 20s deadline across all pages.
-    const response=await request(`properties?${params}`,{method:'GET',signal:AbortSignal.timeout(20000)});
-    if(!response.ok || !Array.isArray(response.data)) throw new Error('inventory_unavailable');
+
+  const first=await fetchPage(request,state,select,0,{count:true});
+  const rows=[...first.data];
+  if(first.data.length<500) {
+    if(cacheable)cache.set(cacheKey,{expires:now()+60000,rows});
+    return rows;
+  }
+  const total=parseTotal(first.contentRange);
+  if(total!==null) {
+    if(total>50000)throw new Error('inventory_read_limit');
+    const offsets=[];for(let offset=500;offset<total;offset+=500)offsets.push(offset);
+    // Large states are fetched with bounded concurrency instead of serial round trips.
+    for(const batch of chunks(offsets,8)) {
+      const pages=await Promise.all(batch.map(offset=>fetchPage(request,state,select,offset)));
+      for(const page of pages)rows.push(...page.data);
+    }
+    if(rows.length<total)throw new Error('inventory_incomplete');
+    if(cacheable)cache.set(cacheKey,{expires:now()+60000,rows});
+    return rows;
+  }
+
+  // Compatibility fallback for request adapters/mocks that do not expose Content-Range.
+  for(let offset=500;offset<50000;offset+=500) {
+    const response=await fetchPage(request,state,select,offset);
     rows.push(...response.data);
     if(response.data.length<500) {
-      if(cacheable) cache.set(cacheKey,{expires:now()+60000,rows});
+      if(cacheable)cache.set(cacheKey,{expires:now()+60000,rows});
       return rows;
     }
   }
-  // Never index an apparently complete catalog that was silently truncated.
   throw new Error('inventory_read_limit');
 }
