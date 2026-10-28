@@ -14,15 +14,15 @@ const parseTotal=value=>{const match=/\/(\d+)$/.exec(String(value||''));return m
 
 async function fetchListingPage(request,state,offset,{count=false}={}) {
   const params=new URLSearchParams({select:'*',state:`eq.${state}`,order:'id.asc',limit:'1000',offset:String(offset)});
-  const response=await request(`portal_inventory_listing?${params}`,{method:'GET',signal:AbortSignal.timeout(20000),prefer:count?'count=exact':undefined,includeContentRange:count});
+  const response=await request(`portal_development_index?${params}`,{method:'GET',signal:AbortSignal.timeout(20000),prefer:count?'count=exact':undefined,includeContentRange:count});
   if(!response.ok || !Array.isArray(response.data)) {
     const payload=response?.data && typeof response.data==='object' ? response.data : {};
-    console.error('PORTAL_LISTING_VIEW_ERROR',JSON.stringify({state,offset,status:response?.status || null,code:payload.code || null,message:String(payload.message || '').slice(0,180)}));
+    console.error('PORTAL_DEVELOPMENT_INDEX_ERROR',JSON.stringify({state,offset,status:response?.status || null,code:payload.code || null,message:String(payload.message || '').slice(0,180)}));
     throw new Error('portal_listing_unavailable');
   }
   return response;
 }
-async function readListingView(request,state) {
+async function readListingIndex(request,state) {
   const first=await fetchListingPage(request,state,0,{count:true});
   const rows=[...first.data];
   const total=parseTotal(first.contentRange);
@@ -64,7 +64,7 @@ export async function readInventory(state,{request,configured,now=Date.now,cache
   const cached=cache.get(cacheKey);
   if(cacheable && cached && cached.expires>now()) return cached.rows;
   if(mode==='listing') {
-    const rows=await readListingView(request,state);
+    const rows=await readListingIndex(request,state);
     if(cacheable)cache.set(cacheKey,{expires:now()+60000,rows});
     return rows;
   }
