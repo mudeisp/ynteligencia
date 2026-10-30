@@ -14,6 +14,7 @@ export function sitemap(groups,base) {
     paths.set(root,null);
     for(const c of cities) {
       paths.set(`${root}/${c.slug}`,null);
+      if(state==='ES' && c.slug==='vitoria') paths.set(`${root}/${c.slug}/lancamentos`,null);
       for(const n of c.neighborhoods.values()) paths.set(`${root}/${c.slug}/${n.slug}`,null);
     }
   }
@@ -73,7 +74,9 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
       if(filters.page>results.pages)return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
       const canonicalParams=new URLSearchParams();
       for(const [k,v]of [['preco',filters.max],['quartos',filters.bedrooms],['q',filters.q],['ordem',filters.sort==='recentes'?'':filters.sort],['pagina',filters.page>1?filters.page:null]])if(v)canonicalParams.set(k,String(v));
-      const normalized=`/${route.state.toLowerCase()}${route.city?'/'+route.city:''}${route.neighborhood?'/'+route.neighborhood:''}`;
+      const normalized=route.kind==='intent' && route.intent==='lancamentos'
+        ? `/${route.state.toLowerCase()}/${route.city}/lancamentos`
+        : `/${route.state.toLowerCase()}${route.city?'/'+route.city:''}${route.neighborhood?'/'+route.neighborhood:''}`;
       if(path!==normalized)return redirect(normalized+(url.searchParams.size?'?'+url.searchParams:''));
       const canonical=base+normalized+(canonicalParams.size?'?'+canonicalParams:'');
       return finish(200,renderListing({route,filters,cities,results,groups,canonical,origin:base,preview:isPreview}));
