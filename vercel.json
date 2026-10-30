@@ -1,4 +1,26 @@
 {
+  "redirects": [
+    {
+      "source": "/es",
+      "destination": "https://www.yincorp.com.br/es",
+      "permanent": true
+    },
+    {
+      "source": "/es/:rest*",
+      "destination": "https://www.yincorp.com.br/es/:rest*",
+      "permanent": true
+    },
+    {
+      "source": "/sp",
+      "destination": "https://www.yincorp.com.br/sp",
+      "permanent": true
+    },
+    {
+      "source": "/sp/:rest*",
+      "destination": "https://www.yincorp.com.br/sp/:rest*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/portal/lead",
