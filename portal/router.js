@@ -1,4 +1,4 @@
-import { groupDevelopments, geography, parseRoute, parseFilters, listDevelopments, STATES, slug, html } from './model.js';
+import { groupDevelopments, geography, parseRoute, parseFilters, listDevelopments, STATES, slug, html, positive } from './model.js';
 import { renderListing, renderDevelopment, renderError } from './render.js';
 
 function origin() {
@@ -21,7 +21,14 @@ export function sitemap(groups,base) {
   for(const g of groups) paths.set(g.path,g.updatedAt);
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...paths].map(([path,updated])=>`<url><loc>${html(base+path)}</loc>${updated?`<lastmod>${new Date(updated).toISOString()}</lastmod>`:''}</url>`).join('')}</urlset>`;
 }
-export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}) {
+export function createPortalHandler({inventory,preview=false,canonicalOrigin,p0,pointLookupStates}={}) {
+  // Weak keys follow the inventory snapshot lifetime; no second unbounded cache.
+  const groupedSnapshots=new WeakMap();
+  const groupListing=(rows,enabled)=>{
+    if(!enabled)return groupDevelopments(rows);
+    if(!groupedSnapshots.has(rows))groupedSnapshots.set(rows,groupDevelopments(rows));
+    return groupedSnapshots.get(rows);
+  };
   return async function portal(req,res) {
     const base=canonicalOrigin || origin();
     const isPreview=preview || process.env.VERCEL_ENV==='preview';
@@ -43,8 +50,43 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin}={}
       }
       route=parseRoute(path);
       if(!route) return finish(404,renderError(404,{origin:base,preview:isPreview}));
+      const optimized=p0 ?? process.env.PORTAL_P0!=='0';
+      // Enable the narrower resolver only where the audit proved the large-state
+      // cost. ES keeps its single index GET and benefits from snapshot reuse.
+      // Expand the allowlist after benchmarking each market, without route changes.
+      const pointStates=pointLookupStates ?? String(process.env.PORTAL_POINT_LOOKUP_STATES || 'SP').toUpperCase().split(',').map(s=>s.trim());
+      if(optimized && pointStates.includes(route.state) && ['development','unit'].includes(route.kind) && /^orulo-\d+$/.test(route.token)) {
+        const buildingId=route.token.slice(6);
+        const lightRows=await inventory(route.state,{mode:'project-index',buildingIds:[buildingId]});
+        const lightProject=groupDevelopments(lightRows).find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
+        if(!lightProject)return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
+        const detailRows=await inventory(route.state,{mode:'project',ids:lightProject.units.map(u=>u.id)});
+        const project=groupDevelopments(detailRows).find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
+        const unit=route.unitId?project?.units.find(u=>u.id===route.unitId):undefined;
+        if(!project || (route.unitId && !unit))return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
+        const target=project.path+(unit?`/tipologia/${unit.id}`:'');
+        if(path!==target)return redirect(target+(url.searchParams.size?'?'+url.searchParams:''));
+        const summaries=await inventory(route.state,{mode:'city-summary',city:project.city});
+        // Match the existing neighborhood → nearest starting price → path ranking.
+        // Expand facets only for the three selected cards, never for the whole city.
+        const candidates=summaries.filter(r=>r.active===true && r.state===project.state && r.city===project.city && /^\d+$/.test(String(r.building_id)) && String(r.building_id)!==buildingId).map(r=>({
+          ...r,price:positive(r.price),path:`/${r.state.toLowerCase()}/${slug(r.city)}/empreendimento/${slug(r.development_name || r.title || 'Imóvel') || 'imovel'}--orulo-${r.building_id}`
+        })).sort((a,b)=>Number(b.neighborhood===project.neighborhood)-Number(a.neighborhood===project.neighborhood) || Math.abs((a.price??Infinity)-(project.price??0))-Math.abs((b.price??Infinity)-(project.price??0)) || a.path.localeCompare(b.path)).slice(0,3);
+        let related;
+        // A zero/negative aggregate can hide a positive facet. Preserve the old
+        // positive-price semantics rather than silently changing recommendations.
+        if(summaries.some(r=>r.price!==null && r.price!==undefined && Number(r.price)<=0)) {
+          const all=groupListing(await inventory(route.state,{mode:'listing'}),true);
+          related=all.filter(g=>g.token!==project.token && g.city===project.city && g.state===project.state).sort((a,b)=>Number(b.neighborhood===project.neighborhood)-Number(a.neighborhood===project.neighborhood) || Math.abs((a.price??Infinity)-(project.price??0))-Math.abs((b.price??Infinity)-(project.price??0)) || a.path.localeCompare(b.path)).slice(0,3);
+        }else{
+          const relatedRows=candidates.length?await inventory(route.state,{mode:'project-index',buildingIds:candidates.map(r=>String(r.building_id))}):[];
+          const selected=groupDevelopments(relatedRows);
+          related=candidates.map(r=>selected.find(g=>g.token===`orulo-${r.building_id}` && g.city===project.city && g.state===project.state)).filter(Boolean);
+        }
+        return finish(200,renderDevelopment({project,route,unit,related,canonical:base+project.path,origin:base,preview:isPreview}));
+      }
       const listingRows=await inventory(route.state,{mode:'listing'});
-      const groups=groupDevelopments(listingRows);
+      const groups=groupListing(listingRows,optimized);
       const cities=geography(groups,route.state);
       const city=cities.find(c=>c.slug===route.city);
       if(!groups.length || (route.city && !city) || (route.neighborhood && !city.neighborhoods.has(route.neighborhood))) return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
