@@ -62,6 +62,8 @@ export function initInvestmentJourney({config,tracking,document,location,storage
   }
   const simulator=document.getElementById('investment-simulator');
   let simulatorLoaded=false;
-  simulator?.addEventListener('toggle',async()=>{if(!simulator.open||simulatorLoaded)return;simulatorLoaded=true;try{const {initSimulator}=await import('./investment-simulator.js');initSimulator({config,journey,tracking,emit,document,location});}catch{simulatorLoaded=false;console.warn('INVESTMENT_SIMULATOR_UNAVAILABLE');}});
+  const loadSimulator=async()=>{if(!simulator?.open||simulatorLoaded)return;simulatorLoaded=true;try{const {initSimulator}=await import('./investment-simulator.js');initSimulator({config,journey,tracking,emit,document,location});}catch{simulatorLoaded=false;const status=document.getElementById('sim-loading');if(status)status.textContent='Não foi possível carregar o simulador. Feche e abra novamente para tentar de novo.';console.warn('INVESTMENT_SIMULATOR_UNAVAILABLE');}};
+  simulator?.addEventListener('toggle',loadSimulator);
+  if(simulator?.open)void loadSimulator();
   return journey;
 }

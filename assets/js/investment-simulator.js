@@ -20,6 +20,8 @@ export function initSimulator({config,journey,tracking,emit,document,location}) 
   const signal=(name,detail={})=>{if(config.preview!==true){const e=simulatorEvent(name,{project_id:selected?.id,scenario:currentScenario,...detail});emit(e.name,e.detail);}};
   signal('investment_simulator_opened');
   root.addEventListener('toggle',()=>{if(root.open)signal('investment_simulator_opened');});
+  projectSelect.disabled=false;
+  const loading=document.getElementById('sim-loading');if(loading)loading.hidden=true;
   const element=(tag,text,className)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e;};
   const refs=()=>benchmarks.filter(b=>!b.neighborhood||b.neighborhood===selected?.neighborhood);
   function showBenchmarks(){
