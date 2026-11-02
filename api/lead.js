@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import {cleanInvestmentContext} from "../portal/investment-model.js";
 
 
 export default async function handler(req, res) {
@@ -1035,7 +1036,8 @@ export default async function handler(req, res) {
 
               profileAnswers,
 
-              touches
+              touches,
+              cleanInvestmentContext(body.investment_context)
 
             )
 
@@ -1930,12 +1932,13 @@ function leadTouches(value) {
   return Object.keys(filled).length ? filled : null;
 }
 
-function leadCorrelation(leadEventId, sessionContext, profileAnswers, touches) {
+function leadCorrelation(leadEventId, sessionContext, profileAnswers, touches, investmentContext) {
   return {
     ...(leadEventId ? { lead_event_id: leadEventId } : {}),
     ...(sessionContext ? { session: sessionContext } : {}),
     ...(profileAnswers ? { declared_profile: profileAnswers } : {}),
-    ...(touches ? { touches } : {})
+    ...(touches ? { touches } : {}),
+    ...(investmentContext ? { investment_context: investmentContext } : {})
   };
 }
 
