@@ -39,14 +39,18 @@ test('São Paulo routes use the same state-city-neighborhood hierarchy',()=>{
   assert.deepEqual(parseRoute('/sp/sao-paulo/perdizes'),{kind:'neighborhood',state:'SP',city:'sao-paulo',neighborhood:'perdizes'});
 });
 
-test('SP state home uses a curated set of eight editorial neighborhood cards',async()=>{
+test('SP state home prioritizes the four requested neighborhoods and retains the capital directory',async()=>{
   const res=await page('/sp');
   assert.equal(res.statusCode,200);
   assert.match(res.body,/São Paulo,<br>bairro a bairro\./);
-  for(const neighborhood of ['pinheiros','vila-mariana','moema','perdizes','jardim-paulista','itaim-bibi','brooklin-paulista','campo-belo']) {
+  for(const neighborhood of ['brooklin-paulista','campo-belo','moema','itaim-bibi']) {
     assert.match(res.body,new RegExp(`href="\\/sp\\/sao-paulo\\/${neighborhood}"`));
   }
   assert.doesNotMatch(res.body,/href="\/sp\/sao-paulo\/mooca"/);
+  assert.match(res.body,/O catálogo abaixo também inclui outras cidades do estado/);
+  const featured=res.body.split('class="city-collection"')[1].split('class="all-cities')[0];
+  assert.equal((featured.match(/class="city-feature"/g)||[]).length,4);
+  assert.ok(featured.indexOf('/brooklin-paulista')<featured.indexOf('/campo-belo'));
   assert.match(res.body,/Explorar todos os bairros/);
   assert.match(res.body,/href="\/sp\/sao-paulo#cidades"/);
   assert.match(res.body,/class="city-collection"/);

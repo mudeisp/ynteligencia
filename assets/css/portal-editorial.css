@@ -2157,3 +2157,13 @@ dialog p {
 .investment-section li{margin-block:14px}
 .investment-evidence{font-size:14px;line-height:1.65;padding:20px;background:#f3f5f4}
 .investment-evidence p{margin:0 0 12px;overflow-wrap:anywhere}
+.market-guide{padding-block:48px;border-top:1px solid #d9dfdf}
+.market-guide h2{font:clamp(28px,3vw,42px)/1.2 'DM Serif Display',serif}
+.market-guide h3{margin-top:28px}
+.market-guide>p{max-width:850px;line-height:1.8}
+.market-table-scroll{overflow-x:auto;margin-block:24px}
+.market-table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}
+.market-table caption{text-align:left;padding-bottom:12px;font-weight:600}
+.market-table th,.market-table td{padding:14px;border-bottom:1px solid #d9dfdf;vertical-align:top}
+.market-table thead{background:#f3f5f4}
+.market-note{font-size:13px}
