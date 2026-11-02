@@ -7,7 +7,7 @@ export function comparisonProjects(candidates) {
     operation:i===0?'Entrada mais acessível no recorte':g.units.length>1?'Flexível na escolha da planta':'Perfil operacional a definir',
     operationReason:i===0?'Menor preço informado entre os projetos selecionados; não representa custo total da operação.':g.units.length>1?'Mais de uma configuração compacta cadastrada; não comprova flexibilidade de uso.':'Faltam dados operacionais para indicar perfil premium, corporativo ou operação simplificada.',
     documentaryStatus:'Não verificado',
-    units:g.units.map(u=>({price:u.price,area:u.area,bedrooms:u.bedrooms,parking:u.parking_spaces,type:u.unitType || 'A confirmar',stock:u.stock}))}));
+    units:g.units.map(u=>({id:u.id,price:u.price,area:u.area,bedrooms:u.bedrooms,parking:u.parking_spaces,type:u.unitType || 'A confirmar',stock:u.stock}))}));
 }
 export function renderComparison(projects) {
   const number=v=>v===null || v===undefined?'Não informado':String(v);

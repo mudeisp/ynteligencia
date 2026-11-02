@@ -557,6 +557,17 @@ test("investment context is sanitized and persisted beside original touches in t
   assert.equal(result.supabase,true);assert.equal(row.metadata.investment_context.initial_declared_intent,'residential');assert.equal(row.metadata.investment_context.profile.budget,700000);assert.equal(row.metadata.investment_context.selected_project,'orulo-1');assert.equal(row.metadata.investment_context.email,undefined);assert.equal(row.metadata.investment_context.study.comparison[0].units[0].parking,0);assert.equal(row.metadata.touches.first_touch.gclid,'OriginalClick');assert.equal(row.metadata.touches.current_touch.utm_campaign,'Residencial');
 });
 
+test("simulator lead persists separated origins and server-recomputed metrics without trusting client returns", async () => {
+  let row;const {FINANCIAL_FIELDS}=await import('./portal/finance-model.js');
+  const assumptions={...Object.fromEntries(Object.keys(FINANCIAL_FIELDS).map(k=>[k,0])),acquisition:600000,nightlyRate:300,occupancy:50,nightsAvailable:30,averageStay:3,financing:false};
+  const result=await withLeadFetch(async(url,options={})=>{
+    if(String(url).includes('/rest/v1/leads')&&options.method==='POST')row=JSON.parse(options.body);
+    return {ok:true,status:201,text:async()=>String(url).includes('/rest/v1/leads')&&options.method==='GET'?'[]':'',json:async()=>({})};
+  },baseLead({lead_event_id:'simulator-lead-123',investment_context:{airbnb_interest:true,profile:{budget:700000,objective:'income'},simulation:{projectId:'orulo-1',scenario:'conservative',inventory:{name:'Projeto real',price:600000,unitId:'unit-1',parking:0},assumptions,result:{metrics:{grossMonthly:999999}}}}}));
+  assert.equal(result.supabase,true);const s=row.metadata.investment_context.simulation;
+  assert.equal(s.scenario,'conservative');assert.equal(s.inventory.source,'portal_inventory');assert.equal(s.benchmark.applied,false);assert.equal(s.user.source,'user_assumptions');assert.equal(s.result.metrics.grossMonthly,4500);assert.equal(s.result.metrics.totalCapital,600000);assert.equal(row.metadata.investment_context.profile.objective,'income');
+});
+
 test("um lead_event_id cria uma linha e o retry não insere de novo", async () => {
   const rows = [];
   const calls = [];

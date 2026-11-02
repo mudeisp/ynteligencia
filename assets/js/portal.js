@@ -98,16 +98,20 @@ form?.addEventListener('submit',async event=>{
   const phone=String(form.elements.telefone.value).replace(/\D/g,'');
   if(phone.length<10 || phone.length>15){feedback.textContent='Informe um WhatsApp válido com DDD.';form.elements.telefone.focus();return;}
   if(!tracking){feedback.textContent='Não foi possível iniciar seu atendimento. Recarregue a página e tente novamente.';return;}
+  const investment=config.project?.city==='Vitória'?investmentJourney.context():null;
+  if(investment?.simulation?.inventory.unitId && investment.simulation.inventory.unitId!==u.db_id){feedback.textContent='A simulação corresponde a outra configuração. Selecione a configuração simulada ou refaça o cenário antes de enviar.';return;}
   const button=form.querySelector('[type=submit]');
   if(button.disabled)return;
   button.disabled=true;button.textContent='Registrando seu interesse…';feedback.textContent='';feedback.className='';
   const id=tracking.leadId(u.id);
-  const investment=config.project?.city==='Vitória'?investmentJourney.context():null;
-  const payload={...(investment?{investment_context:investment}:{}),nome:form.elements.nome.value.trim(),telefone:phone,email:form.elements.email.value.trim(),origem:'ynteligencia',pagina:location.href,empreendimento:project.name,property_id:u.id,neighborhood:u.neighborhood,property_value:u.value,bedrooms:u.bedrooms,inventory_source:u.source,visitor_id:tracking.visitorId,session_id:tracking.sessionId,lead_event_id:id,...tracking.attribution(),acquisition:acquisitionContext,touches:tracking.touches,session:{number:tracking.session.session_number,is_returning:tracking.session.is_returning,previous_session_id:tracking.session.previous_session_id,days_since_last_visit:tracking.session.days_since_last_visit},mensagem:`Interesse pelo portal Yincorp | ${project.name} | ${u.city}/${u.state} | Código ${u.id}${investment?` | Investimento em locação curta | Orçamento: ${investment.profile.budget || 'a definir'} | Prazo: ${investment.profile.timing} | Objetivo: ${investment.profile.objective} | Projetos comparados: ${investment.compared_projects.join(', ')}`:''}`};
+  const simulation=investment?.simulation;
+  const simulationSummary=simulation?` | Cenário hipotético: ${simulation.scenario} | Diária informada: ${simulation.assumptions.nightlyRate??'não informada'} | Ocupação informada: ${simulation.assumptions.occupancy??'não informada'} | Capital estimado: ${simulation.result.metrics.totalCapital??'incompleto'} | Hipóteses do usuário, sem promessa de retorno`:'';
+  const payload={...(investment?{investment_context:investment}:{}),nome:form.elements.nome.value.trim(),telefone:phone,email:form.elements.email.value.trim(),origem:'ynteligencia',pagina:location.href,empreendimento:project.name,property_id:u.id,neighborhood:u.neighborhood,property_value:u.value,bedrooms:u.bedrooms,inventory_source:u.source,visitor_id:tracking.visitorId,session_id:tracking.sessionId,lead_event_id:id,...tracking.attribution(),acquisition:acquisitionContext,touches:tracking.touches,session:{number:tracking.session.session_number,is_returning:tracking.session.is_returning,previous_session_id:tracking.session.previous_session_id,days_since_last_visit:tracking.session.days_since_last_visit},mensagem:`Interesse pelo portal Yincorp | ${project.name} | ${u.city}/${u.state} | Código ${u.id}${investment?` | Investimento em locação curta | Orçamento: ${investment.profile.budget || 'a definir'} | Prazo: ${investment.profile.timing} | Objetivo: ${investment.profile.objective} | Projetos comparados: ${investment.compared_projects.join(', ')}`:''}${simulationSummary}`};
   try {
     await submitInterest(payload);
     const recorded=await tracking.adsTrack('lead_created',{event_id:id,intent:intent(),property:property(u)});
-    void tracking.track('lead_created',tracked({property_id:u.id,property_uuid:u.db_id,lead_event_id:id,success:true,portal:true,...(investment?{investment_context:investment}:{})}));
+    void tracking.track('lead_created',tracked({property_id:u.id,property_uuid:u.db_id,lead_event_id:id,success:true,portal:true,...(investment?{investment_context:investmentJourney.telemetryContext()}:{})}));
+    if(investment?.simulation){void tracking.track('investment_lead_created',tracked({portal:true,property_id:u.id,scenario:investment.simulation.scenario}));window.gtag?.('event','investment_lead_created',{scenario:investment.simulation.scenario});}
     const conversionId=recorded?.event_id,sentKey=`portal_conversion_${id}`;
     let alreadySent=false;try{alreadySent=sessionStorage.getItem(sentKey)==='1';}catch{}
     if(conversionId && !alreadySent) {
@@ -118,7 +122,7 @@ form?.addEventListener('submit',async event=>{
     window.gtag?.('event','lead_created',{property_id:u.id,acquisition_channel:acquisitionContext.channel,acquisition_source:acquisitionContext.source,acquisition_medium:acquisitionContext.medium});
     feedback.textContent='Interesse registrado. Continue com o atendimento pelo WhatsApp.';
     const link=document.createElement('a');link.className='button primary';link.textContent='Continuar no WhatsApp ↗';
-    link.href=`https://wa.me/5511992976368?text=${encodeURIComponent(`Olá, meu nome é ${payload.nome}. Tenho interesse em ${project.name}, ${u.city}/${u.state}. Código: ${u.id}.${investment?' Quero analisar esta opção para locação curta.':''} ${location.origin+project.path}`)}`;
+    link.href=`https://wa.me/5511992976368?text=${encodeURIComponent(`Olá, meu nome é ${payload.nome}. Tenho interesse em ${project.name}, ${u.city}/${u.state}. Código: ${u.id}.${investment?' Quero analisar esta opção para locação curta.':''}${simulationSummary} ${location.origin+project.path}`)}`;
     link.target='_blank';link.rel='noopener noreferrer';
     link.addEventListener('click',()=>{void tracking.track('property_whatsapp_click',tracked({property_id:u.id,property_uuid:u.db_id,portal:true}));window.gtag?.('event','property_whatsapp_click',{property_id:u.id,acquisition_channel:acquisitionContext.channel});});
     feedback.append(link);button.hidden=true;
