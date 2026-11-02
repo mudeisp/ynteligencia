@@ -4,6 +4,7 @@ import { listingComposition, developmentComposition } from './editorial.js';
 import { html as h, json, money, imageUrl, slug, STATES, range, positive } from './model.js';
 
 import { unitLabel } from './presentation.js';
+import {marketProfile} from './market-guide.js';
 
 function renderFilters({route,filters,cities}) {
   const city=cities.find(c=>c.slug===(route.city || filters.city));
@@ -48,8 +49,9 @@ export function renderListing({route,filters,cities,results,groups=results.all,c
   if(launches) breadcrumbs.push({name:'Lançamentos',path:`/${uf}/${city.slug}/lancamentos`});
   const queryLink=page=>{const p=new URLSearchParams();for(const [key,val] of [['preco',filters.max],['quartos',filters.bedrooms],['q',filters.q],['ordem',filters.sort==='recentes'?'':filters.sort]]) if(val)p.set(key,String(val));if(page>1)p.set('pagina',String(page));return `${breadcrumbs.at(-1).path}${p.size?'?'+p:''}`;};
   const body=listingComposition({route,filters,cities,results,groups,filtersHTML:renderFilters({route,filters,cities}),queryLink});
-  const title=launches?`Lançamentos em Vitória ES${filters.page>1?` — página ${filters.page}`:''} | Yincorp`:`Empreendimentos em ${place}${filters.page>1?` — página ${filters.page}`:''} | Yincorp`;
-  const description=launches?'Compare lançamentos imobiliários em Vitória ES por bairro, preço, metragem e dormitórios. Consulte empreendimentos e disponibilidade atualizada na Yincorp.':`Conheça empreendimentos em ${place}. Compare preços, metragens, quartos e plantas. Consulte opções e disponibilidade com a Yincorp.`;
+  const profile=marketProfile(route);
+  const title=launches?`Lançamentos em Vitória ES${filters.page>1?` — página ${filters.page}`:''} | Yincorp`:profile?`${profile.heading}${filters.page>1?` — página ${filters.page}`:''} | Yincorp`:`Empreendimentos em ${place}${filters.page>1?` — página ${filters.page}`:''} | Yincorp`;
+  const description=launches?'Compare lançamentos imobiliários em Vitória ES por bairro, preço, metragem e dormitórios. Consulte empreendimentos e disponibilidade atualizada na Yincorp.':profile?`Compare imóveis e lançamentos em ${profile.name}: preços anunciados, metragens, tipologias e estágio. Veja o inventário Yincorp e o que conferir antes de comprar.`:`Conheça empreendimentos em ${place}. Compare preços, metragens, quartos e plantas. Consulte opções e disponibilidade com a Yincorp.`;
   return layout({title,description,canonical,origin,preview,breadcrumbs,body,noindex:!results.total || Boolean(filters.max || filters.bedrooms || filters.q || filters.sort!=='recentes'),schema:[{'@type':'ItemList',numberOfItems:results.total,itemListElement:results.items.map((g,i)=>({'@type':'ListItem',position:(filters.page-1)*18+i+1,name:g.name,url:origin+g.path}))}],data:{state:route.state,kind:route.kind,total:results.total,filters,cities:cities.map(c=>({slug:c.slug,neighborhoods:[...c.neighborhoods.values()]}))}});
 }
 function publicUnit(u,g) {return {id:String(u.external_id || u.id),db_id:u.id,name:g.name,neighborhood:g.neighborhood,city:g.city,state:g.state,value:positive(u.price),area:positive(u.area),bedrooms:u.bedrooms,source:String(u.source || 'novos')};}

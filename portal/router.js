@@ -91,6 +91,7 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin,p0,
       const groups=groupListing(listingRows,optimized);
       const cities=geography(groups,route.state);
       const city=cities.find(c=>c.slug===route.city);
+      if(route.state==='SP' && route.city==='sao-paulo' && route.neighborhood==='brooklin' && city && !city.neighborhoods.has('brooklin') && city.neighborhoods.has('brooklin-paulista'))return redirect('/sp/sao-paulo/brooklin-paulista'+(url.searchParams.size?'?'+url.searchParams:''));
       if(!groups.length || (route.city && !city) || (route.neighborhood && !city.neighborhoods.has(route.neighborhood))) return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
       if(route.kind==='investment') {
         if(path!==INVESTMENT_PATH)return redirect(INVESTMENT_PATH+(url.searchParams.size?'?'+url.searchParams:''));

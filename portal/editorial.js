@@ -1,6 +1,7 @@
 import {productSemantics,semanticTechnicalFields} from './semantics.js';
 import {html as h,money,slug,STATES,bedroomLabel,parkingLabel,range} from './model.js';
 import {delivery,typology,unitLabel,plansBlock,mediaBlock,gallery,VITORIA_IMAGE,vitoriaStory} from './presentation.js';
+import {SP_PRIORITY,marketProfile,renderMarketGuide} from './market-guide.js';
 
 const image=(url,alt,{eager=false,width=1600,height=1000}={})=>url?`<img src="${h(url)}" alt="${h(alt)}" width="${width}" height="${height}" loading="${eager?'eager':'lazy'}" ${eager?'fetchpriority="high"':''} decoding="async">`:'<div class="photo-missing">Imagem em atualização</div>';
 export function editorialCard(g) {
@@ -14,7 +15,8 @@ export function listingComposition({route,filters,cities,results,groups,filtersH
   const place=n?`${n.name}, ${city.name}`:city?.name || STATES[route.state];
   const scope=groups.filter(g=>g.state===route.state && (!city || slug(g.city)===city.slug) && (!n || slug(g.neighborhood)===n.slug));
   const stock=scope.flatMap(g=>g.units).reduce((sum,u)=>sum+(u.stock??0),0);
-  const heading=spHome?'São Paulo,<br>bairro a bairro.':home?'Lugares onde vale<br> a pena viver.':vitoria&&!n?'Imóveis e lançamentos em Vitória, Espírito Santo':`Um novo olhar<br>sobre ${h(place)}.`;
+  const profile=marketProfile(route);
+  const heading=profile?h(profile.heading):spHome?'São Paulo,<br>bairro a bairro.':home?'Lugares onde vale<br> a pena viver.':vitoria&&!n?'Imóveis e lançamentos em Vitória, Espírito Santo':`Um novo olhar<br>sobre ${h(place)}.`;
   const fallbackImage=scope.find(g=>g.photos.length)?.photos[0];
   const cityImage=(route.state==='ES' && (vitoria||home))?VITORIA_IMAGE:fallbackImage;
   const esPhoto=route.state==='ES' && (home||vitoria);
@@ -25,12 +27,10 @@ export function listingComposition({route,filters,cities,results,groups,filtersH
   const metrics=`<div class="catalog-metrics wrap" aria-label="Catálogo atual"><p><strong>${scope.length}</strong><span>empreendimentos</span></p>${stock?`<p><strong>${new Intl.NumberFormat('pt-BR').format(stock)}</strong><span>unidades com estoque informado</span></p>`:`<p><strong>${scope.reduce((s,g)=>s+g.units.length,0)}</strong><span>configurações no catálogo</span></p>`}<p><strong>${geographyCount}</strong><span>${geographyLabel}</span></p><div class="metrics-note">Endereços reais.<br>Novas possibilidades.</div></div>`;
   let cityLinks='';
   if(spHome) {
-    const preferred=['pinheiros','vila-mariana','moema','perdizes','jardim-paulista','itaim-bibi','brooklin-paulista','campo-belo'];
-    const allNeighborhoods=[...saoPauloCity.neighborhoods.values()];
+    const preferred=SP_PRIORITY;
     const featured=preferred.map(key=>saoPauloCity.neighborhoods.get(key)).filter(Boolean);
-    const fallback=allNeighborhoods.filter(b=>!featured.some(f=>f.slug===b.slug)).sort((a,b)=>b.count-a.count || a.name.localeCompare(b.name,'pt-BR'));
-    const neighborhoods=[...featured,...fallback].slice(0,8);
-    cityLinks=`<section class="places-section wrap sp-featured-places" id="cidades">${sectionHead('01','LUGARES PARA COMEÇAR','Oito bairros, oito jeitos de viver.','Uma curadoria inicial para descobrir São Paulo sem transformar a home em diretório.')}<div class="city-collection">${neighborhoods.map((b,i)=>{const g=groups.find(g=>g.state==='SP' && slug(g.city)===saoPauloCity.slug && slug(g.neighborhood)===b.slug && g.photos.length);return `<a class="city-feature" href="/${uf}/${saoPauloCity.slug}/${b.slug}"><figure>${image(g?.photos[0],g?`${g.name}, ${b.name}`:b.name)}<span>${String(i+1).padStart(2,'0')}</span></figure><div><h3>${h(b.name)} ↗</h3><p>${b.count} ${b.count===1?'empreendimento':'empreendimentos'}</p></div>${g?`<small>${h(g.name)} · imagem do empreendimento</small>`:''}</a>`;}).join('')}</div><nav class="all-cities sp-all-neighborhoods" aria-label="Explorar todos os bairros"><a class="editorial-link" href="/${uf}/${saoPauloCity.slug}#cidades">Explorar todos os bairros <span>↗</span></a></nav></section>`;
+    const neighborhoods=featured;
+    cityLinks=`<section class="places-section wrap sp-featured-places" id="cidades">${sectionHead('01','BAIRROS EM FOCO NA CAPITAL','Brooklin, Campo Belo, Moema e Itaim Bibi.','Comece pelos quatro bairros em foco ou explore os demais endereços da capital. O catálogo abaixo também inclui outras cidades do estado.')}<div class="city-collection">${neighborhoods.map((b,i)=>{const g=groups.find(g=>g.state==='SP' && slug(g.city)===saoPauloCity.slug && slug(g.neighborhood)===b.slug && g.photos.length);return `<a class="city-feature" href="/${uf}/${saoPauloCity.slug}/${b.slug}"><figure>${image(g?.photos[0],g?`${g.name}, ${b.name}`:b.name)}<span>${String(i+1).padStart(2,'0')}</span></figure><div><h3>${h(b.name)} ↗</h3><p>${b.count} ${b.count===1?'empreendimento':'empreendimentos'}</p></div>${g?`<small>${h(g.name)} · imagem do empreendimento</small>`:''}</a>`;}).join('')}</div><nav class="all-cities sp-all-neighborhoods" aria-label="Explorar todos os bairros"><a class="editorial-link" href="/${uf}/${saoPauloCity.slug}#cidades">Explorar todos os bairros <span>↗</span></a></nav></section>`;
   } else if(!n) {
     cityLinks=`<section class="places-section wrap" id="cidades">${sectionHead('01',home?'UM ESTADO, MUITAS FORMAS DE VIVER':'O LUGAR FAZ PARTE DA ESCOLHA',home?'Comece pelo lugar.':'Encontre o seu bairro.')}<div class="${home?'city-collection':'neighborhood-collection'}">${home?cities.slice(0,4).map((c,i)=>{const g=groups.find(g=>g.state===route.state && slug(g.city)===c.slug && g.photos.length);return `<a class="city-feature" href="/${uf}/${c.slug}"><figure>${image(c.slug==='vitoria'?VITORIA_IMAGE:g?.photos[0],c.slug==='vitoria'?'Praia de Camburi, Vitória':g?`${g.name}, ${c.name}`:c.name)}<span>${String(i+1).padStart(2,'0')}</span></figure><div><h3>${h(c.name)} ↗</h3><p>${c.count} empreendimentos</p></div>${c.slug==='vitoria'?`<small>Foto: Vilamir Azevedo · CC BY-SA 3.0</small>`:g?`<small>${h(g.name)} · imagem do empreendimento</small>`:''}</a>`;}).join(''):[...city.neighborhoods.values()].sort((a,b)=>b.count-a.count).map(b=>`<a href="/${uf}/${city.slug}/${b.slug}"><h3>${h(b.name)}</h3><span>${b.count} ${b.count===1?'empreendimento':'empreendimentos'} ↗</span></a>`).join('')}</div>${home?`<nav class="all-cities" aria-label="Todas as cidades">${cities.map(c=>`<a href="/${uf}/${c.slug}">${h(c.name)} <small>${c.count}</small> ↗</a>`).join('')}</nav>`:''}</section>`;
   }
@@ -41,7 +41,7 @@ export function listingComposition({route,filters,cities,results,groups,filtersH
   const facts=n
     ? `<p class="catalog-provenance wrap">O catálogo reúne ${results.total} ${results.total===1?'empreendimento':'empreendimentos'} em ${h(place)}/${h(route.state)}. Preços e disponibilidade sujeitos à confirmação.</p>`
     : `<p class="catalog-provenance wrap">O catálogo reúne ${results.total} ${results.total===1?'empreendimento':'empreendimentos'} em ${h(place)}${city?`/${h(route.state)}, distribuídos por ${city.neighborhoods.size} ${city.neighborhoods.size===1?'bairro com estoque':'bairros com estoque'}`:`, distribuídos por ${cities.length} cidades com estoque`}. Preços e disponibilidade sujeitos à confirmação.</p>`;
-  return hero+metrics+cityLinks+catalog+story+facts;
+  return hero+metrics+cityLinks+catalog+renderMarketGuide({route,groups,cities})+story+facts;
 }
 
 export function technicalSheet(g) {
