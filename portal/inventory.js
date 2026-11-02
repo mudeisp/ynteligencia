@@ -9,6 +9,31 @@ const FULL_SELECT=[...BASE,'description:raw_data->building->>description','image
   ...['type','reference','stock','features','parking','suites','bathrooms','private_area','discount_price','original_price'].map(field=>`${['type','reference','stock','features','parking'].includes(field)?'typology_':''}${field}:raw_data->typology->${field}`)
 ].join(',');
 const cache=new Map();
+const scopedCaches=new WeakMap();
+const SUMMARY_SELECT='id,building_id,city,state,neighborhood,price,development_name,title,active';
+// Cache only public listing snapshots, never contact/session data or full details.
+async function snapshot(request,key,load,{cacheable,now}) {
+  if(!cacheable)return load();
+  let entries=scopedCaches.get(request);
+  if(!entries){entries=new Map();scopedCaches.set(request,entries);}
+  const previous=entries.get(key);
+  if(previous?.pending)return previous.pending;
+  if(previous?.expires>now())return previous.rows;
+  const entry={};
+  const pending=Promise.resolve().then(load).then(rows=>{
+    if(entries.get(key)===entry){entry.rows=rows;entry.expires=now()+60000;delete entry.pending;}
+    return rows;
+  }).catch(error=>{if(entries.get(key)===entry)entries.delete(key);throw error;});
+  entry.pending=pending;entries.set(key,entry);
+  // Bound per-instance public snapshots; in-flight callers retain their promise.
+  while(entries.size>128)entries.delete(entries.keys().next().value);
+  return pending;
+}
+async function indexRequest(request,params) {
+  const response=await request(`portal_development_index?${params}`,{method:'GET',signal:AbortSignal.timeout(20000)});
+  if(!response.ok || !Array.isArray(response.data))throw new Error('portal_listing_unavailable');
+  return response;
+}
 const chunks=(values,size)=>Array.from({length:Math.ceil(values.length/size)},(_,i)=>values.slice(i*size,(i+1)*size));
 const parseTotal=value=>{const match=/\/(\d+)$/.exec(String(value||''));return match?Number(match[1]):null;};
 
@@ -45,9 +70,30 @@ async function readListingIndex(request,state) {
   throw new Error('inventory_read_limit');
 }
 
-export async function readInventory(state,{request,configured,now=Date.now,cacheable=false,mode='full',ids=[]}={}) {
+export async function readInventory(state,{request,configured,now=Date.now,cacheable=false,mode='full',ids=[],buildingIds=[],city,p0=process.env.PORTAL_P0!=='0'}={}) {
   if(!STATES[state]) throw new Error('invalid_state');
   if(!configured()) throw new Error('inventory_not_configured');
+  if(mode==='project-index') {
+    const buildings=[...new Set(buildingIds.map(String))];
+    if(!buildings.length || buildings.length>3 || buildings.some(id=>!/^\d+$/.test(id)))throw new Error('invalid_building_ids');
+    return snapshot(request,`${state}:projects:${buildings.slice().sort().join(',')}`,async()=>{
+      const params=new URLSearchParams({select:'*',state:`eq.${state}`,building_id:`in.(${buildings.join(',')})`,order:'id.asc',limit:'3'});
+      return (await indexRequest(request,params)).data;
+    },{cacheable,now});
+  }
+  if(mode==='city-summary') {
+    if(typeof city!=='string' || !city || city.length>200)throw new Error('invalid_city');
+    return snapshot(request,`${state}:city:${city}`,async()=>{
+      const rows=[];
+      // City names originate from the inventory, not route interpolation.
+      for(let offset=0;offset<50000;offset+=1000){
+        const params=new URLSearchParams({select:SUMMARY_SELECT,state:`eq.${state}`,city:`eq.${city}`,order:'id.asc',limit:'1000',offset:String(offset)});
+        const response=await indexRequest(request,params);rows.push(...response.data);
+        if(response.data.length<1000)return rows;
+      }
+      throw new Error('inventory_read_limit');
+    },{cacheable,now});
+  }
   const normalizedIds=[...new Set((ids||[]).map(String).filter(Boolean))];
   if(mode==='project') {
     if(!normalizedIds.length)return [];
@@ -61,6 +107,7 @@ export async function readInventory(state,{request,configured,now=Date.now,cache
     return rows;
   }
   const cacheKey=`${state}:listing:${PORTAL_SOURCE}`;
+  if(p0 && mode==='listing')return snapshot(request,cacheKey,()=>readListingIndex(request,state),{cacheable,now});
   const cached=cache.get(cacheKey);
   if(cacheable && cached && cached.expires>now()) return cached.rows;
   if(mode==='listing') {
