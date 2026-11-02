@@ -14,7 +14,7 @@ export function simulatorEvent(name,detail={}){
 export function initSimulator({config,journey,tracking,emit,document,location}) {
   const root=document.getElementById('investment-simulator');if(!root)return;
   const projects=config.investmentProjects||[],benchmarks=validBenchmarks(config.investmentBenchmarks);
-  const projectSelect=document.getElementById('sim-project'),unitSelect=document.getElementById('sim-unit'),scenarioSelect=document.getElementById('sim-scenario'),form=document.getElementById('sim-assumptions'),results=document.getElementById('sim-results'),comparison=document.getElementById('sim-comparison');
+  const projectSelect=document.getElementById('sim-project'),unitSelect=document.getElementById('sim-unit'),scenarioSelect=document.getElementById('sim-scenario'),form=document.getElementById('sim-assumptions'),results=document.getElementById('sim-results'),comparison=document.getElementById('sim-comparison'),handoff=document.getElementById('sim-handoff');
   let selected=null,unit=null,currentScenario='base',draft=null,comparisons=[],calculated=null;
   const drafts=new Map();
   const signal=(name,detail={})=>{if(config.preview!==true){const e=simulatorEvent(name,{project_id:selected?.id,scenario:currentScenario,...detail});emit(e.name,e.detail);}};
@@ -39,11 +39,11 @@ export function initSimulator({config,journey,tracking,emit,document,location}) 
     const a=draft.scenarios[currentScenario];
     for(const k of Object.keys(FINANCIAL_FIELDS))form.elements[k].value=a[k]??'';
     for(const k of ['financing','outsourced','furnished'])form.elements[k].value=String(a[k]);
-    document.getElementById('sim-copy-base').disabled=currentScenario==='base';results.replaceChildren();calculated=null;
+    document.getElementById('sim-copy-base').disabled=currentScenario==='base';results.replaceChildren();handoff.replaceChildren();calculated=null;
   }
   function chooseUnit(){
     saveForm();const index=Number(unitSelect.value);unit=unitSelect.value===''?null:selected.units[index];
-    document.getElementById('sim-editor').hidden=!unit;results.replaceChildren();
+    document.getElementById('sim-editor').hidden=!unit;results.replaceChildren();handoff.replaceChildren();
     const inventory=document.getElementById('sim-inventory');inventory.replaceChildren();if(!unit)return;
     const key=selected.id+':'+(unit.id||index);if(!drafts.has(key))drafts.set(key,{scenarios:createScenarios(unit),edited:{}});draft=drafts.get(key);
     inventory.append(element('h4','Dados do inventário — referência original'));
@@ -54,12 +54,12 @@ export function initSimulator({config,journey,tracking,emit,document,location}) 
   projectSelect.addEventListener('change',()=>{
     saveForm();draft=null;unit=null;selected=projects.find(p=>p.id===projectSelect.value);unitSelect.replaceChildren(element('option','Escolha uma configuração'));unitSelect.options[0].value='';unitSelect.disabled=!selected;
     for(const [i,u] of (selected?.units||[]).entries()){const option=element('option',`${u.type} · ${u.area??'?'} m² · ${brl(u.price)} · estoque ${u.stock??'não informado'}`);option.value=String(i);unitSelect.append(option);}
-    document.getElementById('sim-editor').hidden=true;document.getElementById('sim-inventory').replaceChildren();results.replaceChildren();showBenchmarks();
+    document.getElementById('sim-editor').hidden=true;document.getElementById('sim-inventory').replaceChildren();results.replaceChildren();handoff.replaceChildren();showBenchmarks();
   });
   unitSelect.addEventListener('change',chooseUnit);
   scenarioSelect.addEventListener('change',()=>{saveForm();currentScenario=SCENARIOS.includes(scenarioSelect.value)?scenarioSelect.value:'base';if(draft)fillForm();signal('investment_scenario_changed');});
   document.getElementById('sim-copy-base').addEventListener('click',()=>{if(draft&&currentScenario!=='base'){draft.scenarios[currentScenario]={...draft.scenarios.base};draft.edited[currentScenario]=draft.edited.base;fillForm();signal('investment_assumption_changed',{field:'copy_base'});}});
-  form.addEventListener('change',event=>{const key=event.target.name;if(![...Object.keys(FINANCIAL_FIELDS),'financing','outsourced','furnished'].includes(key))return;saveForm();if(key==='acquisition')draft.edited[currentScenario]=true;calculated=null;results.replaceChildren();signal('investment_assumption_changed',{field:key});});
+  form.addEventListener('change',event=>{const key=event.target.name;if(![...Object.keys(FINANCIAL_FIELDS),'financing','outsourced','furnished'].includes(key))return;saveForm();if(key==='acquisition')draft.edited[currentScenario]=true;calculated=null;results.replaceChildren();handoff.replaceChildren();signal('investment_assumption_changed',{field:key});});
   function snapshot(){return {projectId:selected.id,scenario:currentScenario,inventory:{...unit,unitId:unit.id,name:selected.name,neighborhood:selected.neighborhood,stage:selected.stage,delivery:selected.delivery},assumptions:{...draft.scenarios[currentScenario]},acquisitionEdited:draft.edited[currentScenario]===true,benchmark:{referenceIds:refs().map(b=>b.id)}};}
   function renderComparison(){
     comparison.replaceChildren();if(!comparisons.length)return;
@@ -75,7 +75,7 @@ export function initSimulator({config,journey,tracking,emit,document,location}) 
     for(const item of data){const detail=element('details'),summary=element('summary',`Premissas e alertas: ${item.inventory.name}`);detail.append(summary);for(const [k,v] of Object.entries(item.assumptions))if(FINANCIAL_FIELDS[k])detail.append(element('p',`${FINANCIAL_FIELDS[k][0]}: ${v??'Não informado'}`));for(const alert of item.result.alerts)detail.append(element('p',alert));const remove=element('button',`Remover ${item.inventory.name}`);remove.type='button';remove.addEventListener('click',()=>{comparisons=comparisons.filter(p=>p.projectId!==item.projectId);renderComparison();});detail.append(remove);comparison.append(detail);}
   }
   form.addEventListener('submit',event=>{
-    event.preventDefault();if(!selected||!unit||!draft)return;saveForm();const snap=snapshot(),computed=calculate(snap.assumptions,refs());calculated=snap;results.replaceChildren();
+    event.preventDefault();if(!selected||!unit||!draft)return;saveForm();const snap=snapshot(),computed=calculate(snap.assumptions,refs());calculated=snap;results.replaceChildren();handoff.replaceChildren();
     results.append(element('h3',`3. Resultado hipotético — ${SCENARIO_LABELS[currentScenario]}`));
     results.append(element('p',computed.missing.length?'Dados incompletos: métricas dependentes dos campos abaixo permanecem indisponíveis. Não tratamos campos vazios como gratuitos.':'Cálculo com as hipóteses preenchidas. Os valores não são previsão nem garantia de receita.',computed.missing.length?'sim-warning':''));
     if(computed.missing.length){const details=element('details'),summary=element('summary',`${computed.missing.length} campos não informados`);details.append(summary,element('p',computed.missing.map(k=>FINANCIAL_FIELDS[k][0]).join('; ')));results.append(details);}
@@ -83,10 +83,10 @@ export function initSimulator({config,journey,tracking,emit,document,location}) 
     const dl=element('dl',undefined,'sim-metrics');for(const [k,label] of Object.entries(labels)){dl.append(element('dt',label),element('dd',format(k,computed.metrics[k])));}results.append(dl);
     results.append(element('p',`Noites ocupadas no mês-modelo: ${decimal(computed.metrics.occupiedNights)}. Reservas aproximadas: ${decimal(computed.metrics.bookings)}. O anual repete esse mês; não prevê sazonalidade. Imóveis em obra não têm receita presumida antes da entrega.`));
     const add=element('button','Adicionar ou atualizar na comparação');add.type='button';add.addEventListener('click',()=>{const change=addComparison(comparisons,{...calculated,benchmarks:refs()});if(change.error){add.nextElementSibling.textContent=change.error;return;}comparisons=change.items;signal('investment_comparison_started',{comparison_count:comparisons.length});renderComparison();});results.append(add,element('p',''));
-    results.append(element('h4','5. Continue com o atendimento'));
-    results.append(element('p','Ao continuar para a ficha, este cenário e suas principais hipóteses serão mantidos temporariamente nesta sessão para anexar ao contato que você enviar. Não são salvos com sua identidade antes do envio do formulário de lead.'));
+    handoff.append(element('h4','5. Continue com o atendimento'));
+    handoff.append(element('p','Ao continuar para a ficha, este cenário e suas principais hipóteses serão mantidos temporariamente nesta sessão para anexar ao contato que você enviar. Não são salvos com sua identidade antes do envio do formulário de lead.'));
     const link=element('a','Quero analisar este cenário com a Yincorp','button primary');link.href=attributedHref(selected.path+(unit.id?'/tipologia/'+unit.id:''),location.search,tracking);
-    link.addEventListener('click',()=>{journey.select('investment');journey.project(selected.id);journey.setSimulation?.(cleanSimulation(calculated));signal('investment_project_selected_from_simulator');});results.append(link);
+    link.addEventListener('click',event=>{journey.select('investment');journey.project(selected.id);if(journey.setSimulation?.(cleanSimulation(calculated))===false){event.preventDefault();feedback.textContent='Não foi possível manter o cenário na sessão deste navegador. Suas hipóteses continuam nesta página; tente novamente antes de seguir para a ficha.';return;}signal('investment_project_selected_from_simulator');});const feedback=element('p','');feedback.setAttribute('role','status');handoff.append(link,feedback);
     signal('investment_simulation_completed');results.focus();
   });
 }

@@ -58,9 +58,11 @@ test('simulation carries across explicit selection only, is scrubbed from all te
  const reload=createJourney({storage,key:'session'});assert.equal(reload.context().simulation.assumptions.nightlyRate,300);reload.project('orulo-2');assert.equal(reload.context().simulation,undefined);
  const saved=JSON.parse(map.get('session'));saved.simulation=sim();saved.simulation_expires_at=Date.now()-1;map.set('session',JSON.stringify(saved));assert.equal(createJourney({storage,key:'session'}).context().simulation,undefined);
  const e=simulatorEvent('investment_assumption_changed',{project_id:'orulo-1',scenario:'base',field:'nightlyRate',value:300,financed:480000});assert.deepEqual(e.detail,{project_id:'orulo-1',scenario:'base',field:'nightlyRate'});
+ const blocked=createJourney({storage:{getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}},key:'blocked'});blocked.select('investment');assert.equal(blocked.setSimulation(sim()),false);
 });
 test('simulator SSR includes editable inputs, formula boundaries, disclaimer, separate benchmark and no promises; URLs contain attribution only',()=>{
  const html=renderSimulator([]);for(const key of Object.keys(FINANCIAL_FIELDS))assert.ok(html.includes(`name="${key}"`),key);
  assert.match(html,/Esta simulação não constitui promessa de rentabilidade/);assert.match(html,/Benchmarks externos de mercado/);assert.match(html,/Campos ausentes não são considerados gratuitos/);assert.match(html,/Cash-on-cash/);assert.doesNotMatch(html,/rentabilidade garantida|retorno garantido|apto para Airbnb|resultado esperado/);
+ assert.ok(html.indexOf('id="sim-comparison"')<html.indexOf('id="sim-handoff"'));
  const href=attributedHref('/es/vitoria/empreendimento/projeto--orulo-1','?gclid=Original&utm_campaign=Residential&nightlyRate=300&occupancy=80');assert.ok(href.includes('gclid=Original'));assert.ok(href.includes('utm_campaign=Residential'));assert.ok(!href.includes('nightlyRate'));
 });
