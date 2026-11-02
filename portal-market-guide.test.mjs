@@ -18,6 +18,10 @@ test('all four requested neighborhoods and Vitória deliver specific SSR, canoni
  }
  const es=await page('/es/vitoria',[row({state:'ES',city:'Vitória'})]);assert.match(es.body,/GUIA DE COMPRA/);assert.match(es.body,/\/es\/vitoria\/investimento-airbnb/);
 });
+test('explicit NR designation conflicting with declared residential finality remains uncertain',()=>{
+ const groups=groupDevelopments([row({development_name:'Projeto - NR'}),row({id:'nonres',building_id:'2',development_name:'Projeto não residencial',finality:'Não residencial'})]);
+ const summary=marketSummary(groups);assert.ok(summary.some(b=>b.use==='Uso a confirmar (identificação NR)'));assert.ok(summary.some(b=>b.use==='Não residencial'));assert.ok(!summary.some(b=>b.use==='Residencial'));
+});
 test('guide is scoped to supported landing pages and base inventory even on filters; no unsupported claims or injected supplier HTML',async()=>{
  assert.equal(marketProfile({kind:'intent',state:'ES',city:'vitoria'}),null);
  const rows=[row({development_name:'<script>bad()</script>'}),row({id:'expensive',price:1500000})];

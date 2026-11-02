@@ -14,6 +14,9 @@ export function marketProfile(route){return ['city','neighborhood'].includes(rou
 const useLabel=(u,g)=>{
   const use=slug(u.finality || g.details?.finality);
   if(/nao-residencial|comercial|^nr$/.test(use))return 'Não residencial';
+  // An explicit NR designation conflicting with supplier finality is uncertainty,
+  // never authorization to reclassify a unit from its marketing name.
+  if(/(?:^|[\s-])NR(?:$|[\s-])/i.test(g.name))return 'Uso a confirmar (identificação NR)';
   return use==='residencial'?'Residencial':'Uso a confirmar';
 };
 export function marketSummary(groups){
@@ -28,7 +31,8 @@ export function marketSummary(groups){
     if(positive(u.area))b.areas.push(Number(u.area));
   }
   const order=['Residencial','Não residencial','Uso a confirmar'];
-  return [...buckets.values()].sort((a,b)=>order.indexOf(a.use)-order.indexOf(b.use) || a.label.localeCompare(b.label,'pt-BR')).map(b=>({use:b.use,label:b.label,projects:b.projects.size,price:b.prices.length?Math.min(...b.prices):null,area:range(b.areas,' m²')}));
+  const rank=use=>order.includes(use)?order.indexOf(use):2;
+  return [...buckets.values()].sort((a,b)=>rank(a.use)-rank(b.use) || a.use.localeCompare(b.use,'pt-BR') || a.label.localeCompare(b.label,'pt-BR')).map(b=>({use:b.use,label:b.label,projects:b.projects.size,price:b.prices.length?Math.min(...b.prices):null,area:range(b.areas,' m²')}));
 }
 export function renderMarketGuide({route,groups,cities}){
   const profile=marketProfile(route);if(!profile)return '';
