@@ -70,6 +70,7 @@ export function parseRoute(path) {
   const city=parts[1];
   if(!/^[a-z0-9-]+$/.test(city)) return null;
   if(parts.length===2) return {kind:'city',state,city};
+  if(parts.length===3 && state==='ES' && city==='vitoria' && parts[2]==='investimento-airbnb') return {kind:'investment',state,city};
   if(parts.length===3 && state==='ES' && city==='vitoria' && parts[2]==='lancamentos') return {kind:'intent',state,city,intent:'lancamentos'};
   if(parts.length===3 && parts[2]!=='empreendimento' && /^[a-z0-9-]+$/.test(parts[2])) return {kind:'neighborhood',state,city,neighborhood:parts[2]};
   const match=/--(orulo-\d+|imovel-[a-f0-9]{16})$/.exec(parts[3] || '');
