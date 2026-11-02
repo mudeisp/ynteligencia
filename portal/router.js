@@ -1,5 +1,6 @@
 import { groupDevelopments, geography, parseRoute, parseFilters, listDevelopments, STATES, slug, html, positive } from './model.js';
 import { renderListing, renderDevelopment, renderError } from './render.js';
+import { renderInvestment, INVESTMENT_PATH } from './investment.js';
 
 function origin() {
   const value=process.env.PORTAL_CANONICAL_ORIGIN || 'https://www.yincorp.com.br';
@@ -15,6 +16,7 @@ export function sitemap(groups,base) {
     for(const c of cities) {
       paths.set(`${root}/${c.slug}`,null);
       if(state==='ES' && c.slug==='vitoria') paths.set(`${root}/${c.slug}/lancamentos`,null);
+      if(state==='ES' && c.slug==='vitoria') paths.set(INVESTMENT_PATH,null);
       for(const n of c.neighborhoods.values()) paths.set(`${root}/${c.slug}/${n.slug}`,null);
     }
   }
@@ -90,6 +92,10 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin,p0,
       const cities=geography(groups,route.state);
       const city=cities.find(c=>c.slug===route.city);
       if(!groups.length || (route.city && !city) || (route.neighborhood && !city.neighborhoods.has(route.neighborhood))) return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
+      if(route.kind==='investment') {
+        if(path!==INVESTMENT_PATH)return redirect(INVESTMENT_PATH+(url.searchParams.size?'?'+url.searchParams:''));
+        return finish(200,renderInvestment({groups,city,canonical:base+INVESTMENT_PATH,origin:base,preview:isPreview}));
+      }
       if(['development','unit'].includes(route.kind)) {
         const lightProject=groups.find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
         if(!lightProject)return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
