@@ -42,6 +42,7 @@ test('detail projects media only for selected UUID and renders all photos with d
   await createRentalHandler({request:async p=>{query=new URLSearchParams(p.split('?')[1]);return {ok:true,data:[row]};}})({method:'GET',url:'/alugar/imovel/'+row.id},res);
   assert.match(query.get('select'),/media_images:raw_data->images/);assert.match(query.get('id'),/^eq\./);
   assert.equal((res.body.match(/data-photo="/g)||[]).length,18);assert.match(res.body,/Ver todas as 18 fotos/);assert.match(res.body,/data-src="https:\/\/example.com\/17.jpg"/);assert.match(res.body,/&lt;script&gt;unsafe/);
+  assert.match(res.body,/aria-label="Miniaturas das fotos"/);assert.match(res.body,/aria-label="Abrir foto 5 de 18"/);
   assert.match(res.body,/Aluguel \+ condomínio/);assert.match(res.body,/Subtotal sem IPTU/);
 });
 test('one-photo and no-photo properties have honest fallbacks; unknown fees are omitted',async()=>{
