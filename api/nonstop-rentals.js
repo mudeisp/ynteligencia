@@ -3,7 +3,7 @@ const NONSTOP_BASE_URL = "https://www.usenonstop.com/api/unstable/imoveis/todos"
 const PER_PAGE = 50;
 
 function clean(value) { return String(value ?? "").trim(); }
-function num(value) { const n = Number(value); return Number.isFinite(n) ? n : null; }
+function num(value) { if (value === null || value === undefined || value === '') return null; const n = Number(value); return Number.isFinite(n) ? n : null; }
 function arr(value) { return Array.isArray(value) ? value : []; }
 
 function imageUrl(property) {
@@ -12,8 +12,8 @@ function imageUrl(property) {
 }
 
 function coordinates(property) {
-  const lat = num(property?.address?.latitude ?? property?.latitude ?? property?.location?.lat);
-  const lng = num(property?.address?.longitude ?? property?.longitude ?? property?.location?.lng);
+  const lat = num(property?.address?.latitude ?? property?.latitude ?? property?.location?.lat ?? property?.address?.geo?.coordinates?.[1]);
+  const lng = num(property?.address?.longitude ?? property?.longitude ?? property?.location?.lng ?? property?.address?.geo?.coordinates?.[0]);
   return { latitude: lat, longitude: lng };
 }
 
@@ -83,19 +83,21 @@ async function upsert(rows, key) {
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ ok: false, error: "Method not allowed" });
   const token = process.env.NONSTOP_API_TOKEN;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  res.setHeader('Cache-Control', 'no-store');
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!token) return res.status(500).json({ ok: false, error: "NONSTOP_API_TOKEN não configurado" });
   const action = clean(req.query?.action || "debug").toLowerCase();
   const page = Math.max(1, Number.parseInt(req.query?.page || "1", 10) || 1);
   const pages = Math.min(20, Math.max(1, Number.parseInt(req.query?.pages || "1", 10) || 1));
   try {
     if (action === "envcheck") return res.status(200).json({ ok: true, operation: "LOCACAO", nonstop_token: true, supabase_service_role: Boolean(supabaseKey) });
-    if (action === "debug") {
+    if (action === "debug" || action === "inventory") {
       const result = await fetchPage(token, page);
       const normalized = result.properties.slice(0, 3).map(normalizeRental);
-      return res.status(200).json({ ok: true, operation: "LOCACAO", page, detected_total: result.total, received: result.properties.length, sample: normalized });
+      return res.status(200).json({ ok: true, operation: "LOCACAO", page, detected_total: result.total, received: result.properties.length, sample: normalized, ...(action === 'inventory' ? { rows: result.properties.map(normalizeRental) } : {}) });
     }
     if (action !== "sync") return res.status(400).json({ ok: false, error: "action inválida" });
+    if (!process.env.MIA_READ_TOKEN || req.headers?.authorization !== `Bearer ${process.env.MIA_READ_TOKEN}`) return res.status(401).json({ ok: false, error: 'Unauthorized' });
     if (!supabaseKey) return res.status(500).json({ ok: false, error: "SUPABASE_SERVICE_ROLE_KEY não configurada" });
     let saved = 0; let received = 0; let detectedTotal = null;
     for (let p = page; p < page + pages; p += 1) {
