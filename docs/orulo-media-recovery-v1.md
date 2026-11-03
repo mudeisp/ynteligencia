@@ -29,10 +29,10 @@ A saída informa, entre outros campos:
 - falhas por building ID;
 - lista dos empreendimentos recuperáveis.
 
-A escrita exige opção explícita:
+A escrita exige RPC CAS instalada, lista explícita do Lote 1 (99 IDs, sem 86644) e ledger persistente novo. Consulte [liberação e rollback](orulo-media-cas.md). O comando abaixo é apenas para uma futura execução autorizada:
 
 ```bash
-node scripts/orulo-media-recovery.mjs --states=SP --write
+node scripts/orulo-media-recovery.mjs --states=SP --building-ids-file=scripts/orulo-media-recovery-lote1.ids.json --ledger=/caminho/persistente/lote1-cas-NOVO.jsonl --write
 ```
 
 Mesmo no modo de escrita, somente `raw_data.building.floor_plans` é enriquecido e `updated_at` é atualizado. O restante de `raw_data` é preservado. O script não altera campos normalizados de preço, estoque, localização ou tipologia.
@@ -42,9 +42,10 @@ Mesmo no modo de escrita, somente `raw_data.building.floor_plans` é enriquecido
 1. Rodar primeiro em dry-run com `--limit` pequeno.
 2. Conferir `buildingsRecoverable`, `planImagesReturnedLive` e `failures`.
 3. Testar manualmente casos-controle, incluindo Mandarim The Legend (`building_id=46939`).
-4. Só depois rodar `--write` em um estado por vez.
+4. Só depois liberar escrita CAS restrita aos 99 IDs autorizados, com ledger persistente e snapshots V2.
 5. Revalidar LPs no `www.yincorp.com.br` após a atualização.
 
 ## Vídeos e tour virtual
 
 Este V1 não inventa nem busca vídeo em fontes externas. Vídeos e `virtual_tour` continuam sendo medidos no snapshot do payload Órulo para distinguir ausência na fonte de falha de renderização. A recuperação automática deste V1 é restrita a imagens de plantas, porque existe endpoint Órulo específico e já conhecido para elas.
+
