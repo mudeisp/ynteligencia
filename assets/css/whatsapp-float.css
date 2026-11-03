@@ -1,0 +1,15 @@
+/* Mounted directly on body so transformed content cannot capture fixed positioning. */
+body > .whatsapp-direct-float{
+  position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));
+  width:56px;height:56px;min-width:56px;min-height:56px;padding:0;
+  border:0;border-radius:50%;background:#176b42;color:#fff;
+  display:grid;place-items:center;box-sizing:border-box;cursor:pointer;
+  box-shadow:0 4px 16px #10252b30;z-index:1000
+}
+body > .whatsapp-direct-float svg{display:block;width:28px;height:28px;pointer-events:none}
+body > .whatsapp-direct-float:hover{background:#125534}
+body > .whatsapp-direct-float:focus-visible{outline:3px solid #fff;outline-offset:3px;box-shadow:0 0 0 6px #176b42}
+body > .whatsapp-direct-float[hidden],body:has(dialog[open]) > .whatsapp-direct-float{display:none!important}
+/* Leave a separate lane for the existing availability action; never cover its controls. */
+body:has(.architecture-story) .mobile-contact.floating-property-contact{right:88px}
+.photo-detail-shell .detail-primary-bar{padding-right:88px}

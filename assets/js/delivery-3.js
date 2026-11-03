@@ -1986,7 +1986,8 @@ function yntCurrentUrlHasPaidAttribution(){
 
 async function supabaseTrack(
   eventType,
-  metadata={}
+  metadata={},
+  transport={}
 ){
 
   try{
@@ -1995,6 +1996,7 @@ async function supabaseTrack(
       `${SUPABASE_URL}/rest/v1/events`,
       {
         method:"POST",
+        ...(transport.keepalive ? {keepalive:true} : {}),
 
         headers:{
           "apikey":
@@ -2380,6 +2382,11 @@ function yntAdsTrack(eventName, detail){
       property
     };
     if(detail && detail.event_id) payload.event_id = detail.event_id;
+    if(eventName === "whatsapp_cta_clicked") payload.metadata = {
+      ...detail?.metadata,
+      first_touch:{...YNTELIGENCIA_TOUCHES.first_touch},
+      current_touch:{...YNTELIGENCIA_TOUCHES.current_touch}
+    };
     return fetch("/api/ads?action=event", {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
@@ -2557,21 +2564,11 @@ function yntLeadConversionId(propertyId){
 
 function openPropertySpecialist(p){
   if(!p)return;
-  try{
-    gtag("event","property_whatsapp_click",{
-      property_id:String(p.id||""),
-      property_name:p.name||"",
-      neighborhood:p.neighborhood||"",
-      property_value:Number(p.value)||0
-    });
-  }catch(error){}
-  supabaseTrack("property_whatsapp_click",{
-    property_id:String(p.id||""),
-    property_name:p.name||"",
-    neighborhood:p.neighborhood||"",
-    property_value:Number(p.value)||0
+  return YntWhatsAppContact.open(p,{
+    adsTrack:yntAdsTrack,
+    track:(name,metadata)=>supabaseTrack(name,metadata,{keepalive:true}),
+    intent:yntAdsIntentFromState()
   });
-  openLeadCapture(p);
 }
 
 function interest(
@@ -3434,7 +3431,7 @@ function openLeadCapture(p,prefill={}){
           .join("\n");
 
           const whatsappUrl=
-            `https://wa.me/5511992976368?text=${encodeURIComponent(whatsappMessage)}`;
+            YntWhatsAppContact.url(whatsappMessage);
 
           console.log(
             "YNT_WHATSAPP_OPEN",

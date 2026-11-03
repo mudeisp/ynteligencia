@@ -523,7 +523,9 @@ async function showPhotoModal(id){
       <section class="detail-human-help">
         <h3>Pronto para o próximo passo?</h3>
         <p>Para disponibilidade, visita ou negociação, fale com um especialista.</p>
-        <button class="detail-specialist-human-btn" type="button">FALAR COM ESPECIALISTA</button>
+        <button class="detail-specialist-human-btn" type="button">Falar pelo WhatsApp</button>
+        <button class="contact-secondary detail-specialist-form-btn" type="button">Prefiro deixar meus dados</button>
+      <button class="detail-primary-cta detail-agent-cta" type="button">${journey.fromAgent?"VOLTAR À CONVERSA":"QUERO SABER MAIS"}</button>
       </section>
 
       <section class="detail-similar" id="detailSimilarSection">
@@ -533,7 +535,8 @@ async function showPhotoModal(id){
       </section>
     </main>
     <div class="detail-primary-bar">
-      <button class="detail-primary-cta" type="button">${journey.fromAgent?"VOLTAR À CONVERSA":"QUERO SABER MAIS"}</button>
+      <button class="detail-whatsapp-cta" type="button">Consultar disponibilidade</button>
+
       <p class="detail-agent-status" role="status" hidden></p>
     </div>
 `;
@@ -551,7 +554,9 @@ async function showPhotoModal(id){
     if(plan.delta)history.go(plan.delta);
     else window.location.assign(plan.href);
   });
+  modal.querySelector(".detail-whatsapp-cta")?.addEventListener("click",()=>openLeadCapture(p));
   modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
+  modal.querySelector(".detail-specialist-form-btn")?.addEventListener("click",()=>openLeadCapture(p));
   document.body.appendChild(modal);
   document.body.style.overflow="hidden";
   modal.querySelector(".detail-gallery-close")?.focus({preventScroll:true});

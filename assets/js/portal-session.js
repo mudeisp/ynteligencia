@@ -826,7 +826,8 @@ function resolveYnteligenciaTouches(){
 
 async function supabaseTrack(
   eventType,
-  metadata={}
+  metadata={},
+  transport={}
 ){
 
   try{
@@ -835,6 +836,7 @@ async function supabaseTrack(
       `${SUPABASE_URL}/rest/v1/events`,
       {
         method:"POST",
+        ...(transport.keepalive ? {keepalive:true} : {}),
 
         headers:{
           "apikey":
@@ -1220,6 +1222,11 @@ function yntAdsTrack(eventName, detail){
       property
     };
     if(detail && detail.event_id) payload.event_id = detail.event_id;
+    if(eventName === "whatsapp_cta_clicked") payload.metadata = {
+      ...detail?.metadata,
+      first_touch:{...YNTELIGENCIA_TOUCHES.first_touch},
+      current_touch:{...YNTELIGENCIA_TOUCHES.current_touch}
+    };
     return fetch("/api/ads?action=event", {
       method:"POST",
       headers:{ "Content-Type":"application/json" },

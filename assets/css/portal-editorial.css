@@ -2174,3 +2174,18 @@ dialog p {
 
 /* Local financial simulator, progressively opened. */
 .simulator-workspace{padding-block:24px}.simulator-workspace label{display:flex;flex-direction:column;gap:8px;margin-block:14px;font-weight:600}.simulator-workspace input,.simulator-workspace select{font:inherit;padding:12px;border:1px solid #aab7bc;background:white;color:#142d40;border-radius:4px;box-sizing:border-box;width:100%;min-width:0}.sim-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}.simulator-workspace fieldset{border:1px solid #d9dfdf;padding:18px;margin:20px 0;min-width:0}.simulator-workspace details{padding:16px 0;border-bottom:1px solid #d9dfdf}.simulator-workspace summary{cursor:pointer;font-weight:600}.simulator-workspace button{padding:14px 20px;cursor:pointer;white-space:normal}.simulator-step{max-width:850px}.sim-metrics{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:0;margin:24px 0}.sim-metrics dt,.sim-metrics dd{padding:12px;border-bottom:1px solid #d9dfdf;margin:0;overflow-wrap:anywhere}.sim-metrics dd{text-align:right;font-weight:600}.sim-warning{padding:16px;background:#fff2d8;border-left:3px solid #927032}.sim-disclaimer{padding:20px;background:#edf2f1}.sim-compare-table{min-width:800px}#sim-results:focus{outline:2px solid #142d40;outline-offset:6px}#sim-inventory{padding:16px;background:#edf2f1}#sim-inventory:empty{display:none}.simulator-workspace .button{white-space:normal}@media(max-width:600px){.sim-fields{grid-template-columns:1fr}.sim-metrics{grid-template-columns:1fr}.sim-metrics dt{border-bottom:0;padding-bottom:2px}.sim-metrics dd{text-align:left;padding-top:4px}.simulator-workspace fieldset{padding:14px}}
+
+
+/* Shared direct contact hierarchy, including the mobile sticky bar. */
+.contact-actions{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;max-width:420px}
+.contact-actions .button.whatsapp-cta{min-height:56px;background:#176b42;color:#fff;border-color:#176b42;text-align:center;font-size:15px;letter-spacing:0;text-transform:none;cursor:pointer}
+.contact-actions .button.whatsapp-cta:hover{background:#125534}
+.contact-secondary{display:block;min-height:44px;padding:10px 8px;border:0;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:1.4;text-align:center;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.contact-actions :focus-visible{outline:3px solid #176b42;outline-offset:3px}
+@media(max-width:768px){
+  .mobile-contact{flex-wrap:wrap;gap:6px}
+  .mobile-contact>div:first-child{display:none}
+  .mobile-contact .contact-actions{max-width:none;flex:1 1 100%}
+  .mobile-contact .whatsapp-cta{min-height:56px;font-size:16px;padding:14px}
+  body:has(.mobile-contact){padding-bottom:130px}
+}

@@ -707,7 +707,7 @@ $("specialistFloat")?.addEventListener(
     if(openDetail){
       const detailId=openDetail.dataset?.propertyId;
       const detailProperty=detailId ? propertyForInteraction(detailId) : null;
-      if(detailProperty){openPropertySpecialist(detailProperty);return;}
+      if(detailProperty){openLeadCapture(detailProperty);return;}
     }
 
     openLeadCapture({
@@ -719,6 +719,26 @@ $("specialistFloat")?.addEventListener(
     });
   }
 );
+
+$("specialistForm")?.addEventListener("click",()=>{
+  const detailId=document.getElementById("photoModal")?.dataset?.propertyId;
+  const p=detailId ? propertyForInteraction(detailId) : null;
+  openLeadCapture(p || {
+    id:"specialist-general",name:"Atendimento personalizado Ynteligencia",
+    neighborhood:$("catalogNeighborhood")?.value || adIntent?.neighborhood || "",
+    value:0,source:"especialista_catalogo"
+  });
+});
+
+YntWhatsAppContact.mountFloating({
+  resolveProperty:()=>{
+    const id=document.getElementById("photoModal")?.dataset?.propertyId;
+    return id ? propertyForInteraction(id) : null;
+  },
+  getOptions:()=>({adsTrack:yntAdsTrack,
+    track:(name,metadata)=>supabaseTrack(name,metadata,{keepalive:true}),
+    intent:yntAdsIntentFromState()})
+});
 
 // Original main L20590
 let paidExperience=null;

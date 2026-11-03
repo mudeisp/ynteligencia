@@ -470,7 +470,7 @@ test("telemetria de lead não leva PII e o fluxo para se a API não confirma", (
     "catalog_load_more",
     "property_view",
     "property_interest",
-    "property_whatsapp_click",
+    "whatsapp_cta_clicked",
     "ai_assistant_open",
     "ai_assistant_message",
     "push_subscribed",
