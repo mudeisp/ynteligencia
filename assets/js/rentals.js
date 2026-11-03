@@ -41,7 +41,8 @@ if(gallery&&dialog){
   };
   const open=(index,target)=>{opener=target;show(index,'open');dialog.showModal();};
   items.forEach((a,i)=>a.addEventListener('click',event=>{event.preventDefault();open(i,a);}));
-  gallery.querySelector('[data-gallery-open]').addEventListener('click',event=>open(railIndex,event.currentTarget));
+  document.querySelectorAll('[data-gallery-open]').forEach(button=>button.addEventListener('click',event=>open(railIndex,event.currentTarget)));
+  document.querySelectorAll('[data-story-photo]').forEach(a=>a.addEventListener('click',event=>{event.preventDefault();open(Number(a.dataset.storyPhoto)||0,a);}));
   dialog.querySelector('[data-gallery-close]').addEventListener('click',()=>dialog.close());
   dialog.querySelector('[data-gallery-prev]').addEventListener('click',()=>show(selected-1,'previous'));
   dialog.querySelector('[data-gallery-next]').addEventListener('click',()=>show(selected+1,'next'));
@@ -61,7 +62,12 @@ if(gallery&&dialog){
 }
 
 const form=document.getElementById('rental-lead'),feedback=document.getElementById('rental-feedback');
-document.querySelectorAll('[data-rental-contact]').forEach(a=>a.addEventListener('click',()=>{void track('rental_contact_click',{surface:a.closest('.mobile-contact')?'mobile_bar':'page'});void adsEvent('specialist_cta_opened');}));
+const contactDialog=document.querySelector('.rental-contact-dialog');
+document.querySelectorAll('[data-rental-contact]').forEach(a=>a.addEventListener('click',event=>{
+  if(contactDialog){event.preventDefault();contactDialog.showModal();}
+  void track('rental_contact_click',{surface:a.closest('.mobile-contact')?'mobile_bar':'page'});void adsEvent('specialist_cta_opened');
+}));
+document.querySelector('[data-rental-contact-close]')?.addEventListener('click',()=>contactDialog?.close());
 const mobileBar=document.querySelector('.mobile-contact');
 if(mobileBar&&typeof IntersectionObserver!=='undefined'){
   const visible=new Map();new IntersectionObserver(entries=>{for(const e of entries)visible.set(e.target,e.isIntersecting);mobileBar.classList.toggle('is-hidden',[...visible.values()].some(Boolean));},{threshold:0}).observe(document.getElementById('contato'));
