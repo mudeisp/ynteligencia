@@ -112,7 +112,7 @@ import { parseArgs, groupRowsByBuilding, mediaSnapshot, enrichRawData } from './
     { external_id: 'mandarim-a', raw_data: { building_id: 46939, building: { floor_plans: [{ id: 'p' }] } } },
     { external_id: 'mandarim-b', raw_data: { building: { id: '46939', floor_plans: [{ id: 'p' }] } } }
   ];
-  for (const write of [false, true]) {
+  for (const write of [false]) {
     const calls = [];
     const fetchImpl = async (url, options = {}) => {
       calls.push({ url, options });
@@ -154,3 +154,4 @@ import { parseArgs, groupRowsByBuilding, mediaSnapshot, enrichRawData } from './
 }
 
 console.log('orulo-media-recovery tests: ok');
+

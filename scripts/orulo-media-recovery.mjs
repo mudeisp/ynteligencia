@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { casFloorPlans, imageOnlyPlans, validateWriteScope, openLedger } from './orulo-media-cas.mjs';
 import { pathToFileURL } from 'node:url';
 import { fetchOruloFloorPlans, mergeFloorPlans } from '../orulo-floor-plans.js';
 
@@ -10,6 +12,15 @@ export function parseArgs(argv = process.argv.slice(2)) {
   const buildingArgs = argv.filter((arg) => arg === '--building-id' || arg.startsWith('--building-id='));
   if (buildingArgs.length > 1) throw new Error('BUILDING_ID_INVALID');
   const buildingId = buildingArgs.length ? validateBuildingId(buildingArgs[0].slice('--building-id='.length)) : null;
+  const listArgs = argv.filter((arg) => arg === '--building-ids' || arg.startsWith('--building-ids='));
+  if (listArgs.length > 1 || (listArgs.length && buildingId !== null)) throw new Error('BUILDING_IDS_INVALID');
+  const fileArgs = argv.filter(arg=>arg === '--building-ids-file' || arg.startsWith('--building-ids-file='));
+  if (fileArgs.length>1 || (fileArgs.length && (listArgs.length || buildingId!==null))) throw new Error('BUILDING_IDS_INVALID');
+  const fromFile = fileArgs.length ? JSON.parse(readFileSync(fileArgs[0].slice('--building-ids-file='.length),'utf8')) : null;
+  const ledgerArgs = argv.filter(arg=>arg.startsWith('--ledger='));
+  if (ledgerArgs.length>1) throw new Error('CAS_LEDGER_INVALID');
+  const ledger = ledgerArgs[0]?.slice('--ledger='.length);
+  const buildingIds = fromFile !== null ? validateBuildingIds(fromFile) : listArgs.length ? validateBuildingIds(listArgs[0].slice('--building-ids='.length).split(',')) : null;
   const statesArg = argv.find((arg) => arg.startsWith('--states='));
   const limitArg = argv.find((arg) => arg.startsWith('--limit='));
   const states = String(statesArg?.split('=')[1] || process.env.ORULO_MEDIA_STATES || 'SP,ES')
@@ -17,7 +28,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     .map((value) => value.trim().toUpperCase())
     .filter((value) => /^[A-Z]{2}$/.test(value));
   const limit = Math.max(0, Number(limitArg?.split('=')[1] || process.env.ORULO_MEDIA_LIMIT_BUILDINGS || 0) || 0);
-  return { states: [...new Set(states)], limit, buildingId, write: argv.includes('--write') };
+  return { states: [...new Set(states)], limit, buildingId, buildingIds, ledger, write: argv.includes('--write') };
 }
 
 function validateBuildingId(value) {
@@ -25,6 +36,11 @@ function validateBuildingId(value) {
     throw new Error('BUILDING_ID_INVALID');
   }
   return value;
+}
+
+function validateBuildingIds(values) {
+  if (!Array.isArray(values) || !values.length) throw new Error('BUILDING_IDS_INVALID');
+  return [...new Set(values.map(validateBuildingId))];
 }
 
 function required(name, value) {
@@ -62,7 +78,7 @@ export async function listRows({ states, fetchImpl = fetch }) {
   for (const state of states) {
     for (let from = 0; ; from += pageSize) {
       const to = from + pageSize - 1;
-      const url = `${SUPABASE_URL}/rest/v1/properties?select=external_id,state,city,development_name,raw_data&source=eq.novos&active=eq.true&state=eq.${encodeURIComponent(state)}`;
+      const url = `${SUPABASE_URL}/rest/v1/properties?select=id,external_id,state,city,development_name,raw_data&source=eq.novos&active=eq.true&state=eq.${encodeURIComponent(state)}`;
       const response = await fetchImpl(url, { headers: { ...supabaseHeaders(), Range: `${from}-${to}` } });
       if (!response.ok) throw new Error(`SUPABASE_LIST_FAILED_${state}_${response.status}`);
       const batch = await response.json();
@@ -118,18 +134,11 @@ export function enrichRawData(rawData, enrichedPlans) {
   };
 }
 
-async function patchRow(externalId, rawData, fetchImpl = fetch) {
-  const endpoint = `${SUPABASE_URL}/rest/v1/properties?external_id=eq.${encodeURIComponent(externalId)}`;
-  const response = await fetchImpl(endpoint, {
-    method: 'PATCH',
-    headers: { ...supabaseHeaders(), Prefer: 'return=minimal' },
-    body: JSON.stringify({ raw_data: rawData, updated_at: new Date().toISOString() })
-  });
-  if (!response.ok) throw new Error(`SUPABASE_PATCH_FAILED_${response.status}`);
-}
-
-export async function runRecovery({ fetchImpl = fetch, args = parseArgs() } = {}) {
+export async function runRecovery({ fetchImpl = fetch, args = parseArgs(), record: recordImpl } = {}) {
   const buildingId = args.buildingId == null ? null : validateBuildingId(args.buildingId);
+  const buildingIds = args.buildingIds == null ? null : validateBuildingIds(args.buildingIds);
+  if (buildingIds && buildingId !== null) throw new Error('BUILDING_IDS_INVALID');
+  if (args.write) validateWriteScope(args);
   const token = await getOruloToken(fetchImpl);
   const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
   const rows = await listRows({ states: args.states, fetchImpl });
@@ -138,13 +147,20 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs() } = {}
     buildings = buildings.filter(([id]) => id === buildingId);
     if (!buildings.length) throw new Error('BUILDING_ID_NOT_FOUND');
   }
+  if (buildingIds !== null) {
+    const selected = new Set(buildingIds);
+    buildings = buildings.filter(([id]) => selected.has(id));
+    const found = new Set(buildings.map(([id]) => id));
+    if (buildingIds.some((id) => !found.has(id))) throw new Error('BUILDING_IDS_NOT_FOUND');
+  }
   if (args.limit > 0) buildings = buildings.slice(0, args.limit);
 
   const summary = {
     mode: args.write ? 'write' : 'dry-run',
     states: args.states,
     buildingId,
-    rows: buildingId === null ? rows.length : buildings.reduce((count, [, buildingRows]) => count + buildingRows.length, 0),
+    buildingIds,
+    rows: buildingId === null && buildingIds === null ? rows.length : buildings.reduce((count, [, buildingRows]) => count + buildingRows.length, 0),
     buildings: buildings.length,
     buildingsWithDeclaredPlans: 0,
     buildingsMissingPlanImagesBefore: 0,
@@ -155,10 +171,14 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs() } = {}
     planImagesReturnedLive: 0,
     rowsChanged: 0,
     rowsWritten: 0,
+    conflicts: 0,
+    unchanged: 0,
     failures: [],
     recoverable: []
   };
 
+  const record = args.write ? (recordImpl ?? openLedger(args.ledger)) : null;
+  try {
   for (const [buildingId, buildingRows] of buildings) {
     const representative = buildingRows[0];
     const before = mediaSnapshot(representative?.raw_data);
@@ -188,14 +208,18 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs() } = {}
       }
 
       for (const row of buildingRows) {
-        const nextRaw = enrichRawData(row.raw_data, livePlans);
+        const nextRaw = { ...row.raw_data, building: { ...row.raw_data?.building, floor_plans: imageOnlyPlans(row.raw_data, livePlans) } };
         const current = JSON.stringify(floorPlans(row.raw_data));
         const next = JSON.stringify(floorPlans(nextRaw));
         if (current === next) continue;
         summary.rowsChanged += 1;
         if (args.write) {
-          await patchRow(row.external_id, nextRaw, fetchImpl);
-          summary.rowsWritten += 1;
+          const result = await casFloorPlans({id:row.id,buildingId,livePlans,fetchImpl,record,
+            url:SUPABASE_URL,key:required('SUPABASE_SECRET_KEY',SUPABASE_SECRET_KEY)});
+          if (result.status==='AMBIGUOUS' || result.ambiguousResponse) throw new Error('CAS_STOP_AMBIGUOUS');
+          if (result.status==='UPDATED') summary.rowsWritten += 1;
+          if (result.status==='CONFLICT' || result.status==='NOT_FOUND') summary.conflicts += 1;
+          if (result.status==='UNCHANGED') summary.unchanged += 1;
         }
       }
 
@@ -208,6 +232,7 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs() } = {}
         write: args.write
       });
     } catch (error) {
+      if (args.write) throw error; // fail closed; inspect ledger/readback before any new attempt
       const failure = { buildingId, error: error?.message || String(error) };
       summary.failures.push(failure);
       console.warn('ORULO_MEDIA_RECOVERY_FAILED', failure);
@@ -215,6 +240,7 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs() } = {}
   }
 
   return summary;
+  } finally { if (!recordImpl) record?.close?.(); }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -228,3 +254,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       process.exitCode = 1;
     });
 }
+
