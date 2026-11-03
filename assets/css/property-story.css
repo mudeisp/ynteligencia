@@ -1669,21 +1669,3 @@ they do not choose a price-tier theme. */ .art-cover--landscape .art-cover-image
     font-size:clamp(36px,10.5vw,45px)
   }
 }
-
-
-/* Persistent property contact; context comes from the existing page CTA binding. */
-body:has(.architecture-story) .mobile-contact.floating-property-contact{
-  position:fixed;inset:auto 20px 20px auto;display:flex;width:320px;max-width:calc(100vw - 40px);
-  padding:8px;border:1px solid #d9dfd8;border-radius:16px;background:#faf8f3;
-  box-shadow:0 8px 28px #10252b24;z-index:40;opacity:1;visibility:visible;pointer-events:auto
-}
-.floating-property-contact>div:first-child{display:none}
-.floating-property-contact .contact-actions{max-width:none}
-.floating-property-contact .button.whatsapp-cta{width:100%;min-height:56px;padding:14px 18px;border-radius:10px;font-size:15px}
-body:has(dialog[open]) .floating-property-contact{display:none!important}
-body:has(.floating-property-contact){padding-bottom:calc(100px + env(safe-area-inset-bottom))}
-@media(max-width:768px){
-  body:has(.architecture-story) .mobile-contact.floating-property-contact{
-    left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));width:auto;max-width:none;padding:6px
-  }
-}
