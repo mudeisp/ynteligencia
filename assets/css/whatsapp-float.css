@@ -10,6 +10,5 @@ body > .whatsapp-direct-float svg{display:block;width:28px;height:28px;pointer-e
 body > .whatsapp-direct-float:hover{background:#125534}
 body > .whatsapp-direct-float:focus-visible{outline:3px solid #fff;outline-offset:3px;box-shadow:0 0 0 6px #176b42}
 body > .whatsapp-direct-float[hidden],body:has(dialog[open]) > .whatsapp-direct-float{display:none!important}
-/* Leave a separate lane for the existing availability action; never cover its controls. */
-body:has(.architecture-story) .mobile-contact.floating-property-contact{right:88px}
-.photo-detail-shell .detail-primary-bar{padding-right:88px}
+/* Keep the existing availability bar untouched; place the independent icon above it. */
+@media(max-width:768px){body > .whatsapp-direct-float{bottom:calc(88px + env(safe-area-inset-bottom))}}

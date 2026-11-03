@@ -79,22 +79,8 @@ citySelect?.addEventListener('change',()=>{
   const city=config.cities?.find(c=>c.slug===citySelect.value);
   for(const n of city?.neighborhoods || [])neighborhoodSelect.add(new Option(n.name,n.slug));
 });
-document.querySelectorAll('[data-whatsapp]').forEach(button=>button.addEventListener('click',()=>{
-  if(preview)return;
-  const unit=project?.units.find(u=>u.db_id===button.dataset.whatsapp);
-  // An aggregate project contact never pretends that the first unit was selected.
-  const target=unit ? {...unit,development_name:project.name} : {
-    name:project?.name,development_name:project?.name,city:project?.city,
-    neighborhood:project?.neighborhood,development_id:project?.token
-  };
-  void globalThis.YntWhatsAppContact.open(target,{
-    adsTrack:tracking?.adsTrack,
-    track:(name,metadata)=>tracking?.track(name,metadata,{keepalive:true}),
-    intent:intent(),
-    metadata:tracked({portal:true,development_id:project?.token})
-  });
-}));
-if(project && !preview)globalThis.YntWhatsAppContact.mountFloating({
+if(project){
+const whatsappFloat=globalThis.YntWhatsAppContact.mountFloating({
   resolveProperty:()=>{
     const unit=project.units.find(u=>u.db_id===config.selectedUnit);
     return unit ? {...unit,development_name:project.name} : {
@@ -108,6 +94,8 @@ if(project && !preview)globalThis.YntWhatsAppContact.mountFloating({
     intent:intent(),metadata:tracked({portal:true,development_id:project.token})
   })
 });
+if(preview && whatsappFloat)whatsappFloat.disabled=true;
+}
 document.querySelectorAll('[data-contact]').forEach(button=>button.addEventListener('click',()=>{
   const unit=project?.units.find(u=>u.db_id===button.dataset.contact);
   form.elements.unit.value=unit?.db_id || config.selectedUnit || '';
@@ -152,7 +140,7 @@ form?.addEventListener('submit',async event=>{
     window.gtag?.('event','lead_created',{property_id:u.id,acquisition_channel:acquisitionContext.channel,acquisition_source:acquisitionContext.source,acquisition_medium:acquisitionContext.medium});
     feedback.textContent='Interesse registrado. Continue com o atendimento pelo WhatsApp.';
     const link=document.createElement('a');link.className='button primary';link.textContent='Continuar no WhatsApp ↗';
-    link.href=globalThis.YntWhatsAppContact.url(`Olá, meu nome é ${payload.nome}. Tenho interesse em ${project.name}, ${u.city}/${u.state}. Código: ${u.id}.${investment?' Quero analisar esta opção para locação curta.':''}${simulationSummary} ${location.origin+project.path}`);
+    link.href=`https://wa.me/5511992976368?text=${encodeURIComponent(`Olá, meu nome é ${payload.nome}. Tenho interesse em ${project.name}, ${u.city}/${u.state}. Código: ${u.id}.${investment?' Quero analisar esta opção para locação curta.':''}${simulationSummary} ${location.origin+project.path}`)}`;
     link.target='_blank';link.rel='noopener noreferrer';
     link.addEventListener('click',()=>{void tracking.track('property_whatsapp_click',tracked({property_id:u.id,property_uuid:u.db_id,portal:true}));window.gtag?.('event','property_whatsapp_click',{property_id:u.id,acquisition_channel:acquisitionContext.channel});});
     feedback.append(link);button.hidden=true;
