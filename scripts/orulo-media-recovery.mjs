@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { fetchOruloFloorPlans, mergeFloorPlans } from '../orulo-floor-plans.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wzaegidwtdjuhqchpdpd.supabase.co';
@@ -6,6 +7,9 @@ const ORULO_CLIENT_SECRET = process.env.ORULO_CLIENT_SECRET;
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 
 export function parseArgs(argv = process.argv.slice(2)) {
+  const buildingArgs = argv.filter((arg) => arg === '--building-id' || arg.startsWith('--building-id='));
+  if (buildingArgs.length > 1) throw new Error('BUILDING_ID_INVALID');
+  const buildingId = buildingArgs.length ? validateBuildingId(buildingArgs[0].slice('--building-id='.length)) : null;
   const statesArg = argv.find((arg) => arg.startsWith('--states='));
   const limitArg = argv.find((arg) => arg.startsWith('--limit='));
   const states = String(statesArg?.split('=')[1] || process.env.ORULO_MEDIA_STATES || 'SP,ES')
@@ -13,7 +17,14 @@ export function parseArgs(argv = process.argv.slice(2)) {
     .map((value) => value.trim().toUpperCase())
     .filter((value) => /^[A-Z]{2}$/.test(value));
   const limit = Math.max(0, Number(limitArg?.split('=')[1] || process.env.ORULO_MEDIA_LIMIT_BUILDINGS || 0) || 0);
-  return { states: [...new Set(states)], limit, write: argv.includes('--write') };
+  return { states: [...new Set(states)], limit, buildingId, write: argv.includes('--write') };
+}
+
+function validateBuildingId(value) {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+    throw new Error('BUILDING_ID_INVALID');
+  }
+  return value;
 }
 
 function required(name, value) {
@@ -118,16 +129,22 @@ async function patchRow(externalId, rawData, fetchImpl = fetch) {
 }
 
 export async function runRecovery({ fetchImpl = fetch, args = parseArgs() } = {}) {
+  const buildingId = args.buildingId == null ? null : validateBuildingId(args.buildingId);
   const token = await getOruloToken(fetchImpl);
   const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
   const rows = await listRows({ states: args.states, fetchImpl });
   let buildings = [...groupRowsByBuilding(rows).entries()];
+  if (buildingId !== null) {
+    buildings = buildings.filter(([id]) => id === buildingId);
+    if (!buildings.length) throw new Error('BUILDING_ID_NOT_FOUND');
+  }
   if (args.limit > 0) buildings = buildings.slice(0, args.limit);
 
   const summary = {
     mode: args.write ? 'write' : 'dry-run',
     states: args.states,
-    rows: rows.length,
+    buildingId,
+    rows: buildingId === null ? rows.length : buildings.reduce((count, [, buildingRows]) => count + buildingRows.length, 0),
     buildings: buildings.length,
     buildingsWithDeclaredPlans: 0,
     buildingsMissingPlanImagesBefore: 0,
@@ -200,7 +217,7 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs() } = {}
   return summary;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runRecovery()
     .then((summary) => {
       console.log(JSON.stringify(summary, null, 2));
