@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeRental } from "./nonstop-rentals.js";
+import { normalizeRental,fetchRentalDetail } from "./nonstop-rentals.js";
 
 test("normaliza aluguel Nonstop sem alterar identidade de venda", () => {
   const row = normalizeRental({
@@ -34,4 +34,17 @@ test("imóvel sem aluguel mensal positivo não fica ativo", () => {
 test("imóvel alugado fica inativo", () => {
   const row = normalizeRental({ id: "leased", availableFor: ["LOCACAO"], transactionStatus: "ALUGADO", values: { longStay: 3000 } });
   assert.equal(row.active, false);
+});
+
+test('summary parking counts remain numeric, detail media and description are retained',()=>{
+  assert.equal(normalizeRental({id:'p',parkingLots:2}).parking_spaces,2);
+  const row=normalizeRental({id:'p',media:{images:[{url:'https://example.com/a.jpg'}]},description:'Real description'});
+  assert.equal(row.raw_data.images.length,1);assert.equal(row.raw_data.description,'Real description');
+});
+test('detail enrichment validates provider identity and cannot silently replace media with a failed response',async()=>{
+  const card={id:'p',base36Id:'AB123',image:'https://example.com/cover.jpg'};
+  const detailed=await fetchRentalDetail(card,'test',async(url,init)=>{assert.match(url,/\/AB123$/);assert.equal(init.headers.Authorization,'Bearer test');return {ok:true,json:async()=>({id:'p',media:{images:[{url:'https://example.com/2.jpg'}]}})};});
+  assert.equal(detailed.image,card.image);assert.equal(detailed.media.images.length,1);
+  await assert.rejects(fetchRentalDetail(card,'test',async()=>({ok:false,status:503})),/indisponível/);
+  await assert.rejects(fetchRentalDetail(card,'test',async()=>({ok:true,json:async()=>({id:'other'})})),/divergente/);
 });
