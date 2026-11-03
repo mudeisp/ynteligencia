@@ -4393,3 +4393,18 @@ body.ad-match-mode .results .card-body{padding-bottom:22px}
   .photo-detail-shell .detail-gallery-count{display:none}
   .photo-detail-shell .detail-tech-grid{grid-template-columns:1fr}
 }
+
+
+/* WhatsApp direct contact: keep the form visible as a secondary action. */
+.contact-secondary{display:block;min-height:44px;padding:10px 8px;border:0;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:1.4;text-align:center;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.specialist-contact{position:fixed;right:12px;bottom:12px;z-index:220;width:min(330px,calc(100vw - 24px));padding:8px;border-radius:16px;background:#faf8f3;box-shadow:0 8px 24px #0002}
+.specialist-contact .specialist-float{position:relative!important;inset:auto!important;width:100%!important;min-width:0!important;max-width:none!important;min-height:56px!important;height:auto!important;justify-content:center!important;gap:10px!important;padding:12px!important;background:#176b42!important;color:#fff!important;border:0!important;transform:none!important}
+.specialist-contact .specialist-photo-wrap,.specialist-contact .specialist-kicker{display:none!important}
+.specialist-contact .specialist-copy{width:auto!important;min-width:0!important;height:auto!important;gap:12px!important;margin:0!important}
+.specialist-contact .specialist-title{display:block!important;font-size:16px!important}
+.specialist-contact .contact-secondary{width:100%}
+body.home-mode .specialist-contact,body:has(#photoModal) .specialist-contact{display:none}
+.detail-primary-bar .detail-whatsapp-cta,.detail-human-help .detail-specialist-human-btn{width:min(100%,752px);min-height:56px;padding:14px 16px;border:0;border-radius:10px;background:#176b42;color:#fff;font-family:inherit;font-size:17px;font-weight:600;line-height:1.4;cursor:pointer}
+.detail-primary-bar .detail-agent-cta{min-height:44px;padding:8px;background:transparent;color:#514c44;font-size:13px}
+.specialist-contact :focus-visible,.detail-primary-bar :focus-visible{outline:3px solid #176b42;outline-offset:3px}
+@media(max-width:768px){.specialist-contact{left:12px;width:auto;bottom:calc(8px + env(safe-area-inset-bottom))}}
