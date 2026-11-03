@@ -91,10 +91,10 @@ export default async function handler(req, res) {
   const pages = Math.min(20, Math.max(1, Number.parseInt(req.query?.pages || "1", 10) || 1));
   try {
     if (action === "envcheck") return res.status(200).json({ ok: true, operation: "LOCACAO", nonstop_token: true, supabase_service_role: Boolean(supabaseKey) });
-    if (action === "debug" || action === "inventory") {
+    if (action === "debug") {
       const result = await fetchPage(token, page);
       const normalized = result.properties.slice(0, 3).map(normalizeRental);
-      return res.status(200).json({ ok: true, operation: "LOCACAO", page, detected_total: result.total, received: result.properties.length, sample: normalized, ...(action === 'inventory' ? { rows: result.properties.map(normalizeRental) } : {}) });
+      return res.status(200).json({ ok: true, operation: "LOCACAO", page, detected_total: result.total, received: result.properties.length, sample: normalized.map(({raw_data,...row})=>({...row,raw_data:{operation:'LOCACAO',values:raw_data.values}})) });
     }
     if (action !== "sync") return res.status(400).json({ ok: false, error: "action inválida" });
     if (!process.env.MIA_READ_TOKEN || req.headers?.authorization !== `Bearer ${process.env.MIA_READ_TOKEN}`) return res.status(401).json({ ok: false, error: 'Unauthorized' });

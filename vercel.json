@@ -23,6 +23,14 @@
   ],
   "rewrites": [
     {
+      "source": "/alugar",
+      "destination": "/api/rentals?rentalPath=/alugar"
+    },
+    {
+      "source": "/alugar/:rest*",
+      "destination": "/api/rentals?rentalPath=/alugar/:rest*"
+    },
+    {
       "source": "/api/portal/lead",
       "destination": "/api/lead"
     },
