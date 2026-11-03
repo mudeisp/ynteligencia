@@ -707,10 +707,10 @@ $("specialistFloat")?.addEventListener(
     if(openDetail){
       const detailId=openDetail.dataset?.propertyId;
       const detailProperty=detailId ? propertyForInteraction(detailId) : null;
-      if(detailProperty){openPropertySpecialist(detailProperty);return;}
+      if(detailProperty){openLeadCapture(detailProperty);return;}
     }
 
-    openPropertySpecialist({
+    openLeadCapture({
       id:"specialist-general",
       name:"Atendimento personalizado Ynteligencia",
       neighborhood:$("catalogNeighborhood")?.value || adIntent?.neighborhood || "",
@@ -728,6 +728,16 @@ $("specialistForm")?.addEventListener("click",()=>{
     neighborhood:$("catalogNeighborhood")?.value || adIntent?.neighborhood || "",
     value:0,source:"especialista_catalogo"
   });
+});
+
+YntWhatsAppContact.mountFloating({
+  resolveProperty:()=>{
+    const id=document.getElementById("photoModal")?.dataset?.propertyId;
+    return id ? propertyForInteraction(id) : null;
+  },
+  getOptions:()=>({adsTrack:yntAdsTrack,
+    track:(name,metadata)=>supabaseTrack(name,metadata,{keepalive:true}),
+    intent:yntAdsIntentFromState()})
 });
 
 // Original main L20590

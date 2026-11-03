@@ -554,7 +554,7 @@ async function showPhotoModal(id){
     if(plan.delta)history.go(plan.delta);
     else window.location.assign(plan.href);
   });
-  modal.querySelector(".detail-whatsapp-cta")?.addEventListener("click",()=>openPropertySpecialist(p));
+  modal.querySelector(".detail-whatsapp-cta")?.addEventListener("click",()=>openLeadCapture(p));
   modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   modal.querySelector(".detail-specialist-form-btn")?.addEventListener("click",()=>openLeadCapture(p));
   document.body.appendChild(modal);
