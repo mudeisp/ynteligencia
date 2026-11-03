@@ -98,7 +98,7 @@ async function portalHarness(state='SP',{selected=true}={}){
   h.c.MutationObserver=class{constructor(fn){observers.push(fn);}observe(){}};
   const {submitInterest}=await import('./assets/js/portal-contact.js');
   Object.assign(h.c,{document:{body:{appendChild:node=>{nodes[node.id]=node;}},referrer:'',getElementById:id=>nodes[id],querySelector:selector=>selector.startsWith('dialog[open]')&&dialog.open?dialog:null,querySelectorAll:selector=>selector==='[data-contact]'?[secondary]:selector==='[data-whatsapp]'?[primary]:[],addEventListener(){},createElement:()=>element()},localStorage:storage,sessionStorage:storage,__tracking:tracking,submitInterest:payload=>submitInterest(payload,{request:async(url,init)=>{leadRequests.push({url,payload:JSON.parse(init.body)});return {ok:true,json:async()=>({success:true,supabase:true})};}})});
-  const code=portal.replace(/^import .*;\n/gm,'').replace("await import('./portal-session.js')",'__tracking');
+  const code=portal.replace(/\r\n/g,'\n').replace(/^import .*;\n/gm,'').replace("await import('./portal-session.js')",'__tracking');
   await vm.runInContext('(async()=>{'+code+'})()',h.c);
   h.requests.length=0;
   return {...h,primary,secondary,form,dialog,leadRequests,openCalls,icon:nodes['ynt-whatsapp-float'],refresh:()=>observers.forEach(fn=>fn()),tracking};

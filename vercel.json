@@ -37,6 +37,14 @@
     {
       "source": "/:uf(ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)/:rest*",
       "destination": "/api/development?portalPath=/:uf/:rest*"
+    },
+    {
+      "source": "/alugar",
+      "destination": "/api/rentals?rentalPath=/alugar"
+    },
+    {
+      "source": "/alugar/:rest*",
+      "destination": "/api/rentals?rentalPath=/alugar/:rest*"
     }
   ],
   "crons": [
