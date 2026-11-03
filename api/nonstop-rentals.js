@@ -28,7 +28,7 @@ export function normalizeRental(property) {
   const propertyTax = num(property?.values?.propertyTax ?? property?.fees?.propertyTax ?? property?.propertyTax ?? null);
   const privateArea = num(property?.areas?.private ?? property?.privateArea ?? property?.area ?? null);
   const totalArea = num(property?.areas?.total ?? property?.totalArea ?? null);
-  const parkingSpaces = Array.isArray(property?.parkingLots) ? property.parkingLots.length : num(property?.parkingSpaces ?? property?.parking ?? null);
+  const parkingSpaces = Array.isArray(property?.parkingLots) ? property.parkingLots.length : num(property?.parkingLots ?? property?.parkingSpaces ?? property?.parking ?? null);
   const base36Id = clean(property?.base36Id);
   const active = !availableFor.includes("INDISPONIVEL") && !["VENDIDO", "ALUGADO", "INATIVO"].includes(status) && rentPrice !== null && rentPrice > 0;
   return {
@@ -72,6 +72,17 @@ async function fetchPage(token, page, perPage = PER_PAGE) {
   return { properties: Array.isArray(properties) ? properties : [], total, raw: data };
 }
 
+export async function fetchRentalDetail(card,token,request=fetch){
+  const code=clean(card.base36Id);
+  if(!/^[a-z0-9]+$/i.test(code))throw Error('Código Nonstop inválido');
+  const response=await request(`https://www.usenonstop.com/api/unstable/imoveis/${code}`,{headers:{Authorization:`Bearer ${token}`,Accept:'application/json'},signal:AbortSignal.timeout(20000)});
+  if(!response.ok)throw Error(`Detalhe Nonstop indisponível (${response.status})`);
+  const detail=await response.json();
+  if(clean(detail.id)!==clean(card.id))throw Error('Identidade Nonstop divergente');
+  // A failed detail never overwrites previously enriched media with a summary card.
+  return {...card,...detail,image:card.image};
+}
+
 async function upsert(rows, key) {
   if (!rows.length) return 0;
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rental_properties?on_conflict=external_id`, { method: "POST", headers: headers(key, "resolution=merge-duplicates,return=minimal"), body: JSON.stringify(rows) });
@@ -104,7 +115,11 @@ export default async function handler(req, res) {
       const result = await fetchPage(token, p);
       if (detectedTotal === null) detectedTotal = result.total;
       received += result.properties.length;
-      const rows = result.properties.map(normalizeRental).filter(row => row.rent_price !== null && row.rent_price > 0);
+      const rows=[];
+      for(let i=0;i<result.properties.length;i+=5){
+        const detailed=await Promise.all(result.properties.slice(i,i+5).map(card=>fetchRentalDetail(card,token)));
+        rows.push(...detailed.map(normalizeRental).filter(row=>row.rent_price!==null && row.rent_price>0));
+      }
       saved += await upsert(rows, supabaseKey);
       if (result.properties.length < PER_PAGE) break;
     }
