@@ -68,6 +68,28 @@ document.querySelectorAll('[data-rental-contact]').forEach(a=>a.addEventListener
   void track('rental_contact_click',{surface:a.closest('.mobile-contact')?'mobile_bar':'page'});void adsEvent('specialist_cta_opened');
 }));
 document.querySelector('[data-rental-contact-close]')?.addEventListener('click',()=>contactDialog?.close());
+// Reuse the portal's visual component, but keep rental lead capture as the gate.
+// Its navigation adapter opens the existing form; only the confirmed lead link opens WhatsApp.
+if(contactDialog&&window.YntWhatsAppContact?.mountFloating){
+  const floating=window.YntWhatsAppContact.mountFloating({
+    resolveProperty:()=>property||{id:'rental_catalog',name:'Busca de imóvel para alugar',source:'nonstop'},
+    getOptions:()=>({
+      navigate:()=>contactDialog.showModal(),
+      track:()=>track('rental_contact_click',{surface:'floating_whatsapp'}),
+      adsTrack:()=>adsEvent('specialist_cta_opened',{surface:'floating_whatsapp'}),
+      metadata:{purpose:'LOCACAO',operation:'LOCACAO'}
+    })
+  });
+  if(floating&&typeof IntersectionObserver!=='undefined'){
+    const visible=new Map();
+    const observer=new IntersectionObserver(entries=>{
+      for(const e of entries)visible.set(e.target,e.isIntersecting);
+      floating.classList.toggle('rental-float-paused',[...visible.values()].some(Boolean));
+    },{threshold:.15});
+    for(const node of document.querySelectorAll('#contato,.rental-offer-conversation'))observer.observe(node);
+    if(window.matchMedia('(max-width:700px)').matches){const filters=document.querySelector('.filters');if(filters)observer.observe(filters);}
+  }
+}
 const mobileBar=document.querySelector('.mobile-contact');
 if(mobileBar&&typeof IntersectionObserver!=='undefined'){
   const visible=new Map();new IntersectionObserver(entries=>{for(const e of entries)visible.set(e.target,e.isIntersecting);mobileBar.classList.toggle('is-hidden',[...visible.values()].some(Boolean));},{threshold:0}).observe(document.getElementById('contato'));
