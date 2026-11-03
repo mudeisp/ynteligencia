@@ -710,7 +710,7 @@ $("specialistFloat")?.addEventListener(
       if(detailProperty){openPropertySpecialist(detailProperty);return;}
     }
 
-    openLeadCapture({
+    openPropertySpecialist({
       id:"specialist-general",
       name:"Atendimento personalizado Ynteligencia",
       neighborhood:$("catalogNeighborhood")?.value || adIntent?.neighborhood || "",
@@ -719,6 +719,16 @@ $("specialistFloat")?.addEventListener(
     });
   }
 );
+
+$("specialistForm")?.addEventListener("click",()=>{
+  const detailId=document.getElementById("photoModal")?.dataset?.propertyId;
+  const p=detailId ? propertyForInteraction(detailId) : null;
+  openLeadCapture(p || {
+    id:"specialist-general",name:"Atendimento personalizado Ynteligencia",
+    neighborhood:$("catalogNeighborhood")?.value || adIntent?.neighborhood || "",
+    value:0,source:"especialista_catalogo"
+  });
+});
 
 // Original main L20590
 let paidExperience=null;

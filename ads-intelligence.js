@@ -25,6 +25,7 @@
     "property_view",
     "property_view_multiple",
     "specialist_cta_opened",
+    "whatsapp_cta_clicked",
     "lead_created",
     "agent_opened"
   ];
