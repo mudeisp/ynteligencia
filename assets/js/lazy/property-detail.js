@@ -525,6 +525,7 @@ async function showPhotoModal(id){
         <p>Para disponibilidade, visita ou negociação, fale com um especialista.</p>
         <button class="detail-specialist-human-btn" type="button">Falar pelo WhatsApp</button>
         <button class="contact-secondary detail-specialist-form-btn" type="button">Prefiro deixar meus dados</button>
+      <button class="detail-primary-cta detail-agent-cta" type="button">${journey.fromAgent?"VOLTAR À CONVERSA":"QUERO SABER MAIS"}</button>
       </section>
 
       <section class="detail-similar" id="detailSimilarSection">
@@ -534,9 +535,8 @@ async function showPhotoModal(id){
       </section>
     </main>
     <div class="detail-primary-bar">
-      <button class="detail-whatsapp-cta" type="button">Falar pelo WhatsApp</button>
-      <button class="contact-secondary detail-primary-form" type="button">Prefiro deixar meus dados</button>
-      <button class="detail-primary-cta detail-agent-cta" type="button">${journey.fromAgent?"VOLTAR À CONVERSA":"QUERO SABER MAIS"}</button>
+      <button class="detail-whatsapp-cta" type="button">Consultar disponibilidade</button>
+
       <p class="detail-agent-status" role="status" hidden></p>
     </div>
 `;
@@ -555,7 +555,6 @@ async function showPhotoModal(id){
     else window.location.assign(plan.href);
   });
   modal.querySelector(".detail-whatsapp-cta")?.addEventListener("click",()=>openPropertySpecialist(p));
-  modal.querySelector(".detail-primary-form")?.addEventListener("click",()=>openLeadCapture(p));
   modal.querySelector(".detail-specialist-human-btn")?.addEventListener("click",()=>openPropertySpecialist(p));
   modal.querySelector(".detail-specialist-form-btn")?.addEventListener("click",()=>openLeadCapture(p));
   document.body.appendChild(modal);

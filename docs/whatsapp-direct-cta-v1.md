@@ -84,3 +84,11 @@ The misleading `property_whatsapp_click` is replaced on the classic primary cont
 - Browser verification was attempted, but the executor denied binding the local HTTP server (`listen EPERM`). The additional network-permission attempt did not complete. Real-browser/mobile visual verification remains pending.
 
 No Supabase/Vercel configuration or data changes, deployment, or merge were performed.
+
+## PR #73 follow-up: persistent availability CTA
+
+The persistent action now reads **Consultar disponibilidade** and uses exactly the same `YntWhatsAppContact.open` binding and `whatsapp_cta_clicked` event. On ES/SP development and typology pages it remains fixed from the start of navigation, rather than waiting until the availability section enters the viewport. Mobile has 12 px side margins, a 56 px touch target and a bottom offset including `safe-area-inset-bottom`; desktop uses a compact 320 px panel. Content has bottom clearance. Open form/gallery/plan dialogs hide the persistent contact action.
+
+The selected typology ID stays on `data-whatsapp`; aggregate development pages keep it empty and send only the existing development context. No unit is inferred. Internal page CTAs and the secondary form remain available. The classic property detail likewise has one fixed availability action; its form and Agent conversation actions remain in the page. The general floating contact uses the same availability label.
+
+Validation: `node whatsapp-direct-cta.test.js` passes **16/16** tests, including both states, selected-unit and aggregate context, canonical tracking, no form/lead on direct contact, rapid taps, secondary form submission, fixed/safe-area styling and overlay suppression. The relevant 10 test files and `node --check` were rerun. `portal-session.js` regeneration remains unchanged; no tracking/attribution helper was modified by this follow-up. Browser/mobile visual verification remains subject to the executor limitation documented above.
