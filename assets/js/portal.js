@@ -94,6 +94,20 @@ document.querySelectorAll('[data-whatsapp]').forEach(button=>button.addEventList
     metadata:tracked({portal:true,development_id:project?.token})
   });
 }));
+if(project && !preview)globalThis.YntWhatsAppContact.mountFloating({
+  resolveProperty:()=>{
+    const unit=project.units.find(u=>u.db_id===config.selectedUnit);
+    return unit ? {...unit,development_name:project.name} : {
+      name:project.name,development_name:project.name,city:project.city,
+      neighborhood:project.neighborhood,development_id:project.token
+    };
+  },
+  getOptions:()=>({
+    adsTrack:tracking?.adsTrack,
+    track:(name,metadata)=>tracking?.track(name,metadata,{keepalive:true}),
+    intent:intent(),metadata:tracked({portal:true,development_id:project.token})
+  })
+});
 document.querySelectorAll('[data-contact]').forEach(button=>button.addEventListener('click',()=>{
   const unit=project?.units.find(u=>u.db_id===button.dataset.contact);
   form.elements.unit.value=unit?.db_id || config.selectedUnit || '';

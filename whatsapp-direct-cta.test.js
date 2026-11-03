@@ -81,7 +81,7 @@ test('server accepts and persists WhatsApp in ads_events without producing a lea
   assert.equal(calls.some(r=>r.path==='rpc/record_ads_lead'),false);
 
 });
-function element(){return {listeners:{},dataset:{},hidden:false,textContent:'',className:'',addEventListener(n,fn){this.listeners[n]=fn;},replaceChildren(){},append(){},focus(){}};}
+function element(){return {listeners:{},dataset:{},hidden:false,textContent:'',className:'',addEventListener(n,fn){this.listeners[n]=fn;},setAttribute(k,v){this[k]=v;},replaceChildren(){},append(){},focus(){}};}
 async function portalHarness(state='SP',{selected=true}={}){
   const h=harness({state}),primary=element(),secondary=element(),feedback=element(),submit=element(),dialog=element();
   primary.dataset.whatsapp=selected?db:'';secondary.dataset.contact=db;dialog.showModal=()=>dialog.open=true;dialog.close=()=>dialog.open=false;
@@ -94,15 +94,16 @@ async function portalHarness(state='SP',{selected=true}={}){
   const nodes={'portal-data':{textContent:JSON.stringify(config)},'contact-dialog':dialog,'portal-lead':form,'contact-feedback':feedback};
   const storage={getItem:()=>null,setItem(){}};
   const tracking={visitorId:visitor,sessionId:session,session:{},touches:{first_touch:h.touch,current_touch:h.touch},adsTrack:h.c.yntAdsTrack,track:h.c.supabaseTrack,attribution:h.c.yntAdsAttribution,leadId:()=> 'lead-1',touch(){}};
-  const leadRequests=[];
+  const leadRequests=[],observers=[];
+  h.c.MutationObserver=class{constructor(fn){observers.push(fn);}observe(){}};
   const {submitInterest}=await import('./assets/js/portal-contact.js');
-  Object.assign(h.c,{document:{referrer:'',getElementById:id=>nodes[id],querySelector:()=>null,querySelectorAll:selector=>selector==='[data-contact]'?[secondary]:selector==='[data-whatsapp]'?[primary]:[],addEventListener(){},createElement:()=>element()},localStorage:storage,sessionStorage:storage,__tracking:tracking,submitInterest:payload=>submitInterest(payload,{request:async(url,init)=>{leadRequests.push({url,payload:JSON.parse(init.body)});return {ok:true,json:async()=>({success:true,supabase:true})};}})});
+  Object.assign(h.c,{document:{body:{appendChild:node=>{nodes[node.id]=node;}},referrer:'',getElementById:id=>nodes[id],querySelector:selector=>selector.startsWith('dialog[open]')&&dialog.open?dialog:null,querySelectorAll:selector=>selector==='[data-contact]'?[secondary]:selector==='[data-whatsapp]'?[primary]:[],addEventListener(){},createElement:()=>element()},localStorage:storage,sessionStorage:storage,__tracking:tracking,submitInterest:payload=>submitInterest(payload,{request:async(url,init)=>{leadRequests.push({url,payload:JSON.parse(init.body)});return {ok:true,json:async()=>({success:true,supabase:true})};}})});
   const code=portal.replace(/^import .*;\n/gm,'').replace("await import('./portal-session.js')",'__tracking');
   await vm.runInContext('(async()=>{'+code+'})()',h.c);
   h.requests.length=0;
-  return {...h,primary,secondary,form,dialog,leadRequests,openCalls};
+  return {...h,primary,secondary,form,dialog,leadRequests,openCalls,icon:nodes['ynt-whatsapp-float'],refresh:()=>observers.forEach(fn=>fn()),tracking};
 }
-for(const state of ['ES','SP'])test(`${state}: primary bypasses form; secondary opens Specialist and existing form creates lead`,async()=>{
+for(const state of ['ES','SP'])test(`${state}: internal WhatsApp bypasses form; secondary opens Specialist and existing form creates lead`,async()=>{
   const h=await portalHarness(state);
   h.primary.listeners.click();h.primary.listeners.click();await new Promise(r=>setTimeout(r,10));
   assert.equal(h.openCalls[0].id,unit.id);assert.equal(h.openCalls[0].db_id,db);
@@ -132,15 +133,15 @@ test('rendered ES/SP developments and typologies offer the same contact hierarch
       assert.match(html,/data-whatsapp="[^"]*">Falar pelo WhatsApp<\/button><button[^>]*data-contact="[^"]*">Prefiro deixar meus dados/);
       const floating=html.match(/<div class="mobile-contact floating-property-contact">([\s\S]*?)<\/div><\/div><dialog/)[1];
       assert.match(floating,/Consultar disponibilidade<\/button>/);
-      assert.match(floating,new RegExp('data-whatsapp="'+(selected?db:'')+'"'));
-      assert.equal((floating.match(/data-whatsapp=/g)||[]).length,1);
-      assert.doesNotMatch(floating,/data-contact=|Prefiro deixar meus dados/);
+      assert.match(floating,new RegExp('data-contact="'+(selected?db:'')+'"'));
+      assert.equal((floating.match(/data-contact=/g)||[]).length,1);
+      assert.doesNotMatch(floating,/data-whatsapp=|Prefiro deixar meus dados/);
       assert.match(html,/id="portal-lead"/);assert.match(html,/id="contact-dialog"/);
     }
   }
 });
 
-for(const state of ['ES','SP'])test(`${state}: floating aggregate contact uses development context without selecting a unit`,async()=>{
+for(const state of ['ES','SP'])test(`${state}: internal aggregate WhatsApp uses development context without selecting a unit`,async()=>{
   const h=await portalHarness(state,{selected:false});h.primary.listeners.click();
   await new Promise(r=>setTimeout(r,10));
   assert.equal(h.openCalls[0].id,undefined);assert.equal(h.openCalls[0].db_id,undefined);
@@ -164,9 +165,42 @@ test('classic property floating bar keeps internal form and agent actions withou
   const bar=detail.split('<div class="detail-primary-bar">')[1].split('</div>')[0];
   assert.match(bar,/>Consultar disponibilidade<\/button>/);
   assert.doesNotMatch(bar,/Prefiro deixar meus dados|detail-primary-cta/);
-  assert.match(detail,/detail-whatsapp-cta.*addEventListener\("click",\(\)=>openPropertySpecialist\(p\)/);
+  assert.match(detail,/detail-whatsapp-cta.*addEventListener\("click",\(\)=>openLeadCapture\(p\)/);
   assert.match(detail,/detail-specialist-form-btn.*addEventListener\("click",\(\)=>openLeadCapture\(p\)/);
   const css=fs.readFileSync('assets/css/app-delivery.css','utf8');
   assert.match(css,/\.photo-detail-shell \.detail-primary-bar\{position:fixed/);
   assert.match(css,/body:has\(#floorplanLightbox\) \.detail-primary-bar/);
+});
+
+for(const state of ['ES','SP'])for(const selected of [true,false])test(`${state}: availability form and independent WhatsApp icon (${selected?'unit':'development'})`,async()=>{
+  const h=await portalHarness(state,{selected});
+  assert.ok(h.icon);assert.equal(h.icon['aria-label'],'Falar pelo WhatsApp');
+  assert.match(h.icon.innerHTML,/<svg/);assert.doesNotMatch(h.icon.innerHTML,/Consultar disponibilidade/);
+  // Availability uses the existing data-contact listener, never the icon listener.
+  h.secondary.listeners.click();assert.equal(h.dialog.open,true);
+  assert.ok(h.requests.some(r=>r.payload.event_name==='specialist_cta_opened'));
+  assert.equal(h.openCalls.length,0);assert.equal(h.navigations.length,0);
+  h.refresh();assert.equal(h.icon.hidden,true);
+  h.dialog.close();h.refresh();assert.equal(h.icon.hidden,false);
+  h.requests.length=0;
+  h.icon.listeners.click();h.icon.listeners.click();await new Promise(r=>setTimeout(r,10));
+  assert.equal(h.navigations.length,1);assert.equal(h.dialog.open,false);assert.equal(h.leadRequests.length,0);
+  const event=h.requests.find(r=>r.payload.event_name==='whatsapp_cta_clicked').payload;
+  assert.equal(event.property.property_id,selected?unit.id:'');
+  assert.equal(event.metadata.development_name,unit.name);
+  assert.equal(event.visitor_id,visitor);assert.equal(event.session_id,session);assert.equal(event.gclid,'paid-click');
+  assert.equal(event.metadata.first_touch.gbraid,'braid');assert.equal(event.metadata.current_touch.wbraid,'wbraid');
+  assert.equal(h.requests.length,2);
+  assert.ok(h.requests.every(r=>(r.payload.event_name||r.payload.event_type)==='whatsapp_cta_clicked'));
+  assert.equal(h.openCalls[0].development_name,unit.name);
+  // A repeated mount reuses the same root button and one click handler.
+  const again=h.c.YntWhatsAppContact.mountFloating({resolveProperty:()=>unit,getOptions:()=>({})});
+  assert.equal(again,h.icon);
+});
+test('independent icon is viewport fixed, circular, safe-area aware and leaves existing controls clear',()=>{
+  const css=fs.readFileSync('assets/css/whatsapp-float.css','utf8');
+  assert.match(css,/body > \.whatsapp-direct-float/);assert.match(css,/position:fixed;right:16px;bottom:calc\(16px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(css,/width:56px;height:56px/);assert.match(css,/border-radius:50%/);assert.match(css,/z-index:1000/);
+  assert.match(css,/floating-property-contact\{right:88px/);
+  assert.match(css,/\[hidden\].*display:none!important/);
 });
