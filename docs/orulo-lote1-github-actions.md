@@ -2,7 +2,7 @@
 
 ## Decisão e infraestrutura
 
-GitHub Actions já está ativo neste repositório público. Environments com revisão e branches selecionadas podem proteger o job manual. O conector usado nesta sessão não permite consultar os endpoints administrativos de Environments/self-hosted runners; essas configurações existentes NÃO foram presumidas presentes. O workflow verifica as regras pela API durante o futuro dispatch e falha se não conseguir verificá-las.
+GitHub Actions já está ativo neste repositório público. A operação é administrada por um único proprietário: o workflow exige dispatch manual em main pelo usuário mudeisp (ID numérico 323805541), sem depender de aprovação de um segundo colaborador. O Environment continua restringindo a branch e o acesso aos secrets. O conector usado nesta sessão não permite consultar os endpoints administrativos de Environments/self-hosted runners; essas configurações existentes NÃO foram presumidas presentes. O workflow verifica as regras mantidas pela API durante o futuro dispatch e falha se não conseguir verificá-las. A conta não precisa ter um segundo colaborador.
 
 Não foi identificado um armazenamento durável aprovado e configurado para este fluxo. A solução proposta usa **runner hospedado do GitHub + bucket S3 privado/versionado + role AWS via OIDC**. Isso evita manter um runner self-hosted em repositório público e não precisa de chave AWS permanente. Pode reutilizar bucket/role adequados existentes; se não existirem, o proprietário deve provisioná-los. Nenhum serviço, bucket, role, segredo ou Environment foi criado por esta alteração. Há custos normais do S3 e de Actions conforme a conta; não foi contratado serviço automaticamente.
 
@@ -15,7 +15,9 @@ São necessárias três novas entradas no GitHub Environment, com as credenciais
 - `.github/workflows/orulo-lote1-manual.yml`: somente workflow_dispatch; nenhum push, PR, cron, webhook ou rota pública executa o fluxo operacional.
 - Controle/guards: checkout do SHA do próprio workflow revisado, apenas em refs/heads/main. O código de origem aprovado é outro checkout, fixado em `2fa6ec8b093346e1a2319e4c6833cdfb0c52825e`, sem executar código arbitrário desse checkout no pré-flight.
 - Node 22. Actions fixadas por commit; checkout não persiste credenciais.
-- Environment `orulo-lote1`: reviewer obrigatório, impedir autoaprovação, não permitir bypass administrativo, única branch main (não tag).
+- Iniciador autorizado fixado no código revisado: GITHUB_ACTOR=mudeisp, GITHUB_ACTOR_ID=323805541 e GITHUB_TRIGGERING_ACTOR=mudeisp. Não há input/variável que altere essa identidade. O ID numérico evita aceitar apenas um login reutilizado; mudanças de identidade exigem revisão de código.
+- Environment `orulo-lote1`: Required reviewers e Prevent self-review não são exigidos pelo validador. Permanecem obrigatórios can_admins_bypass=false e política exclusiva de branch main (não tag).
+- O gate inicial valida identidade/evento/ref antes de consultar metadados. O job storage repete as condições em seu if e executa dispatch-gate antes de solicitar OIDC ou acessar secrets. O journal e o relatório registram somente login/ID verificados e presença booleana dos secrets.
 - Grupo de concorrência fixo `orulo-lote1-production`, cancel-in-progress=false. Futuro workflow de escrita deverá usar esse mesmo grupo; nenhuma outra execução operacional deve ocorrer fora dele.
 - Reruns (run_attempt>1) são rejeitados. Uma tentativa futura precisa de novo dispatch, novo prefixo e reconciliação de qualquer tentativa incerta.
 - Manifesto imutável: 99 IDs, sem 86644; SHA256 canônico `1c8b002b5a3b4b6caf614e3b4e6d84383b8e306ae2773f3d7de48cc7daaa6d03`.
@@ -49,10 +51,10 @@ Não há prova de durabilidade real nesta sessão: os testes usam S3 simulado. O
 Em `https://github.com/mudeisp/ynteligencia/settings/environments`:
 
 1. Criar Environment **orulo-lote1**.
-2. Configurar Required reviewers (ao menos uma pessoa/equipe habilitada diferente de quem fará o dispatch).
-3. Ativar **Prevent self-review** e desabilitar **Allow administrators to bypass configured protection rules**.
+2. Para operação individual, **Required reviewers** e **Prevent self-review** não são necessários; o validador aceita sua ausência. Se regras opcionais de aprovação já estiverem configuradas, o GitHub continuará aplicando-as: esta alteração não modifica configurações da conta.
+3. Manter desabilitado **Allow administrators to bypass configured protection rules** (a API deve comprovar can_admins_bypass=false).
 4. Deployment branches and tags: **Selected branches and tags**, adicionar exclusivamente **branch main**, sem tags ou wildcard. A API deve listar exatamente essa política.
-5. Restringir acesso de escrita/dispatch no repositório às pessoas autorizadas. Não conceder credenciais de produção a workflows de PR.
+5. Manter acesso de escrita/dispatch restrito ao proprietário. O iniciador autorizado deste fluxo é exclusivamente **mudeisp**, ID **323805541**; ator, ID e triggering actor são verificados e qualquer ausência/divergência bloqueia o fluxo. Não conceder credenciais de produção a workflows de PR.
 
 O GITHUB_TOKEN automático consulta apenas metadados de proteção, com contents/actions/deployments read. Se a API responder 403/404 ou os campos não comprovarem as regras, o workflow falha. Não contornar esse gate nem fornecer um PAT ao Codex; o administrador deve resolver o acesso/controle suportado pela conta antes de liberar o fluxo.
 
@@ -66,7 +68,7 @@ Na página do Environment, em **Environment secrets**, usar **Add environment se
 
 O proprietário obtém os valores do cofre/origem já autorizado e os insere diretamente na interface privada do GitHub. Não usar issue, comentário, PR, arquivo .env versionado, log, chat, artifact ou comando com o valor literal. Não copiar variáveis Vercel por ferramentas do Codex. Essas são novas entradas de armazenamento no GitHub, não novos tokens dos provedores.
 
-Não criar AWS_ACCESS_KEY_ID ou AWS_SECRET_ACCESS_KEY no GitHub: AWS usa OIDC e credenciais temporárias emitidas somente para o job aprovado.
+Não criar AWS_ACCESS_KEY_ID ou AWS_SECRET_ACCESS_KEY no GitHub: AWS usa OIDC e credenciais temporárias emitidas somente para o job validado pelos gates.
 
 ### 3. Bucket durável privado
 
@@ -146,7 +148,7 @@ Somente após configurar Environment, role e bucket, definir em **Repository set
 
 ### 6. Dispatch futuro, sem backfill
 
-Após revisão e merge feitos pelo proprietário, abrir **Actions → Orulo Lote1 manual read-only preflight → Run workflow → main**. Aprovar o Environment com o reviewer autorizado. O Codex não disparou esse workflow nesta alteração.
+Após revisão e merge feitos pelo proprietário, abrir **Actions → Orulo Lote1 manual read-only preflight → Run workflow → main**. O dispatch deve ser iniciado pelo proprietário **mudeisp (323805541)**. Não há aprovação independente obrigatória. Se o Environment ainda tiver reviewers opcionais configurados, as regras da conta continuam valendo até que o proprietário as ajuste na interface privada. O Codex não disparou esse workflow nesta alteração.
 
 O único resultado possível de sucesso é READ_ONLY_PREFLIGHT_PASSED com writeEnabled=false, presença booleana das três variáveis e canário/journal confirmados no S3. Isso NÃO testa autenticação nos provedores nem captura baseline comercial real. Não clicar em Re-run após erro; reconciliar evidência remota e, se apropriado, emitir novo dispatch revisado.
 
@@ -154,9 +156,13 @@ A escrita continua fora deste workflow. Só preparar a etapa operacional em auto
 
 ## Testes e limites da entrega
 
-- `node scripts/orulo-media-recovery-actions.test.mjs`: 16 testes sem rede/secrets reais.
+- `node --test scripts/orulo-media-recovery-actions.test.mjs`: 21 testes sem rede/secrets reais.
 - `npm test --prefix test-support/orulo-cas`: inclui esses testes e os 43 já existentes no CI isolado.
-- Validam aprovação/ref/attempt, infraestrutura ausente, manifesto/SHA, ACK e readback, perda de ACK depois da persistência, não reutilização, concorrência de appends, INTENT remoto antes de CAS simulado e falha de INTENT impedindo CAS.
+- Validam identidade do proprietário, rejeição de eventos automáticos/branches/tags/atores não autorizados, ausência de exigência de reviewer/self-review, preservação de no-bypass e branch main, ref/attempt, infraestrutura ausente, manifesto/SHA, ACK e readback, perda de ACK depois da persistência, não reutilização, concorrência de appends, INTENT remoto antes de CAS simulado e falha de INTENT impedindo CAS.
 - Testes unitários não substituem um pré-flight real do bucket/Environment. APIs administrativas de infraestrutura não puderam ser auditadas pelo conector; proprietário ainda precisa provisionar e comprovar esses controles.
 
 Nenhum backfill, flag de escrita operacional, mutação de imóvel, merge, deploy ou serviço AWS foi executado/criado nesta entrega.
+
+## Garantia preservada nesta adaptação
+
+A única exigência de Environment removida é a de Required reviewers/Prevent self-review. A autorização pelo proprietário é fixa em código e verificada antes de OIDC/secret bindings. Não houve mudança de CAS, integridade V2, manifesto, SHA aprovado, políticas S3 ou journal durável. writeEnabled continua false; a aprovação do pré-flight não libera escrita operacional. Nenhum dispatch manual ou backfill é necessário para testar esta alteração.
