@@ -7,6 +7,7 @@ import {randomUUID} from 'node:crypto';
 import {APPROVED_SHA,MANIFEST_HASH} from './orulo-media-recovery-postgres.mjs';
 import {storagePreflight} from './orulo-media-recovery-actions.mjs';
 import {executePilot,PILOT_BUILDING_ID} from './orulo-media-recovery-pilot.mjs';
+import {executeBatch,loadBatch,batchApprovalSql} from './orulo-media-recovery-batch.mjs';
 if(process.env.ORULO_SYNTHETIC_PG!=='true' || process.env.PGHOST!=='127.0.0.1' || process.env.PGDATABASE!=='orulo_audit_test')throw Error('ISOLATED_LOCAL_TEST_DATABASE_REQUIRED');
 const args=['-X','-qAt','-v','ON_ERROR_STOP=1'];
 const sql=s=>execFileSync('psql',args,{input:s,encoding:'utf8',maxBuffer:32*1024*1024,stdio:['pipe','pipe','pipe']}).trim();
@@ -204,4 +205,26 @@ test('indexed pilot lookup on 21,646 rows preserves COALESCE/null/empty/conflict
  assert.match(plan,/properties_portal_building_id_idx/);assert.doesNotMatch(plan,/Seq Scan/);
  assert.equal(sql("select has_schema_privilege('service_role','orulo_audit','USAGE') or has_function_privilege('service_role','orulo_audit.pilot_targets()','EXECUTE') or has_function_privilege('anon','orulo_audit.pilot_targets()','EXECUTE');"),'f');
  console.log(JSON.stringify({indexedLookupRows:21646,selected:actual.length,lookupMs:Math.round(performance.now()-started),timeoutChanged:false}));
+});
+
+test('manifest batch on durable PostgreSQL: multiple buildings, row-lock conflict, committed timeout and absent authorization',async()=>{
+ sql(readFileSync(new URL('../supabase/migrations/20261104151850_orulo_manifest_batches.sql',import.meta.url),'utf8'));
+ const manifest=loadBatch('phase1-20'),ts=[manifest.targets[0],manifest.targets.find(t=>t.buildingId!==manifest.targets[0].buildingId)];let attempt=60000;
+ async function scenario(mode){
+  sql("select orulo_audit.admin_event(r.run_uuid,'ABORTED','synthetic batch reconciled',true) from orulo_audit.runs r where not exists(select 1 from orulo_audit.entries e where e.run_uuid=r.run_uuid and kind in ('ABORTED','FINISHED'));truncate public.properties;");
+  for(const t of ts)sql(`insert into public.properties values('${t.id}','batch-fixture','novos','SP',true,${quote({building_id:t.buildingId,photos:['photo'],building:{stock:7,videos:['video'],floor_plans:t.missingPlanIds.map(id=>({id,description:'original'}))}})},100,'2026-01-01','2026-01-02');`);
+  const env={GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REF:'refs/heads/main',GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'323805541',GITHUB_TRIGGERING_ACTOR:'mudeisp',GITHUB_RUN_ID:String(++attempt),GITHUB_RUN_ATTEMPT:'1',GITHUB_WORKFLOW_SHA:'a'.repeat(40),ORULO_BATCH_APPROVED_SHA:'a'.repeat(40),ORULO_BATCH_READY:'true',ORULO_BATCH_ID:'phase1-20',ORULO_POSTGRES_AUDIT_READY:'true',ORULO_CLIENT_ID:'fixture',ORULO_CLIENT_SECRET:'fixture',SUPABASE_SECRET_KEY:'fixture'};
+  let calls=0,uuid,result,error;
+  const transport={control:async(a,p={})=>{if(a==='start')uuid=p.p_run;return JSON.parse(sql(`set role service_role;select public.orulo_audit_control('${a}',${p.p_run?"'"+p.p_run+"'":'null'},${p.p_sequence??'null'},${p.p_previous_hash==null?'null':"'"+p.p_previous_hash+"'"},${quote(p.p_event||{})});`));},apply:async(r,op)=>{
+   calls++;let lock;if(mode==='conflict')lock=await heldLock(`update public.properties set price=200 where id='${ts[0].id}'`);
+   const out=JSON.parse(sql(`set role service_role;select public.orulo_audited_cas('${r}','${op}');`));if(lock)await lock.complete;if(mode==='lost')throw Error('synthetic lost ACK after commit');return out;
+  }};
+  try{result=await executeBatch({env,transport,fetchPlans:async bid=>ts.filter(t=>t.buildingId===bid).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:'https://static.orulo.com.br/images/properties/large/'+id+'.jpg'}))),checkImage:async()=>{},onPlan:async p=>{if(mode!=='unauthorized')sql(batchApprovalSql(p));},wait:async()=>{},now:(()=>{let n=0;return()=>n+=600001;})()});}catch(e){error=e;}
+  const events=JSON.parse(sql(`select jsonb_agg(jsonb_build_object('kind',kind,'event',event) order by sequence) from orulo_audit.entries where run_uuid='${uuid}';`));return {result,error,calls,events};
+ }
+ const ok=await scenario('success');if(ok.error)throw ok.error;assert.equal(ok.result.rowsWritten,2);assert.equal(ok.result.buildings,2);assert.equal(ok.events.at(-1).kind,'FINISHED');assert.equal(ok.result.nextBatchAuthorized,false);
+ assert.equal(sql("select bool_and(price=100 and raw_data->'building'->>'stock'='7' and raw_data->'building'->'floor_plans'->0->>'description'='original') from public.properties;"),'t');
+ const conflict=await scenario('conflict');assert.match(conflict.error.message,/STOP_CONFLICT/);assert.equal(conflict.calls,1);assert.equal(conflict.events.find(e=>e.kind==='CAS_RESULT').event.result.status,'CONFLICT');
+ const lost=await scenario('lost');assert.match(lost.error.message,/COMMITTED_RECONCILE_REQUIRED/);assert.equal(lost.calls,1);assert.equal(lost.events.filter(e=>e.kind==='CAS_RESULT').length,1);
+ const absent=await scenario('unauthorized');assert.match(absent.error.message,/AUTHORIZATION_WAIT_TIMEOUT/);assert.equal(absent.calls,0);assert.deepEqual(absent.events.map(e=>e.kind),['START','CLIENT_READBACK','CLIENT_STOP']);
 });
