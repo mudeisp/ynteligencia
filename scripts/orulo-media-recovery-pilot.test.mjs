@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {randomUUID} from 'node:crypto';
-import {executePilot,validatePilotDispatch,PILOT_BUILDING_ID} from './orulo-media-recovery-pilot.mjs';
+import {executePilot,validatePilotDispatch,PILOT_BUILDING_ID,pilotAuthorizationSql,pilotApprovalSummary} from './orulo-media-recovery-pilot.mjs';
 const {PGlite}=process.env.PGLITE_MODULE?await import(process.env.PGLITE_MODULE):createRequire(new URL('../test-support/orulo-cas/package.json',import.meta.url))('@electric-sql/pglite');
 const db=new PGlite(),id='00000000-0000-0000-0000-000000000001',id2='00000000-0000-0000-0000-000000000002';
 await db.exec(`create role anon;create role authenticated;create role service_role;
@@ -21,7 +21,8 @@ async function reset(){
  for(const pk of [id,id2])await db.query("insert into public.properties values($1,'fixture','novos','SP',true,$2,100,'2026-01-01','2026-01-02')",[pk,JSON.stringify({building_id:PILOT_BUILDING_ID,photos:['photo'],building:{floor_plans:[{id:'p',description:'original'}],stock:7,videos:['video'],tour:'tour'}})]);
 }
 async function run(options={}){
- await reset();const e=env(),calls=[];let currentRun;
+ await reset();const fingerprintBefore=(await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h;
+ const e=env(),calls=[];let currentRun;
  const transport={control:async(a,p={})=>{
   calls.push(a);if(a==='start')currentRun=p.p_run;
   if(a==='health')return {version:2,snapshotProtocol:'paged-v2',pilotProtocol:1,storage:'postgres',durable:true,appendOnly:true,synchronousCommit:'on',writeEnabled:false};
@@ -38,7 +39,7 @@ async function run(options={}){
    if(options.authorize!==false)await db.query('select orulo_audit.authorize_pilot($1,$2,$3,$4,$5)',[p.runUuid,p.headHash,p.githubRunId,p.controlSha,'synthetic explicit authorization']);
    if(options.onPlan)await options.onPlan(p);
   },wait:async()=>{},now:(()=>{let n=0;return()=>n+=600001;})()});}catch(e){error=e;}
- return {result,error,calls,run:currentRun};
+ return {result,error,calls,run:currentRun,env:e,propertyFingerprintBefore:fingerprintBefore};
 }
 test('pilot gate rejects unset readiness, unapproved control SHA, non-owner/ref/rerun and locks first manifest member',()=>{
  assert.equal(PILOT_BUILDING_ID,'43126');validatePilotDispatch(env());
@@ -60,6 +61,40 @@ test('no authorization times out with zero CAS; service_role cannot invoke admin
  const r=await run({authorize:false,onPlan:async p=>{
   await assert.rejects(service('select orulo_audit.authorize_pilot($1,$2,$3,$4,$5) r',[p.runUuid,p.headHash,p.githubRunId,p.controlSha,'forged fixture reason']),/permission denied/);
  }});assert.match(r.error.message,/AUTHORIZATION_WAIT_TIMEOUT/);assert.equal(r.calls.filter(c=>c==='APPLY').length,0);
+ assert.equal((await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h,r.propertyFingerprintBefore);
+ const entries=(await db.query('select * from orulo_audit.entries where run_uuid=$1 order by sequence',[r.run])).rows;
+ assert.deepEqual(entries.map(e=>e.kind),['START','CLIENT_READBACK','CLIENT_STOP']);assert.equal(entries[2].event.confirmedRows,0);
+ let procedure=readFileSync(new URL('../supabase/orulo_reconcile_41832262256.sql',import.meta.url),'utf8')
+  .replaceAll('26556e29-7a3b-450e-9169-3f894f231077',r.run)
+  .replaceAll('41832262256',r.env.GITHUB_RUN_ID)
+  .replaceAll('628b9ae4d3255871b0c5412cd815c66bf850428a',r.env.GITHUB_WORKFLOW_SHA)
+  .replaceAll('bacc0b0416e26104e2b8974e070525d4de17d15fa6360bb76508e6652ffb0f71',entries[2].hash)
+  .replace(/expected_targets constant jsonb := '[^']+'::jsonb;/,()=>"expected_targets constant jsonb := '"+JSON.stringify([id,id2])+"'::jsonb;");
+ await db.exec(procedure);
+ assert.equal((await db.query('select kind from orulo_audit.entries where run_uuid=$1 and sequence=4',[r.run])).rows[0].kind,'ABORTED');
+ assert.deepEqual((await db.query('select * from orulo_audit.entries where run_uuid=$1 and sequence<=3 order by sequence',[r.run])).rows,entries);
+ assert.equal((await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h,r.propertyFingerprintBefore);
+ await assert.rejects(db.exec(procedure),/UNEXPECTED_EVENTS/);await db.exec('rollback');
+});
+test('owner summary presents filled SQL without authorizing; explicit admin execution uses existing function and rejects reuse',async()=>{
+ const r=await run({authorize:false,onPlan:async p=>{
+  assert.equal(p.candidateRows,2);assert.equal(p.candidateImages,2);assert.equal(p.distinctImages,1);
+  const summary=pilotApprovalSummary(p),command=pilotAuthorizationSql(p);
+  for(const text of [p.runUuid,p.headHash,p.controlSha,p.githubRunId,id,id2,'43126','/sql/new'])assert.ok(summary.includes(text));
+  assert.doesNotMatch(summary,/SUPABASE_SECRET_KEY|ORULO_CLIENT_SECRET|Bearer/);
+  assert.match(command,/interval '10 minutes'/);assert.match(command,/orulo_audit.authorize_pilot\(/);
+  assert.equal((await db.query("select count(*)::int n from orulo_audit.entries where run_uuid=$1 and kind='WRITE_AUTHORIZED'",[p.runUuid])).rows[0].n,0);
+  await db.exec(command); // Synthetic analogue of the owner's explicit SQL Editor Run.
+  await assert.rejects(db.exec(command),/EXPIRED_OR_CHANGED/);await db.exec('rollback');
+ }});if(r.error)throw r.error;assert.equal(r.result.result,'APROVADO');
+});
+test('filled authorization rejects unsafe identifiers and a reconciled old plan without emitting authorization',async()=>{
+ assert.throws(()=>pilotAuthorizationSql({runUuid:"';delete",headHash:'a'.repeat(64),githubRunId:'1',controlSha:'a'.repeat(40)}),/IDENTIFIERS_INVALID/);
+ const r=await run({authorize:false}),entries=(await db.query('select * from orulo_audit.entries where run_uuid=$1 order by sequence',[r.run])).rows;
+ const plan={runUuid:r.run,headHash:entries[1].hash,githubRunId:r.env.GITHUB_RUN_ID,controlSha:r.env.GITHUB_WORKFLOW_SHA};
+ await db.query("select orulo_audit.admin_event($1,'ABORTED','synthetic timeout reconciled',true)",[r.run]);
+ await assert.rejects(db.exec(pilotAuthorizationSql(plan)),/EXPIRED_OR_CHANGED/);await db.exec('rollback');
+ assert.equal((await db.query("select count(*)::int n from orulo_audit.entries where run_uuid=$1 and kind='WRITE_AUTHORIZED'",[r.run])).rows[0].n,0);
 });
 test('concurrent price mutation after committed INTENT stops on conflict and never reaches next UUID',async()=>{
  let count=0;const r=await run({beforeApply:async()=>{if(++count===1)await db.query('update public.properties set price=200 where id=$1',[id]);}});

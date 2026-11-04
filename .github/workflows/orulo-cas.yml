@@ -11,6 +11,7 @@ on:
       - 'supabase/migrations/*orulo_paged_snapshots.sql'
       - 'supabase/migrations/*orulo_pilot_authorization.sql'
       - 'supabase/orulo_reconcile_41813891981.sql'
+      - 'supabase/orulo_reconcile_41832262256.sql'
       - 'scripts/orulo-media-cas*'
       - 'scripts/orulo-media-recovery*'
       - 'orulo-floor-plans*'

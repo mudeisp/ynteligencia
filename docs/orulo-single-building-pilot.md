@@ -39,19 +39,12 @@ be true; this task does not set it or the approved SHA variable.
 3. The owner/database administrator reviews that exact plan and independently
    confirms the workflow revision and run. The private administrative function
    binds authorization to run UUID, GitHub run ID, control SHA, plan head, fixed
-   building, exact current UUIDs and manifest hash. Only this command can issue
-   the pilot-mode WRITE_AUTHORIZED used by the new executor:
-
-   ```sql
-   -- TEMPLATE ONLY. Replace all values from the reviewed private plan.
-   select orulo_audit.authorize_pilot(
-     'REVIEWED_RUN_UUID'::uuid,
-     'REVIEWED_PLAN_HEAD_SHA256',
-     'REVIEWED_GITHUB_RUN_ID',
-     'REVIEWED_CONTROL_COMMIT_SHA',
-     'Owner authorizes only the reviewed building 43126 pilot and listed UUIDs'
-   );
-   ```
+   building, exact current UUIDs and manifest hash. Use the filled, age-checked
+   SQL block printed in the **live pilot step logs**, as described in
+   [owner approval and timeout recovery](orulo-owner-pilot-approval.md).
+   It invokes exactly the existing private authorize_pilot function. Do not reuse
+   templates from old runs. The Step Summary is a later receipt and may not be
+   available until the job ends; do not wait for it during the ten-minute window.
 
    PUBLIC/anon/authenticated/service_role cannot call this function. A general
    legacy admin_event WRITE_AUTHORIZED lacks the required pilot binding and is
