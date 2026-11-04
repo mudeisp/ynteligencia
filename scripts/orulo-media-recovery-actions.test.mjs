@@ -180,9 +180,9 @@ function pgRemote(){
   if(action==='read')return entries.get(args.p_sequence);
   const event=JSON.parse(JSON.stringify(args.p_event||{}));
   if(action==='start'){run=args.p_run;event.type='START';}
-  if(action==='snapshot_begin'){event.type='SNAPSHOT_BEGIN';event.keys=[];}
-  if(action==='snapshot_seal')event.type=event.kind;
-  if(action==='finish'){event.type='FINISHED';event.comparison={contentChanges:0,timestampOnly:0,insertions:0,deletions:0,schemaMatch:true,captureStable:true};}
+  if(action==='snapshot_begin'){event.type='SNAPSHOT_BEGIN';event.keys=[];event.columns=[['id','uuid']];}
+  if(action==='snapshot_seal'){event.type=event.kind;event.snapshot={processed:0,columns:[['id','uuid']],keysAtSeal:[],membershipStable:true};}
+  if(action==='finish'){event.type='FINISHED';event.comparison={compared:0,contentChanges:0,timestampOnly:0,insertions:0,deletions:0,schemaMatch:true,captureStable:true};}
   const canonical=JSON.stringify({runUuid:run,sequence:head.sequence+1,previousHash:head.hash,event});
   head={runUuid:run,sequence:head.sequence+1,hash:digest(canonical),eventUuid:event.eventUuid};
   entries.set(head.sequence,{...head,canonical,event});return {...head};
@@ -200,7 +200,7 @@ test('PostgreSQL preflight requires durable ACKs and never enables writes',async
  assert.equal(report.writeEnabled,false);assert.equal(report.storage,'postgres');
  assert.deepEqual(report.initiator,AUTHORIZED_INITIATOR);assert.equal(report.manifestCount,99);
  assert.doesNotMatch(JSON.stringify(report),/do-not-log/);
- assert.deepEqual([...r.entries.values()].map(e=>e.event.type),['START','READ_ONLY_PREFLIGHT','SNAPSHOT_BEGIN','BASELINE_V2','SNAPSHOT_BEGIN','READBACK_V2','FINISHED']);
+ assert.deepEqual([...r.entries.values()].map(e=>e.event.type),['START','READ_ONLY_PREFLIGHT','SNAPSHOT_BEGIN','BASELINE_V2','SNAPSHOT_BEGIN','READBACK_V2','CLIENT_READBACK','FINISHED']);
 });
 
 test('workflow is manual-only, protected, SHA-pinned and has no operational backfill step',()=>{

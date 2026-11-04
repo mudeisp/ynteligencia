@@ -70,14 +70,17 @@ export async function openPostgresJournal(env,transport){
   snapshot:kind=>locked(async()=>{
    const begin=await mutate('snapshot_begin',{kind});
    const keys=begin.entry.event.keys;
+   const records=[];
    if(!Array.isArray(keys) || new Set(keys).size!==keys.length || keys.some((id,i)=>typeof id!=='string' || (i>0 && id<=keys[i-1])))
     throw Error('POSTGRES_SNAPSHOT_MANIFEST_INVALID');
    for(let offset=0;offset<keys.length;offset+=50){
     const page=await mutate('snapshot_page',{kind,offset,size:50});
     if(page.entry.event.offset!==offset || !isDeepStrictEqual(page.entry.event.records?.map(r=>r[0]),keys.slice(offset,offset+50)))
      throw Error('POSTGRES_SNAPSHOT_PAGE_DIVERGENCE');
+    records.push(...page.entry.event.records);
    }
-   return mutate('snapshot_seal',{kind});
+   const seal=await mutate('snapshot_seal',{kind});
+   return {...seal,capture:{keys,records,columns:begin.entry.event.columns,seal:seal.entry.event.snapshot}};
   }),
   finish:()=>locked(()=>mutate('finish',{})),
   recover:operation=>transport.control('recover',{p_run:run,p_event:{operationId:operation}}),
