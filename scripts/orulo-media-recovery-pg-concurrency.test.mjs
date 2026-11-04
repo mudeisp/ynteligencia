@@ -183,3 +183,25 @@ test('operational pilot on real PostgreSQL: scoped atomic updates, actual concur
  const lost=await scenario('lost');assert.match(lost.error.message,/COMMITTED_RECONCILE_REQUIRED/);assert.equal(lost.calls,1);assert.equal(lost.events.filter(e=>e.kind==='CAS_RESULT').length,1);
  assert.equal(sql("select raw_data->'building'->'floor_plans'->0 ? 'image_url' from public.properties where id='00000000-0000-0000-0000-000000000002';"),'f');
 });
+test('indexed pilot lookup on 21,646 rows preserves COALESCE/null/empty/conflicting semantics and private ACL',()=>{
+ sql(`truncate public.properties;
+ insert into public.properties select md5(g::text)::uuid,'lookup-'||g,
+ case when g=25 then 'used' else 'novos' end,case when g=24 then 'RS' else 'SP' end,
+ case when g=23 then false when g=26 then null else true end,
+ jsonb_build_object('building_id',case when g<=18 or g between 23 and 26 then '43126' when g in (19,20) then null when g=22 then '' else '12345' end,
+ 'building',jsonb_build_object('id',case when g between 19 and 22 then '43126' else '12345' end),'payload',repeat(md5(g::text),64)),100,'2026-01-01','2026-01-02'
+ from generate_series(1,21646)g;
+ update public.properties set raw_data=raw_data-'building_id' where external_id='lookup-20';
+ create index properties_portal_building_id_idx on public.properties((raw_data->>'building_id')) where active is true and source='novos';
+ analyze public.properties;`);
+ const reference=JSON.parse(sql("select orulo_audit.pilot_targets();"));assert.equal(reference.length,20);
+ const migration=readFileSync(new URL('../supabase/migrations/20261104135027_orulo_pilot_indexed_targets.sql',import.meta.url),'utf8');
+ sql(migration);
+ const started=performance.now(),actual=JSON.parse(sql("set statement_timeout='8s';set role service_role;select public.orulo_audit_control('pilot_targets');"));
+ assert.deepEqual(actual,reference);assert.ok(performance.now()-started<8000);
+ const body=migration.match(/as \$\$\n([\s\S]*?)\n\$\$/)[1];
+ const plan=sql("set role orulo_audit_owner;explain (analyze,buffers,format json) "+body);
+ assert.match(plan,/properties_portal_building_id_idx/);assert.doesNotMatch(plan,/Seq Scan/);
+ assert.equal(sql("select has_schema_privilege('service_role','orulo_audit','USAGE') or has_function_privilege('service_role','orulo_audit.pilot_targets()','EXECUTE') or has_function_privilege('anon','orulo_audit.pilot_targets()','EXECUTE');"),'f');
+ console.log(JSON.stringify({indexedLookupRows:21646,selected:actual.length,lookupMs:Math.round(performance.now()-started),timeoutChanged:false}));
+});

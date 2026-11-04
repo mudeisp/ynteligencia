@@ -7,7 +7,7 @@ import {isIP} from 'node:net';
 import {fetchOruloFloorPlans} from '../orulo-floor-plans.js';
 import {imageOnlyPlans,preserved,buildingIdOf} from './orulo-media-cas.mjs';
 import {validateDispatch,checkGitHub,verifySource,presence,validateManifest} from './orulo-media-recovery-actions.mjs';
-import {openPostgresJournal,postgresTransport,PROJECT_URL,digest} from './orulo-media-recovery-postgres.mjs';
+import {openPostgresJournal,postgresTransport,PROJECT_URL,digest,rpcFailureDetails} from './orulo-media-recovery-postgres.mjs';
 import {classifyCaptures,verifyScopeComparison} from './orulo-media-recovery-scope.mjs';
 const ids=JSON.parse(readFileSync(new URL('./orulo-media-recovery-lote1.ids.json',import.meta.url),'utf8'));
 validateManifest(ids);
@@ -141,7 +141,7 @@ export async function executePilot({env,transport,fetchPlans=()=>livePlans(env),
  }catch(error){
   // Read-only reconciliation even when the CAS response or journal is ambiguous.
   if(currentId)try{error.observed=await transport.control('pilot_row',{p_run:journal.runUuid,p_event:{id:currentId}});}catch{}
-  try{await journal.record({type:'CLIENT_STOP',stage:'PILOT_STOP',id:currentId,code:'PILOT_HALTED_RECONCILIATION_REQUIRED',confirmedRows:results.length});}catch{}
+  try{await journal.record({type:'CLIENT_STOP',stage:'PILOT_STOP',id:currentId,code:'PILOT_HALTED_RECONCILIATION_REQUIRED',confirmedRows:results.length,...rpcFailureDetails(error)});}catch{}
   error.pilotRunUuid=journal.runUuid;throw error;
  }
 }
@@ -159,4 +159,4 @@ async function main(){
  }})));
 }
 if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href)
- main().catch(e=>{console.error(JSON.stringify({code:/^(PILOT|POSTGRES)_[A-Z_]+$/.test(e.message)?e.message:'PILOT_BLOCKED',runUuid:e.pilotRunUuid}));process.exitCode=1;});
+ main().catch(e=>{console.error(JSON.stringify({code:/^(PILOT|POSTGRES)_[A-Z_]+$/.test(e.message)?e.message:'PILOT_BLOCKED',runUuid:e.pilotRunUuid,...rpcFailureDetails(e)}));process.exitCode=1;});

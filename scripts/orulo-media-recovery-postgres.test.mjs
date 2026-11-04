@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {randomUUID} from 'node:crypto';
-import {APPROVED_SHA,MANIFEST_HASH,PROJECT_URL,digest,verifyEntry,postgresTransport,openPostgresJournal} from './orulo-media-recovery-postgres.mjs';
+import {APPROVED_SHA,MANIFEST_HASH,PROJECT_URL,digest,verifyEntry,postgresTransport,openPostgresJournal,rpcFailureDetails} from './orulo-media-recovery-postgres.mjs';
 import {storagePreflight} from './orulo-media-recovery-actions.mjs';
 const {PGlite}=process.env.PGLITE_MODULE?await import(process.env.PGLITE_MODULE):createRequire(new URL('../test-support/orulo-cas/package.json',import.meta.url))('@electric-sql/pglite');
 const db=new PGlite();
@@ -271,5 +271,18 @@ test('concurrent local appends freeze both callers; health and transport fail cl
  assert.throws(()=>postgresTransport({url:'https://other.invalid',key:'secret'}),/CONFIGURATION_REQUIRED/);
  const transport=postgresTransport({url:PROJECT_URL,key:'private-fixture'},async()=>{throw Error('private-fixture');});
  await assert.rejects(transport.apply(randomUUID(),randomUUID()),e=>!e.message.includes('private-fixture'));
+});
+test('RPC errors retain action/status/SQLSTATE only, without server messages, secrets or automatic retries',async()=>{
+ for(const code of ['57014','42501','PGRST202','unsafe-secret-code']){
+  let requests=0;
+  const t=postgresTransport({url:PROJECT_URL,key:'secret-key'},async()=>{
+   requests++;return {ok:false,status:500,json:async()=>({code,message:'secret-key full SQL values',details:'private data',hint:'secret-key'})};
+  });
+  await assert.rejects(t.control('pilot_targets',{p_run:randomUUID()}),e=>{
+   assert.equal(e.message,'POSTGRES_AUDIT_RPC_FAILED');
+   assert.deepEqual(rpcFailureDetails(e),{rpc:'orulo_audit_control',rpcAction:'pilot_targets',httpStatus:500,...(code==='unsafe-secret-code'?{}:{databaseCode:code})});
+   assert.doesNotMatch(JSON.stringify(e),/secret-key|private data|full SQL/);return true;
+  });assert.equal(requests,1);
+ }
 });
 test.after(()=>db.close());
