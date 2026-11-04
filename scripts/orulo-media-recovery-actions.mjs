@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join,resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { APPROVED_SHA,MANIFEST_HASH,digest,runPrefix,validateStoreMetadata,awsTransport,durableStore,openDurableJournal } from './orulo-media-recovery-journal.mjs';
+import { APPROVED_SHA,MANIFEST_HASH,digest,runPrefix,PROJECT_URL,postgresTransport,openPostgresJournal } from './orulo-media-recovery-postgres.mjs';
 
 const REPOSITORY='mudeisp/ynteligencia',ENVIRONMENT='orulo-lote1';
 export const AUTHORIZED_INITIATOR=Object.freeze({login:'mudeisp',id:'323805541'});
@@ -13,7 +13,7 @@ export function validateDispatch(env){
   if(env.GITHUB_ACTOR!==AUTHORIZED_INITIATOR.login || env.GITHUB_ACTOR_ID!==AUTHORIZED_INITIATOR.id ||
      env.GITHUB_TRIGGERING_ACTOR!==AUTHORIZED_INITIATOR.login)throw Error('AUTHORIZED_OWNER_DISPATCH_REQUIRED');
   runPrefix(env.GITHUB_RUN_ID,env.GITHUB_RUN_ATTEMPT);
-  if(env.ORULO_STORAGE_READY!=='true')throw Error('BLOCKED_DURABLE_STORAGE_NOT_APPROVED');
+  if(env.ORULO_POSTGRES_AUDIT_READY!=='true')throw Error('BLOCKED_DURABLE_STORAGE_NOT_APPROVED');
 }
 export function validateEnvironment(environment,policies){
   // Single-owner operation: independent review/self-review settings are optional.
@@ -55,26 +55,25 @@ export async function storagePreflight(env,transport,sourceCheck=verifySource){
   validateDispatch(env);sourceCheck(env.APPROVED_SOURCE_DIR);
   const initiator={login:env.GITHUB_ACTOR,id:env.GITHUB_ACTOR_ID};
   const present=presence(env);
-  validateStoreMetadata(await transport.metadata());
-  const store=durableStore(transport),prefix=runPrefix(env.GITHUB_RUN_ID,env.GITHUB_RUN_ATTEMPT);
-  // Canary only: no baseline query, no CAS/backfill invocation and no operational write switch exists here.
-  const bytes=Buffer.from(JSON.stringify({repository:REPOSITORY,approvedSha:APPROVED_SHA,manifestHash:MANIFEST_HASH})+'\n');
-  const probe=await store.put(`${prefix}/storage-probe.json`,bytes);
-  await store.verify(probe); // Downloads from the remote version; transport deletes local upload scratch first.
-  const record=await openDurableJournal(store,prefix);
-  await record({type:'READ_ONLY_PREFLIGHT',approvedSha:APPROVED_SHA,initiator,secretsPresent:present,writeEnabled:false});
-  return {status:'READ_ONLY_PREFLIGHT_PASSED',approvedSha:APPROVED_SHA,manifestCount:99,
-    storagePrefix:prefix,storageProbeVerified:true,initiator,secretsPresent:present,writeEnabled:false};
+  const journal=await openPostgresJournal(env,transport);
+  await journal.record({type:'READ_ONLY_PREFLIGHT',approvedSha:APPROVED_SHA,initiator,secretsPresent:present,writeEnabled:false});
+  await journal.snapshot('BASELINE_V2');
+  await journal.snapshot('READBACK_V2');
+  const {ack,entry}=await journal.finish();
+  const comparison=entry.event.comparison;
+  return {status:'READ_ONLY_PREFLIGHT_PASSED',storage:'postgres',runUuid:journal.runUuid,
+    approvedSha:APPROVED_SHA,manifestCount:99,headHash:ack.hash,sequence:ack.sequence,comparison,
+    secretsPresent:present,initiator,writeEnabled:false};
 }
 async function main(){
   const mode=process.argv[2];
   if(mode==='dispatch-gate'){validateDispatch(process.env);console.log('Authorized owner and manual main dispatch verified.');return;}
   if(mode==='github-gate'){await checkGitHub(process.env);console.log('Protected Environment and manual dispatch verified.');return;}
   if(mode!=='storage-preflight')throw Error('PREFLIGHT_ONLY_NO_BACKFILL_OPERATION');
-  const report=await storagePreflight(process.env,awsTransport({bucket:process.env.ORULO_AUDIT_BUCKET,
-    region:process.env.AWS_REGION,account:process.env.ORULO_AWS_ACCOUNT_ID}));
+  const report=await storagePreflight(process.env,postgresTransport({url:process.env.ORULO_AUDIT_SUPABASE_URL||PROJECT_URL,key:process.env.SUPABASE_SECRET_KEY}));
   console.log(JSON.stringify(report));
 }
 if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   main().catch(error=>{console.error(error.message);process.exitCode=1;});
 }
+

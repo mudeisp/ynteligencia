@@ -10,7 +10,7 @@ import { casFloorPlans } from './orulo-media-cas.mjs';
 const ids=JSON.parse(readFileSync(new URL('./orulo-media-recovery-lote1.ids.json',import.meta.url),'utf8'));
 const env=()=>({GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REF:'refs/heads/main',
   GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'323805541',GITHUB_TRIGGERING_ACTOR:'mudeisp',
-  GITHUB_RUN_ID:'12345',GITHUB_RUN_ATTEMPT:'1',ORULO_STORAGE_READY:'true',GITHUB_TOKEN:'fake-github-token',
+  GITHUB_WORKFLOW_SHA:'a'.repeat(40),GITHUB_RUN_ID:'12345',GITHUB_RUN_ATTEMPT:'1',ORULO_POSTGRES_AUDIT_READY:'true',GITHUB_TOKEN:'fake-github-token',
   ORULO_CLIENT_ID:'do-not-log-id',ORULO_CLIENT_SECRET:'do-not-log-secret',SUPABASE_SECRET_KEY:'do-not-log-key',
   APPROVED_SOURCE_DIR:'/approved-source'});
 const protectedEnv=()=>({name:'orulo-lote1',can_admins_bypass:false,
@@ -35,7 +35,7 @@ test('manual main dispatch, explicit storage approval and first attempt are mand
   validateDispatch(env());
   for(const patch of [{GITHUB_REPOSITORY:'fork/ynteligencia'},{GITHUB_EVENT_NAME:'pull_request'},
     {GITHUB_REF:'refs/heads/unreviewed'},{GITHUB_REF:'refs/tags/main'},{GITHUB_RUN_ATTEMPT:'2'},
-    {GITHUB_RUN_ID:'../../other'},{ORULO_STORAGE_READY:''},{ORULO_STORAGE_READY:'false'}]){
+    {GITHUB_RUN_ID:'../../other'},{ORULO_POSTGRES_AUDIT_READY:''},{ORULO_POSTGRES_AUDIT_READY:'false'}]){
     assert.throws(()=>validateDispatch({...env(),...patch}));
   }
 });
@@ -58,7 +58,7 @@ test('GitHub protection lookup is read-only and never requests secret values',as
   assert.equal(calls.length,2);
   for(const c of calls){assert.equal(c.options.method,undefined);assert.ok(c.options.signal);assert.doesNotMatch(c.url,/secrets|decrypt/);}
   let invoked=false;
-  await assert.rejects(checkGitHub({...env(),ORULO_STORAGE_READY:''},()=>{invoked=true;}),/STORAGE_NOT_APPROVED/);
+  await assert.rejects(checkGitHub({...env(),ORULO_POSTGRES_AUDIT_READY:''},()=>{invoked=true;}),/STORAGE_NOT_APPROVED/);
   assert.equal(invoked,false);
   await assert.rejects(checkGitHub(env(),async()=>({ok:false,status:403})),/METADATA_UNVERIFIED_HTTP_403/);
 });
@@ -167,33 +167,47 @@ test('CLI adapter uses conditional encrypted writes, no retries and removes loca
   const transport=awsTransport({bucket:'private-orulo-audit',region:'us-east-1',account:'123456789012'},(cmd,args,options)=>{
     assert.equal(cmd,'aws');assert.equal(options.env.AWS_MAX_ATTEMPTS,'1');
     assert.equal(args[args.indexOf('--if-none-match')+1],'*');assert.equal(args[args.indexOf('--server-side-encryption')+1],'AES256');
-    const file=args[args.indexOf('--body')+1];paths.push(file);assert.equal(statSync(file).mode&0o777,0o600);
+    const file=args[args.indexOf('--body')+1];paths.push(file);if(process.platform!=='win32')assert.equal(statSync(file).mode&0o777,0o600);
     return JSON.stringify({VersionId:'v',ChecksumSHA256:checksum(readFileSync(file))});
   });
   await transport.put(`${runPrefix('7','1')}/test.json`,Buffer.from('probe'));
   assert.equal(paths.every(path=>!existsSync(path)),true);
 });
-test('preflight stays blocked without durable infrastructure, and successful output never enables writes',async()=>{
-  let accessed=false;
-  await assert.rejects(storagePreflight({...env(),ORULO_STORAGE_READY:''},{metadata:()=>{accessed=true;}},()=>{}),/NOT_APPROVED/);
-  assert.equal(accessed,false);
-  await assert.rejects(storagePreflight({...env(),SUPABASE_SECRET_KEY:''},{metadata:()=>{accessed=true;}},()=>{}),/SECRETS_MISSING/);
-  assert.equal(accessed,false);
-  const invalid=remote();invalid.transport.metadata=async()=>({...metadata(),versioning:{Status:'Suspended'}});
-  await assert.rejects(storagePreflight(env(),invalid.transport,()=>{}),/VERSIONING_REQUIRED/);
-  assert.equal(invalid.calls.length,0,'Unverified storage must not even create a canary/journal');
-  const r=remote(),report=await storagePreflight(env(),r.transport,()=>{});
-  assert.equal(report.writeEnabled,false);assert.equal(report.storageProbeVerified,true);
-  assert.deepEqual(report.initiator,AUTHORIZED_INITIATOR);
-  assert.equal(report.manifestCount,99);assert.doesNotMatch(JSON.stringify(report),/do-not-log/);
-  assert.ok([...r.objects.keys()].some(key=>key.endsWith('/ledger/000000000001.jsonl')));
+function pgRemote(){
+ const entries=new Map();let run,head={sequence:0,hash:''};
+ const transport={async control(action,args={}){
+  if(action==='health')return {version:1,storage:'postgres',durable:true,appendOnly:true,synchronousCommit:'on',writeEnabled:false};
+  if(action==='read')return entries.get(args.p_sequence);
+  const event=JSON.parse(JSON.stringify(args.p_event||{}));
+  if(action==='start'){run=args.p_run;event.type='START';}
+  if(action==='snapshot')event.type=event.kind;
+  if(action==='finish'){event.type='FINISHED';event.comparison={contentChanges:0};}
+  const canonical=JSON.stringify({runUuid:run,sequence:head.sequence+1,previousHash:head.hash,event});
+  head={runUuid:run,sequence:head.sequence+1,hash:digest(canonical),eventUuid:event.eventUuid};
+  entries.set(head.sequence,{...head,canonical,event});return {...head};
+ }};
+ return {transport,entries};
+}
+test('PostgreSQL preflight requires durable ACKs and never enables writes',async()=>{
+ let accessed=false;
+ const unused={control:()=>{accessed=true;throw Error('unexpected');}};
+ await assert.rejects(storagePreflight({...env(),ORULO_POSTGRES_AUDIT_READY:''},unused,()=>{}),/NOT_APPROVED/);
+ await assert.rejects(storagePreflight({...env(),SUPABASE_SECRET_KEY:''},unused,()=>{}),/SECRETS_MISSING/);
+ assert.equal(accessed,false);
+ await assert.rejects(storagePreflight(env(),{control:async()=>({durable:false})},()=>{}),/HEALTH_UNVERIFIED/);
+ const r=pgRemote(),report=await storagePreflight(env(),r.transport,()=>{});
+ assert.equal(report.writeEnabled,false);assert.equal(report.storage,'postgres');
+ assert.deepEqual(report.initiator,AUTHORIZED_INITIATOR);assert.equal(report.manifestCount,99);
+ assert.doesNotMatch(JSON.stringify(report),/do-not-log/);
+ assert.deepEqual([...r.entries.values()].map(e=>e.event.type),['START','READ_ONLY_PREFLIGHT','BASELINE_V2','READBACK_V2','FINISHED']);
 });
+
 test('workflow is manual-only, protected, SHA-pinned and has no operational backfill step',()=>{
   const workflow=readFileSync(new URL('../.github/workflows/orulo-lote1-manual.yml',import.meta.url),'utf8');
   assert.match(workflow,/on:\n  workflow_dispatch: \{\}/);assert.doesNotMatch(workflow,/pull_request:|push:|schedule:/);
   assert.match(workflow,/group: orulo-lote1-production\n  cancel-in-progress: false/);
   assert.match(workflow,/environment: orulo-lote1/);assert.match(workflow,new RegExp('ref: '+APPROVED_SHA));
-  assert.match(workflow,/id-token: write/);assert.doesNotMatch(workflow,/AWS_ACCESS_KEY_ID:|AWS_SECRET_ACCESS_KEY:/);
+  assert.doesNotMatch(workflow,/id-token:|aws-actions|AWS_|ORULO_AUDIT_BUCKET/);assert.doesNotMatch(workflow,/AWS_ACCESS_KEY_ID:|AWS_SECRET_ACCESS_KEY:/);
   assert.doesNotMatch(workflow,/--write|upload-artifact|runRecovery|secrets: inherit|printenv|set -x/);
   const storage=workflow.split('  storage:')[1];assert.match(storage,/needs: gate/);
   for(const key of ['ORULO_CLIENT_ID','ORULO_CLIENT_SECRET','SUPABASE_SECRET_KEY'])assert.match(storage,new RegExp('secrets\\.'+key));
@@ -226,24 +240,24 @@ test('invalid initiator, automatic event or wrong ref cannot reach GitHub metada
     assert.equal(calls,0);
   }
 });
-test('single-owner guard is repeated before OIDC and secret access; protected job has matching immutable guards',()=>{
+test('single-owner guard is repeated before secret access; protected job has matching immutable guards',()=>{
   const workflow=readFileSync(new URL('../.github/workflows/orulo-lote1-manual.yml',import.meta.url),'utf8');
   const storage=workflow.split('  storage:')[1];
   for(const guard of ["github.event_name == 'workflow_dispatch'","github.ref == 'refs/heads/main'",
     "github.actor == 'mudeisp'","github.actor_id == '323805541'","github.triggering_actor == 'mudeisp'","github.run_attempt == '1'"])
     assert.ok(storage.includes(guard));
   const gate=storage.indexOf('orulo-media-recovery-actions.mjs dispatch-gate');
-  const oidc=storage.indexOf('aws-actions/configure-aws-credentials@');
   const secret=storage.indexOf('secrets.ORULO_CLIENT_ID');
-  assert.ok(gate>=0 && gate<oidc && oidc<secret);
+  assert.ok(gate>=0 && gate<secret);
   assert.match(workflow,/ref: \$\{\{ github\.workflow_sha \}\}/);
   assert.doesNotMatch(workflow,/workflow_dispatch:[\s\S]*inputs:|--write|runRecovery|secrets: inherit/);
 });
 test('audit journal records the verified owner without leaking credentials or enabling writes',async()=>{
-  const r=remote(),report=await storagePreflight(env(),r.transport,()=>{});
-  const events=[...r.objects].filter(([key])=>key.endsWith('.jsonl')).map(([,v])=>JSON.parse(v.bytes));
-  assert.deepEqual(events[0].initiator,AUTHORIZED_INITIATOR);
-  assert.equal(events[0].writeEnabled,false);
+  const r=pgRemote(),report=await storagePreflight(env(),r.transport,()=>{});
+  const events=[...r.entries.values()].map(e=>e.event);
+  assert.deepEqual(events[1].initiator,AUTHORIZED_INITIATOR);
+  assert.equal(events[1].writeEnabled,false);
   assert.equal(report.writeEnabled,false);
   assert.doesNotMatch(JSON.stringify({report,events}),/do-not-log|fake-github-token/);
 });
+

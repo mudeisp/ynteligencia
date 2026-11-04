@@ -6,6 +6,7 @@ on:
       - '.github/workflows/orulo-cas.yml'
       - '.github/workflows/orulo-lote1-manual.yml'
       - 'supabase/orulo_media_cas.sql'
+      - 'supabase/migrations/*orulo_postgres_audit.sql'
       - 'scripts/orulo-media-cas*'
       - 'scripts/orulo-media-recovery*'
       - 'orulo-floor-plans*'
@@ -32,3 +33,35 @@ jobs:
         run: npm ci --prefix test-support/orulo-cas --ignore-scripts --no-audit --no-fund
       - name: Run existing CAS and diagnostic tests (no production credentials)
         run: npm test --prefix test-support/orulo-cas
+  postgres:
+    name: Durable WAL and multi-session concurrency
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          # Isolated disposable test database; no production secrets or credentials.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: orulo_audit_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d orulo_audit_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Run transactional concurrency tests against local PostgreSQL only
+        env:
+          ORULO_SYNTHETIC_PG: 'true'
+          PGHOST: '127.0.0.1'
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGDATABASE: orulo_audit_test
+        run: node --test scripts/orulo-media-recovery-pg-concurrency.test.mjs
+
