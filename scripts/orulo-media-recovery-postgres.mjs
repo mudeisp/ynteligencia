@@ -67,6 +67,16 @@ export async function openPostgresJournal(env,transport){
  return {
   runUuid:run,
   record:event=>locked(()=>mutate('append',event)),
+  adoptPilotAuthorization:(buildingId,targetIds)=>locked(async()=>{
+   const ack=await transport.control('pilot_status',{p_run:run});if(!ack)return false;
+   const e=await verify(ack);
+   if(ack.sequence!==head.sequence+1 || JSON.parse(e.canonical).previousHash!==head.hash ||
+      e.event.type!=='WRITE_AUTHORIZED' || e.event.mode!=='PILOT_ONE_BUILDING' || e.event.buildingId!==buildingId ||
+      !isDeepStrictEqual(e.event.targetIds,targetIds) || e.event.controlSha!==env.GITHUB_WORKFLOW_SHA)
+    throw Error('PILOT_AUTHORIZATION_DIVERGENCE');
+   head=ack;return true;
+  }),
+  pilotFinish:()=>locked(()=>mutate('pilot_finish',{})),
   snapshot:kind=>locked(async()=>{
    const begin=await mutate('snapshot_begin',{kind});
    const keys=begin.entry.event.keys;
@@ -100,6 +110,8 @@ export async function openPostgresJournal(env,transport){
     const entry=await verify(ack);
     if(entry.event.type!=='CAS_RESULT' || entry.event.operationId!==operation ||
        JSON.parse(entry.canonical).previousHash!==head.hash)throw Error('POSTGRES_CAS_RECEIPT_DIVERGENCE');
+    const body={...result};delete body.auditReceipt;
+    if(!isDeepStrictEqual(body,entry.event.result))throw Error('POSTGRES_CAS_RESULT_DIVERGENCE');
     head=ack;return result;
    });
   }
