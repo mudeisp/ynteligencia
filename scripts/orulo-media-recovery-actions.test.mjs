@@ -176,12 +176,13 @@ test('CLI adapter uses conditional encrypted writes, no retries and removes loca
 function pgRemote(){
  const entries=new Map();let run,head={sequence:0,hash:''};
  const transport={async control(action,args={}){
-  if(action==='health')return {version:1,storage:'postgres',durable:true,appendOnly:true,synchronousCommit:'on',writeEnabled:false};
+  if(action==='health')return {version:2,snapshotProtocol:'paged-v2',storage:'postgres',durable:true,appendOnly:true,synchronousCommit:'on',writeEnabled:false};
   if(action==='read')return entries.get(args.p_sequence);
   const event=JSON.parse(JSON.stringify(args.p_event||{}));
   if(action==='start'){run=args.p_run;event.type='START';}
-  if(action==='snapshot')event.type=event.kind;
-  if(action==='finish'){event.type='FINISHED';event.comparison={contentChanges:0};}
+  if(action==='snapshot_begin'){event.type='SNAPSHOT_BEGIN';event.keys=[];}
+  if(action==='snapshot_seal')event.type=event.kind;
+  if(action==='finish'){event.type='FINISHED';event.comparison={contentChanges:0,timestampOnly:0,insertions:0,deletions:0,schemaMatch:true,captureStable:true};}
   const canonical=JSON.stringify({runUuid:run,sequence:head.sequence+1,previousHash:head.hash,event});
   head={runUuid:run,sequence:head.sequence+1,hash:digest(canonical),eventUuid:event.eventUuid};
   entries.set(head.sequence,{...head,canonical,event});return {...head};
@@ -199,7 +200,7 @@ test('PostgreSQL preflight requires durable ACKs and never enables writes',async
  assert.equal(report.writeEnabled,false);assert.equal(report.storage,'postgres');
  assert.deepEqual(report.initiator,AUTHORIZED_INITIATOR);assert.equal(report.manifestCount,99);
  assert.doesNotMatch(JSON.stringify(report),/do-not-log/);
- assert.deepEqual([...r.entries.values()].map(e=>e.event.type),['START','READ_ONLY_PREFLIGHT','BASELINE_V2','READBACK_V2','FINISHED']);
+ assert.deepEqual([...r.entries.values()].map(e=>e.event.type),['START','READ_ONLY_PREFLIGHT','SNAPSHOT_BEGIN','BASELINE_V2','SNAPSHOT_BEGIN','READBACK_V2','FINISHED']);
 });
 
 test('workflow is manual-only, protected, SHA-pinned and has no operational backfill step',()=>{

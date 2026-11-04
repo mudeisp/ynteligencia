@@ -66,9 +66,12 @@ possible uses of an administrative Supabase key. Do not expose it to untrusted j
 
 ## Baseline V2 and readback
 
-Snapshots are generated server-side in a single SQL statement and durably stored
-as BASELINE_V2/READBACK_V2 events. All properties are included (targets and outside
-rows), sorted by UUID. Each record contains id, external_id, building_id, UTC
+Snapshots are generated server-side using bounded UUID pages and durably stored
+as hash-chained page events, with BASELINE_V2/READBACK_V2 seals after complete coverage.
+See [paged capture and incident recovery](orulo-paged-preflight-recovery.md) before
+any new manual attempt. Captures represent read windows, not an atomic inventory
+snapshot. All properties are included (targets and outside rows), sorted by UUID.
+Each record contains id, external_id, building_id, UTC
 updated_at, full hash and content hash. V2 retains the existing PostgreSQL canonical
 JSONB MD5 content checksums for compatibility; the enclosing audit envelope uses
 SHA-256. Only updated_at is excluded from the content hash. Column names/types are

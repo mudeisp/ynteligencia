@@ -14,11 +14,19 @@ create table public.properties(id uuid primary key,external_id text,source text,
 grant usage on schema public to service_role,anon,authenticated;
 alter table public.properties enable row level security;`);
 await db.exec(readFileSync(new URL('../supabase/migrations/20261104093722_orulo_postgres_audit.sql',import.meta.url),'utf8'));
+await db.exec(readFileSync(new URL('../supabase/migrations/20261104102956_orulo_paged_snapshots.sql',import.meta.url),'utf8'));
 async function service(sql,args=[]){await db.exec('set role service_role');try{return (await db.query(sql,args)).rows[0]?.r;}finally{await db.exec('reset role').catch(()=>{});}}
 async function control(action,run=null,seq=null,prev=null,event={}){return service('select public.orulo_audit_control($1,$2,$3,$4,$5) r',[action,run,seq,prev,JSON.stringify(event)]);}
 async function current(){return (await db.query('select to_jsonb(p) r from public.properties p where id=$1',[id])).rows[0]?.r;}
 let run,head;
-async function append(action,event){head=await control(action,run,head.sequence+1,head.hash,{...event,eventUuid:randomUUID()});return head;}
+async function append(action,event){
+ if(action==='snapshot'){
+  await append('snapshot_begin',event);
+  const e=await control('read',run,head.sequence);
+  for(let offset=0;offset<e.event.keys.length;offset+=50)await append('snapshot_page',{...event,offset,size:50});
+  return append('snapshot_seal',event);
+ }
+ head=await control(action,run,head.sequence+1,head.hash,{...event,eventUuid:randomUUID()});return head;}
 async function reset(authorize=false){
  await db.exec('reset role');
  // Test administrator reconciles old synthetic runs; never delete audit evidence.
@@ -46,7 +54,7 @@ test('private append-only audit: no table/schema access or RPC for anonymous/aut
  }
  await assert.rejects(db.exec('update orulo_audit.entries set event=event'),/AUDIT_APPEND_ONLY/);
  await assert.rejects(db.exec('delete from orulo_audit.runs'),/AUDIT_APPEND_ONLY/);
- await assert.rejects(db.exec('truncate orulo_audit.entries'),/AUDIT_APPEND_ONLY/);
+ await assert.rejects(db.exec('truncate orulo_audit.entries cascade'),/AUDIT_APPEND_ONLY/);
  await assert.rejects(control('health'),/AUDIT_DURABILITY_UNVERIFIED/,'in-memory fsync off must fail closed');
 });
 test('run reuse, active interrupted run, sequence races, reserved events and unauthorised writes rejected',async()=>{
@@ -69,7 +77,7 @@ test('durable V2 snapshots compare keys, content, timestamps, insertions/deletio
  await db.query("update public.properties set updated_at='2026-01-03' where id=$1",[id]);
  await append('snapshot',{kind:'READBACK_V2'});await append('finish',{});
  let result=await control('read',run,head.sequence);
- assert.deepEqual({...result.event.comparison},{compared:1,contentChanges:0,timestampOnly:1,insertions:0,deletions:0,schemaMatch:true,attribution:'concurrent_or_unattributed_no_backfill_in_preflight'});
+ assert.deepEqual({...result.event.comparison},{compared:1,contentChanges:0,timestampOnly:1,insertions:0,deletions:0,schemaMatch:true,captureStable:true,attribution:'concurrent_or_unattributed_no_backfill_in_preflight'});
  await reset();await db.query('update public.properties set price=101 where id=$1',[id]);
  await db.query("insert into public.properties(id) values('00000000-0000-0000-0000-000000000002')");
  await append('snapshot',{kind:'READBACK_V2'});await append('finish',{});
@@ -127,17 +135,66 @@ test('typology edits and trigger side effects abort the whole audited transactio
  await assert.rejects(cas(op),/PRESERVATION_FAILED/);assert.equal((await current()).price,100);
  await db.exec('drop trigger fixture_bad on public.properties;drop function public.bad_trigger()');
 });
+test('paged capture rejects gaps/repeats/oversized pages and preserves tombstones and IDs inserted behind cursor',async()=>{
+ await reset();await append('snapshot_begin',{kind:'READBACK_V2'});
+ await assert.rejects(append('snapshot_seal',{kind:'READBACK_V2'}),/INCOMPLETE/);
+ await assert.rejects(append('snapshot_page',{kind:'READBACK_V2',offset:1}),/CURSOR_CONFLICT/);
+ await assert.rejects(append('snapshot_page',{kind:'READBACK_V2',offset:0,size:101}),/SIZE_INVALID/);
+ await db.query('delete from public.properties where id=$1',[id]);
+ await db.query("insert into public.properties(id) values('00000000-0000-0000-0000-000000000000')");
+ await append('snapshot_page',{kind:'READBACK_V2',offset:0,size:1});
+ const page=await control('read',run,head.sequence);assert.equal(page.event.records[0][0],id);assert.equal(page.event.records[0][4],null);
+ await assert.rejects(append('snapshot_page',{kind:'READBACK_V2',offset:0}),/NO_MORE_PAGES/);
+ await append('snapshot_seal',{kind:'READBACK_V2'});
+ const seal=(await control('read',run,head.sequence)).event.snapshot;
+ assert.equal(seal.membershipStable,false);assert.deepEqual(seal.deletedDuringCapture,[id]);assert.equal(seal.insertedDuringCapture.length,1);
+ await append('finish',{});assert.equal((await control('read',run,head.sequence)).event.comparison.captureStable,false);
+});
+test('page cancellation rolls back event AND records; partial capture remains durable and blocks a new run',async()=>{
+ await reset();await append('snapshot_begin',{kind:'READBACK_V2'});const previous={...head};
+ await db.exec("create function public.cancel_page() returns trigger language plpgsql as $$begin raise query_canceled using message='fixture statement timeout'; end$$;create trigger fixture_cancel before insert on orulo_audit.snapshot_records for each row execute function public.cancel_page()");
+ await assert.rejects(append('snapshot_page',{kind:'READBACK_V2',offset:0}),/statement timeout/);
+ assert.equal((await db.query("select count(*)::int n from orulo_audit.snapshot_records where run_uuid=$1 and kind='READBACK_V2'",[run])).rows[0].n,0);
+ assert.equal((await control('read',run,previous.sequence)).hash,previous.hash);
+ await assert.rejects(control('read',run,previous.sequence+1),/NOT_FOUND/);
+ await assert.rejects(control('start',randomUUID(),null,null,metadata()),/ACTIVE_RUN/);
+ await assert.rejects(control('snapshot',run,head.sequence+1,head.hash,{kind:'READBACK_V2'}),/PAGED_SNAPSHOT_REQUIRED/);
+ await db.exec('drop trigger fixture_cancel on orulo_audit.snapshot_records;drop function public.cancel_page()');
+});
+test('schema change during capture stops before another page and all capture tables remain private/immutable',async()=>{
+ await reset();await append('snapshot_begin',{kind:'READBACK_V2'});
+ await db.exec('alter table public.properties add column fixture_drift text');
+ await assert.rejects(append('snapshot_page',{kind:'READBACK_V2',offset:0}),/SCHEMA_CHANGED/);
+ await db.exec('alter table public.properties drop column fixture_drift');
+ for(const table of ['snapshot_sets','snapshot_records']){
+  await assert.rejects(db.exec('truncate orulo_audit.'+table+' cascade'),/APPEND_ONLY/);
+  await db.exec('set role service_role');await assert.rejects(db.query('select * from orulo_audit.'+table),/permission denied/);await db.exec('reset role');
+ }
+});
+test('known-failure administrative procedure verifies anchored chain, only appends ABORTED and refuses repetition',async()=>{
+ await reset();await db.query("select orulo_audit.admin_event($1,'ABORTED','fixture reconciliation',true)",[run]);
+ run=randomUUID();head=await control('start',run,null,null,{...metadata(),githubRunId:'41813891981'});
+ await append('append',{type:'READ_ONLY_PREFLIGHT',writeEnabled:false});
+ const saved=[await control('read',run,1),await control('read',run,2)];
+ const procedure=readFileSync(new URL('../supabase/orulo_reconcile_41813891981.sql',import.meta.url),'utf8')
+  .replaceAll('6e5290ce-971a-404c-ae18-881a01e30f7c',run)
+  .replaceAll('ba1dc5ecd0cfe0bdf0c9d048369926bf3d9154a6bf500beee4d580141ee292f4',head.hash);
+ await db.exec(procedure);assert.deepEqual([await control('read',run,1),await control('read',run,2)],saved);
+ assert.equal((await control('read',run,3)).event.type,'ABORTED');
+ await assert.rejects(db.exec(procedure),/UNEXPECTED_EVENTS/);await db.exec('rollback');
+});
 
 export function fakePostgres(){
  const entries=new Map();let run,head={sequence:0,hash:''};const calls=[];
  const transport={async control(action,args={}){
   calls.push(action);
-  if(action==='health')return {version:1,storage:'postgres',durable:true,appendOnly:true,synchronousCommit:'on',writeEnabled:false};
+  if(action==='health')return {version:2,snapshotProtocol:'paged-v2',storage:'postgres',durable:true,appendOnly:true,synchronousCommit:'on',writeEnabled:false};
   if(action==='read')return entries.get(args.p_sequence);
   if(action==='recover')return {intent:{},result:{result:{status:'UPDATED'}}};
   let event=JSON.parse(JSON.stringify(args.p_event||{}));if(action==='start'){run=args.p_run;event.type='START';}
-  if(action==='snapshot')event.type=event.kind;
-  if(action==='finish'){event.type='FINISHED';event.comparison={contentChanges:0};}
+  if(action==='snapshot_begin'){event.type='SNAPSHOT_BEGIN';event.keys=[];}
+  if(action==='snapshot_seal')event.type=event.kind;
+  if(action==='finish'){event.type='FINISHED';event.comparison={contentChanges:0,timestampOnly:0,insertions:0,deletions:0,schemaMatch:true,captureStable:true};}
   const canonical=JSON.stringify({runUuid:run,sequence:head.sequence+1,previousHash:head.hash,event});
   head={runUuid:run,sequence:head.sequence+1,hash:digest(canonical),eventUuid:event.eventUuid};
   entries.set(head.sequence,{...head,canonical,event});return {...head};
@@ -159,6 +216,18 @@ test('checksum tampering or ambiguous append freezes client; no CAS or retries',
  const g=fakePostgres(),k=await openPostgresJournal({},g.transport),normal=g.transport.control;
  g.transport.control=async(a,p)=>{const r=await normal(a,p);if(a==='append')throw Error('lost ACK after persistence');return r;};
  await assert.rejects(k.record({type:'INTENT'}),/lost ACK/);assert.equal(g.entries.size,2);await assert.rejects(k.record({type:'INTENT'}),/FROZEN/);
+});
+test('lost page acknowledgement preserves event but freezes capture without retry or seal',async()=>{
+ const f=fakePostgres(),base=f.transport.control;let pages=0;
+ f.transport.control=async(a,p)=>{
+  if(a==='snapshot_begin'){
+   const ack=await base(a,p),entry=f.entries.get(ack.sequence);entry.event.keys=[id];entry.canonical=JSON.stringify({runUuid:ack.runUuid,sequence:ack.sequence,previousHash:JSON.parse(entry.canonical).previousHash,event:entry.event});entry.hash=ack.hash=digest(entry.canonical);return ack;
+  }
+  if(a==='snapshot_page'){pages++;await base(a,p);throw Error('page ACK lost after commit');}
+  return base(a,p);
+ };
+ const j=await openPostgresJournal({},f.transport);await assert.rejects(j.snapshot('BASELINE_V2'),/page ACK lost/);
+ await assert.rejects(j.snapshot('BASELINE_V2'),/FROZEN/);assert.equal(pages,1);assert.equal(f.calls.includes('snapshot_seal'),false);
 });
 test('concurrent local appends freeze both callers; health and transport fail closed without revealing secrets',async()=>{
  const f=fakePostgres(),j=await openPostgresJournal({},f.transport),normal=f.transport.control;let release;
