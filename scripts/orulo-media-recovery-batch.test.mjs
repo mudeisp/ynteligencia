@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
-import {executeBatch,loadBatch,batchCatalog,validateBatchDispatch,batchPatches,verifyBatchImage,batchApprovalSql} from './orulo-media-recovery-batch.mjs';
+import {executeBatch,loadBatch,batchCatalog,validateBatchDispatch,batchPatches,verifyBatchImage,batchApprovalSql,batchSourceClient,batchFailureDetails} from './orulo-media-recovery-batch.mjs';
 const {PGlite}=process.env.PGLITE_MODULE?await import(process.env.PGLITE_MODULE):createRequire(new URL('../test-support/orulo-cas/package.json',import.meta.url))('@electric-sql/pglite');
 const db=new PGlite();
 await db.exec(`create role anon;create role authenticated;create role service_role;
@@ -26,7 +26,7 @@ async function run(o={}){
  if(o.tamper&&a==='read'&&out)out.event={...out.event,tampered:true};return out;
  },apply:async(r,op)=>{calls.push('CAS');if(o.beforeApply)await o.beforeApply(r,op);const v=await service('select public.orulo_audited_cas($1,$2) r',[r,op]);if(o.loseAck)throw Error('synthetic timeout after commit');return v;}};
  let result,error;
- try{result=await executeBatch({env:e,transport,fetchPlans:async id=>targets.filter(t=>t.buildingId===id).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:image(id),description:'untrusted'}))),checkImage:async()=>{if(o.badImage)throw Error('BATCH_IMAGE_UNAVAILABLE');},onPlan:async p=>{plan=p;if(o.authorize!==false)await db.exec(batchApprovalSql(p));if(o.onPlan)await o.onPlan(p);},wait:async()=>{},now:(()=>{let n=0;return()=>n+=600001;})()});}catch(x){error=x;}
+ try{result=await executeBatch({env:e,transport,fetchPlans:o.fetchPlans|| (async id=>targets.filter(t=>t.buildingId===id).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:image(id),description:'untrusted'})))),checkImage:async()=>{if(o.badImage)throw Error('BATCH_IMAGE_UNAVAILABLE');},onPlan:async p=>{plan=p;if(o.authorize!==false)await db.exec(batchApprovalSql(p));if(o.onPlan)await o.onPlan(p);},wait:async()=>{},now:(()=>{let n=0;return()=>n+=600001;})()});}catch(x){error=x;}
  return {result,error,calls,uuid,plan,env:e,fingerprint};
 }
 const kinds=async r=>(await db.query('select kind from orulo_audit.entries where run_uuid=$1 order by sequence',[r.uuid])).rows.map(x=>x.kind);
@@ -105,4 +105,27 @@ test('private admin stays inaccessible to all API roles; audited CAS only servic
  for(const role of ['anon','authenticated','service_role'])assert.equal((await db.query("select has_function_privilege($1,'orulo_audit.authorize_pilot(uuid,text,text,text,text)','EXECUTE') b",[role])).rows[0].b,false);
  assert.equal((await db.query("select has_function_privilege('service_role','public.orulo_audited_cas(uuid,uuid)','EXECUTE') b")).rows[0].b,true);assert.equal((await db.query("select has_function_privilege('authenticated','public.orulo_audited_cas(uuid,uuid)','EXECUTE') b")).rows[0].b,false);
  await assert.rejects(db.query("select orulo_audit.batch_merge($1,$2)",[JSON.stringify({building:{floor_plans:[{id:'1'},{id:'1'}]}}),JSON.stringify([{id:'1',image_url:image('1')}])]),/EXISTING_PLAN_IDS/);
+});
+test('safe source diagnostics distinguish OAuth HTTP/timeout, plan HTTP/JSON and CDN failure without secrets or retries',async()=>{
+ const secret='private_fixture_do_not_log';let calls=0;
+ const reject=async(promise,expected)=>assert.rejects(promise,e=>{
+  const d=batchFailureDetails(e);for(const [k,v] of Object.entries(expected))assert.equal(d[k],v);
+  assert.doesNotMatch(JSON.stringify(d),/private_fixture|Bearer|client_secret|https:/);return true;
+ });
+ await reject(batchSourceClient(env(),async()=>{calls++;return new Response(secret,{status:401});}),{code:'BATCH_ORULO_AUTH_FAILED',sourceAction:'oauth',sourceHttpStatus:401,batchStage:'SOURCE_AUTH'});assert.equal(calls,1);
+ await reject(batchSourceClient(env(),async()=>{throw Object.assign(Error(secret),{name:'TimeoutError',cause:{code:secret}});}),{code:'BATCH_SOURCE_NETWORK_FAILED',networkFailure:'TIMEOUT',sourceAction:'oauth'});
+ await reject(batchSourceClient(env(),async()=>new Response(secret)),{code:'BATCH_SOURCE_INVALID_RESPONSE',sourceAction:'oauth'});
+ const plans=await batchSourceClient(env(),async url=>url.includes('/oauth/')?Response.json({access_token:secret}):new Response(secret,{status:503}));
+ await reject(plans(targets[0].buildingId),{code:'BATCH_SOURCE_HTTP_FAILED',sourceAction:'floor_plans',sourceHttpStatus:503,buildingId:targets[0].buildingId});
+ const malformed=await batchSourceClient(env(),async url=>url.includes('/oauth/')?Response.json({access_token:secret}):new Response(secret));
+ await reject(malformed(targets[0].buildingId),{code:'BATCH_SOURCE_INVALID_RESPONSE',sourceAction:'floor_plans'});
+ await reject(verifyBatchImage(image('1'),async()=>{throw Object.assign(Error(secret),{cause:{code:'UND_ERR_CONNECT_TIMEOUT'}});}),{code:'BATCH_IMAGE_REQUEST_FAILED',networkFailure:'UND_ERR_CONNECT_TIMEOUT',sourceAction:'image'});
+ assert.deepEqual(batchFailureDetails(Object.assign(Error('BATCH_'+secret),{databaseReason:secret,batchStage:secret,networkFailure:secret,buildingId:secret,sourceAction:secret})),{code:'BATCH_BLOCKED'});
+});
+test('source failure persists exact safe stage/building in STOP and never authorizes or applies CAS',async()=>{
+ const r=await run({fetchPlans:async()=>{throw Error('raw secret-bearing unknown error');}});
+ assert.equal(r.calls.includes('CAS'),false);assert.deepEqual(await kinds(r),['START','CLIENT_STOP']);
+ const event=(await db.query("select event from orulo_audit.entries where run_uuid=$1 and kind='CLIENT_STOP'",[r.uuid])).rows[0].event;
+ assert.equal(event.diagnostic.code,'BATCH_BLOCKED');assert.equal(event.diagnostic.batchStage,'SOURCE_PLANS');assert.equal(event.diagnostic.buildingId,targets[0].buildingId);
+ assert.doesNotMatch(JSON.stringify(event),/secret-bearing/);assert.equal(event.confirmedRows,0);
 });

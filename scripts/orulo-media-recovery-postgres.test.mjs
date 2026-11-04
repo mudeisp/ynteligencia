@@ -285,4 +285,16 @@ test('RPC errors retain action/status/SQLSTATE only, without server messages, se
   });assert.equal(requests,1);
  }
 });
+test('exact allowlisted database reasons distinguish active run from scope failure; all arbitrary payloads remain hidden',async()=>{
+ for(const reason of ['AUDIT_ACTIVE_RUN_REQUIRES_RECONCILIATION','AUDIT_MANUAL_OWNER_SCOPE_REQUIRED','BATCH_MANIFEST_DRIFT','secret arbitrary SQL']){
+  let count=0;const t=postgresTransport({url:PROJECT_URL,key:'private-secret'},async()=>{count++;return Response.json({code:'P0001',message:reason,details:'private-secret',hint:'private-secret'},{status:400});});
+  await assert.rejects(t.control('start'),error=>{
+   const d=rpcFailureDetails(error);assert.equal(d.databaseReason,reason.startsWith('secret')?undefined:reason);assert.equal(d.rpcAction,'start');assert.equal(d.httpStatus,400);assert.doesNotMatch(JSON.stringify(error),/private-secret|arbitrary SQL/);return true;
+  });assert.equal(count,1);
+ }
+ const t=postgresTransport({url:PROJECT_URL,key:'private-secret'},async()=>{throw Error('private-secret');});
+ await assert.rejects(openPostgresJournal({}, {control:async(a,p)=>a==='health'?{version:2,snapshotProtocol:'paged-v2',storage:'postgres',durable:true,appendOnly:true,synchronousCommit:'on',writeEnabled:false}:t.control(a,p)}),error=>{
+  assert.match(error.auditRunUuid,/^[a-f0-9-]{36}$/);assert.equal(rpcFailureDetails(error).rpcAction,'start');return true;
+ });
+});
 test.after(()=>db.close());
