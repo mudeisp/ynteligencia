@@ -1,5 +1,8 @@
 name: Orulo progressive manifest batches (admin authorization required)
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/orulo-batch-manual.yml']
   workflow_dispatch:
     inputs:
       batch_id:
@@ -12,7 +15,19 @@ concurrency:
   group: orulo-lote1-production
   cancel-in-progress: false
 jobs:
+  register:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Register manual workflow without operational access
+        run: printf '%s\n' 'Manual workflow registered; no operational jobs were requested.'
   gate:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+          github.actor == 'mudeisp' && github.actor_id == '323805541' &&
+          github.triggering_actor == 'mudeisp' && github.run_attempt == '1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:

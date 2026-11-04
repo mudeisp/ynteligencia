@@ -33,7 +33,27 @@ const kinds=async r=>(await db.query('select kind from orulo_audit.entries where
 test('immutable manifests partition exactly 83 buildings and 314 UUIDs; phases 20/30/30/3; gates owner/manual/main/first attempt',()=>{
  const all=Object.keys(batchCatalog.batches).map(loadBatch);assert.deepEqual(all.map(b=>b.buildingIds.length),[20,30,30,3]);assert.equal(new Set(all.flatMap(b=>b.buildingIds)).size,83);assert.equal(new Set(all.flatMap(b=>b.targets.map(t=>t.id))).size,314);validateBatchDispatch(env());
  for(const p of [{GITHUB_ACTOR:'other'},{GITHUB_REF:'refs/heads/other'},{GITHUB_EVENT_NAME:'push'},{GITHUB_RUN_ATTEMPT:'2'},{ORULO_BATCH_READY:''},{ORULO_BATCH_ID:'phase2-30-a'},{ORULO_BATCH_APPROVED_SHA:'b'.repeat(40)}])assert.throws(()=>validateBatchDispatch({...env(),...p}));
- const w=readFileSync(new URL('../.github/workflows/orulo-batch-manual.yml',import.meta.url),'utf8');assert.match(w,/workflow_dispatch:/);assert.match(w,/group: orulo-lote1-production/);assert.match(w,/ref: \$\{\{ github.workflow_sha \}\}/);assert.doesNotMatch(w,/push:|schedule:|--write|id-token:|aws-actions/);
+ const w=readFileSync(new URL('../.github/workflows/orulo-batch-manual.yml',import.meta.url),'utf8');assert.match(w,/workflow_dispatch:/);assert.match(w,/group: orulo-lote1-production/);assert.match(w,/ref: \$\{\{ github.workflow_sha \}\}/);assert.doesNotMatch(w,/schedule:|--write|id-token:|aws-actions/);
+});
+test('registration push is self-file/main only; registration is inert and all operational jobs require manual owner/main/first attempt',()=>{
+ const w=readFileSync(new URL('../.github/workflows/orulo-batch-manual.yml',import.meta.url),'utf8');
+ assert.match(w,/on:\n  push:\n    branches: \[main\]\n    paths: \['\.github\/workflows\/orulo-batch-manual.yml'\]\n  workflow_dispatch:/);
+ assert.doesNotMatch(w,/pull_request_target:|workflow_run:|workflow_call:|repository_dispatch:/);
+ const jobs=Object.fromEntries([...w.matchAll(/^  (register|gate|batch):\n([\s\S]*?)(?=^  \w+:|$(?![\s\S]))/gm)].map(m=>[m[1],m[2]]));
+ assert.deepEqual(Object.keys(jobs),['register','gate','batch']);
+ assert.match(jobs.register,/permissions: \{\}/);assert.match(jobs.register,/timeout-minutes: 1/);
+ assert.doesNotMatch(jobs.register,/uses:|env:|environment:|secrets\.|vars\.|GITHUB_TOKEN|node |curl |fetch|supabase|orulo\.com/i);
+ assert.match(jobs.register,/run: printf '%s\\n' 'Manual workflow registered; no operational jobs were requested\.'/);
+ const condition=name=>jobs[name].match(/if: (?:>-\n)?\s*\$\{\{([\s\S]*?)\}\}/)[1].replace(/\s+/g,' ').trim();
+ const evaluate=(name,github)=>Function('github','return ('+condition(name)+')')(github);
+ const manual={event_name:'workflow_dispatch',ref:'refs/heads/main',actor:'mudeisp',actor_id:'323805541',triggering_actor:'mudeisp',run_attempt:'1'};
+ assert.equal(condition('gate'),condition('batch'));assert.match(jobs.batch,/needs: gate/);assert.match(jobs.batch,/environment: orulo-lote1/);
+ for(const job of ['gate','batch']){
+  assert.equal(evaluate(job,manual),true);
+  for(const patch of [{event_name:'push'},{event_name:'pull_request'},{event_name:'schedule'},{event_name:'workflow_run'},{ref:'refs/heads/feature'},{actor:'other'},{actor_id:'1'},{triggering_actor:'other'},{run_attempt:'2'}])assert.equal(evaluate(job,{...manual,...patch}),false,job+JSON.stringify(patch));
+ }
+ assert.equal(evaluate('register',{...manual,event_name:'push'}),true);assert.equal(evaluate('register',manual),false);assert.equal(evaluate('register',{...manual,event_name:'push',ref:'refs/heads/feature'}),false);
+ for(const id of ['phase2-30-a','phase2-30-b','phase3-rest']){assert.equal(batchCatalog.batches[id].released,false);assert.throws(()=>validateBatchDispatch({...env(),ORULO_BATCH_ID:id}),/PHASE_NOT_RELEASED/);}
 });
 test('multiple buildings and plans: fresh baseline, durable INTENT, atomic CAS and full readback preserve existing images and commercial data',async()=>{
  const r=await run();if(r.error)throw r.error;assert.equal(r.result.rowsWritten,2);assert.equal(r.result.nextBatchAuthorized,false);assert.equal(r.result.recoveredImageOccurrences,targets.reduce((n,t)=>n+t.missingPlanIds.length,0));
