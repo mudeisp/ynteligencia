@@ -73,7 +73,7 @@ async function sourceClient(env){
 export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBatchImage,onPlan=()=>{},wait=ms=>new Promise(r=>setTimeout(r,ms)),now=Date.now}){
  validateBatchDispatch(env);presence(env);const batch=loadBatch(env.ORULO_BATCH_ID),health=await transport.control('health');
  if(health.batchProtocol!==1||health.batchMasterHash!==batchCatalog.masterHash)throw Error('BATCH_MIGRATION_OR_CATALOG_REQUIRED');
- const journal=await openPostgresJournal(env,transport),rowArgs=id=>({p_run:journal.runUuid,p_event:{batchId:batch.id,id}});let currentId=null;const verified=[];let recovered=0;
+ const journal=await openPostgresJournal(env,transport),rowArgs=id=>({p_run:journal.runUuid,p_event:{batchId:batch.id,id}});let currentId=null;const verified=[];let recovered=0,confirmed=0;
  try{
   const inventory=await transport.control('batch_inventory',{p_run:journal.runUuid,p_event:{batchId:batch.id}});
   if(inventory.masterHash!==batchCatalog.masterHash||inventory.batchManifestHash!==batchCatalog.batches[batch.id].hash||!inventory.targets?.length||inventory.targets.some(t=>!batch.targets.some(a=>a.id===t.id&&a.buildingId===t.buildingId)))throw Error('BATCH_INVENTORY_INVALID_OR_EMPTY');
@@ -94,6 +94,7 @@ export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBa
    const desired=merge(row,target.patches);if(isDeepStrictEqual(desired,row.raw_data.building.floor_plans))continue;
    const operationId=randomUUID();await journal.record({type:'INTENT',operationId,id:currentId,buildingId:target.buildingId,expected:row,desiredPlans:desired});
    const result=await journal.apply(operationId);if(result.status!=='UPDATED'||result.id!==currentId||result.receipt?.verified!==true)throw Error('BATCH_STOP_'+result.status);
+   confirmed++; // Trusted transactional receipt confirms commit, even if subsequent readback fails.
    const post=await transport.control('batch_row',rowArgs(currentId));
    if(preserved(post.row)!==preserved(row)||!isDeepStrictEqual(post.row.raw_data.building.floor_plans,desired)||pre.fullHash!==result.receipt.beforeFullHash||pre.contentHash!==result.receipt.expectedBeforeContentHash||post.fullHash!==result.receipt.afterFullHash||post.contentHash!==result.receipt.expectedAfterContentHash)throw Error('BATCH_POST_WRITE_DIVERGENCE');
    await journal.record({type:'CLIENT_READBACK',stage:'BATCH_ROW_VERIFIED',operationId,id:currentId,fullHash:post.fullHash,contentHash:post.contentHash});
@@ -109,7 +110,7 @@ export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBa
    recoveredImageOccurrences:recovered,distinctPlannedUrls:proposed.distinctUrls,runUuid:journal.runUuid,headHash:finish.ack.hash,nextBatchAuthorized:false};
  }catch(error){
   if(currentId)try{error.observed=await transport.control('batch_row',rowArgs(currentId));}catch{}
-  try{await journal.record({type:'CLIENT_STOP',stage:'BATCH_STOP',batchId:batch.id,id:currentId,confirmedRows:verified.length,code:'BATCH_HALTED_RECONCILIATION_REQUIRED',...rpcFailureDetails(error)});}catch{}
+  try{await journal.record({type:'CLIENT_STOP',stage:'BATCH_STOP',batchId:batch.id,id:currentId,confirmedRows:confirmed,verifiedRows:verified.length,code:'BATCH_HALTED_RECONCILIATION_REQUIRED',...rpcFailureDetails(error)});}catch{}
   error.batchRunUuid=journal.runUuid;throw error;
  }
 }

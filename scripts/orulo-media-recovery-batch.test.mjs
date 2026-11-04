@@ -63,6 +63,13 @@ test('whole-row concurrency conflict preserves competing update and stops before
 test('timeout after commit: one CAS, read-only recovery, frozen journal and no retry',async()=>{
  const r=await run({loseAck:true});assert.ok(r.error);assert.equal(r.calls.filter(x=>x==='CAS').length,1);assert.ok(r.calls.includes('recover'));assert.equal((await kinds(r)).filter(x=>x==='CAS_RESULT').length,1);assert.ok(!(await kinds(r)).includes('FINISHED'));
 });
+test('readback failure after trusted commit records one confirmed row separately from zero verified rows',async()=>{
+ let failed=false;const r=await run({beforeControl:async(a,p,uuid)=>{
+  if(a==='batch_row'&&!failed&&(await db.query("select count(*) n from orulo_audit.entries where run_uuid=$1 and kind='CAS_RESULT'",[uuid])).rows[0].n>0){failed=true;throw Error('POSTGRES_AUDIT_RPC_FAILED');}
+ }});assert.ok(r.error);assert.equal(r.calls.filter(x=>x==='CAS').length,1);
+ const stop=(await db.query("select event from orulo_audit.entries where run_uuid=$1 and kind='CLIENT_STOP'",[r.uuid])).rows[0].event;
+ assert.equal(stop.confirmedRows,1);assert.equal(stop.verifiedRows,0);assert.ok(!(await kinds(r)).includes('FINISHED'));
+});
 test('unexpected global insertion blocks FINISHED with durable evidence',async()=>{
  let added=false;const r=await run({beforeControl:async(a,p)=>{if(a==='snapshot_begin'&&p.p_event.kind==='READBACK_V2'&&!added){added=true;await db.exec(`insert into public.properties values('00000000-0000-0000-0000-000000000099','outside','novos','RS',true,'{"building_id":"47422"}',777,now(),now())`);}}});assert.match(r.error.message,/GLOBAL_CHANGE/);assert.ok(!(await kinds(r)).includes('FINISHED'));
 });
