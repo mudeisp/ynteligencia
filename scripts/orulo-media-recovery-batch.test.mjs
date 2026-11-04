@@ -15,8 +15,9 @@ const env=()=>({GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'work
 async function service(sql,args){await db.exec('set role service_role');try{return(await db.query(sql,args)).rows[0].r;}finally{await db.exec('reset role');}}
 const image=id=>'https://static.orulo.com.br/images/properties/large/'+id+'.jpg';
 async function run(o={}){
+ const fixtureTargets=o.allManifest?batch.targets:targets;
  await db.exec('rollback');await db.exec('reset role');await db.query("select orulo_audit.admin_event(r.run_uuid,'ABORTED','synthetic reconciled no ambiguous operations',true) from orulo_audit.runs r where not exists(select 1 from orulo_audit.entries e where e.run_uuid=r.run_uuid and kind in ('FINISHED','ABORTED'))");await db.exec('truncate public.properties');
- for(const t of targets)await db.query("insert into public.properties values($1,'fixture','novos','SP',true,$2,100,'2026-01-01','2026-01-02')",[t.id,JSON.stringify({building_id:t.buildingId,photos:['photo'],building:{stock:7,tour:'tour',videos:['video'],floor_plans:[...t.missingPlanIds.map(id=>({id,description:'preserve'})),{id:'already',image_url:'https://old.invalid/original.jpg',description:'keep'}]}})]);
+ for(const t of fixtureTargets)await db.query("insert into public.properties values($1,'fixture','novos','SP',true,$2,100,'2026-01-01','2026-01-02')",[t.id,JSON.stringify({building_id:t.buildingId,photos:['photo'],building:{stock:7,tour:'tour',videos:['video'],floor_plans:[...t.missingPlanIds.map(id=>({id,description:'preserve',...(o.completedIds?.includes(t.id)?{image_url:'https://old.invalid/'+id+'.jpg'}:{})})),{id:'already',image_url:'https://old.invalid/original.jpg',description:'keep'}]}})]);
  const fingerprint=(await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h;
  const calls=[];let uuid,plan,e=env();
  const transport={control:async(a,p={})=>{calls.push(a);if(a==='start')uuid=p.p_run;
@@ -26,7 +27,7 @@ async function run(o={}){
  if(o.tamper&&a==='read'&&out)out.event={...out.event,tampered:true};return out;
  },apply:async(r,op)=>{calls.push('CAS');if(o.beforeApply)await o.beforeApply(r,op);const v=await service('select public.orulo_audited_cas($1,$2) r',[r,op]);if(o.loseAck)throw Error('synthetic timeout after commit');return v;}};
  let result,error;
- try{result=await executeBatch({env:e,transport,fetchPlans:o.fetchPlans|| (async id=>targets.filter(t=>t.buildingId===id).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:image(id),description:'untrusted'})))),checkImage:async()=>{if(o.badImage)throw Error('BATCH_IMAGE_UNAVAILABLE');},onPlan:async p=>{plan=p;if(o.authorize!==false)await db.exec(batchApprovalSql(p));if(o.onPlan)await o.onPlan(p);},wait:async()=>{},now:(()=>{let n=0;return()=>n+=600001;})()});}catch(x){error=x;}
+ try{result=await executeBatch({env:e,transport,fetchPlans:o.fetchPlans|| (async id=>fixtureTargets.filter(t=>t.buildingId===id).slice(0,1).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:image(id),description:'untrusted'})))),checkImage:async()=>{if(o.badImage)throw Error('BATCH_IMAGE_UNAVAILABLE');},onPlan:async p=>{plan=p;if(o.authorize!==false)await db.exec(batchApprovalSql(p));if(o.onPlan)await o.onPlan(p);},wait:async()=>{},now:(()=>{let n=0;return()=>n+=600001;})()});}catch(x){error=x;}
  return {result,error,calls,uuid,plan,env:e,fingerprint};
 }
 const kinds=async r=>(await db.query('select kind from orulo_audit.entries where run_uuid=$1 order by sequence',[r.uuid])).rows.map(x=>x.kind);
@@ -128,4 +129,16 @@ test('source failure persists exact safe stage/building in STOP and never author
  const event=(await db.query("select event from orulo_audit.entries where run_uuid=$1 and kind='CLIENT_STOP'",[r.uuid])).rows[0].event;
  assert.equal(event.diagnostic.code,'BATCH_BLOCKED');assert.equal(event.diagnostic.batchStage,'SOURCE_PLANS');assert.equal(event.diagnostic.buildingId,targets[0].buildingId);
  assert.doesNotMatch(JSON.stringify(event),/secret-bearing/);assert.equal(event.confirmedRows,0);
+});
+test('original 33 UUID manifest safely narrows to 30 UUIDs/18 buildings/122 missing plans after three rows are filled',async()=>{
+ const completedIds=['507a0489-1be8-4853-81a5-e7bd079cdb2b','7d839f0c-f0b3-495b-bed4-bc33a4b4beca','e582fe78-6167-4ed4-942f-9b5a63a73c5e'];
+ const r=await run({allManifest:true,completedIds,authorize:false});
+ assert.match(r.error.message,/AUTHORIZATION_WAIT_TIMEOUT/);assert.equal(r.calls.includes('CAS'),false);
+ assert.equal(batch.targets.length,33);assert.equal(batch.buildingIds.length,20);
+ assert.equal(r.plan.targetIds.length,30);assert.equal(r.plan.buildingIds.length,18);assert.equal(r.plan.patchableOccurrences,122);assert.equal(r.plan.distinctUrls,73);
+ assert.deepEqual(r.plan.targetIds,batch.targets.filter(t=>!completedIds.includes(t.id)).map(t=>t.id).sort());
+ for(const t of r.plan.targets){assert.ok(!completedIds.includes(t.id));assert.deepEqual(t.patches.map(p=>p.id).sort(),batch.targets.find(x=>x.id===t.id).missingPlanIds);}
+ assert.equal((await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h,r.fingerprint);
+ assert.deepEqual(await kinds(r),['START','CLIENT_READBACK','CLIENT_STOP']);
+ for(const id of ['phase2-30-a','phase2-30-b','phase3-rest'])assert.equal(batchCatalog.batches[id].released,false);
 });

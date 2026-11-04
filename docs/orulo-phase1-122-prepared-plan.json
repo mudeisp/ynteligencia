@@ -1,0 +1,1279 @@
+{
+  "preparedPlanHash": "d4e754a434b363f52282cfe4607bf1f98cd75435d31f71919f85e472cfcd9428",
+  "hashAlgorithm": "SHA256(JSON.stringify(plan))",
+  "plan": {
+    "type": "READ_ONLY_PREPARATION",
+    "version": 1,
+    "batchId": "phase1-20",
+    "controlCommit": "7e7d8a3cb32ffbce9820c1197fb298f75ca3ba71",
+    "originalBatchManifestHash": "7f4299ab3eacf2ee5509487ca1f0adc71ee0425bd945f088b086ec7797cad97a",
+    "masterHash": "d670eb2cc7ab60cfc76e0ef08b466e9c9b503df64047d57519a34e7ed57f63b2",
+    "preparedFromSnapshotAt": "2026-11-04 19:00:55.598069+00",
+    "schemaHash": "51caef0d783a4530df5f5a5c67c9008973de107cc52ded7c8fbe04f1b750a0f5",
+    "snapshotHash": "989cd394b03eab967789f8b3508f2fad33966f98e2c6068676c605483ab9a253",
+    "referenceV2Run": "98a9afa9-a08d-46f1-bef9-4d4e670c786f",
+    "authorizationUsable": false,
+    "runUuid": null,
+    "githubRunId": null,
+    "writeAuthorized": false,
+    "sourceChannel": "existing read-only GET proxy to Orulo; exact plan ID plus binary signature validation",
+    "buildingIds": [
+      "2920",
+      "3198",
+      "3207",
+      "4836",
+      "4969",
+      "20632",
+      "20980",
+      "21449",
+      "21642",
+      "22027",
+      "38041",
+      "40196",
+      "41663",
+      "42122",
+      "43537",
+      "50575",
+      "51327",
+      "74738"
+    ],
+    "excludedCompletedIds": [
+      "507a0489-1be8-4853-81a5-e7bd079cdb2b",
+      "7d839f0c-f0b3-495b-bed4-bc33a4b4beca",
+      "e582fe78-6167-4ed4-942f-9b5a63a73c5e"
+    ],
+    "counts": {
+      "properties": 30,
+      "buildings": 18,
+      "missingOccurrences": 122,
+      "uniquePlans": 73,
+      "verifiedPrimaryUrls": 73
+    },
+    "targets": [
+      {
+        "id": "08a5cbdb-3cbc-44b0-99cd-b8cc2506a7e3",
+        "buildingId": "3198",
+        "expectedFullHash": "5e2c13feb75e4b15b6167f7e2eab66d4",
+        "expectedContentHash": "8fa5e6c99e925ea0e3475a508170dc87",
+        "missingPlans": [
+          {
+            "planId": "183854",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/183854.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "183855",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/183855.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "183856",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/183856.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "10cc551d-af5b-43db-a199-0635c229ec6a",
+        "buildingId": "22027",
+        "expectedFullHash": "8d529368e560d76497ab158bee04a3b0",
+        "expectedContentHash": "9af4795c4faa49cfe1728af14bbd5270",
+        "missingPlans": [
+          {
+            "planId": "719584",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/719584.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "718952",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/718952.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "718953",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/718953.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "718954",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/718954.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "264d59fe-fc00-42fa-9ace-0b2ab5d6e944",
+        "buildingId": "21642",
+        "expectedFullHash": "9b34dc7bafdf4666c40f44157f592ddc",
+        "expectedContentHash": "56eb6a6bbc8a72bae2d7d178eb2d7bf1",
+        "missingPlans": [
+          {
+            "planId": "708666",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/708666.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "708667",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/708667.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "708668",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/708668.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "708669",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/708669.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "2c1d9d66-7489-4476-a2a9-0e3435f69c1b",
+        "buildingId": "3198",
+        "expectedFullHash": "8b9b257727ef1ac8725c86f8d6ebe932",
+        "expectedContentHash": "4f285020f8537fcc3c9983b02b4e12c6",
+        "missingPlans": [
+          {
+            "planId": "183854",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/183854.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "183855",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/183855.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "183856",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/183856.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "31d96dd4-db3a-4575-a9e9-0105d7421d04",
+        "buildingId": "21642",
+        "expectedFullHash": "9aad6bcaba9795d53c3a051416973ade",
+        "expectedContentHash": "604b1a2a6730832107be02c0c6cb9e12",
+        "missingPlans": [
+          {
+            "planId": "708666",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/708666.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "708667",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/708667.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "708668",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/708668.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "708669",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/708669.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "34eacdf0-d575-475c-8cbc-caf3a60add0b",
+        "buildingId": "38041",
+        "expectedFullHash": "214351401283c51a062338472d7fe033",
+        "expectedContentHash": "ec95d841a13b857a6285e54e7e0f8c02",
+        "missingPlans": [
+          {
+            "planId": "1222746",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1222746.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "362c1c49-3a22-48e0-9790-26c3171e4d23",
+        "buildingId": "42122",
+        "expectedFullHash": "c17fa238304aa2138d36669312fdb030",
+        "expectedContentHash": "e265d22409592527966c1dc5059b00dc",
+        "missingPlans": [
+          {
+            "planId": "1337729",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1337729.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1337730",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1337730.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "37eff0e0-fe00-48dd-9e4f-5b679c4dad23",
+        "buildingId": "50575",
+        "expectedFullHash": "3ead084cf1e47926cff9405f6c4806c6",
+        "expectedContentHash": "dd536ebc4dd0340545bd2c3e4e35591b",
+        "missingPlans": [
+          {
+            "planId": "1594693",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1594693.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1774945",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1774945.jpeg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "3980e922-57ba-46cb-bc29-f07e9c36c128",
+        "buildingId": "41663",
+        "expectedFullHash": "6f8aeafd137c1f692241625a22167b96",
+        "expectedContentHash": "a46de819f1dc7e544d39029381ff8c27",
+        "missingPlans": [
+          {
+            "planId": "1323653",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1323653.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1323654",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1323654.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1323655",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1323655.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "3f571e0f-7563-49b4-be31-b0f4a7c06b63",
+        "buildingId": "74738",
+        "expectedFullHash": "1842eff1dc34a3b113ae9a3edd1b8b52",
+        "expectedContentHash": "8c0b3e81c23ce1cee4fadd364ca00352",
+        "missingPlans": [
+          {
+            "planId": "2543823",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543823.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "2543824",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543824.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "2543825",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543825.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "2543826",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543826.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "2543827",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543827.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          }
+        ]
+      },
+      {
+        "id": "4254b9aa-52d1-47e8-840f-1ea840f52c4a",
+        "buildingId": "22027",
+        "expectedFullHash": "95c129bf4e95060897323723c976f19d",
+        "expectedContentHash": "ae2f00753ecb01fc97c9a63703b07369",
+        "missingPlans": [
+          {
+            "planId": "719584",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/719584.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "718952",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/718952.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "718953",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/718953.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "718954",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/718954.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "4aedb73d-befb-4188-b0f0-c3886398a3c1",
+        "buildingId": "4836",
+        "expectedFullHash": "f1130a7251cf098e84d2ee64a2414b98",
+        "expectedContentHash": "c9b4e208c85dd4be86e4a275826e7880",
+        "missingPlans": [
+          {
+            "planId": "223925",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/223925.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "223926",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/223926.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "223927",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/223927.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "509f5971-80ed-4ec3-bb2e-f252d6cece46",
+        "buildingId": "40196",
+        "expectedFullHash": "113f5db1c78700cf6a5362e41c54cc0e",
+        "expectedContentHash": "a1d056b111397740df93ff4f722d49fa",
+        "missingPlans": [
+          {
+            "planId": "1279540",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279540.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279541",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279541.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279542",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279542.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279543",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279543.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279544",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279544.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279545",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279545.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279546",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279546.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279547",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279547.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279548",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279548.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279549",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279549.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279550",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279550.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1279551",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1279551.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "58d900c7-2e67-44a1-acdd-78fc59f9eb13",
+        "buildingId": "74738",
+        "expectedFullHash": "9606ac48a9e2d31b424fa437a8cb6210",
+        "expectedContentHash": "d98508e1c9b93dd6dbb99cb701deae65",
+        "missingPlans": [
+          {
+            "planId": "2543823",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543823.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "2543824",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543824.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "2543825",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543825.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "2543826",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543826.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "2543827",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2543827.jpg",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          }
+        ]
+      },
+      {
+        "id": "59223690-95f1-4048-8db7-dc4737f171b4",
+        "buildingId": "20980",
+        "expectedFullHash": "f34141474438e6abdc59aba781a22405",
+        "expectedContentHash": "83e2bc81f4438331d5476acf188a6524",
+        "missingPlans": [
+          {
+            "planId": "677618",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/677618.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "677619",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/677619.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "677620",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/677620.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "677621",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/677621.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "678187",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/678187.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "678188",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/678188.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          }
+        ]
+      },
+      {
+        "id": "5da7d9ed-cba2-4ea3-becc-5c39fa964c63",
+        "buildingId": "3207",
+        "expectedFullHash": "ee1014b0754a204a70120e04a5d35ccb",
+        "expectedContentHash": "4cde4a1a2fcd79e6284e7c71ea4ba74a",
+        "missingPlans": [
+          {
+            "planId": "2134409",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2134409.jpeg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "2134410",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2134410.jpeg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "6c73f8b2-c272-4c6c-aa10-293817816f4d",
+        "buildingId": "20632",
+        "expectedFullHash": "584c1fed0ce076325950416d3ce31389",
+        "expectedContentHash": "d56261d2cce7e9a0cbd3be58045f7eec",
+        "missingPlans": [
+          {
+            "planId": "645923",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/645923.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "645924",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/645924.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "645925",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/645925.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "645926",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/645926.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "706b92c7-028d-4225-b8aa-cdb1a9700f88",
+        "buildingId": "51327",
+        "expectedFullHash": "d9a8510ddea863ba9d494b665c368a80",
+        "expectedContentHash": "c9246aeeb3bad6f16de3f7cd1c875e29",
+        "missingPlans": [
+          {
+            "planId": "1616668",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1616668.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1616669",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1616669.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1616670",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1616670.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1616671",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1616671.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "7a0cc479-f4f1-467c-9aed-47cc1820d751",
+        "buildingId": "43537",
+        "expectedFullHash": "d4555f35725afb73947966af0ccab311",
+        "expectedContentHash": "d0c93f3af9976bd40453f3abda3a665d",
+        "missingPlans": [
+          {
+            "planId": "1378289",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378289.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1378290",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378290.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1378291",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378291.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "1378292",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378292.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "1378293",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378293.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          }
+        ]
+      },
+      {
+        "id": "7f59150f-1c0f-45a5-bd76-f93cbedaac7e",
+        "buildingId": "42122",
+        "expectedFullHash": "95fca2e88b71ddc77e48e1c72cc6cfa3",
+        "expectedContentHash": "41b92df4f09e5429e7079d14e275299c",
+        "missingPlans": [
+          {
+            "planId": "1337729",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1337729.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1337730",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1337730.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "95d4c327-bd89-4e00-ae02-c00409f0c76c",
+        "buildingId": "21449",
+        "expectedFullHash": "60ad53b54cb5cb11739aeb6f3254a77b",
+        "expectedContentHash": "220ee21697b2370357a90c1b7b1aa3d0",
+        "missingPlans": [
+          {
+            "planId": "702631",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/702631.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "2085817",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2085817.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "2085818",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/2085818.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "97ae914a-e1e8-4086-901b-c2360cd7ce80",
+        "buildingId": "51327",
+        "expectedFullHash": "adf4afd033def948e8328e264d6536af",
+        "expectedContentHash": "496b8f073787bc1b3cca37867f1a001a",
+        "missingPlans": [
+          {
+            "planId": "1616668",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1616668.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1616669",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1616669.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1616670",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1616670.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1616671",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1616671.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "9e0a44c3-222f-40a0-adc2-61c21e8ce217",
+        "buildingId": "43537",
+        "expectedFullHash": "2e57e47da380ee32508cc13fe5df502a",
+        "expectedContentHash": "dff4d896d5d62da36b48e5d5bf939db4",
+        "missingPlans": [
+          {
+            "planId": "1378289",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378289.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1378290",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378290.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1378291",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378291.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "1378292",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378292.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "1378293",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1378293.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          }
+        ]
+      },
+      {
+        "id": "b3cb0960-abbf-4948-bc0b-c8b5f3a5a2e9",
+        "buildingId": "4969",
+        "expectedFullHash": "673e30bdb6a93d9f4a392071c65a5641",
+        "expectedContentHash": "a4351e30a3de363aa136854ff2bac642",
+        "missingPlans": [
+          {
+            "planId": "227016",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227016.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227017",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227017.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227018",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227018.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227019",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227019.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227020",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227020.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227021",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227021.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "b8a0c6a5-a309-4a89-9dae-15d82c2a1cd2",
+        "buildingId": "4969",
+        "expectedFullHash": "c7d61ecc54d896c56968b3683d14fbb1",
+        "expectedContentHash": "51e04c0aeb3fa2be4f9d3fedae5d33f0",
+        "missingPlans": [
+          {
+            "planId": "227016",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227016.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227017",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227017.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227018",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227018.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227019",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227019.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227020",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227020.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "227021",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/227021.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "beefa023-26b8-48ca-a2a9-afdbb1d84210",
+        "buildingId": "2920",
+        "expectedFullHash": "d89baa409d0cc4c623baf644b1e40615",
+        "expectedContentHash": "2bab08b4882631cd78b1a01e8b847fb5",
+        "missingPlans": [
+          {
+            "planId": "184957",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/184957.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "184958",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/184958.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "184959",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/184959.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "184960",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/184960.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ca1ce45a-bdbe-483d-a374-853afa3d4e41",
+        "buildingId": "4836",
+        "expectedFullHash": "22562f8981d2779088bf99904636aac4",
+        "expectedContentHash": "68c1b511c3910b25c15f4b8f4d67994d",
+        "missingPlans": [
+          {
+            "planId": "223925",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/223925.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "223926",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/223926.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "223927",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/223927.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "cfa7b8de-7a1f-4197-8843-4d74fd9e7e46",
+        "buildingId": "2920",
+        "expectedFullHash": "36afe98783df89b19bad15e470927bfa",
+        "expectedContentHash": "5a92f8faf1962270a594879b9b647322",
+        "missingPlans": [
+          {
+            "planId": "184957",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/184957.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "184958",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/184958.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "184959",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/184959.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "184960",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/184960.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "e96f12ae-f83d-4426-897c-fc9fb39f40ca",
+        "buildingId": "20980",
+        "expectedFullHash": "d210d92b0acd04db2757d264d6ce644e",
+        "expectedContentHash": "39453bfb54203c13fd28fcb2419a4052",
+        "missingPlans": [
+          {
+            "planId": "677618",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/677618.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "677619",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/677619.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "677620",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/677620.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "677621",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/677621.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "678187",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/678187.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          },
+          {
+            "planId": "678188",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/678188.png",
+            "verification": {
+              "status": 206,
+              "format": "png"
+            }
+          }
+        ]
+      },
+      {
+        "id": "f0cc4826-a62d-48e2-81fe-648ca378a97d",
+        "buildingId": "41663",
+        "expectedFullHash": "32d63107c97791724f498d04b6c90fdc",
+        "expectedContentHash": "b779ee6c3eb85b5f28448ee843cfa143",
+        "missingPlans": [
+          {
+            "planId": "1323653",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1323653.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1323654",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1323654.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          },
+          {
+            "planId": "1323655",
+            "sourceImageUrl": "https://static.orulo.com.br/images/properties/large/1323655.jpg",
+            "verification": {
+              "status": 206,
+              "format": "jpeg"
+            }
+          }
+        ]
+      }
+    ],
+    "requiredBeforeWrite": [
+      "Refresh authenticated Orulo data and validate every actual image URL/dimension.",
+      "Create a new durable BATCH_PLAN with its own run UUID/head hash; this offline hash is not a ledger authorization.",
+      "Obtain explicit administrator authorization for that exact active plan.",
+      "Capture a fresh global paged V2 baseline after authorization and compare whole-row state per UUID.",
+      "Use only public.orulo_audited_cas with durable INTENT, transactional receipt, full readback and stop on conflict/ambiguity."
+    ],
+    "laterBatchesReleased": false
+  }
+}
