@@ -26,10 +26,10 @@ jobs:
       - name: Fail closed until storage and Environment protections are configured
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          ORULO_STORAGE_READY: ${{ vars.ORULO_STORAGE_READY }}
+          ORULO_POSTGRES_AUDIT_READY: ${{ vars.ORULO_POSTGRES_AUDIT_READY }}
         run: node control/scripts/orulo-media-recovery-actions.mjs github-gate
   storage:
-    name: Private durable audit preflight (no backfill)
+    name: Private PostgreSQL audit preflight (no backfill)
     needs: gate
     if: >-
       ${{ github.event_name == 'workflow_dispatch' &&
@@ -39,11 +39,10 @@ jobs:
           github.triggering_actor == 'mudeisp' &&
           github.run_attempt == '1' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     environment: orulo-lote1
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -60,28 +59,16 @@ jobs:
           node-version: '22'
       - name: Revalidate owner dispatch before credentials
         env:
-          ORULO_STORAGE_READY: ${{ vars.ORULO_STORAGE_READY }}
+          ORULO_POSTGRES_AUDIT_READY: ${{ vars.ORULO_POSTGRES_AUDIT_READY }}
         run: node control/scripts/orulo-media-recovery-actions.mjs dispatch-gate
-      - name: Obtain short-lived AWS credentials through GitHub OIDC
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
-        with:
-          role-to-assume: ${{ vars.ORULO_AWS_ROLE_ARN }}
-          aws-region: ${{ vars.ORULO_AWS_REGION }}
-          allowed-account-ids: ${{ vars.ORULO_AWS_ACCOUNT_ID }}
-          role-session-name: orulo-l1-${{ github.run_id }}
-          role-duration-seconds: 900
-          retry-max-attempts: 1
-          unset-current-credentials: true
-          output-credentials: false
-      - name: Verify private durable storage and secret presence only
+      - name: Verify private PostgreSQL audit and secret presence only
         env:
           APPROVED_SOURCE_DIR: ${{ github.workspace }}/approved-source
-          ORULO_STORAGE_READY: ${{ vars.ORULO_STORAGE_READY }}
-          ORULO_AUDIT_BUCKET: ${{ vars.ORULO_AUDIT_BUCKET }}
-          ORULO_AWS_ACCOUNT_ID: ${{ vars.ORULO_AWS_ACCOUNT_ID }}
-          AWS_MAX_ATTEMPTS: '1'
+          ORULO_POSTGRES_AUDIT_READY: ${{ vars.ORULO_POSTGRES_AUDIT_READY }}
+          ORULO_AUDIT_SUPABASE_URL: ${{ vars.ORULO_AUDIT_SUPABASE_URL }}
           ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
           ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: node control/scripts/orulo-media-recovery-actions.mjs storage-preflight
       # Intentionally no backfill/write step. A green result proves read-only preparation only.
+
