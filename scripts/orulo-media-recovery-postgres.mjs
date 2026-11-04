@@ -4,12 +4,18 @@ export const APPROVED_SHA='2fa6ec8b093346e1a2319e4c6833cdfb0c52825e';
 export const MANIFEST_HASH='1c8b002b5a3b4b6caf614e3b4e6d84383b8e306ae2773f3d7de48cc7daaa6d03';
 export const PROJECT_URL='https://wzaegidwtdjuhqchpdpd.supabase.co';
 export const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
+// Exact server constants only: never publish arbitrary PostgreSQL message/details/hint.
+const databaseReasons=new Set(['AUDIT_ACTIVE_RUN_REQUIRES_RECONCILIATION','AUDIT_CONCURRENT_RUN','AUDIT_CONCURRENT_ACCESS',
+ 'AUDIT_MANUAL_OWNER_SCOPE_REQUIRED','AUDIT_RUN_CLOSED','AUDIT_RUN_NOT_FOUND','AUDIT_PENDING_INTENT','AUDIT_CAPTURE_ALREADY_OPEN',
+ 'AUDIT_DUPLICATE_OPERATION_USE_RECOVERY','AUDIT_OPERATIONAL_WRITE_BLOCKED','BATCH_MANIFEST_DRIFT','BATCH_PHASE_NOT_RELEASED',
+ 'BATCH_ROW_SCOPE_DENIED','BATCH_EXPLICIT_AUTHORIZATION_REQUIRED','BATCH_AUTHORIZATION_INVALID_OR_EXPIRED','BATCH_FRESH_BASELINE_REQUIRED']);
 export function rpcFailureDetails(error){
  const out={};
  if(['orulo_audit_control','orulo_audited_cas'].includes(error?.rpc))out.rpc=error.rpc;
  if(/^[a-z_]{1,40}$/.test(error?.rpcAction||''))out.rpcAction=error.rpcAction;
  if(Number.isInteger(error?.httpStatus) && error.httpStatus>=100 && error.httpStatus<=599)out.httpStatus=error.httpStatus;
  if(/^(?:[0-9A-Z]{5}|PGRST[0-9]{3})$/.test(error?.databaseCode||''))out.databaseCode=error.databaseCode;
+ if(databaseReasons.has(error?.databaseReason))out.databaseReason=error.databaseReason;
  return out;
 }
 export function runPrefix(runId,attempt){
@@ -23,14 +29,14 @@ export function postgresTransport({url,key},request=fetch){
   try{response=await request(url+'/rest/v1/rpc/'+name,{method:'POST',
    headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},
    body:JSON.stringify(body),signal:AbortSignal.timeout(120000)});
-  }catch{throw Error('POSTGRES_AUDIT_RESPONSE_AMBIGUOUS');}
+  }catch{throw Object.assign(Error('POSTGRES_AUDIT_RESPONSE_AMBIGUOUS'),rpcFailureDetails({rpc:name,rpcAction:body.p_action||'cas'}));}
   if(!response.ok){
    let bodyError;try{bodyError=await response.json();}catch{}
    const error=new Error('POSTGRES_AUDIT_RPC_FAILED');
-   Object.assign(error,rpcFailureDetails({rpc:name,rpcAction:body.p_action||'cas',httpStatus:response.status,databaseCode:bodyError?.code}));
+   Object.assign(error,rpcFailureDetails({rpc:name,rpcAction:body.p_action||'cas',httpStatus:response.status,databaseCode:bodyError?.code,databaseReason:bodyError?.message}));
    throw error; // Never log message/details/hint, which may contain row data or secrets.
   }
-  try{return await response.json();}catch{throw Error('POSTGRES_AUDIT_RESPONSE_AMBIGUOUS');}
+  try{return await response.json();}catch{throw Object.assign(Error('POSTGRES_AUDIT_RESPONSE_AMBIGUOUS'),rpcFailureDetails({rpc:name,rpcAction:body.p_action||'cas'}));}
  };
  return {control:(action,args={})=>rpc('orulo_audit_control',{p_action:action,...args}),
   apply:(run,operation)=>rpc('orulo_audited_cas',{p_run:run,p_operation:operation})};
@@ -59,10 +65,11 @@ export async function openPostgresJournal(env,transport){
   return verifyEntry(entry,ack);
  };
  // Existing UUID/GitHub run ID or active interrupted run is never reopened.
- head=await transport.control('start',{p_run:run,p_event:metadata});
- const start=await verify(head);
- if(head.sequence!==1 || start.event.type!=='START' || JSON.parse(start.canonical).previousHash!=='')
-  throw Error('POSTGRES_AUDIT_START_DIVERGENCE');
+ try{
+  head=await transport.control('start',{p_run:run,p_event:metadata});
+  const start=await verify(head);
+  if(head.sequence!==1 || start.event.type!=='START' || JSON.parse(start.canonical).previousHash!=='')throw Error('POSTGRES_AUDIT_START_DIVERGENCE');
+ }catch(error){error.auditRunUuid=run;throw error;} // Identifier for read-only reconciliation, never an automatic retry.
  const locked=async operation=>{
   if(failed)throw Error('POSTGRES_JOURNAL_FROZEN_RECONCILE_REQUIRED');
   if(busy){failed=true;throw Error('POSTGRES_JOURNAL_CONCURRENT_APPEND_DENIED');}
