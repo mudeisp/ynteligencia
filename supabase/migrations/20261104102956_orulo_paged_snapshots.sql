@@ -62,8 +62,10 @@ begin
   return orulo_audit.control_v1('health')||jsonb_build_object('version',2,'snapshotProtocol','paged-v2');
  end if;
  if p_action='snapshot' then raise exception 'AUDIT_PAGED_SNAPSHOT_REQUIRED'; end if;
- if p_action='append' and p_event->>'type'='INTENT' and exists(
-  select 1 from orulo_audit.snapshot_sets t where t.run_uuid=p_run and not exists(select 1 from orulo_audit.entries e where e.run_uuid=p_run and e.kind=t.kind)) then raise exception 'AUDIT_CAPTURE_ALREADY_OPEN'; end if;
+ if p_action='append' and p_event->>'type'='INTENT' then
+  perform orulo_audit.lock_run(p_run);
+  if exists(select 1 from orulo_audit.snapshot_sets t where t.run_uuid=p_run and not exists(select 1 from orulo_audit.entries e where e.run_uuid=p_run and e.kind=t.kind)) then raise exception 'AUDIT_CAPTURE_ALREADY_OPEN'; end if;
+ end if;
  if p_action not in ('snapshot_begin','snapshot_page','snapshot_seal') then
   return orulo_audit.control_v1(p_action,p_run,p_sequence,p_previous_hash,p_event);
  end if;

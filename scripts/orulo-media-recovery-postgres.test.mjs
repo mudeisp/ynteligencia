@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {randomUUID} from 'node:crypto';
 import {APPROVED_SHA,MANIFEST_HASH,PROJECT_URL,digest,verifyEntry,postgresTransport,openPostgresJournal} from './orulo-media-recovery-postgres.mjs';
+import {storagePreflight} from './orulo-media-recovery-actions.mjs';
 const {PGlite}=process.env.PGLITE_MODULE?await import(process.env.PGLITE_MODULE):createRequire(new URL('../test-support/orulo-cas/package.json',import.meta.url))('@electric-sql/pglite');
 const db=new PGlite();
 const id='00000000-0000-0000-0000-000000000001';
@@ -182,6 +183,20 @@ test('known-failure administrative procedure verifies anchored chain, only appen
  await db.exec(procedure);assert.deepEqual([await control('read',run,1),await control('read',run,2)],saved);
  assert.equal((await control('read',run,3)).event.type,'ABORTED');
  await assert.rejects(db.exec(procedure),/UNEXPECTED_EVENTS/);await db.exec('rollback');
+});
+test('real SQL bridge: preflight verifies every paginated ACK and compares 105 UUIDs without property mutations',async()=>{
+ await reset();await db.query("select orulo_audit.admin_event($1,'ABORTED','fixture reconciled before client test',true)",[run]);
+ await db.exec("truncate public.properties;insert into public.properties(id,external_id) select md5(g::text)::uuid,'fixture-'||g from generate_series(1,105)g");
+ const before=(await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h;
+ const f=fakePostgres();let pages=0,applies=0;
+ const transport={control:async(a,p={})=>{
+  if(a==='health')return f.transport.control(a,p); // In-memory durability intentionally fails the separate health test.
+  if(a==='snapshot_page')pages++;
+  return control(a,p.p_run,p.p_sequence,p.p_previous_hash,p.p_event);
+ },apply:()=>{applies++;throw Error('must not write');}};
+ const env={GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REF:'refs/heads/main',GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'323805541',GITHUB_TRIGGERING_ACTOR:'mudeisp',GITHUB_RUN_ID:'111111',GITHUB_RUN_ATTEMPT:'1',GITHUB_WORKFLOW_SHA:'a'.repeat(40),ORULO_POSTGRES_AUDIT_READY:'true',ORULO_CLIENT_ID:'fixture',ORULO_CLIENT_SECRET:'fixture',SUPABASE_SECRET_KEY:'fixture'};
+ const result=await storagePreflight(env,transport,()=>{});assert.equal(result.comparison.compared,105);assert.equal(result.writeEnabled,false);assert.equal(pages,6);assert.equal(applies,0);
+ assert.equal((await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h,before);
 });
 
 export function fakePostgres(){
