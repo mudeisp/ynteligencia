@@ -4,17 +4,18 @@ import { createHash } from 'node:crypto';
 import { readFileSync,existsSync,statSync } from 'node:fs';
 import { APPROVED_SHA,MANIFEST_HASH,digest,runPrefix,validateStoreConfig,validateStoreMetadata,
   awsTransport,durableStore,openDurableJournal } from './orulo-media-recovery-journal.mjs';
-import { validateDispatch,validateEnvironment,validateManifest,presence,checkGitHub,verifySource,storagePreflight } from './orulo-media-recovery-actions.mjs';
+import { AUTHORIZED_INITIATOR,validateDispatch,validateEnvironment,validateManifest,presence,checkGitHub,verifySource,storagePreflight } from './orulo-media-recovery-actions.mjs';
 import { casFloorPlans } from './orulo-media-cas.mjs';
 
 const ids=JSON.parse(readFileSync(new URL('./orulo-media-recovery-lote1.ids.json',import.meta.url),'utf8'));
 const env=()=>({GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REF:'refs/heads/main',
+  GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'323805541',GITHUB_TRIGGERING_ACTOR:'mudeisp',
   GITHUB_RUN_ID:'12345',GITHUB_RUN_ATTEMPT:'1',ORULO_STORAGE_READY:'true',GITHUB_TOKEN:'fake-github-token',
   ORULO_CLIENT_ID:'do-not-log-id',ORULO_CLIENT_SECRET:'do-not-log-secret',SUPABASE_SECRET_KEY:'do-not-log-key',
   APPROVED_SOURCE_DIR:'/approved-source'});
 const protectedEnv=()=>({name:'orulo-lote1',can_admins_bypass:false,
   deployment_branch_policy:{custom_branch_policies:true,protected_branches:false},
-  protection_rules:[{type:'required_reviewers',prevent_self_review:true,reviewers:[{type:'User',reviewer:{login:'owner-reviewer'}}]}]});
+  protection_rules:[]});
 const policies=()=>({branch_policies:[{name:'main',type:'branch'}]});
 const metadata=()=>({versioning:{Status:'Enabled'},encryption:{ServerSideEncryptionConfiguration:{Rules:[
   {ApplyServerSideEncryptionByDefault:{SSEAlgorithm:'AES256'}}]}},publicAccess:{PublicAccessBlockConfiguration:{
@@ -38,10 +39,10 @@ test('manual main dispatch, explicit storage approval and first attempt are mand
     assert.throws(()=>validateDispatch({...env(),...patch}));
   }
 });
-test('reviewer approval, no self-review/admin bypass and main-only branch policy are enforced',()=>{
+test('single-owner Environment accepts no reviewers while retaining no admin bypass and main-only policy',()=>{
   validateEnvironment(protectedEnv(),policies());
-  for(const mutate of [e=>e.name='other',e=>e.can_admins_bypass=true,e=>delete e.can_admins_bypass,
-    e=>e.protection_rules=[],e=>e.protection_rules[0].reviewers=[],e=>e.protection_rules[0].prevent_self_review=false]){
+  validateEnvironment({...protectedEnv(),protection_rules:[{type:'required_reviewers',prevent_self_review:false,reviewers:[]}]},policies());
+  for(const mutate of [e=>e.name='other',e=>e.can_admins_bypass=true,e=>delete e.can_admins_bypass]){
     const e=protectedEnv();mutate(e);assert.throws(()=>validateEnvironment(e,policies()));
   }
   for(const rules of [[],[{name:'*',type:'branch'}],[{name:'main',type:'tag'}],
@@ -183,6 +184,7 @@ test('preflight stays blocked without durable infrastructure, and successful out
   assert.equal(invalid.calls.length,0,'Unverified storage must not even create a canary/journal');
   const r=remote(),report=await storagePreflight(env(),r.transport,()=>{});
   assert.equal(report.writeEnabled,false);assert.equal(report.storageProbeVerified,true);
+  assert.deepEqual(report.initiator,AUTHORIZED_INITIATOR);
   assert.equal(report.manifestCount,99);assert.doesNotMatch(JSON.stringify(report),/do-not-log/);
   assert.ok([...r.objects.keys()].some(key=>key.endsWith('/ledger/000000000001.jsonl')));
 });
@@ -195,4 +197,53 @@ test('workflow is manual-only, protected, SHA-pinned and has no operational back
   assert.doesNotMatch(workflow,/--write|upload-artifact|runRecovery|secrets: inherit|printenv|set -x/);
   const storage=workflow.split('  storage:')[1];assert.match(storage,/needs: gate/);
   for(const key of ['ORULO_CLIENT_ID','ORULO_CLIENT_SECRET','SUPABASE_SECRET_KEY'])assert.match(storage,new RegExp('secrets\\.'+key));
+});
+
+
+test('only the pinned owner account can initiate or trigger the dispatch',()=>{
+  assert.deepEqual(AUTHORIZED_INITIATOR,{login:'mudeisp',id:'323805541'});
+  validateDispatch(env());
+  for(const patch of [
+    {GITHUB_ACTOR:'unauthorized',GITHUB_ACTOR_ID:'999'},
+    {GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'999'},
+    {GITHUB_ACTOR:'unauthorized',GITHUB_ACTOR_ID:'323805541'},
+    {GITHUB_TRIGGERING_ACTOR:'unauthorized'},
+    {GITHUB_ACTOR:undefined},{GITHUB_ACTOR_ID:undefined},{GITHUB_TRIGGERING_ACTOR:undefined}
+  ])assert.throws(()=>validateDispatch({...env(),...patch}),/AUTHORIZED_OWNER_DISPATCH_REQUIRED/);
+});
+test('automatic events and every ref other than the main branch fail closed',()=>{
+  for(const event of ['push','pull_request','pull_request_target','schedule','workflow_run','repository_dispatch','workflow_call',undefined])
+    assert.throws(()=>validateDispatch({...env(),GITHUB_EVENT_NAME:event}),/ONLY_MANUAL_MAIN_DISPATCH_ALLOWED/);
+  for(const ref of ['refs/heads/preview','refs/tags/main','refs/pull/1/merge','main',undefined])
+    assert.throws(()=>validateDispatch({...env(),GITHUB_REF:ref}),/ONLY_MANUAL_MAIN_DISPATCH_ALLOWED/);
+});
+test('invalid initiator, automatic event or wrong ref cannot reach GitHub metadata or durable store',async()=>{
+  for(const patch of [{GITHUB_ACTOR_ID:'999'},{GITHUB_TRIGGERING_ACTOR:'other'},{GITHUB_REF:'refs/heads/other'},
+    {GITHUB_EVENT_NAME:'push'},{GITHUB_RUN_ATTEMPT:'2'}]){
+    let calls=0;
+    await assert.rejects(checkGitHub({...env(),...patch},()=>{calls++;throw Error('unexpected metadata access');}));
+    await assert.rejects(storagePreflight({...env(),...patch},{metadata:()=>{calls++;}},()=>{calls++;}));
+    assert.equal(calls,0);
+  }
+});
+test('single-owner guard is repeated before OIDC and secret access; protected job has matching immutable guards',()=>{
+  const workflow=readFileSync(new URL('../.github/workflows/orulo-lote1-manual.yml',import.meta.url),'utf8');
+  const storage=workflow.split('  storage:')[1];
+  for(const guard of ["github.event_name == 'workflow_dispatch'","github.ref == 'refs/heads/main'",
+    "github.actor == 'mudeisp'","github.actor_id == '323805541'","github.triggering_actor == 'mudeisp'","github.run_attempt == '1'"])
+    assert.ok(storage.includes(guard));
+  const gate=storage.indexOf('orulo-media-recovery-actions.mjs dispatch-gate');
+  const oidc=storage.indexOf('aws-actions/configure-aws-credentials@');
+  const secret=storage.indexOf('secrets.ORULO_CLIENT_ID');
+  assert.ok(gate>=0 && gate<oidc && oidc<secret);
+  assert.match(workflow,/ref: \$\{\{ github\.workflow_sha \}\}/);
+  assert.doesNotMatch(workflow,/workflow_dispatch:[\s\S]*inputs:|--write|runRecovery|secrets: inherit/);
+});
+test('audit journal records the verified owner without leaking credentials or enabling writes',async()=>{
+  const r=remote(),report=await storagePreflight(env(),r.transport,()=>{});
+  const events=[...r.objects].filter(([key])=>key.endsWith('.jsonl')).map(([,v])=>JSON.parse(v.bytes));
+  assert.deepEqual(events[0].initiator,AUTHORIZED_INITIATOR);
+  assert.equal(events[0].writeEnabled,false);
+  assert.equal(report.writeEnabled,false);
+  assert.doesNotMatch(JSON.stringify({report,events}),/do-not-log|fake-github-token/);
 });

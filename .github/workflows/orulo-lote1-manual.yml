@@ -7,7 +7,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   gate:
-    name: Verify manual access and protected Environment
+    name: Verify owner dispatch and protected Environment
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
@@ -31,6 +31,13 @@ jobs:
   storage:
     name: Private durable audit preflight (no backfill)
     needs: gate
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/main' &&
+          github.actor == 'mudeisp' &&
+          github.actor_id == '323805541' &&
+          github.triggering_actor == 'mudeisp' &&
+          github.run_attempt == '1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: orulo-lote1
@@ -51,6 +58,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
+      - name: Revalidate owner dispatch before credentials
+        env:
+          ORULO_STORAGE_READY: ${{ vars.ORULO_STORAGE_READY }}
+        run: node control/scripts/orulo-media-recovery-actions.mjs dispatch-gate
       - name: Obtain short-lived AWS credentials through GitHub OIDC
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
