@@ -1,0 +1,593 @@
+{
+  "type": "READ_ONLY_WEBHOOK_AUDIT",
+  "referenceV2Run": "98a9afa9-a08d-46f1-bef9-4d4e670c786f",
+  "sourceDeployment": "dpl_CafdnKRy7GGSQS2dpHpGzR5WHv55",
+  "domain": "app.yincorp.com.br",
+  "auditedRecords": [
+    {
+      "id": "507a0489-1be8-4853-81a5-e7bd079cdb2b",
+      "externalId": "orulo:27977:45514",
+      "buildingId": "27977",
+      "rowUpdatedAt": "2026-11-04 17:40:28.831+00",
+      "process": "/api/orulo-webhook",
+      "processLogCode": "ORULO_WEBHOOK_ACTIVE_PROCESSED",
+      "processEvidence": {
+        "event": "BUILDING_UPDATE",
+        "requestId": "ldqxq-1793814027499-9d7d349302ca",
+        "processedAt": "2026-11-04T17:40:29.389Z",
+        "processedAtSaoPaulo": "2026-11-04 14:40:29.389 -03:00",
+        "propertiesSaved": 1
+      },
+      "propertyCountSavedByWebhook": 1,
+      "planMetadataPreserved": true,
+      "fullHashNow": "869ac3ae38c171a0256a9ea7345234ef",
+      "contentHashNow": "d5a420551315dba1ee75218f032991b2",
+      "beforeV2FullHash": "166fd198e1617fad366de2465d2e5bee",
+      "addedPlans": [
+        {
+          "planId": "928221",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/928221.png"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/928221.png",
+                "https://static.orulo.com.br/images/properties/large/928221.png",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928221.png"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/928221.png"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/928221.png"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928221.png"
+            }
+          }
+        },
+        {
+          "planId": "928222",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/928222.png"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/928222.png",
+                "https://static.orulo.com.br/images/properties/large/928222.png",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928222.png"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/928222.png"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/928222.png"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928222.png"
+            }
+          }
+        },
+        {
+          "planId": "928223",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/928223.png"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/928223.png",
+                "https://static.orulo.com.br/images/properties/large/928223.png",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928223.png"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/928223.png"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/928223.png"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928223.png"
+            }
+          }
+        }
+      ],
+      "excludedFromRecovery": true
+    },
+    {
+      "id": "7d839f0c-f0b3-495b-bed4-bc33a4b4beca",
+      "externalId": "orulo:63635:97533",
+      "buildingId": "63635",
+      "rowUpdatedAt": "2026-11-04 18:01:28.672+00",
+      "process": "/api/orulo-webhook",
+      "processLogCode": "ORULO_WEBHOOK_ACTIVE_PROCESSED",
+      "processEvidence": {
+        "event": "BUILDING_UPDATE",
+        "requestId": "g2n8j-1793815287504-4dccfa3d87ea",
+        "processedAt": "2026-11-04T18:01:29.024Z",
+        "processedAtSaoPaulo": "2026-11-04 15:01:29.024 -03:00",
+        "propertiesSaved": 2
+      },
+      "propertyCountSavedByWebhook": 2,
+      "planMetadataPreserved": true,
+      "fullHashNow": "7ede550a4f2dbf33a976c69bfff40023",
+      "contentHashNow": "e288304c01b96ce97dd02844793838e6",
+      "beforeV2FullHash": "993ebc4375a733428df0b96807f84477",
+      "addedPlans": [
+        {
+          "planId": "2017637",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017637.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017637.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017637.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017637.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017637.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017637.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017637.jpg"
+            }
+          }
+        },
+        {
+          "planId": "2017638",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017638.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017638.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017638.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017638.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017638.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017638.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017638.jpg"
+            }
+          }
+        },
+        {
+          "planId": "2017639",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017639.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017639.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017639.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017639.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017639.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017639.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017639.jpg"
+            }
+          }
+        },
+        {
+          "planId": "2017640",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017640.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017640.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017640.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017640.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017640.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017640.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017640.jpg"
+            }
+          }
+        },
+        {
+          "planId": "2017641",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017641.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017641.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017641.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017641.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017641.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017641.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017641.jpg"
+            }
+          }
+        }
+      ],
+      "excludedFromRecovery": true
+    },
+    {
+      "id": "e582fe78-6167-4ed4-942f-9b5a63a73c5e",
+      "externalId": "orulo:63635:97534",
+      "buildingId": "63635",
+      "rowUpdatedAt": "2026-11-04 18:01:28.672+00",
+      "process": "/api/orulo-webhook",
+      "processLogCode": "ORULO_WEBHOOK_ACTIVE_PROCESSED",
+      "processEvidence": {
+        "event": "BUILDING_UPDATE",
+        "requestId": "g2n8j-1793815287504-4dccfa3d87ea",
+        "processedAt": "2026-11-04T18:01:29.024Z",
+        "processedAtSaoPaulo": "2026-11-04 15:01:29.024 -03:00",
+        "propertiesSaved": 2
+      },
+      "propertyCountSavedByWebhook": 2,
+      "planMetadataPreserved": true,
+      "fullHashNow": "66faf61425cd1343d9f704a327e26441",
+      "contentHashNow": "d88a4ec550b6e48c76efdc47c75649a3",
+      "beforeV2FullHash": "47b76ecb9c486662439a0e4c0debde13",
+      "addedPlans": [
+        {
+          "planId": "2017637",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017637.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017637.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017637.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017637.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017637.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017637.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017637.jpg"
+            }
+          }
+        },
+        {
+          "planId": "2017638",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017638.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017638.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017638.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017638.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017638.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017638.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017638.jpg"
+            }
+          }
+        },
+        {
+          "planId": "2017639",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017639.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017639.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017639.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017639.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017639.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017639.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017639.jpg"
+            }
+          }
+        },
+        {
+          "planId": "2017640",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017640.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017640.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017640.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017640.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017640.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017640.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017640.jpg"
+            }
+          }
+        },
+        {
+          "planId": "2017641",
+          "imageFieldsAdded": {
+            "image_url": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017641.jpg"
+            },
+            "images": {
+              "before": null,
+              "after": [
+                "https://static.orulo.com.br/images/properties/xlarge/2017641.jpg",
+                "https://static.orulo.com.br/images/properties/large/2017641.jpg",
+                "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017641.jpg"
+              ]
+            },
+            "2280x1800": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/xlarge/2017641.jpg"
+            },
+            "1024x1024": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/large/2017641.jpg"
+            },
+            "520x280": {
+              "before": null,
+              "after": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017641.jpg"
+            }
+          }
+        }
+      ],
+      "excludedFromRecovery": true
+    }
+  ],
+  "addedPlanOccurrences": 13,
+  "uniquePlanIds": [
+    "928221",
+    "928222",
+    "928223",
+    "2017637",
+    "2017638",
+    "2017639",
+    "2017640",
+    "2017641"
+  ],
+  "limitations": [
+    "V2 stores full/content hashes, not historical commercial field values. This audit cannot independently reconstruct every old price or stock value.",
+    "Process attribution uses matching production webhook logs, Supabase GET/upsert logs, building IDs, row counts and timestamps; no audited CAS receipt exists for these webhook syncs."
+  ],
+  "writesPerformed": false,
+  "verifiedAddedImageUrls": [
+    {
+      "url": "https://static.orulo.com.br/images/properties/xlarge/928221.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/928221.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928221.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/xlarge/928222.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/928222.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928222.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/xlarge/928223.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/928223.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/928223.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/xlarge/2017637.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/2017637.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017637.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/xlarge/2017638.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/2017638.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017638.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/xlarge/2017639.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/2017639.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017639.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/xlarge/2017640.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/2017640.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017640.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/xlarge/2017641.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/2017641.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/featured_modern_without_watermark/2017641.jpg",
+      "status": 206,
+      "format": "jpeg"
+    }
+  ],
+  "distinctAddedImageUrls": 24
+}
