@@ -90,6 +90,12 @@ export async function openPostgresJournal(env,transport){
    head=ack;return true;
   }),
   pilotFinish:()=>locked(()=>mutate('pilot_finish',{})),
+  adoptBatchAuthorization:(batchId,planHash,targetIds)=>locked(async()=>{
+   const ack=await transport.control('batch_status',{p_run:run});if(!ack)return false;const e=await verify(ack);
+   if(ack.sequence!==head.sequence+1||JSON.parse(e.canonical).previousHash!==head.hash||e.event.type!=='WRITE_AUTHORIZED'||e.event.mode!=='BATCH_IMAGES'||e.event.batchId!==batchId||e.event.planHash!==planHash||!isDeepStrictEqual(e.event.targetIds,targetIds)||e.event.controlSha!==env.GITHUB_WORKFLOW_SHA)throw Error('BATCH_AUTHORIZATION_DIVERGENCE');
+   head=ack;return true;
+  }),
+  batchFinish:()=>locked(()=>mutate('batch_finish',{})),
   snapshot:kind=>locked(async()=>{
    const begin=await mutate('snapshot_begin',{kind});
    const keys=begin.entry.event.keys;

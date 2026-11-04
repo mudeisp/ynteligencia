@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "masterHash": "d670eb2cc7ab60cfc76e0ef08b466e9c9b503df64047d57519a34e7ed57f63b2",
+  "batches": {
+    "phase1-20": {
+      "file": "phase1-20.json",
+      "hash": "7f4299ab3eacf2ee5509487ca1f0adc71ee0425bd945f088b086ec7797cad97a",
+      "phase": 1,
+      "released": true,
+      "prerequisite": null
+    },
+    "phase2-30-a": {
+      "file": "phase2-30-a.json",
+      "hash": "399cefa01b8fc029a4de2393eb0cf124ea736ca16e1837c7cedf2260f505a62d",
+      "phase": 2,
+      "released": false,
+      "prerequisite": "phase1-20"
+    },
+    "phase2-30-b": {
+      "file": "phase2-30-b.json",
+      "hash": "bd1b7615a01d98118f19c157d8936ddb2e78f53bf77321ba571a4bd9cd30a510",
+      "phase": 2,
+      "released": false,
+      "prerequisite": "phase2-30-a"
+    },
+    "phase3-rest": {
+      "file": "phase3-rest.json",
+      "hash": "86de0194d405759242ade9a2059a4575def36e90e33e8fd43f8d1eabcb5520fc",
+      "phase": 3,
+      "released": false,
+      "prerequisite": "phase2-30-b"
+    }
+  }
+}
