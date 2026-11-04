@@ -139,9 +139,10 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs(), recor
   const buildingIds = args.buildingIds == null ? null : validateBuildingIds(args.buildingIds);
   if (buildingIds && buildingId !== null) throw new Error('BUILDING_IDS_INVALID');
   if (args.write) validateWriteScope(args);
-  const token = await getOruloToken(fetchImpl);
+  const request = (url, options = {}) => fetchImpl(url, { ...options, signal: options.signal ?? AbortSignal.timeout(30000) });
+  const token = await getOruloToken(request);
   const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
-  const rows = await listRows({ states: args.states, fetchImpl });
+  const rows = await listRows({ states: args.states, fetchImpl: request });
   let buildings = [...groupRowsByBuilding(rows).entries()];
   if (buildingId !== null) {
     buildings = buildings.filter(([id]) => id === buildingId);
@@ -187,8 +188,9 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs(), recor
     if (before.floorPlans > 0) summary.buildingsWithDeclaredPlans += 1;
     if (before.floorPlans > 0 && before.floorPlanImages === 0) summary.buildingsMissingPlanImagesBefore += 1;
 
+    let currentRowId = null;
     try {
-      const livePlans = await fetchOruloFloorPlans(buildingId, headers, { fetchImpl });
+      const livePlans = await fetchOruloFloorPlans(buildingId, headers, { fetchImpl: request });
       const liveImages = livePlans.filter((plan) => plan?.image_url).length;
       summary.plansReturnedLive += livePlans.length;
       summary.planImagesReturnedLive += liveImages;
@@ -208,17 +210,21 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs(), recor
       }
 
       for (const row of buildingRows) {
+        currentRowId = row.id;
         const nextRaw = { ...row.raw_data, building: { ...row.raw_data?.building, floor_plans: imageOnlyPlans(row.raw_data, livePlans) } };
         const current = JSON.stringify(floorPlans(row.raw_data));
         const next = JSON.stringify(floorPlans(nextRaw));
         if (current === next) continue;
         summary.rowsChanged += 1;
         if (args.write) {
-          const result = await casFloorPlans({id:row.id,buildingId,livePlans,fetchImpl,record,
+          const result = await casFloorPlans({id:row.id,buildingId,livePlans,fetchImpl:request,record,
             url:SUPABASE_URL,key:required('SUPABASE_SECRET_KEY',SUPABASE_SECRET_KEY)});
-          if (result.status==='AMBIGUOUS' || result.ambiguousResponse) throw new Error('CAS_STOP_AMBIGUOUS');
+          const stopStatus = result.ambiguousResponse ? 'AMBIGUOUS' : result.status;
+          if (['CONFLICT','NOT_FOUND','AMBIGUOUS'].includes(stopStatus)) {
+            if (stopStatus === 'CONFLICT' || stopStatus === 'NOT_FOUND') summary.conflicts += 1;
+            throw new Error(`CAS_STOP_${stopStatus}`);
+          }
           if (result.status==='UPDATED') summary.rowsWritten += 1;
-          if (result.status==='CONFLICT' || result.status==='NOT_FOUND') summary.conflicts += 1;
           if (result.status==='UNCHANGED') summary.unchanged += 1;
         }
       }
@@ -232,7 +238,23 @@ export async function runRecovery({ fetchImpl = fetch, args = parseArgs(), recor
         write: args.write
       });
     } catch (error) {
-      if (args.write) throw error; // fail closed; inspect ledger/readback before any new attempt
+      if (args.write) {
+        const stopped = error instanceof Error ? error : new Error(String(error));
+        const failure = { buildingId, id: currentRowId, error: stopped.message };
+        summary.failures.push(failure);
+        stopped.recoverySummary = summary;
+        // CAS has already recorded its result/readback. Append a durable batch stop;
+        // never allow an audit-write failure to replace the original failure or resume.
+        try {
+          await record({type:'STOP',...failure,rowsWritten:summary.rowsWritten,
+            rowsChanged:summary.rowsChanged,conflicts:summary.conflicts});
+        } catch (ledgerError) {
+          stopped.ledgerError = ledgerError?.message || String(ledgerError);
+          console.error('ORULO_MEDIA_RECOVERY_STOP_LEDGER_FAILED', { ...failure, ledgerError: stopped.ledgerError });
+        }
+        console.error('ORULO_MEDIA_RECOVERY_STOPPED', failure);
+        throw stopped;
+      }
       const failure = { buildingId, error: error?.message || String(error) };
       summary.failures.push(failure);
       console.warn('ORULO_MEDIA_RECOVERY_FAILED', failure);
