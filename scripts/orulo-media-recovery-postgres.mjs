@@ -4,6 +4,14 @@ export const APPROVED_SHA='2fa6ec8b093346e1a2319e4c6833cdfb0c52825e';
 export const MANIFEST_HASH='1c8b002b5a3b4b6caf614e3b4e6d84383b8e306ae2773f3d7de48cc7daaa6d03';
 export const PROJECT_URL='https://wzaegidwtdjuhqchpdpd.supabase.co';
 export const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
+export function rpcFailureDetails(error){
+ const out={};
+ if(['orulo_audit_control','orulo_audited_cas'].includes(error?.rpc))out.rpc=error.rpc;
+ if(/^[a-z_]{1,40}$/.test(error?.rpcAction||''))out.rpcAction=error.rpcAction;
+ if(Number.isInteger(error?.httpStatus) && error.httpStatus>=100 && error.httpStatus<=599)out.httpStatus=error.httpStatus;
+ if(/^(?:[0-9A-Z]{5}|PGRST[0-9]{3})$/.test(error?.databaseCode||''))out.databaseCode=error.databaseCode;
+ return out;
+}
 export function runPrefix(runId,attempt){
  if(!/^[1-9]\d*$/.test(String(runId))||String(attempt)!=='1')throw Error('NEW_MANUAL_RUN_REQUIRED');
  return 'orulo-lote1/'+APPROVED_SHA+'/'+runId+'-1';
@@ -16,7 +24,12 @@ export function postgresTransport({url,key},request=fetch){
    headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},
    body:JSON.stringify(body),signal:AbortSignal.timeout(120000)});
   }catch{throw Error('POSTGRES_AUDIT_RESPONSE_AMBIGUOUS');}
-  if(!response.ok)throw Error('POSTGRES_AUDIT_RPC_FAILED');
+  if(!response.ok){
+   let bodyError;try{bodyError=await response.json();}catch{}
+   const error=new Error('POSTGRES_AUDIT_RPC_FAILED');
+   Object.assign(error,rpcFailureDetails({rpc:name,rpcAction:body.p_action||'cas',httpStatus:response.status,databaseCode:bodyError?.code}));
+   throw error; // Never log message/details/hint, which may contain row data or secrets.
+  }
   try{return await response.json();}catch{throw Error('POSTGRES_AUDIT_RESPONSE_AMBIGUOUS');}
  };
  return {control:(action,args={})=>rpc('orulo_audit_control',{p_action:action,...args}),

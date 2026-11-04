@@ -9,7 +9,7 @@ const db=new PGlite(),id='00000000-0000-0000-0000-000000000001',id2='00000000-00
 await db.exec(`create role anon;create role authenticated;create role service_role;
 create table public.properties(id uuid primary key,external_id text,source text,state text,active boolean,raw_data jsonb,price numeric,created_at timestamptz,updated_at timestamptz);
 grant usage on schema public to service_role,anon,authenticated;alter table public.properties enable row level security;`);
-for(const f of ['20261104093722_orulo_postgres_audit.sql','20261104102956_orulo_paged_snapshots.sql','20261104114348_orulo_pilot_authorization.sql'])
+for(const f of ['20261104093722_orulo_postgres_audit.sql','20261104102956_orulo_paged_snapshots.sql','20261104114348_orulo_pilot_authorization.sql','20261104135027_orulo_pilot_indexed_targets.sql'])
  await db.exec(readFileSync(new URL('../supabase/migrations/'+f,import.meta.url),'utf8'));
 let runCounter=50000;
 const env=()=>({GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REF:'refs/heads/main',GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'323805541',GITHUB_TRIGGERING_ACTOR:'mudeisp',GITHUB_RUN_ID:String(++runCounter),GITHUB_RUN_ATTEMPT:'1',GITHUB_WORKFLOW_SHA:'a'.repeat(40),ORULO_PILOT_APPROVED_SHA:'a'.repeat(40),ORULO_PILOT_READY:'true',ORULO_POSTGRES_AUDIT_READY:'true',ORULO_CLIENT_ID:'fixture',ORULO_CLIENT_SECRET:'fixture',SUPABASE_SECRET_KEY:'fixture'});
@@ -95,6 +95,23 @@ test('filled authorization rejects unsafe identifiers and a reconciled old plan 
  await db.query("select orulo_audit.admin_event($1,'ABORTED','synthetic timeout reconciled',true)",[r.run]);
  await assert.rejects(db.exec(pilotAuthorizationSql(plan)),/EXPIRED_OR_CHANGED/);await db.exec('rollback');
  assert.equal((await db.query("select count(*)::int n from orulo_audit.entries where run_uuid=$1 and kind='WRITE_AUTHORIZED'",[r.run])).rows[0].n,0);
+});
+test('target RPC timeout before plan preserves START/STOP, sanitized diagnosis, properties and safe reconciliation',async()=>{
+ const r=await run({beforeControl:async a=>{if(a==='pilot_targets')throw Object.assign(Error('POSTGRES_AUDIT_RPC_FAILED'),{rpc:'orulo_audit_control',rpcAction:'pilot_targets',httpStatus:500,databaseCode:'57014'});}});
+ assert.equal(r.calls.filter(a=>a==='pilot_targets').length,1);assert.equal(r.calls.filter(a=>a==='APPLY').length,0);
+ assert.equal((await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h,r.propertyFingerprintBefore);
+ const events=(await db.query('select * from orulo_audit.entries where run_uuid=$1 order by sequence',[r.run])).rows;
+ assert.deepEqual(events.map(e=>e.kind),['START','CLIENT_STOP']);assert.equal(events[1].event.rpcAction,'pilot_targets');assert.equal(events[1].event.databaseCode,'57014');
+ const rows=(await db.query('select id,md5(to_jsonb(p)::text) h from public.properties p order by id')).rows.map(r=>[r.id,r.h]);
+ const procedure=readFileSync(new URL('../supabase/orulo_reconcile_41840098939.sql',import.meta.url),'utf8')
+  .replaceAll('bcc8512e-87c3-46dd-9f0c-8e6a27172f73',r.run).replaceAll('41840098939',r.env.GITHUB_RUN_ID)
+  .replaceAll('ee9b114535c57a020e3d73b8a37c9a4673f66c5f',r.env.GITHUB_WORKFLOW_SHA)
+  .replaceAll('24d1b7f19479bb09d4f363944848d26b7010cebe22682f4dd51dfb6e435a9897',events[1].hash)
+  .replace(/expected_snapshot constant jsonb := '[^']+'::jsonb;/,()=>"expected_snapshot constant jsonb := '"+JSON.stringify(rows)+"'::jsonb;");
+ await db.exec(procedure);
+ assert.equal((await db.query('select kind from orulo_audit.entries where run_uuid=$1 and sequence=3',[r.run])).rows[0].kind,'ABORTED');
+ assert.deepEqual((await db.query('select * from orulo_audit.entries where run_uuid=$1 and sequence<=2 order by sequence',[r.run])).rows,events);
+ await assert.rejects(db.exec(procedure),/UNEXPECTED_EVENTS/);await db.exec('rollback');
 });
 test('concurrent price mutation after committed INTENT stops on conflict and never reaches next UUID',async()=>{
  let count=0;const r=await run({beforeApply:async()=>{if(++count===1)await db.query('update public.properties set price=200 where id=$1',[id]);}});
