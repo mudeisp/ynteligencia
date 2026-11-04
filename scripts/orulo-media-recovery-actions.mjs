@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { join,resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { APPROVED_SHA,MANIFEST_HASH,digest,runPrefix,PROJECT_URL,postgresTransport,openPostgresJournal } from './orulo-media-recovery-postgres.mjs';
+import {classifyCaptures,verifyScopeComparison} from './orulo-media-recovery-scope.mjs';
 
 const REPOSITORY='mudeisp/ynteligencia',ENVIRONMENT='orulo-lote1';
 export const AUTHORIZED_INITIATOR=Object.freeze({login:'mudeisp',id:'323805541'});
@@ -57,15 +58,19 @@ export async function storagePreflight(env,transport,sourceCheck=verifySource){
   const present=presence(env);
   const journal=await openPostgresJournal(env,transport);
   await journal.record({type:'READ_ONLY_PREFLIGHT',approvedSha:APPROVED_SHA,initiator,secretsPresent:present,writeEnabled:false});
-  await journal.snapshot('BASELINE_V2');
-  await journal.snapshot('READBACK_V2');
+  const before=await journal.snapshot('BASELINE_V2');
+  const after=await journal.snapshot('READBACK_V2');
+  const scopeReview=classifyCaptures(before.capture,after.capture);
+  await journal.record({type:'CLIENT_READBACK',scopeReview,validation:'PENDING_SERVER_FINISH',writeEnabled:false});
   const {ack,entry}=await journal.finish();
   const comparison=entry.event.comparison;
-  if(comparison.schemaMatch!==true || comparison.captureStable!==true ||
-     ['contentChanges','timestampOnly','insertions','deletions'].some(k=>comparison[k]!==0))
-    throw Error('POSTGRES_PREFLIGHT_CONCURRENT_CHANGES_REVIEW_REQUIRED');
-  return {status:'READ_ONLY_PREFLIGHT_PASSED',storage:'postgres',runUuid:journal.runUuid,
-    approvedSha:APPROVED_SHA,manifestCount:99,headHash:ack.hash,sequence:ack.sequence,comparison,
+  verifyScopeComparison(scopeReview,comparison);
+  if(scopeReview.decision==='REVIEW_REQUIRED'){
+    const error=new Error('POSTGRES_PREFLIGHT_CONCURRENT_CHANGES_REVIEW_REQUIRED');
+    error.scopeReview=scopeReview;throw error;
+  }
+  return {status:scopeReview.changes.length?'READ_ONLY_PREFLIGHT_PASSED_WITH_OUT_OF_SCOPE_CHANGES':'READ_ONLY_PREFLIGHT_PASSED',storage:'postgres',runUuid:journal.runUuid,
+    approvedSha:APPROVED_SHA,manifestCount:99,headHash:ack.hash,sequence:ack.sequence,comparison,scopeReview,
     secretsPresent:present,initiator,writeEnabled:false};
 }
 async function main(){

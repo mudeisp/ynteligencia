@@ -5,6 +5,7 @@ import {spawn,execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {APPROVED_SHA,MANIFEST_HASH} from './orulo-media-recovery-postgres.mjs';
+import {storagePreflight} from './orulo-media-recovery-actions.mjs';
 if(process.env.ORULO_SYNTHETIC_PG!=='true' || process.env.PGHOST!=='127.0.0.1' || process.env.PGDATABASE!=='orulo_audit_test')throw Error('ISOLATED_LOCAL_TEST_DATABASE_REQUIRED');
 const args=['-X','-qAt','-v','ON_ERROR_STOP=1'];
 const sql=s=>execFileSync('psql',args,{input:s,encoding:'utf8',maxBuffer:32*1024*1024,stdio:['pipe','pipe','pipe']}).trim();
@@ -113,4 +114,41 @@ test('actual page statement_timeout rolls back its audit fragment; a fresh conne
  assert.equal(sql(`select count(*) from orulo_audit.entries where run_uuid='${r}';`),'2');
  const persisted=JSON.parse(sql(`set role service_role;select public.orulo_audit_control('read','${r}',2);`));assert.equal(persisted.hash,h.hash);
  assert.throws(()=>sql(`set role service_role;select public.orulo_audit_control('start','${randomUUID()}',null,null,${quote({...meta,eventUuid:randomUUID(),githubRunId:'12348'})});`),e=>String(e.stderr).includes('ACTIVE_RUN_REQUIRES_RECONCILIATION'));
+});
+test('scoped PostgreSQL/client integration: two external changes pass; internal price/stock and unknown deletions block',async()=>{
+ const manifest=JSON.parse(readFileSync(new URL('./orulo-media-recovery-lote1.ids.json',import.meta.url),'utf8'));
+ const inside=manifest[0],outside=['00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003'];
+ const env={GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REF:'refs/heads/main',GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'323805541',GITHUB_TRIGGERING_ACTOR:'mudeisp',GITHUB_RUN_ATTEMPT:'1',GITHUB_WORKFLOW_SHA:'a'.repeat(40),ORULO_POSTGRES_AUDIT_READY:'true',ORULO_CLIENT_ID:'fixture',ORULO_CLIENT_SECRET:'fixture',SUPABASE_SECRET_KEY:'fixture'};
+ let counter=30000;
+ async function scenario(change,prepare=''){
+  sql("select orulo_audit.admin_event(r.run_uuid,'ABORTED','synthetic interrupted fixture reconciled',true) from orulo_audit.runs r where not exists(select 1 from orulo_audit.entries e where e.run_uuid=r.run_uuid and kind in ('ABORTED','FINISHED'));truncate public.properties;");
+  sql(`insert into public.properties(id,external_id,source,state,active,raw_data,price) values
+   ('${id}','inside','novos','SP',true,'{"building_id":"${inside}","building":{"stock":7,"floor_plans":[]}}',100),
+   ('${outside[0]}','orulo:47422:73063','novos','RS',true,'{"building_id":"47422","building":{"floor_plans":[]}}',100),
+   ('${outside[1]}','orulo:47422:73066','novos','RS',true,'{"building_id":"47422","building":{"floor_plans":[]}}',100);`);
+  if(prepare)sql(prepare);
+  let currentRun,applies=0;
+  const transport={control:async(a,p={})=>{
+   if(a==='start')currentRun=p.p_run;
+   if(a==='snapshot_begin' && p.p_event.kind==='READBACK_V2')sql(change);
+   return JSON.parse(sql(`set role service_role;select public.orulo_audit_control('${a}',${p.p_run?"'"+p.p_run+"'":'null'},${p.p_sequence??'null'},${p.p_previous_hash==null?'null':"'"+p.p_previous_hash+"'"},${quote(p.p_event||{})});`));
+  },apply:async()=>{applies++;throw Error('must not write');}};
+  let result,error;try{result=await storagePreflight({...env,GITHUB_RUN_ID:String(++counter)},transport,()=>{});}catch(e){error=e;}
+  const review=JSON.parse(sql(`select event->'scopeReview' from orulo_audit.entries where run_uuid='${currentRun}' and kind='CLIENT_READBACK';`));
+  assert.equal(applies,0);assert.equal(sql(`select kind from orulo_audit.entries where run_uuid='${currentRun}' order by sequence desc limit 1;`),'FINISHED');
+  return {result,error,review};
+ }
+ const external=await scenario(`update public.properties set price=101 where id in ('${outside[0]}','${outside[1]}');`);
+ assert.equal(external.result.status,'READ_ONLY_PREFLIGHT_PASSED_WITH_OUT_OF_SCOPE_CHANGES');assert.equal(external.review.counts.OUT_OF_SCOPE.contentChanges,2);assert.equal(external.review.counts.IN_SCOPE.contentChanges,0);
+ assert.equal(external.review.changes[0].before.buildingId,'47422');assert.ok(external.review.changes[0].after.fullHash);
+ for(const change of [`update public.properties set price=102 where id='${id}';`,`update public.properties set raw_data=jsonb_set(raw_data,'{building,stock}','8') where id='${id}';`]){
+  const insideResult=await scenario(change);assert.match(insideResult.error.message,/REVIEW_REQUIRED/);assert.equal(insideResult.review.counts.IN_SCOPE.contentChanges,1);
+ }
+ const unknown=await scenario(`update public.properties set raw_data='{}' where id='${outside[0]}';delete from public.properties where id='${outside[1]}';`);
+ assert.match(unknown.error.message,/REVIEW_REQUIRED/);assert.equal(unknown.review.counts.UNKNOWN.contentChanges,1);
+ assert.equal(unknown.review.changes.find(c=>c.type==='deletions').before.buildingId,'47422');
+ const deletion=await scenario(`delete from public.properties where id='${outside[1]}';`,`update public.properties set raw_data='{}' where id='${outside[1]}';`);
+ assert.match(deletion.error.message,/REVIEW_REQUIRED/);assert.equal(deletion.review.counts.UNKNOWN.deletions,1);
+ const insertion=await scenario("insert into public.properties(id,raw_data) values('00000000-0000-0000-0000-000000000004','{}');");
+ assert.match(insertion.error.message,/REVIEW_REQUIRED/);assert.equal(insertion.review.counts.UNKNOWN.insertions,1);
 });

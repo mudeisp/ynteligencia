@@ -207,9 +207,9 @@ export function fakePostgres(){
   if(action==='read')return entries.get(args.p_sequence);
   if(action==='recover')return {intent:{},result:{result:{status:'UPDATED'}}};
   let event=JSON.parse(JSON.stringify(args.p_event||{}));if(action==='start'){run=args.p_run;event.type='START';}
-  if(action==='snapshot_begin'){event.type='SNAPSHOT_BEGIN';event.keys=[];}
-  if(action==='snapshot_seal')event.type=event.kind;
-  if(action==='finish'){event.type='FINISHED';event.comparison={contentChanges:0,timestampOnly:0,insertions:0,deletions:0,schemaMatch:true,captureStable:true};}
+  if(action==='snapshot_begin'){event.type='SNAPSHOT_BEGIN';event.keys=[];event.columns=[['id','uuid']];}
+  if(action==='snapshot_seal'){event.type=event.kind;event.snapshot={processed:0,columns:[['id','uuid']],keysAtSeal:[],membershipStable:true};}
+  if(action==='finish'){event.type='FINISHED';event.comparison={compared:0,contentChanges:0,timestampOnly:0,insertions:0,deletions:0,schemaMatch:true,captureStable:true};}
   const canonical=JSON.stringify({runUuid:run,sequence:head.sequence+1,previousHash:head.hash,event});
   head={runUuid:run,sequence:head.sequence+1,hash:digest(canonical),eventUuid:event.eventUuid};
   entries.set(head.sequence,{...head,canonical,event});return {...head};
@@ -231,6 +231,24 @@ test('checksum tampering or ambiguous append freezes client; no CAS or retries',
  const g=fakePostgres(),k=await openPostgresJournal({},g.transport),normal=g.transport.control;
  g.transport.control=async(a,p)=>{const r=await normal(a,p);if(a==='append')throw Error('lost ACK after persistence');return r;};
  await assert.rejects(k.record({type:'INTENT'}),/lost ACK/);assert.equal(g.entries.size,2);await assert.rejects(k.record({type:'INTENT'}),/FROZEN/);
+});
+test('valid SHA digest with wrong previous link still blocks and freezes before scope approval',async()=>{
+ const f=fakePostgres(),j=await openPostgresJournal({},f.transport),base=f.transport.control;
+ f.transport.control=async(a,p)=>{
+  const ack=await base(a,p);
+  if(a==='append'){
+   const e=f.entries.get(ack.sequence),c=JSON.parse(e.canonical);c.previousHash='0'.repeat(64);
+   e.canonical=JSON.stringify(c);e.hash=ack.hash=digest(e.canonical);
+  }return ack;
+ };
+ await assert.rejects(j.record({type:'CLIENT_READBACK'}),/CHAIN_DIVERGENCE/);
+ await assert.rejects(j.finish(),/FROZEN/);
+});
+test('a FINISHED preflight allows an independent new UUID/run ID while its history stays immutable',async()=>{
+ await reset();await append('snapshot',{kind:'READBACK_V2'});await append('finish',{});
+ const closedRun=run,closedHead=await control('read',run,head.sequence),fresh=randomUUID();
+ const next=await control('start',fresh,null,null,metadata());assert.equal(next.sequence,1);assert.equal(next.runUuid,fresh);
+ assert.deepEqual(await control('read',closedRun,closedHead.sequence),closedHead);
 });
 test('lost page acknowledgement preserves event but freezes capture without retry or seal',async()=>{
  const f=fakePostgres(),base=f.transport.control;let pages=0;

@@ -64,8 +64,9 @@ Pages use separate READ COMMITTED transactions and represent a bounded capture
 within that window are recorded; mutations entirely between observations cannot
 be inferred without CDC. A row changing after its page can only be detected in a
 later readback. Preflight does not attribute any change to the backfill (there is
-no property write). Unstable membership, schema mismatch, any content/timestamp
-change or insertion/deletion makes the client report REVIEW_REQUIRED, not PASS.
+no property write). [Scope-aware approval](orulo-scope-preflight.md) allows audited
+changes proven outside the immutable manifest, with a warning. Unstable capture
+membership, schema mismatch, internal changes or unreliable classification require review.
 Completed evidence is still retained, including FINISHED, for review. This is not
 permission to rerun or to write automatically. Operational CAS still compares the
 full expected row under lock, regardless of snapshot hashes.
