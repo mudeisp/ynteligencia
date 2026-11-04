@@ -6,6 +6,7 @@ import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {APPROVED_SHA,MANIFEST_HASH} from './orulo-media-recovery-postgres.mjs';
 import {storagePreflight} from './orulo-media-recovery-actions.mjs';
+import {executePilot,PILOT_BUILDING_ID} from './orulo-media-recovery-pilot.mjs';
 if(process.env.ORULO_SYNTHETIC_PG!=='true' || process.env.PGHOST!=='127.0.0.1' || process.env.PGDATABASE!=='orulo_audit_test')throw Error('ISOLATED_LOCAL_TEST_DATABASE_REQUIRED');
 const args=['-X','-qAt','-v','ON_ERROR_STOP=1'];
 const sql=s=>execFileSync('psql',args,{input:s,encoding:'utf8',maxBuffer:32*1024*1024,stdio:['pipe','pipe','pipe']}).trim();
@@ -151,4 +152,34 @@ test('scoped PostgreSQL/client integration: two external changes pass; internal 
  assert.match(deletion.error.message,/REVIEW_REQUIRED/);assert.equal(deletion.review.counts.UNKNOWN.deletions,1);
  const insertion=await scenario("insert into public.properties(id,raw_data) values('00000000-0000-0000-0000-000000000004','{}');");
  assert.match(insertion.error.message,/REVIEW_REQUIRED/);assert.equal(insertion.review.counts.UNKNOWN.insertions,1);
+});
+test('operational pilot on real PostgreSQL: scoped atomic updates, actual concurrent row lock and lost commit ACK',async()=>{
+ sql(readFileSync(new URL('../supabase/migrations/20261104114348_orulo_pilot_authorization.sql',import.meta.url),'utf8'));
+ let attempt=40000;
+ async function scenario(mode){
+  sql("select orulo_audit.admin_event(r.run_uuid,'ABORTED','synthetic pilot reconciled',true) from orulo_audit.runs r where not exists(select 1 from orulo_audit.entries e where e.run_uuid=r.run_uuid and kind in ('ABORTED','FINISHED'));truncate public.properties;");
+  for(const pk of [id,'00000000-0000-0000-0000-000000000002'])sql(`insert into public.properties values('${pk}','pilot-fixture','novos','SP',true,'{"building_id":"${PILOT_BUILDING_ID}","photos":["photo"],"building":{"stock":7,"videos":["video"],"tour":"tour","floor_plans":[{"id":"p","description":"original"}]}}',100,'2026-01-01','2026-01-02');`);
+  const env={GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REF:'refs/heads/main',GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'323805541',GITHUB_TRIGGERING_ACTOR:'mudeisp',GITHUB_RUN_ID:String(++attempt),GITHUB_RUN_ATTEMPT:'1',GITHUB_WORKFLOW_SHA:'a'.repeat(40),ORULO_PILOT_APPROVED_SHA:'a'.repeat(40),ORULO_PILOT_READY:'true',ORULO_POSTGRES_AUDIT_READY:'true',ORULO_CLIENT_ID:'fixture',ORULO_CLIENT_SECRET:'fixture',SUPABASE_SECRET_KEY:'fixture'};
+  let calls=0,pilotRun,result,error;
+  const transport={control:async(a,p={})=>{
+   if(a==='start')pilotRun=p.p_run;
+   return JSON.parse(sql(`set role service_role;select public.orulo_audit_control('${a}',${p.p_run?"'"+p.p_run+"'":'null'},${p.p_sequence??'null'},${p.p_previous_hash==null?'null':"'"+p.p_previous_hash+"'"},${quote(p.p_event||{})});`));
+  },apply:async(r,op)=>{
+   calls++;let lock;
+   if(mode==='conflict')lock=await heldLock(`update public.properties set price=200 where id='${id}'`);
+   const result=JSON.parse(sql(`set role service_role;select public.orulo_audited_cas('${r}','${op}');`));
+   if(lock)await lock.complete;if(mode==='lost')throw Error('lost ACK after actual commit');return result;
+  }};
+  try{result=await executePilot({env,transport,fetchPlans:async()=>[{id:'p',image_url:'https://example.invalid/plan.jpg'}],checkImage:async()=>{},onPlan:async p=>{
+   sql(`select orulo_audit.authorize_pilot('${p.runUuid}','${p.headHash}','${p.githubRunId}','${p.controlSha}','synthetic explicit owner authorization');`);
+  }});}catch(e){error=e;}
+  const events=JSON.parse(sql(`select jsonb_agg(jsonb_build_object('kind',kind,'event',event) order by sequence) from orulo_audit.entries where run_uuid='${pilotRun}';`));
+  return {result,error,calls,events};
+ }
+ const success=await scenario('success');if(success.error)throw success.error;
+ assert.equal(success.result.rowsWritten,2);assert.equal(success.result.buildings,1);assert.equal(success.events.at(-1).kind,'FINISHED');
+ assert.equal(sql("select bool_and(price=100 and raw_data->'building'->>'stock'='7' and raw_data->'building'->'floor_plans'->0->>'description'='original') from public.properties;"),'t');
+ const conflict=await scenario('conflict');assert.match(conflict.error.message,/STOP_CONFLICT/);assert.equal(conflict.calls,1);assert.equal(conflict.events.find(e=>e.kind==='CAS_RESULT').event.result.status,'CONFLICT');
+ const lost=await scenario('lost');assert.match(lost.error.message,/COMMITTED_RECONCILE_REQUIRED/);assert.equal(lost.calls,1);assert.equal(lost.events.filter(e=>e.kind==='CAS_RESULT').length,1);
+ assert.equal(sql("select raw_data->'building'->'floor_plans'->0 ? 'image_url' from public.properties where id='00000000-0000-0000-0000-000000000002';"),'f');
 });

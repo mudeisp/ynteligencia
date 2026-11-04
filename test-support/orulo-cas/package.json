@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node --test ../../scripts/orulo-media-recovery-scope.test.mjs ../../scripts/orulo-media-recovery-postgres.test.mjs ../../scripts/orulo-media-cas.test.mjs ../../scripts/orulo-media-recovery-actions.test.mjs ../../scripts/orulo-media-recovery-stop.test.mjs ../../scripts/orulo-media-recovery.test.mjs ../../orulo-floor-plans.test.js"
+    "test": "node --test ../../scripts/orulo-media-recovery-pilot.test.mjs ../../scripts/orulo-media-recovery-scope.test.mjs ../../scripts/orulo-media-recovery-postgres.test.mjs ../../scripts/orulo-media-cas.test.mjs ../../scripts/orulo-media-recovery-actions.test.mjs ../../scripts/orulo-media-recovery-stop.test.mjs ../../scripts/orulo-media-recovery.test.mjs ../../orulo-floor-plans.test.js"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15"
