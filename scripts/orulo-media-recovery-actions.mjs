@@ -61,6 +61,9 @@ export async function storagePreflight(env,transport,sourceCheck=verifySource){
   await journal.snapshot('READBACK_V2');
   const {ack,entry}=await journal.finish();
   const comparison=entry.event.comparison;
+  if(comparison.schemaMatch!==true || comparison.captureStable!==true ||
+     ['contentChanges','timestampOnly','insertions','deletions'].some(k=>comparison[k]!==0))
+    throw Error('POSTGRES_PREFLIGHT_CONCURRENT_CHANGES_REVIEW_REQUIRED');
   return {status:'READ_ONLY_PREFLIGHT_PASSED',storage:'postgres',runUuid:journal.runUuid,
     approvedSha:APPROVED_SHA,manifestCount:99,headHash:ack.hash,sequence:ack.sequence,comparison,
     secretsPresent:present,initiator,writeEnabled:false};

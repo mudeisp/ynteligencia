@@ -7,7 +7,7 @@ import {randomUUID} from 'node:crypto';
 import {APPROVED_SHA,MANIFEST_HASH} from './orulo-media-recovery-postgres.mjs';
 if(process.env.ORULO_SYNTHETIC_PG!=='true' || process.env.PGHOST!=='127.0.0.1' || process.env.PGDATABASE!=='orulo_audit_test')throw Error('ISOLATED_LOCAL_TEST_DATABASE_REQUIRED');
 const args=['-X','-qAt','-v','ON_ERROR_STOP=1'];
-const sql=s=>execFileSync('psql',args,{input:s,encoding:'utf8',stdio:['pipe','pipe','pipe']}).trim();
+const sql=s=>execFileSync('psql',args,{input:s,encoding:'utf8',maxBuffer:32*1024*1024,stdio:['pipe','pipe','pipe']}).trim();
 const quote=x=>"'"+JSON.stringify(x).replaceAll("'","''")+"'::jsonb";
 const id='00000000-0000-0000-0000-000000000001',run=randomUUID();
 sql(`create role anon;create role authenticated;create role service_role;
@@ -16,9 +16,17 @@ grant usage on schema public to service_role,anon,authenticated;
 alter table public.properties enable row level security;
 insert into public.properties values('${id}','fixture','novos','SP',true,'{"building_id":"43126","building":{"floor_plans":[{"id":"p"}]}}',100,'2026-01-01','2026-01-02');`);
 sql(readFileSync(new URL('../supabase/migrations/20261104093722_orulo_postgres_audit.sql',import.meta.url),'utf8'));
+sql(readFileSync(new URL('../supabase/migrations/20261104102956_orulo_paged_snapshots.sql',import.meta.url),'utf8'));
 const rpc=(action,sequence=null,hash=null,event={})=>JSON.parse(sql(`set role service_role;select public.orulo_audit_control('${action}','${run}',${sequence??'null'},${hash===null?'null':"'"+hash+"'"},${quote(event)});`));
 let head=rpc('start',null,null,{eventUuid:randomUUID(),repository:'mudeisp/ynteligencia',actor:'mudeisp',actorId:'323805541',triggeringActor:'mudeisp',eventName:'workflow_dispatch',ref:'refs/heads/main',attempt:'1',githubRunId:'12345',workflowSha:'a'.repeat(40),approvedSha:APPROVED_SHA,manifestHash:MANIFEST_HASH});
-const append=(action,event)=>head=rpc(action,head.sequence+1,head.hash,{eventUuid:randomUUID(),...event});
+function append(action,event){
+ if(action==='snapshot'){
+  append('snapshot_begin',event);const e=rpc('read',head.sequence);
+  for(let offset=0;offset<e.event.keys.length;offset+=50)append('snapshot_page',{...event,offset,size:50});
+  return append('snapshot_seal',event);
+ }
+ return head=rpc(action,head.sequence+1,head.hash,{eventUuid:randomUUID(),...event});
+}
 async function heldLock(statement){
  const child=spawn('psql',args,{stdio:['pipe','pipe','pipe']});let output='',error='';
  const complete=new Promise((resolve,reject)=>{child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(error)));});
@@ -67,4 +75,42 @@ test('committed CAS survives connection loss: fresh session recovers once withou
  assert.equal(after.raw_data.building.floor_plans[0].image_url,'https://example.invalid/recovered.jpg');assert.equal(after.price,200);
  assert.throws(()=>sql(`set role service_role;select public.orulo_audited_cas('${run}','${op}');`),e=>String(e.stderr).includes('DUPLICATE_OPERATION'));
  assert.deepEqual(JSON.parse(sql(`select to_jsonb(p) from public.properties p where id='${id}';`)),after);
+});
+test('21,646 large synthetic rows: full baseline/readback fit bounded page statements, hashes and UUID coverage match',()=>{
+ sql(`select orulo_audit.admin_event('${run}','ABORTED','synthetic run fully reconciled',true);truncate public.properties;
+ insert into public.properties select md5(g::text)::uuid,'fixture-'||g,'novos','SP',true,
+ jsonb_build_object('building_id','43126','payload',repeat(md5(g::text),512),'building',jsonb_build_object('floor_plans',jsonb_build_array(jsonb_build_object('id','p')))),100,'2026-01-01','2026-01-02' from generate_series(1,21646) g;
+ analyze public.properties;`);
+ const r=randomUUID(),meta={eventUuid:randomUUID(),repository:'mudeisp/ynteligencia',actor:'mudeisp',actorId:'323805541',triggeringActor:'mudeisp',eventName:'workflow_dispatch',ref:'refs/heads/main',attempt:'1',githubRunId:'12346',workflowSha:'a'.repeat(40),approvedSha:APPROVED_SHA,manifestHash:MANIFEST_HASH};
+ let h=JSON.parse(sql(`set role service_role;select public.orulo_audit_control('start','${r}',null,null,${quote(meta)});`));
+ const timings=[];const mutate=(action,event)=>{
+  const start=performance.now();h=JSON.parse(sql(`set statement_timeout='8s';set role service_role;select public.orulo_audit_control('${action}','${r}',${h.sequence+1},'${h.hash}',${quote({eventUuid:randomUUID(),...event})});`));timings.push(performance.now()-start);
+ };
+ const started=performance.now();
+ for(const kind of ['BASELINE_V2','READBACK_V2']){
+  mutate('snapshot_begin',{kind});
+  for(let offset=0;offset<21646;offset+=50)mutate('snapshot_page',{kind,offset,size:50});
+  mutate('snapshot_seal',{kind});
+ }
+ mutate('finish',{});
+ const result=JSON.parse(sql(`set role service_role;select public.orulo_audit_control('read','${r}',${h.sequence});`)).event.comparison;
+ assert.equal(result.compared,21646);assert.equal(result.contentChanges,0);assert.equal(result.timestampOnly,0);assert.equal(result.insertions,0);assert.equal(result.deletions,0);assert.equal(result.captureStable,true);
+ const metrics=JSON.parse(sql(`select jsonb_build_object('records',count(*),'uniqueIds',count(distinct id),'maxPageRows',(select max(event->>'count')::int from orulo_audit.entries where run_uuid='${r}' and kind='SNAPSHOT_PAGE')) from orulo_audit.snapshot_records where run_uuid='${r}';`));
+ assert.equal(metrics.records,43292);assert.equal(metrics.uniqueIds,21646);assert.equal(metrics.maxPageRows,50);
+ const valid=sql(`select bool_and(e.hash=encode(sha256(convert_to(e.canonical,'UTF8')),'hex') and e.previous_hash=coalesce(p.hash,'')) from orulo_audit.entries e left join orulo_audit.entries p on p.run_uuid=e.run_uuid and p.sequence=e.sequence-1 where e.run_uuid='${r}';`);assert.equal(valid,'t');
+ const hashes=sql(`select r.record->>4=md5(c.j::text) and r.record->>5=md5((c.j-'updated_at')::text) from orulo_audit.snapshot_records r join public.properties p using(id) cross join lateral(select to_jsonb(p)||jsonb_build_object('created_at',p.created_at at time zone 'UTC','updated_at',p.updated_at at time zone 'UTC') j)c where r.run_uuid='${r}' and r.kind='BASELINE_V2' limit 1;`);assert.equal(hashes,'t');
+ console.log(JSON.stringify({syntheticRows:21646,payloadBytesPerRow:16384,pageSize:50,statements:timings.length,maxStatementMs:Math.round(Math.max(...timings)),totalMs:Math.round(performance.now()-started),dbStatementTimeout:'8s'}));
+ assert.ok(Math.max(...timings)<8000);
+});
+test('actual page statement_timeout rolls back its audit fragment; a fresh connection sees partial capture and no reuse',()=>{
+ const r=randomUUID(),meta={eventUuid:randomUUID(),repository:'mudeisp/ynteligencia',actor:'mudeisp',actorId:'323805541',triggeringActor:'mudeisp',eventName:'workflow_dispatch',ref:'refs/heads/main',attempt:'1',githubRunId:'12347',workflowSha:'a'.repeat(40),approvedSha:APPROVED_SHA,manifestHash:MANIFEST_HASH};
+ let h=JSON.parse(sql(`set role service_role;select public.orulo_audit_control('start','${r}',null,null,${quote(meta)});`));
+ h=JSON.parse(sql(`set role service_role;select public.orulo_audit_control('snapshot_begin','${r}',${h.sequence+1},'${h.hash}',${quote({kind:'BASELINE_V2',eventUuid:randomUUID()})});`));
+ sql("create function public.timeout_page() returns trigger language plpgsql as $$begin perform pg_sleep(1);return new;end$$;create trigger fixture_timeout before insert on orulo_audit.snapshot_records for each row execute function public.timeout_page()");
+ assert.throws(()=>sql(`set statement_timeout='100ms';set role service_role;select public.orulo_audit_control('snapshot_page','${r}',${h.sequence+1},'${h.hash}',${quote({kind:'BASELINE_V2',offset:0,size:1,eventUuid:randomUUID()})});`),e=>String(e.stderr).includes('statement timeout'));
+ sql('drop trigger fixture_timeout on orulo_audit.snapshot_records;drop function public.timeout_page()');
+ assert.equal(sql(`select count(*) from orulo_audit.snapshot_records where run_uuid='${r}';`),'0');
+ assert.equal(sql(`select count(*) from orulo_audit.entries where run_uuid='${r}';`),'2');
+ const persisted=JSON.parse(sql(`set role service_role;select public.orulo_audit_control('read','${r}',2);`));assert.equal(persisted.hash,h.hash);
+ assert.throws(()=>sql(`set role service_role;select public.orulo_audit_control('start','${randomUUID()}',null,null,${quote({...meta,eventUuid:randomUUID(),githubRunId:'12348'})});`),e=>String(e.stderr).includes('ACTIVE_RUN_REQUIRES_RECONCILIATION'));
 });

@@ -7,6 +7,8 @@ on:
       - '.github/workflows/orulo-lote1-manual.yml'
       - 'supabase/orulo_media_cas.sql'
       - 'supabase/migrations/*orulo_postgres_audit.sql'
+      - 'supabase/migrations/*orulo_paged_snapshots.sql'
+      - 'supabase/orulo_reconcile_41813891981.sql'
       - 'scripts/orulo-media-cas*'
       - 'scripts/orulo-media-recovery*'
       - 'orulo-floor-plans*'

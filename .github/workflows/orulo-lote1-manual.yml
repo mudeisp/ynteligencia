@@ -39,7 +39,7 @@ jobs:
           github.triggering_actor == 'mudeisp' &&
           github.run_attempt == '1' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     environment: orulo-lote1
     permissions:
       contents: read
