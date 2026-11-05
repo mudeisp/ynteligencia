@@ -228,3 +228,100 @@ test('manifest batch on durable PostgreSQL: multiple buildings, row-lock conflic
  const lost=await scenario('lost');assert.match(lost.error.message,/COMMITTED_RECONCILE_REQUIRED/);assert.equal(lost.calls,1);assert.equal(lost.events.filter(e=>e.kind==='CAS_RESULT').length,1);
  const absent=await scenario('unauthorized');assert.match(absent.error.message,/AUTHORIZATION_WAIT_TIMEOUT/);assert.equal(absent.calls,0);assert.deepEqual(absent.events.map(e=>e.kind),['START','CLIENT_READBACK','CLIENT_STOP']);
 });
+
+test('phase 2 prerequisite: reviewed ABORTED writes preserve history, authorization and concurrency',async()=>{
+ // Independent history: earlier successful FINISHED fixtures must not satisfy this prerequisite.
+ const originalDatabase=process.env.PGDATABASE;
+ sql('create database orulo_audit_phase2_test;');process.env.PGDATABASE='orulo_audit_phase2_test';
+ try{
+ sql("create table public.properties(id uuid primary key,external_id text,source text,state text,active boolean,raw_data jsonb,price numeric,created_at timestamptz,updated_at timestamptz);grant usage on schema public to service_role,anon,authenticated;alter table public.properties enable row level security;");
+ for(const f of ['20261104093722_orulo_postgres_audit.sql','20261104102956_orulo_paged_snapshots.sql','20261104114348_orulo_pilot_authorization.sql','20261104135027_orulo_pilot_indexed_targets.sql','20261104151850_orulo_manifest_batches.sql'])sql(readFileSync(new URL('../supabase/migrations/'+f,import.meta.url),'utf8'));
+ sql("select orulo_audit.admin_event(r.run_uuid,'ABORTED','synthetic outstanding run reconciled',true) from orulo_audit.runs r where not exists(select 1 from orulo_audit.entries e where e.run_uuid=r.run_uuid and kind in ('ABORTED','FINISHED'));truncate public.properties;");
+ const phase1=loadBatch('phase1-20'),priorTargets=[phase1.targets[0],phase1.targets.find(t=>t.buildingId!==phase1.targets[0].buildingId)];
+ for(const t of priorTargets)sql("insert into public.properties values('"+t.id+"','fixture','novos','SP',true,"+quote({building_id:t.buildingId,building:{stock:7,floor_plans:t.missingPlanIds.map(id=>({id,description:'keep'}))}})+",100,'2026-01-01','2026-01-02');");
+ const env={GITHUB_REPOSITORY:'mudeisp/ynteligencia',GITHUB_EVENT_NAME:'workflow_dispatch',GITHUB_REF:'refs/heads/main',GITHUB_ACTOR:'mudeisp',GITHUB_ACTOR_ID:'323805541',GITHUB_TRIGGERING_ACTOR:'mudeisp',GITHUB_RUN_ID:'710001',GITHUB_RUN_ATTEMPT:'1',GITHUB_WORKFLOW_SHA:'a'.repeat(40),ORULO_BATCH_APPROVED_SHA:'a'.repeat(40),ORULO_BATCH_READY:'true',ORULO_BATCH_ID:'phase1-20',ORULO_POSTGRES_AUDIT_READY:'true',ORULO_CLIENT_ID:'fixture',ORULO_CLIENT_SECRET:'fixture',SUPABASE_SECRET_KEY:'fixture'};
+ let priorRun,priorError;
+ const control=(a,p={})=>JSON.parse(sql("set role service_role;select public.orulo_audit_control('"+a+"',"+(p.p_run?"'"+p.p_run+"'":'null')+","+(p.p_sequence??'null')+","+(p.p_previous_hash==null?'null':"'"+p.p_previous_hash+"'")+","+quote(p.p_event||{})+");"));
+ try{await executeBatch({env,transport:{control:async(a,p)=>{
+  if(a==='start')priorRun=p.p_run;
+  if(a==='snapshot_begin'&&p.p_event.kind==='READBACK_V2')sql("update properties set price=125 where id='"+priorTargets[0].id+"'");
+  return control(a,p);
+ },apply:async(r,op)=>JSON.parse(sql("set role service_role;select public.orulo_audited_cas('"+r+"','"+op+"');"))},
+ fetchPlans:async bid=>priorTargets.filter(t=>t.buildingId===bid).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:'https://static.orulo.com.br/images/properties/large/'+id+'.jpg'}))),
+ checkImage:async()=>{},onPlan:async p=>sql(batchApprovalSql(p)),wait:async()=>{}});}catch(e){priorError=e;}
+ assert.match(priorError?.message||'',/RECEIPT_ATTRIBUTION_FAILED/);
+ const head=JSON.parse(sql("select orulo_audit.admin_event('"+priorRun+"','ABORTED','synthetic owner-reviewed concurrent change with confirmed writes',true);"));
+ const original=sql("select md5(jsonb_agg(to_jsonb(e) order by sequence)::text) from orulo_audit.entries e where run_uuid='"+priorRun+"'");
+ const beforeCatalog=JSON.parse(sql("select orulo_audit.batch_catalog();"));
+ const migration=readFileSync(new URL('../supabase/migrations/20261105151448_orulo_manifest_batches.sql',import.meta.url),'utf8');
+ sql(migration);
+ const afterCatalog=JSON.parse(sql("select orulo_audit.batch_catalog();"));
+ const expectedCatalog=structuredClone(beforeCatalog);expectedCatalog.batches['phase2-30-a'].released=true;assert.deepEqual(afterCatalog,expectedCatalog);
+ assert.equal(sql("select orulo_audit.batch_prerequisite_result('phase1-20') is null;"),'t','arbitrary reconciled ABORTED cannot bypass the production allowlist');
+ for(const role of ['anon','authenticated','service_role'])assert.equal(sql("select has_function_privilege('"+role+"','orulo_audit.batch_prerequisite_result(text)','EXECUTE') or has_function_privilege('"+role+"','orulo_audit.authorize_pilot(uuid,text,text,text,text)','EXECUTE');"),'f');
+ const next=loadBatch('phase2-30-a').targets[0];
+ sql("insert into public.properties values('"+next.id+"','next-fixture','novos','SP',true,"+quote({building_id:next.buildingId,building:{stock:8,floor_plans:next.missingPlanIds.map(id=>({id,description:'next-original'}))}})+",200,'2026-01-01','2026-01-02');");
+ const nextRun=randomUUID(),gh='710002',sha='b'.repeat(40);
+ const metadata={eventUuid:randomUUID(),repository:'mudeisp/ynteligencia',actor:'mudeisp',actorId:'323805541',triggeringActor:'mudeisp',eventName:'workflow_dispatch',ref:'refs/heads/main',attempt:'1',githubRunId:gh,workflowSha:sha,approvedSha:APPROVED_SHA,manifestHash:MANIFEST_HASH};
+ let h=control('start',{p_run:nextRun,p_event:metadata});
+ const inv=control('batch_inventory',{p_event:{batchId:'phase2-30-a'}});
+ const targets=inv.targets.map(t=>({id:t.id,buildingId:t.buildingId,patches:t.missingPlanIds.map(id=>({id,image_url:'https://static.orulo.com.br/images/properties/large/'+id+'.jpg'}))}));
+ h=control('append',{p_run:nextRun,p_sequence:2,p_previous_hash:h.hash,p_event:{type:'CLIENT_READBACK',stage:'BATCH_PLAN',eventUuid:randomUUID(),batchId:'phase2-30-a',masterHash:inv.masterHash,batchManifestHash:inv.batchManifestHash,targetIds:targets.map(t=>t.id).sort(),targets}});
+ const authorize=(hash=h.hash)=>sql("select orulo_audit.authorize_pilot('"+nextRun+"','"+hash+"','"+gh+"','"+sha+"','synthetic explicit new plan approval');");
+ assert.throws(()=>authorize(),/BATCH_PREVIOUS_RESULT_REQUIRED/);
+ const start=migration.indexOf('create function orulo_audit.batch_prerequisite_result('),end=migration.indexOf('\nalter function orulo_audit.batch_prerequisite_result',start);
+ const exactHelper=migration.slice(start,end);
+ // Synthetic run/head/counts only; verification logic is identical to production.
+ const helper=exactHelper.replace('create function','create or replace function')
+ .replace('8c3b6881-69fa-4737-a29f-6aeebe1b94b9',priorRun)
+ .replace('4e9b652387480e73eb6c0058b8ec456bd0874ca345e4f3be1cdaf26ce40246a6',head.hash)
+ .replace('expected_events constant integer := 957','expected_events constant integer := '+head.sequence)
+ .replace('expected_rows constant integer := 26','expected_rows constant integer := '+priorTargets.length)
+ .replace('expected_occurrences constant integer := 110','expected_occurrences constant integer := '+priorTargets.reduce((n,t)=>n+t.missingPlanIds.length,0));
+ sql(helper);
+ const recognition=JSON.parse(sql("select orulo_audit.batch_prerequisite_result('phase1-20');"));
+ assert.equal(recognition.terminalType,'ABORTED');assert.equal(recognition.hash,head.hash);assert.equal(recognition.confirmedRows,2);
+ assert.equal(sql("select orulo_audit.batch_prerequisite_result('phase2-30-a') is null;"),'t','no generic ABORTED bypass for later phases');
+ assert.throws(()=>sql("begin;alter table orulo_audit.entries disable trigger immutable_rows;update orulo_audit.entries set canonical=canonical||' ',hash=encode(sha256(convert_to(canonical||' ','UTF8')),'hex') where run_uuid='"+priorRun+"' and kind='CAS_RESULT';select orulo_audit.batch_prerequisite_result('phase1-20');"),/CHAIN_INVALID/);
+ assert.equal(sql("select md5(jsonb_agg(to_jsonb(e) order by sequence)::text) from orulo_audit.entries e where run_uuid='"+priorRun+"'"),original);
+ assert.throws(()=>authorize('0'.repeat(64)),/PLAN_OR_HEAD_INVALID/);
+ const lock=await heldLock("select orulo_audit.lock_run('"+nextRun+"')");
+ assert.throws(()=>authorize(),/AUDIT_CONCURRENT_ACCESS/);await lock.complete;
+ const beforeProperties=sql("select md5(jsonb_agg(to_jsonb(p) order by id)::text) from properties p");
+ const ack=JSON.parse(authorize());
+ const auth=JSON.parse(sql("select event from orulo_audit.entries where run_uuid='"+nextRun+"' and kind='WRITE_AUTHORIZED';"));
+ assert.equal(ack.sequence,3);assert.equal(auth.prerequisiteResult.hash,head.hash);assert.equal(auth.prerequisiteResult.terminalType,'ABORTED');assert.equal(auth.batchId,'phase2-30-a');
+ assert.throws(()=>authorize());
+ assert.equal(sql("select count(*) from orulo_audit.entries where run_uuid='"+nextRun+"' and kind='WRITE_AUTHORIZED';"),'1');
+ assert.equal(sql("select count(*) from orulo_audit.entries where run_uuid='"+nextRun+"' and kind in ('INTENT','CAS_RESULT');"),'0');
+ assert.equal(sql("select md5(jsonb_agg(to_jsonb(p) order by id)::text) from properties p"),beforeProperties);
+ assert.equal(sql("select md5(jsonb_agg(to_jsonb(e) order by sequence)::text) from orulo_audit.entries e where run_uuid='"+priorRun+"'"),original);
+ assert.equal(sql("select count(*) from orulo_audit.entries where run_uuid='"+priorRun+"' and kind='FINISHED'"),'0');
+ // Restore the exact production recognition body before leaving the test.
+ sql(exactHelper.replace('create function','create or replace function'));
+ }finally{process.env.PGDATABASE=originalDatabase;}
+});
+
+test('stopped phase 2 run reconciliation is append-only, exclusive and zero-write',async()=>{
+ sql("select orulo_audit.admin_event(r.run_uuid,'ABORTED','synthetic prior tests reconciled',true) from orulo_audit.runs r where not exists(select 1 from orulo_audit.entries e where e.run_uuid=r.run_uuid and kind in ('ABORTED','FINISHED'));");
+ const r='a613aae9-4a99-47bd-b7c4-d58b9f0c7c72',gh='42051049087',sha='96490b0380bd2050d460f65b1625d2ec77afa389';
+ const rpc=(a,seq,prev,event)=>JSON.parse(sql("set role service_role;select public.orulo_audit_control('"+a+"','"+r+"',"+(seq??'null')+","+(prev?"'"+prev+"'":'null')+","+quote(event)+");"));
+ const start=rpc('start',null,null,{eventUuid:randomUUID(),repository:'mudeisp/ynteligencia',actor:'mudeisp',actorId:'323805541',triggeringActor:'mudeisp',eventName:'workflow_dispatch',ref:'refs/heads/main',attempt:'1',githubRunId:gh,workflowSha:sha,approvedSha:APPROVED_SHA,manifestHash:MANIFEST_HASH});
+ const plan=rpc('append',2,start.hash,{type:'CLIENT_READBACK',stage:'BATCH_PLAN',batchId:'phase2-30-a',eventUuid:randomUUID(),writeEnabled:false,targets:[]});
+ const stop=rpc('append',3,plan.hash,{type:'CLIENT_STOP',eventUuid:randomUUID(),confirmedRows:0,verifiedRows:0,diagnostic:{code:'BATCH_AUTHORIZATION_WAIT_TIMEOUT',batchStage:'AUTHORIZATION_WAIT',runUuid:r}});
+ let script=readFileSync(new URL('../supabase/orulo_reconcile_42051049087.sql',import.meta.url),'utf8')
+ .replace('1522892f7224bf4a9bac072a523966758ba66ffb7fc563e1864d868cd9a50012',start.hash)
+ .replace('4840e31ab7c1160acc1eac90b163d07c9024ba69bfc8ed89fc94f5b87a6cedd1',plan.hash)
+ .replace('66dad2b325e74a5fd753112f2899555b239803946de81b358c48ad5e44519903',stop.hash);
+ const original=sql("select md5(jsonb_agg(to_jsonb(e) order by sequence)::text) from orulo_audit.entries e where run_uuid='"+r+"'");
+ const properties=sql("select md5(jsonb_agg(to_jsonb(p) order by id)::text) from properties p");
+ const lock=await heldLock("select orulo_audit.lock_run('"+r+"')");
+ assert.throws(()=>sql(script),/AUDIT_CONCURRENT_ACCESS/);await lock.complete;
+ assert.throws(()=>sql(script.replace(stop.hash,'0'.repeat(64))),/HEAD_OR_EXPECTED_EVENTS_CHANGED/);
+ sql(script);
+ assert.equal(sql("select kind from orulo_audit.entries where run_uuid='"+r+"' and sequence=4"),'ABORTED');
+ assert.equal(sql("select md5(jsonb_agg(to_jsonb(e) order by sequence)::text) from orulo_audit.entries e where run_uuid='"+r+"' and sequence<=3"),original);
+ assert.equal(sql("select md5(jsonb_agg(to_jsonb(p) order by id)::text) from properties p"),properties);
+ assert.equal(sql("select count(*) from orulo_audit.entries where run_uuid='"+r+"' and kind in ('WRITE_AUTHORIZED','INTENT','CAS_RESULT')"),'0');
+ assert.throws(()=>sql(script),/HEAD_OR_EXPECTED_EVENTS_CHANGED/);
+});
