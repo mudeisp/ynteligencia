@@ -13,7 +13,7 @@
       "file": "phase2-30-a.json",
       "hash": "399cefa01b8fc029a4de2393eb0cf124ea736ca16e1837c7cedf2260f505a62d",
       "phase": 2,
-      "released": false,
+      "released": true,
       "prerequisite": "phase1-20"
     },
     "phase2-30-b": {
