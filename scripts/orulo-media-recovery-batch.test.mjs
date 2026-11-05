@@ -33,7 +33,7 @@ async function run(o={}){
 const kinds=async r=>(await db.query('select kind from orulo_audit.entries where run_uuid=$1 order by sequence',[r.uuid])).rows.map(x=>x.kind);
 test('immutable manifests partition exactly 83 buildings and 314 UUIDs; phases 20/30/30/3; gates owner/manual/main/first attempt',()=>{
  const all=Object.keys(batchCatalog.batches).map(loadBatch);assert.deepEqual(all.map(b=>b.buildingIds.length),[20,30,30,3]);assert.equal(new Set(all.flatMap(b=>b.buildingIds)).size,83);assert.equal(new Set(all.flatMap(b=>b.targets.map(t=>t.id))).size,314);validateBatchDispatch(env());
- for(const p of [{GITHUB_ACTOR:'other'},{GITHUB_REF:'refs/heads/other'},{GITHUB_EVENT_NAME:'push'},{GITHUB_RUN_ATTEMPT:'2'},{ORULO_BATCH_READY:''},{ORULO_BATCH_ID:'phase2-30-a'},{ORULO_BATCH_APPROVED_SHA:'b'.repeat(40)}])assert.throws(()=>validateBatchDispatch({...env(),...p}));
+ for(const p of [{GITHUB_ACTOR:'other'},{GITHUB_REF:'refs/heads/other'},{GITHUB_EVENT_NAME:'push'},{GITHUB_RUN_ATTEMPT:'2'},{ORULO_BATCH_READY:''},{ORULO_BATCH_ID:'phase2-30-b'},{ORULO_BATCH_APPROVED_SHA:'b'.repeat(40)}])assert.throws(()=>validateBatchDispatch({...env(),...p}));
  const w=readFileSync(new URL('../.github/workflows/orulo-batch-manual.yml',import.meta.url),'utf8');assert.match(w,/workflow_dispatch:/);assert.match(w,/group: orulo-lote1-production/);assert.match(w,/ref: \$\{\{ github.workflow_sha \}\}/);assert.doesNotMatch(w,/schedule:|--write|id-token:|aws-actions/);
 });
 test('registration push is self-file/main only; registration is inert and all operational jobs require manual owner/main/first attempt',()=>{
@@ -54,7 +54,7 @@ test('registration push is self-file/main only; registration is inert and all op
   for(const patch of [{event_name:'push'},{event_name:'pull_request'},{event_name:'schedule'},{event_name:'workflow_run'},{ref:'refs/heads/feature'},{actor:'other'},{actor_id:'1'},{triggering_actor:'other'},{run_attempt:'2'}])assert.equal(evaluate(job,{...manual,...patch}),false,job+JSON.stringify(patch));
  }
  assert.equal(evaluate('register',{...manual,event_name:'push'}),true);assert.equal(evaluate('register',manual),false);assert.equal(evaluate('register',{...manual,event_name:'push',ref:'refs/heads/feature'}),false);
- for(const id of ['phase2-30-a','phase2-30-b','phase3-rest']){assert.equal(batchCatalog.batches[id].released,false);assert.throws(()=>validateBatchDispatch({...env(),ORULO_BATCH_ID:id}),/PHASE_NOT_RELEASED/);}
+ for(const id of ['phase2-30-b','phase3-rest']){assert.equal(batchCatalog.batches[id].released,false);assert.throws(()=>validateBatchDispatch({...env(),ORULO_BATCH_ID:id}),/PHASE_NOT_RELEASED/);}
 });
 test('multiple buildings and plans: fresh baseline, durable INTENT, atomic CAS and full readback preserve existing images and commercial data',async()=>{
  const r=await run();if(r.error)throw r.error;assert.equal(r.result.rowsWritten,2);assert.equal(r.result.nextBatchAuthorized,false);assert.equal(r.result.recoveredImageOccurrences,targets.reduce((n,t)=>n+t.missingPlanIds.length,0));
@@ -140,7 +140,7 @@ test('original 33 UUID manifest safely narrows to 30 UUIDs/18 buildings/122 miss
  for(const t of r.plan.targets){assert.ok(!completedIds.includes(t.id));assert.deepEqual(t.patches.map(p=>p.id).sort(),batch.targets.find(x=>x.id===t.id).missingPlanIds);}
  assert.equal((await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h,r.fingerprint);
  assert.deepEqual(await kinds(r),['START','CLIENT_READBACK','CLIENT_STOP']);
- for(const id of ['phase2-30-a','phase2-30-b','phase3-rest'])assert.equal(batchCatalog.batches[id].released,false);
+ for(const id of ['phase2-30-b','phase3-rest'])assert.equal(batchCatalog.batches[id].released,false);
 });
 test('approval view is compact, accurate and secret-free; full patches remain in the journal and SQL remains unchanged',async()=>{
  let view,original;
@@ -167,3 +167,54 @@ test('approval view is compact, accurate and secret-free; full patches remain in
  const cli=readFileSync(new URL('./orulo-media-recovery-batch.mjs',import.meta.url),'utf8').split('async function main(){')[1];
  assert.doesNotMatch(cli,/JSON\.stringify\(p/);assert.match(cli,/console\.log\(view\.log\)/);assert.match(cli,/appendFileSync\(process\.env\.GITHUB_STEP_SUMMARY,view\.summary/);
 });
+
+const root='https://static.orulo.com.br/images/properties/large/';
+const jpeg=()=>new Response(new Uint8Array([255,216,255,224,0,16,74,70]),{status:206,headers:{'Content-Type':'image/jpeg'}});
+
+test('building 20333 plan 632499: uppercase JPG keeps strict image request controls',async()=>{
+ const url=root+'632499.JPG';let calls=0;
+ const result=await verifyBatchImage(url,async(actual,options)=>{
+  calls++;assert.equal(actual,url);assert.equal(options.redirect,'error');
+  assert.equal(options.headers.Range,'bytes=0-4095');assert.ok(options.signal instanceof AbortSignal);
+  return jpeg();
+ });
+ assert.deepEqual(result,{status:206,format:'jpeg'});assert.equal(calls,1);
+});
+
+test('extension casing accepts existing allowed image types without changing host/path casing',async()=>{
+ for(const ext of ['jpg','JPG','JpEg','PNG','pNg','WEBP','WebP']){
+  assert.equal((await verifyBatchImage(root+'632499.'+ext,async()=>jpeg())).format,'jpeg');
+ }
+});
+
+test('malicious or out-of-scope URLs are refused before any network request',async()=>{
+ const invalid=[
+  'http://static.orulo.com.br/images/properties/large/632499.JPG',
+  'https://evil.invalid/images/properties/large/632499.JPG',
+  'https://static.orulo.com.br.evil.invalid/images/properties/large/632499.JPG',
+  'https://static.orulo.com.br@evil.invalid/images/properties/large/632499.JPG',
+  'https://evil.invalid@static.orulo.com.br/images/properties/large/632499.JPG',
+  'https://static.orulo.com.br:444/images/properties/large/632499.JPG',
+  'https://127.0.0.1/images/properties/large/632499.JPG',
+  'https://static.orulo.com.br/IMAGES/properties/large/632499.JPG',
+  'https://STATIC.orulo.com.br/images/properties/large/632499.JPG',
+  root+'../632499.JPG',root+'%2e%2e/632499.JPG',root+'632499%2f.JPG',
+  root+'632499.JPG?url=https://evil.invalid',root+'632499.JPG#fragment',
+  root+'632499.JPG\n',root+'632499.svg',root+'632499.html',root+'632499.JPG.exe',
+  'data:image/jpeg;base64,/9j/',null,{},
+ ];
+ for(const url of invalid){let called=false;
+  await assert.rejects(verifyBatchImage(url,async()=>{called=true;return jpeg();}),/BATCH_UNTRUSTED_IMAGE_URL/);
+  assert.equal(called,false,String(url));
+ }
+});
+
+test('uppercase extension still rejects redirects, unavailable responses and non-image bytes',async()=>{
+ const url=root+'632499.JPG';
+ await assert.rejects(verifyBatchImage(url,async(_,options)=>{assert.equal(options.redirect,'error');throw new TypeError('redirect refused');}),/BATCH_IMAGE_REQUEST_FAILED/);
+ await assert.rejects(verifyBatchImage(url,async()=>new Response(null,{status:302,headers:{Location:'https://evil.invalid'}})),/BATCH_IMAGE_UNAVAILABLE/);
+ await assert.rejects(verifyBatchImage(url,async()=>new Response('missing',{status:404})),/BATCH_IMAGE_UNAVAILABLE/);
+ await assert.rejects(verifyBatchImage(url,async()=>new Response('<html>not an image</html>',{headers:{'Content-Type':'image/jpeg'}})),/BATCH_IMAGE_SIGNATURE_INVALID/);
+ await assert.rejects(verifyBatchImage(url,async()=>new Response('<svg></svg>')) ,/BATCH_IMAGE_SIGNATURE_INVALID/);
+});
+
