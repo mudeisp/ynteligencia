@@ -16,7 +16,8 @@ if(digest(JSON.stringify(batchMaster))!==batchCatalog.masterHash || batchMaster.
  batchMaster.buildings.some(b=>!original.includes(b.buildingId)||b.buildingId==='43126'||b.buildingId==='86644'))throw Error('BATCH_MASTER_INVALID');
 const imageKeys=['image_url','images','2280x1800','1024x1024','520x280','url'];
 const hasImage=p=>imageKeys.some(k=>typeof p?.[k]==='string'&&p[k].length || k==='images'&&Array.isArray(p?.images)&&p.images.length);
-const pattern=/^https:\/\/static\.orulo\.com\.br\/images\/properties\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)$/;
+// CDN extensions can be uppercase; keep the host and path rules unchanged.
+const pattern=/^https:\/\/static\.orulo\.com\.br\/images\/properties\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(?:[jJ][pP][eE]?[gG]|[pP][nN][gG]|[wW][eE][bB][pP])$/;
 const stages=new Set(['HEALTH','JOURNAL_START','INVENTORY','TARGET_READ','SOURCE_AUTH','SOURCE_PLANS','IMAGE_VALIDATION',
  'PLAN','AUTHORIZATION_WAIT','BASELINE','PRE_CAS','INTENT','CAS','ROW_READBACK','GLOBAL_READBACK','INTEGRITY','FINISH']);
 const failureCodes=new Set([
