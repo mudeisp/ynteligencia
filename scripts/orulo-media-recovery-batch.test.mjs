@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
-import {executeBatch,loadBatch,batchCatalog,validateBatchDispatch,batchPatches,verifyBatchImage,batchApprovalSql,batchSourceClient,batchFailureDetails} from './orulo-media-recovery-batch.mjs';
+import {executeBatch,loadBatch,batchCatalog,validateBatchDispatch,batchPatches,verifyBatchImage,batchApprovalSql,batchSourceClient,batchFailureDetails,batchApprovalView} from './orulo-media-recovery-batch.mjs';
 const {PGlite}=process.env.PGLITE_MODULE?await import(process.env.PGLITE_MODULE):createRequire(new URL('../test-support/orulo-cas/package.json',import.meta.url))('@electric-sql/pglite');
 const db=new PGlite();
 await db.exec(`create role anon;create role authenticated;create role service_role;
@@ -141,4 +141,29 @@ test('original 33 UUID manifest safely narrows to 30 UUIDs/18 buildings/122 miss
  assert.equal((await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h,r.fingerprint);
  assert.deepEqual(await kinds(r),['START','CLIENT_READBACK','CLIENT_STOP']);
  for(const id of ['phase2-30-a','phase2-30-b','phase3-rest'])assert.equal(batchCatalog.batches[id].released,false);
+});
+test('approval view is compact, accurate and secret-free; full patches remain in the journal and SQL remains unchanged',async()=>{
+ let view,original;
+ const r=await run({allManifest:true,completedIds:['507a0489-1be8-4853-81a5-e7bd079cdb2b','7d839f0c-f0b3-495b-bed4-bc33a4b4beca','e582fe78-6167-4ed4-942f-9b5a63a73c5e'],authorize:false,onPlan:async p=>{
+  original=p;view=batchApprovalView({...p,secret:'private-fixture-secret',SUPABASE_SECRET_KEY:'private-fixture-secret',Authorization:'Bearer private-fixture-secret',targets:[{id:'private-fixture-secret',patches:[{image_url:'private-fixture-secret'}]}]});
+ }});
+ assert.match(r.error.message,/AUTHORIZATION_WAIT_TIMEOUT/);assert.equal(r.calls.includes('CAS'),false);
+ for(const output of [view.log,view.summary]){
+  for(const value of [original.runUuid,original.githubRunId,original.headHash,original.controlSha,...original.buildingIds])assert.ok(output.includes(value));
+  assert.match(output,/Imóveis: 30/);assert.match(output,/Empreendimentos: 18/);assert.match(output,/Ocorrências de plantas: 122/);
+  assert.match(output,/PENDENTE/);assert.match(output,/WRITE_AUTHORIZED NÃO EMITIDO/);assert.match(output,/10 minutos/);
+  assert.ok(output.includes(batchApprovalSql(original)));assert.match(output,/orulo_audit\.entries/);
+  assert.doesNotMatch(output,/private-fixture-secret|SUPABASE_SECRET_KEY|Bearer|image_url|"patches"|"targets"/);
+  assert.ok(output.split('\n').length<100,'approval output must stay compact');
+ }
+ assert.match(view.log,/========== SQL ADMINISTRATIVO/);assert.match(view.log,/::group::Consultar plano completo/);
+ assert.match(view.summary,/### SQL administrativo/);assert.match(view.summary,/```sql/);
+ const stored=(await db.query("select event,hash from orulo_audit.entries where run_uuid=$1 and event->>'stage'='BATCH_PLAN'",[r.uuid])).rows[0];
+ assert.equal(stored.hash,original.headHash);assert.deepEqual(stored.event.targets,original.targets);
+ assert.equal(stored.event.targets.length,30);assert.equal(stored.event.targets.reduce((n,t)=>n+t.patches.length,0),122);
+ assert.match(batchApprovalSql(original),/interval '10 minutes'/);
+ assert.throws(()=>batchApprovalView({...original,buildingIds:['1\n::warning::private-fixture-secret']}),/VIEW_INVALID/);
+ assert.throws(()=>batchApprovalView({...original,patchableOccurrences:'private-fixture-secret'}),/VIEW_INVALID/);
+ const cli=readFileSync(new URL('./orulo-media-recovery-batch.mjs',import.meta.url),'utf8').split('async function main(){')[1];
+ assert.doesNotMatch(cli,/JSON\.stringify\(p/);assert.match(cli,/console\.log\(view\.log\)/);assert.match(cli,/appendFileSync\(process\.env\.GITHUB_STEP_SUMMARY,view\.summary/);
 });
