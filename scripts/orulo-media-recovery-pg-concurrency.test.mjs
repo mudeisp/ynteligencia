@@ -351,3 +351,27 @@ test('SQL image extension casing: native authorization/CAS/readback retains all 
  assert.equal(sql("select kind from orulo_audit.entries where run_uuid='"+uuid+"' order by sequence desc limit 1"),'FINISHED');
  assert.equal(sql("select bool_and(price=100 and raw_data->'building'->>'stock'='7' and raw_data->'photos'='[\"keep\"]'::jsonb) from properties"),'t');
 });
+
+test('SQL image run reconciliation is append-only, exclusive and zero-write',async()=>{
+ sql("select orulo_audit.admin_event(r.run_uuid,'ABORTED','synthetic prior tests reconciled',true) from orulo_audit.runs r where not exists(select 1 from orulo_audit.entries e where e.run_uuid=r.run_uuid and kind in ('ABORTED','FINISHED'));");
+ const r='2e30e874-5eb9-40dc-9532-832f47cd01de',gh='42069211000',sha='06d1dab82b02eb5fd8a55217e1d508ba22de892c';
+ const rpc=(a,seq,prev,event)=>JSON.parse(sql("set role service_role;select public.orulo_audit_control('"+a+"','"+r+"',"+(seq??'null')+","+(prev?"'"+prev+"'":'null')+","+quote(event)+");"));
+ const start=rpc('start',null,null,{eventUuid:randomUUID(),repository:'mudeisp/ynteligencia',actor:'mudeisp',actorId:'323805541',triggeringActor:'mudeisp',eventName:'workflow_dispatch',ref:'refs/heads/main',attempt:'1',githubRunId:gh,workflowSha:sha,approvedSha:APPROVED_SHA,manifestHash:MANIFEST_HASH});
+ const plan=rpc('append',2,start.hash,{type:'CLIENT_READBACK',stage:'BATCH_PLAN',batchId:'phase2-30-a',eventUuid:randomUUID(),writeEnabled:false,targets:[]});
+ const stop=rpc('append',3,plan.hash,{type:'CLIENT_STOP',eventUuid:randomUUID(),confirmedRows:0,verifiedRows:0,diagnostic:{code:'BATCH_AUTHORIZATION_WAIT_TIMEOUT',batchStage:'AUTHORIZATION_WAIT',runUuid:r}});
+ let script=readFileSync(new URL('../supabase/orulo_reconcile_42069211000.sql',import.meta.url),'utf8')
+ .replace('68d2f4bd16d9985f5ca57ea4814ed23f3248b8ac40227c2b8acda52c76602f31',start.hash)
+ .replace('f84636025c8df43550f2f63ccf743b3cfa803d84d8888a738d5442d595ad3758',plan.hash)
+ .replace('71e76dc150031c4bf3262e1ce1beeee9104f8c6cad6e3021dad0a786ca051343',stop.hash);
+ const original=sql("select md5(jsonb_agg(to_jsonb(e) order by sequence)::text) from orulo_audit.entries e where run_uuid='"+r+"'");
+ const properties=sql("select md5(jsonb_agg(to_jsonb(p) order by id)::text) from properties p");
+ const lock=await heldLock("select orulo_audit.lock_run('"+r+"')");
+ assert.throws(()=>sql(script),/AUDIT_CONCURRENT_ACCESS/);await lock.complete;
+ assert.throws(()=>sql(script.replace(stop.hash,'0'.repeat(64))),/HEAD_OR_EXPECTED_EVENTS_CHANGED/);
+ sql(script);
+ assert.equal(sql("select kind from orulo_audit.entries where run_uuid='"+r+"' and sequence=4"),'ABORTED');
+ assert.equal(sql("select md5(jsonb_agg(to_jsonb(e) order by sequence)::text) from orulo_audit.entries e where run_uuid='"+r+"' and sequence<=3"),original);
+ assert.equal(sql("select md5(jsonb_agg(to_jsonb(p) order by id)::text) from properties p"),properties);
+ assert.equal(sql("select count(*) from orulo_audit.entries where run_uuid='"+r+"' and kind in ('WRITE_AUTHORIZED','INTENT','CAS_RESULT')"),'0');
+ assert.throws(()=>sql(script),/HEAD_OR_EXPECTED_EVENTS_CHANGED/);
+});
