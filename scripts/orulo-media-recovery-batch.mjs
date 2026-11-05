@@ -22,7 +22,7 @@ const stages=new Set(['HEALTH','JOURNAL_START','INVENTORY','TARGET_READ','SOURCE
 const failureCodes=new Set([
  'BATCH_UNKNOWN','BATCH_MANIFEST_INVALID','BATCH_REVIEWED_CONTROL_SHA_REQUIRED','BATCH_PHASE_NOT_RELEASED','BATCH_UNTRUSTED_IMAGE_URL',
  'BATCH_IMAGE_UNAVAILABLE','BATCH_IMAGE_SIGNATURE_INVALID','BATCH_SOURCE_PLAN_IDS_INVALID','BATCH_EXISTING_PLAN_IDS_INVALID',
- 'BATCH_SOURCE_PLAN_MISMATCH','BATCH_SOURCE_IMAGE_MISSING','BATCH_APPROVAL_INVALID','BATCH_ORULO_AUTH_FAILED',
+ 'BATCH_SOURCE_PLAN_MISMATCH','BATCH_SOURCE_IMAGE_MISSING','BATCH_APPROVAL_INVALID','BATCH_APPROVAL_VIEW_INVALID','BATCH_ORULO_AUTH_FAILED',
  'BATCH_SOURCE_NETWORK_FAILED','BATCH_SOURCE_HTTP_FAILED','BATCH_SOURCE_INVALID_RESPONSE','BATCH_IMAGE_REQUEST_FAILED',
  'BATCH_MIGRATION_OR_CATALOG_REQUIRED','BATCH_INVENTORY_INVALID_OR_EMPTY','BATCH_PLAN_COVERAGE_INVALID','BATCH_AUTHORIZATION_WAIT_TIMEOUT',
  'BATCH_BASELINE_UNSTABLE','BATCH_CONCURRENT_CHANGE_BEFORE_CAS','BATCH_POST_WRITE_DIVERGENCE','BATCH_RECEIPT_ATTRIBUTION_FAILED',
@@ -120,6 +120,48 @@ export function batchApprovalSql(p){
  if(!/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(p.runUuid)||!/^[a-f0-9]{64}$/.test(p.headHash)||!/^[1-9][0-9]*$/.test(p.githubRunId)||!/^[a-f0-9]{40}$/.test(p.controlSha)||!batchCatalog.batches[p.batchId])throw Error('BATCH_APPROVAL_INVALID');
  return `-- Explicit owner confirmation in authenticated SQL Editor only. No public endpoint.\nbegin;\nset local lock_timeout='5s';\ndo $batch_approval$\nbegin\n perform orulo_audit.lock_run('${p.runUuid}'::uuid);\n if not exists(select 1 from orulo_audit.entries e where run_uuid='${p.runUuid}'::uuid and sequence=(select max(sequence) from orulo_audit.entries where run_uuid=e.run_uuid) and hash='${p.headHash}' and event->>'stage'='BATCH_PLAN' and event->>'batchId'='${p.batchId}' and created_at>=clock_timestamp()-interval '10 minutes') then raise exception 'BATCH_PLAN_EXPIRED_OR_CHANGED'; end if;\n perform orulo_audit.authorize_pilot('${p.runUuid}'::uuid,'${p.headHash}','${p.githubRunId}','${p.controlSha}','Owner explicitly confirms only this reviewed batch, UUIDs and image patches');\nend $batch_approval$;\ncommit;`;
 }
+export function batchApprovalView(p){
+ // Render only typed approval metadata. The complete source patches stay in the durable ledger.
+ const sql=batchApprovalSql(p),manifest=loadBatch(p.batchId);
+ if(!Array.isArray(p.targetIds)||!p.targetIds.length||new Set(p.targetIds).size!==p.targetIds.length||
+  p.targetIds.some(id=>!manifest.targets.some(t=>t.id===id))||
+  !Array.isArray(p.buildingIds)||!p.buildingIds.length||new Set(p.buildingIds).size!==p.buildingIds.length||
+  p.buildingIds.some(id=>!manifest.buildingIds.includes(id))||
+  !Number.isSafeInteger(p.patchableOccurrences)||p.patchableOccurrences<0||
+  !Number.isSafeInteger(p.distinctUrls)||p.distinctUrls<0)throw Error('BATCH_APPROVAL_VIEW_INVALID');
+ const buildings=[...p.buildingIds].sort((a,b)=>Number(a)-Number(b));
+ const expectedBuildings=[...new Set(p.targetIds.map(id=>manifest.targets.find(t=>t.id===id).buildingId))].sort((a,b)=>Number(a)-Number(b));
+ if(!isDeepStrictEqual(buildings,expectedBuildings))throw Error('BATCH_APPROVAL_VIEW_INVALID');
+ const lines=[
+  'ÓRULO BATCH_PLAN — AUTORIZAÇÃO ADMINISTRATIVA PENDENTE',
+  'Lote: '+p.batchId,
+  'Run UUID: '+p.runUuid,
+  'GitHub Run ID: '+p.githubRunId,
+  'Head Hash: '+p.headHash,
+  'Commit SHA: '+p.controlSha,
+  'Imóveis: '+p.targetIds.length,
+  'Empreendimentos: '+buildings.length+' — IDs: '+buildings.join(', '),
+  'Ocorrências de plantas: '+p.patchableOccurrences,
+  'URLs distintas: '+p.distinctUrls,
+  'Status ao gerar o plano: PENDENTE — WRITE_AUTHORIZED NÃO EMITIDO',
+  'Prazo: 10 minutos desde BATCH_PLAN. Não reutilizar plano expirado ou execução encerrada.',
+  'Revise o plano completo no ledger antes de confirmar no SQL Editor autenticado do proprietário.'
+ ];
+ const inspect=`select sequence, hash, event\nfrom orulo_audit.entries\nwhere run_uuid='${p.runUuid}'::uuid\n  and hash='${p.headHash}'\n  and event->>'stage'='BATCH_PLAN';`;
+ const editor='https://supabase.com/dashboard/project/wzaegidwtdjuhqchpdpd/sql/new';
+ return {
+  log:[...lines,'SQL Editor: '+editor,'',
+   '========== SQL ADMINISTRATIVO — COPIAR SOMENTE O BLOCO ABAIXO ==========',sql,
+   '========== FIM DO SQL ADMINISTRATIVO ==========',
+   '::group::Consultar plano completo no ledger — somente leitura',inspect,'::endgroup::'].join('\n'),
+  summary:['## Órulo — confirmação administrativa pendente',...lines.slice(1).map(l=>'- '+l),
+   '[Abrir SQL Editor autenticado]('+editor+')',
+   '### SQL administrativo — confirmação explícita do proprietário','```sql',sql,'```',
+   '<details><summary>Consultar plano completo no ledger — somente leitura</summary>','',
+   '```sql',inspect,'```','','</details>',
+   'Este resumo retrata a geração do plano. A validade e o estado atual são verificados novamente pelo SQL.'].join('\n\n')
+ };
+}
 export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBatchImage,onPlan=()=>{},wait=ms=>new Promise(r=>setTimeout(r,ms)),now=Date.now}){
  validateBatchDispatch(env);presence(env);const batch=loadBatch(env.ORULO_BATCH_ID);let health;
  try{health=await transport.control('health');}catch(error){error.batchStage='HEALTH';throw error;}
@@ -173,8 +215,9 @@ async function main(){
  if(process.argv[2]==='github-gate'){await checkGitHub(process.env);console.log('Manual owner/main batch gate verified.');return;}
  if(process.argv.length!==3||process.argv[2]!=='batch')throw Error('BATCH_ONLY_COMMAND_REQUIRED');verifySource(process.env.APPROVED_SOURCE_DIR);
  console.log(JSON.stringify(await executeBatch({env:process.env,transport:postgresTransport({url:PROJECT_URL,key:process.env.SUPABASE_SECRET_KEY}),onPlan:p=>{
-  const text='BATCH PLAN — no authorization issued\n'+JSON.stringify(p,null,2)+'\nReview active run and exact scope, then explicitly Run this block in the owner SQL Editor within ten minutes:\n'+batchApprovalSql(p);
-  console.log(text);if(process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMARY,text+'\n',{mode:0o600});
+  const view=batchApprovalView(p);
+  console.log(view.log);
+  if(process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMARY,view.summary+'\n',{mode:0o600});
  }})));
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)main().catch(e=>{console.error(JSON.stringify(batchFailureDetails(e)));process.exitCode=1;});
