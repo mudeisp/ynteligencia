@@ -218,3 +218,32 @@ test('uppercase extension still rejects redirects, unavailable responses and non
  await assert.rejects(verifyBatchImage(url,async()=>new Response('<svg></svg>')) ,/BATCH_IMAGE_SIGNATURE_INVALID/);
 });
 
+test('SQL batch_merge accepts reviewed uppercase extensions and preserves every other restriction',async()=>{
+ const before=(await db.query("select proowner,proacl,provolatile from pg_proc where oid='orulo_audit.batch_merge(jsonb,jsonb)'::regprocedure")).rows;
+ await db.exec(readFileSync(new URL('../supabase/migrations/20261105170248_orulo_manifest_batches.sql',import.meta.url),'utf8'));
+ assert.deepEqual((await db.query("select proowner,proacl,provolatile from pg_proc where oid='orulo_audit.batch_merge(jsonb,jsonb)'::regprocedure")).rows,before);
+ const raw={building_id:'20333',photos:['keep'],building:{stock:7,floor_plans:[{id:'632499',description:'Implantação',associations:{typologies:[]}},{id:'existing',image_url:'https://old.invalid/keep.jpg',description:'existing'}]}};
+ const url='https://static.orulo.com.br/images/properties/xlarge/632499.JPG';
+ const merge=async patches=>(await db.query('select orulo_audit.batch_merge($1,$2) plans',[JSON.stringify(raw),JSON.stringify(patches)])).rows[0].plans;
+ const result=await merge([{id:'632499',image_url:url,images:[url],'1024x1024':url}]);
+ assert.equal(result[0].image_url,url);assert.equal(result[0].description,'Implantação');assert.deepEqual(result[0].associations,raw.building.floor_plans[0].associations);assert.deepEqual(result[1],raw.building.floor_plans[1]);
+ for(const ext of ['jpg','JPG','JpEg','PNG','pNg','WEBP'])assert.ok((await merge([{id:'632499',image_url:url.replace('JPG',ext)}]))[0].image_url);
+ for(const bad of ['http://static.orulo.com.br/images/properties/xlarge/632499.JPG','https://evil.invalid/a.JPG','https://static.orulo.com.br.evil.invalid/a.JPG','https://static.orulo.com.br@evil.invalid/a.JPG',url+'?redirect=evil',url+'#x',url.replace('xlarge','../xlarge'),url.replace('.JPG','.svg'),url.replace('.JPG','.JPG.exe')])await assert.rejects(merge([{id:'632499',image_url:bad}]),/PATCH_PLAN_MISMATCH/);
+ await assert.rejects(merge([{id:'absent',image_url:url}]),/PATCH_PLAN_MISMATCH/);
+ await assert.rejects(merge([{id:'632499',image_url:url,price:1}]),/IMAGE_FIELDS_ONLY/);
+ await assert.rejects(merge([{id:'632499',image_url:url,images:['https://evil.invalid/x.JPG']}]),/IMAGE_URL_INVALID/);
+ await assert.rejects(merge([{id:'632499',image_url:url},{id:'632499',image_url:url}]),/DUPLICATE_PLAN_ID/);
+});
+
+test('uppercase URLs pass private authorization, audited CAS and readback; malicious URLs never authorize',async()=>{
+ const plans=async bid=>targets.filter(t=>t.buildingId===bid).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:image(id).replace('.jpg','.JPG')})));
+ const ok=await run({fetchPlans:plans});if(ok.error)throw ok.error;
+ assert.equal(ok.result.rowsWritten,targets.length);assert.equal((await kinds(ok)).filter(k=>k==='WRITE_AUTHORIZED').length,1);
+ assert.equal((await kinds(ok)).filter(k=>k==='CAS_RESULT').length,targets.length);
+ assert.equal((await kinds(ok)).at(-1),'FINISHED');
+ assert.equal((await db.query("select bool_and(price=100 and raw_data->'building'->>'stock'='7') preserved from properties")).rows[0].preserved,true);
+ const bad=await run({fetchPlans:async bid=>(await plans(bid)).map(p=>({...p,image_url:'https://evil.invalid/a.JPG'}))});
+ assert.match(bad.error?.message||'',/PATCH_PLAN_MISMATCH/);assert.equal(bad.calls.includes('CAS'),false);
+ await db.exec('rollback'); // The isolated admin SQL uses the same fixture connection.
+ assert.equal((await kinds(bad)).includes('WRITE_AUTHORIZED'),false);
+});
