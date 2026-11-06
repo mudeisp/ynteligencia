@@ -125,10 +125,24 @@ export async function dryRun({selection,metadata,readKey,clientId,clientSecret,r
 }
 const reportPath=resolve('.orulo-national-dry-run/report.json');
 export function saveReport(report,path=reportPath){const bytes=JSON.stringify(report,null,2)+'\n';mkdirSync(dirname(path),{recursive:true});writeFileSync(path+'.tmp',bytes,{mode:0o600});renameSync(path+'.tmp',path);writeFileSync(path+'.sha256.tmp',digest(bytes)+'  report.json\n',{mode:0o600});renameSync(path+'.sha256.tmp',path+'.sha256');}
-export function sealReport(path=reportPath){const report=JSON.parse(readFileSync(path,'utf8'));if(report.status==='RUNNING'){report.status='INTERRUPTED';report.finishedAt=new Date().toISOString();}saveReport(report,path);return report;}
+export function verifyReport(path=reportPath){
+  const bytes=readFileSync(path),report=JSON.parse(bytes);
+  if(readFileSync(path+'.sha256','utf8')!==digest(bytes)+'  report.json\n')throw fail('REPORT_SHA256_MISMATCH');
+  return report;
+}
+export function sealReport(path=reportPath){
+  const bytes=readFileSync(path),report=JSON.parse(bytes);
+  if(report.status==='RUNNING'){report.status='INTERRUPTED';report.finishedAt=new Date().toISOString();saveReport(report,path);}
+  else{writeFileSync(path+'.sha256.tmp',digest(bytes)+'  report.json\n',{mode:0o600});renameSync(path+'.sha256.tmp',path+'.sha256');}
+  verifyReport(path);return report;
+}
 async function main(){
   const args=process.argv.slice(2);
-  if(args.length===1&&args[0]==='--seal'){try{sealReport();}catch{}return;}
+  if(args.length===1&&['--seal','--verify'].includes(args[0])){
+    try{if(args[0]==='--seal')sealReport();else verifyReport();}
+    catch{console.error('REPORT_ARTIFACT_INTEGRITY_FAILED');process.exitCode=1;}
+    return;
+  }
   let selection;
   try{if(args.length&&!(args.length===1&&args[0]==='--check'))throw fail('ARGUMENT_NOT_ALLOWED');validateDispatch(process.env);selection=selectBatch(readFileSync(new URL('./orulo-national-dry-run-manifest.json',import.meta.url)),process.env.BATCH_ID);}
   catch(error){saveReport({runId:process.env.GITHUB_RUN_ID||null,batchId:null,status:'BLOCKED',errors:[{code:error.code||'MANIFEST_UNAVAILABLE'}],writes:0});process.exitCode=1;return;}
