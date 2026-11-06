@@ -1,0 +1,13 @@
+{
+  "mode": "staging",
+  "name": "ynteligencia-v9-staging",
+  "organizationId": "xtqvxxncxirpujvxznly",
+  "projectRef": null,
+  "host": null,
+  "port": 5432,
+  "database": "postgres",
+  "isolationVerified": false,
+  "syntheticWritesAuthorized": false,
+  "providerEvidenceFile": null,
+  "approvalReference": null
+}

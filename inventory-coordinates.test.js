@@ -156,7 +156,7 @@ test("sync usa o endereço do detalhe e o fallback só quando o detalhe não tra
 });
 
 test("upsert de Órulo e Nonstop grava as colunas e preserva raw_data", async () => {
-  const { normalizeBuilding } = await import("./api/orulo-webhook.js");
+  const { normalizeBuilding } = await import("./lib/orulo-webhook-core.js");
   const { normalizeProperty } = await import("./api/nonstop-webhook.js");
 
   const address = {
@@ -238,16 +238,16 @@ test("PATCH de desativação não envia coordenadas", () => {
   assert.equal(Object.hasOwn(patch, "latitude"), false);
   assert.equal(Object.hasOwn(patch, "longitude"), false);
 
-  const webhook = fs.readFileSync(path.join(__dirname, "api/orulo-webhook.js"), "utf8");
+  const webhook = fs.readFileSync(path.join(__dirname, "lib/orulo-webhook-core.js"), "utf8");
   const nonstop = fs.readFileSync(path.join(__dirname, "api/nonstop-webhook.js"), "utf8");
-  const sync = fs.readFileSync(path.join(__dirname, "api/orulo-sync.js"), "utf8");
+  const sync = fs.readFileSync(path.join(__dirname, "lib/orulo-sync-core.js"), "utf8");
   const stale = webhook.slice(
     webhook.indexOf("async function deactivateStaleRows"),
     webhook.indexOf("async function softDeleteBuilding")
   );
   const soft = webhook.slice(
     webhook.indexOf("async function softDeleteBuilding"),
-    webhook.indexOf("export default async function handler")
+    webhook.indexOf("export function createWebhookHandler")
   );
   const deactivate = nonstop.slice(
     nonstop.indexOf("async function deactivateProperty"),

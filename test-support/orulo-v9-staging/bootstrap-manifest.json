@@ -1,0 +1,26 @@
+{
+  "purpose": "fresh independent synthetic staging only",
+  "productionReferencesForbidden": [
+    "wzaegidwtdjuhqchpdpd",
+    "bgggafirdjvxihqselha"
+  ],
+  "autoApply": false,
+  "files": [
+    {
+      "path": "test-support/orulo-v9-staging/schema.sql",
+      "sha256": "318a63f1b20d148d0106fe91575d93de13698fb201b54d1fc5bae2bdffc75e96"
+    },
+    {
+      "path": "supabase/migrations/20261104093722_orulo_postgres_audit.sql",
+      "sha256": "dcb2b9990d611494dd90bf599d7926d60ac224eb4c1aa60d36abf3256dd1e420"
+    },
+    {
+      "path": "supabase/migrations/20261104102956_orulo_paged_snapshots.sql",
+      "sha256": "17109979250afb084c31b72c2d4d33c72ad44d8183fdb4edeade5d6738a8ffe9"
+    },
+    {
+      "path": "supabase/migrations/20261106114525_orulo_webhook_provenance.sql",
+      "sha256": "4e9fcce19c8e9c7ca3e4a934b1dcb7bc4c54d18663a45ebb2d90bc32dd418d27"
+    }
+  ]
+}

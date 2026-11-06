@@ -167,7 +167,7 @@ export function batchApprovalView(p){
    'Este resumo retrata a geração do plano. A validade e o estado atual são verificados novamente pelo SQL.'].join('\n\n')
  };
 }
-export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBatchImage,onPlan=()=>{},wait=ms=>new Promise(r=>setTimeout(r,ms)),now=Date.now}){
+export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBatchImage,onPlan=()=>{},wait=ms=>new Promise(r=>setTimeout(r,ms)),now=Date.now,readProvenance}){
  validateBatchDispatch(env);presence(env);const batch=loadBatch(env.ORULO_BATCH_ID);let health;
  try{health=await transport.control('health');}catch(error){error.batchStage='HEALTH';throw error;}
  if(health.batchProtocol!==1||health.batchMasterHash!==batchCatalog.masterHash)throw Error('BATCH_MIGRATION_OR_CATALOG_REQUIRED');
@@ -210,7 +210,13 @@ export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBa
    verified.push({id:currentId,operationId,status:result.status,receipt:result.receipt,readback:{fullHash:post.fullHash,contentHash:post.contentHash},changedFields});
   }
   batchStage='GLOBAL_READBACK';const after=await journal.snapshot('READBACK_V2');
-  const {review,...attributionV8}=classifyBatchIntegrity(before.capture,after.capture,{targetIds,verified});
+  let attestExternal,provenanceStatus='NOT_CONFIGURED';
+  if(readProvenance){
+   try{attestExternal=await readProvenance({runUuid:journal.runUuid,changes:classifyCaptures(before.capture,after.capture).changes});provenanceStatus='READ_ONLY_DIAGNOSTIC';}
+   catch{provenanceStatus='FAILED_CLOSED';}
+  }
+  const {review,...attributionV8}=classifyBatchIntegrity(before.capture,after.capture,{targetIds,verified,attestExternal});
+  attributionV8.provenanceV9={status:provenanceStatus,policy:'STRICT_GLOBAL_V1'};
   const attributed=new Set(attributionV8.changes.filter(c=>c.classification==='AUTHORIZED_TARGET_CHANGE').map(c=>c.uuid));
   batchStage='INTEGRITY';const unexplained=review?.changes.filter(c=>!attributed.has(c.uuid))??[];
   await journal.record({type:'CLIENT_READBACK',stage:review?'BATCH_INTEGRITY':'BATCH_INTEGRITY_V8',batchId:batch.id,review,attributedIds:[...attributed],unexplained,attributionV8});
