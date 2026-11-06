@@ -8,6 +8,7 @@ tls_dir=$(mktemp -d)
 cleanup(){ docker rm -f "$container" >/dev/null 2>&1 || :; rm -rf -- "$tls_dir"; }
 trap cleanup EXIT
 docker run -d --name "$container" --pull=always \
+  -p 127.0.0.1::5432 \
   -e POSTGRES_PASSWORD="$password" -e POSTGRES_DB=orulo_v9_auth_test \
   -e POSTGRES_HOST_AUTH_METHOD=scram-sha-256 \
   postgres:17.6 >/dev/null
@@ -141,3 +142,14 @@ expect_failure COMMIT_RESPONSE_LOSS 'terminating connection|server closed|connec
 [[ "$(psql_local -At -c "select price from properties where external_id='orulo:7000001:1'")" == '2' ]] || { echo 'COMMIT_READBACK_FAILED'; exit 1; }
 [[ "$(psql_local -At -c 'select count(*) from orulo_audit.property_transitions where authenticated_webhook')" == "$((before+1))" ]] || { echo 'COMMIT_RECEIPT_COUNT_FAILED'; exit 1; }
 echo 'V9_DISPOSABLE_CI_AUTH_PASS scram=yes tls_verify_full=yes bad_password_denied=yes wrong_ca_denied=yes wrong_host_denied=yes plaintext_denied=yes reconnect=yes STAGING_VALIDATED=no'
+if [[ "${ORULO_V9_POOL_HTTP_SMOKE:-}" == 'true' ]]; then
+  export V9_STAGING_MODE=disposable-ci
+  V9_STAGING_PORT=$(docker port "$container" 5432/tcp | sed -n 's/^127\.0\.0\.1://p')
+  [[ "$V9_STAGING_PORT" =~ ^[0-9]+$ ]] || { echo 'V9_LOCAL_PORT_REQUIRED'; exit 1; }
+  export V9_STAGING_PORT
+  export V9_STAGING_CA_FILE="$tls_dir/ca.crt"
+  export V9_STAGING_ADMIN_PASSWORD="$password"
+  export V9_STAGING_WRITER_PASSWORD=writer-only-ci-password
+  export V9_STAGING_READER_PASSWORD=reader-only-ci-password
+  node scripts/orulo-v9-staging-validate.mjs
+fi

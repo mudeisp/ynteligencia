@@ -26,6 +26,8 @@ on:
       - 'scripts/orulo-v9-scram-staging-smoke.sh'
       - 'lib/orulo-webhook-core.js'
       - 'lib/orulo-webhook-provenance.js'
+      - 'scripts/orulo-v9-staging*'
+      - 'test-support/orulo-v9-staging/**'
 permissions:
   contents: read
 concurrency:
@@ -48,6 +50,8 @@ jobs:
         run: npm ci --prefix test-support/orulo-cas --ignore-scripts --no-audit --no-fund
       - name: Run existing CAS and diagnostic tests (no production credentials)
         run: npm test --prefix test-support/orulo-cas
+      - name: Staging target guards and empty-schema bootstrap tests
+        run: node --test scripts/orulo-v9-staging-guard.test.mjs scripts/orulo-v9-staging-schema.test.mjs scripts/orulo-v9-staging-http.test.mjs
   postgres:
     name: Durable WAL and multi-session concurrency
     runs-on: ubuntu-latest
@@ -99,5 +103,23 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install locked staging-only PostgreSQL driver
+        run: npm ci --prefix test-support/orulo-v9-staging --ignore-scripts --no-audit --no-fund
       - name: Validate real SCRAM, verify-full TLS and reconnection in disposable PostgreSQL
+        env:
+          ORULO_V9_POOL_HTTP_SMOKE: 'true'
+          V9_STAGING_REPORT: ${{ runner.temp }}/orulo-v9-staging-report.json
         run: bash scripts/orulo-v9-scram-staging-smoke.sh
+      - name: Publish synthetic validation measurements only
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: orulo-v9-synthetic-validation-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/orulo-v9-staging-report.json
+            ${{ runner.temp }}/orulo-v9-staging-report.json.sha256
+          if-no-files-found: error
+          retention-days: 14

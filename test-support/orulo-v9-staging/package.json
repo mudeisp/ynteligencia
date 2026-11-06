@@ -1,0 +1,11 @@
+{
+  "name": "orulo-v9-staging-tests",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test ../../scripts/orulo-v9-staging-guard.test.mjs ../../scripts/orulo-v9-staging-http.test.mjs",
+    "validate": "node ../../scripts/orulo-v9-staging-validate.mjs"
+  },
+  "devDependencies": { "pg": "8.23.1" }
+}

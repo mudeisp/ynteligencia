@@ -1,5 +1,7 @@
 # Órulo V9 — proveniência transacional (fundação, sem liberação de escrita)
 
+Preparação atualizada para um projeto independente: [provisionamento, testes e retenção staging](orulo-v9-staging-provisioning.md). O projeto ainda não foi criado e a cotação zero não comprova quota/autorização. O harness novo não altera `STRICT_GLOBAL_V1` nem ativa o webhook de produção.
+
 ## Evidência que motiva a mudança
 
 O webhook em `lib/orulo-webhook-core.js` executa operações independentes via PostgREST:
