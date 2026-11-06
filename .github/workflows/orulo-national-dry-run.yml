@@ -1,0 +1,71 @@
+name: Orulo national read-only dry run
+on:
+  workflow_dispatch:
+    inputs:
+      batch_id:
+        description: Exact existing V4 batch ID (no scripts, IDs or flags)
+        required: true
+        type: string
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/orulo-national-dry-run.yml'
+      - 'scripts/orulo-national-dry-run*'
+      - 'orulo-floor-plans.js'
+permissions:
+  contents: read
+concurrency:
+  group: orulo-national-readonly-${{ github.event_name }}-${{ inputs.batch_id || github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Syntax and simulated read-only tests (no production secrets)
+        run: |
+          node --check scripts/orulo-national-dry-run.mjs
+          node --test scripts/orulo-national-dry-run.test.mjs orulo-floor-plans.test.js
+  dry-run:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+          github.actor == 'mudeisp' && github.actor_id == '323805541' &&
+          github.triggering_actor == 'mudeisp' && github.run_attempt == '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BATCH_ID: ${{ inputs.batch_id }}
+      ORULO_DRY_RUN_APPROVED_SHA: ${{ vars.ORULO_DRY_RUN_APPROVED_SHA }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify integrated approved SHA and immutable batch before credentials
+        run: node scripts/orulo-national-dry-run.mjs --check
+      - name: Read one batch (seven-minute internal deadline, no retries)
+        timeout-minutes: 8
+        env:
+          ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
+          ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
+        run: node scripts/orulo-national-dry-run.mjs
+      - name: Seal interrupted checkpoint without credentials
+        if: always()
+        run: node scripts/orulo-national-dry-run.mjs --seal
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: orulo-dry-run-${{ github.run_id }}
+          path: .orulo-national-dry-run/report.json*
+          if-no-files-found: error
+          retention-days: 30
