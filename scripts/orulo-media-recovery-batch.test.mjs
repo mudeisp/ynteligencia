@@ -94,6 +94,25 @@ test('readback failure after trusted commit records one confirmed row separately
 test('unexpected global insertion blocks FINISHED with durable evidence',async()=>{
  let added=false;const r=await run({beforeControl:async(a,p)=>{if(a==='snapshot_begin'&&p.p_event.kind==='READBACK_V2'&&!added){added=true;await db.exec(`insert into public.properties values('00000000-0000-0000-0000-000000000099','outside','novos','RS',true,'{"building_id":"47422"}',777,now(),now())`);}}});assert.match(r.error.message,/GLOBAL_CHANGE/);assert.ok(!(await kinds(r)).includes('FINISHED'));
 });
+
+test('V8 records exact target paths and CAS attribution in the existing hash-chained CLIENT_READBACK',async()=>{
+ const r=await run();if(r.error)throw r.error;
+ const event=(await db.query("select event from orulo_audit.entries where run_uuid=$1 and kind='CLIENT_READBACK' and event->>'stage'='BATCH_INTEGRITY'",[r.uuid])).rows[0].event;
+ assert.equal(event.attributionV8.version,1);assert.equal(event.attributionV8.blocked,false);assert.equal(event.attributionV8.counts.AUTHORIZED_TARGET_CHANGE,2);
+ assert.ok(event.attributionV8.changes.every(c=>c.changedFields.some(p=>p.includes('floor_plans'))));assert.deepEqual(event.unexplained,[]);
+});
+
+test('V8 retains multiple external changes and blocks without actor provenance, despite valid target receipts',async()=>{
+ let added=false;const r=await run({beforeControl:async(a,p)=>{if(a==='snapshot_begin'&&p.p_event.kind==='READBACK_V2'&&!added){added=true;for(const pk of ['00000000-0000-0000-0000-000000000099','00000000-0000-0000-0000-000000000100'])await db.query("insert into public.properties values($1,'outside','novos','RS',true,'{\"building_id\":\"47422\"}',777,now(),now())",[pk]);}}});
+ assert.match(r.error.message,/GLOBAL_CHANGE/);assert.ok(!(await kinds(r)).includes('FINISHED'));
+ const event=(await db.query("select event from orulo_audit.entries where run_uuid=$1 and kind='CLIENT_READBACK' and event->>'stage'='BATCH_INTEGRITY'",[r.uuid])).rows[0].event;
+ assert.equal(event.attributionV8.counts.AUTHORIZED_TARGET_CHANGE,2);assert.equal(event.attributionV8.counts.EXTERNAL_CHANGE_UNATTRIBUTED,2);assert.equal(event.unexplained.length,2);assert.equal(event.attributionV8.blocked,true);
+});
+
+test('V8 failed global readback capture reports SNAPSHOT_INCOMPLETE and cannot finish or retry CAS',async()=>{
+ const r=await run({beforeControl:async(a,p)=>{if(a==='snapshot_begin'&&p.p_event.kind==='READBACK_V2')throw Error('POSTGRES_AUDIT_RPC_FAILED');}});
+ assert.ok(r.error);assert.equal(batchFailureDetails(r.error).integrityClassification,'SNAPSHOT_INCOMPLETE');assert.equal(r.calls.filter(c=>c==='CAS').length,2);assert.ok(!(await kinds(r)).includes('FINISHED'));
+});
 test('hash-chain tamper rejected before authorization or CAS',async()=>{const r=await run({tamper:true});assert.ok(r.error);assert.equal(r.calls.includes('CAS'),false);});
 test('mismatched/duplicate source IDs, untrusted/unavailable/invalid images rejected; existing images skipped',async()=>{
  const row={raw_data:{building_id:'2920',building:{floor_plans:[{id:'1'},{id:'2',image_url:'old'}]}}};

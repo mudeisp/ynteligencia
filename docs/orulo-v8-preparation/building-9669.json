@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "mode": "PREPARATION_ONLY_NOT_AUTHORIZATION",
+  "buildingId": "9669",
+  "state": "SP",
+  "preparedAt": "2026-11-06T11:01:44.613Z",
+  "evidenceRunId": "42186120467",
+  "evidenceSha256": "57f3abf133b78c4261ca408941e3abf77f0de27e7799972d08bc1e35b8fa56af",
+  "uuids": [
+    "35e867ab-9f9b-40b0-88fa-94fc8c5cff34",
+    "81a406d3-16e9-4f72-8fb3-f1967fb35720"
+  ],
+  "planIds": [
+    "1238353",
+    "1238354"
+  ],
+  "distinctPlans": 2,
+  "imageUrls": [
+    "https://static.orulo.com.br/images/properties/large/1238353.png",
+    "https://static.orulo.com.br/images/properties/large/1238354.png"
+  ],
+  "occurrences": 4,
+  "allowedField": "raw_data.building.floor_plans[matching existing id].image_url",
+  "targets": [
+    {
+      "uuid": "35e867ab-9f9b-40b0-88fa-94fc8c5cff34",
+      "externalId": "orulo:9669:18899",
+      "expectedFullHash": "d42a415896d63d78e4d424f6d873a9f7",
+      "expectedUpdatedAt": "2026-10-17 02:59:29.109+00",
+      "patches": [
+        {
+          "id": "1238353",
+          "image_url": "https://static.orulo.com.br/images/properties/large/1238353.png"
+        },
+        {
+          "id": "1238354",
+          "image_url": "https://static.orulo.com.br/images/properties/large/1238354.png"
+        }
+      ],
+      "current": {
+        "active": true,
+        "state": "SP",
+        "status": "Em construção",
+        "stage": "Em construção",
+        "price": "2205604.91",
+        "area": "71.02",
+        "buildingStock": 33,
+        "typologyStock": 19
+      }
+    },
+    {
+      "uuid": "81a406d3-16e9-4f72-8fb3-f1967fb35720",
+      "externalId": "orulo:9669:18898",
+      "expectedFullHash": "351e09a9f19849b8e03067ff2e4e2b6a",
+      "expectedUpdatedAt": "2026-10-17 02:59:29.109+00",
+      "patches": [
+        {
+          "id": "1238353",
+          "image_url": "https://static.orulo.com.br/images/properties/large/1238353.png"
+        },
+        {
+          "id": "1238354",
+          "image_url": "https://static.orulo.com.br/images/properties/large/1238354.png"
+        }
+      ],
+      "current": {
+        "active": true,
+        "state": "SP",
+        "status": "Em construção",
+        "stage": "Em construção",
+        "price": "1636240.07",
+        "area": "51.09",
+        "buildingStock": 33,
+        "typologyStock": 14
+      }
+    }
+  ],
+  "checks": [
+    {
+      "planId": "1238353",
+      "url": "https://static.orulo.com.br/images/properties/large/1238353.png",
+      "status": 206,
+      "format": "png"
+    },
+    {
+      "planId": "1238354",
+      "url": "https://static.orulo.com.br/images/properties/large/1238354.png",
+      "status": 206,
+      "format": "png"
+    }
+  ],
+  "source": "Existing Yincorp proxy to Orulo; current building/state/plan IDs matched; upstream failures may fall back, so future direct source verification remains mandatory.",
+  "writeEnabled": false,
+  "blockers": [
+    "No SQL authorization for this building is added by this proposal.",
+    "Global external-change attribution remains blocked until authoritative actor/transaction evidence is available.",
+    "Any changed row hash/stock/status/plan identity requires review and a new proposal.",
+    "Missing or changed source URL/image signature blocks recovery.",
+    "Historical recovery/uncertain intent or reused authorization blocks recovery.",
+    "Require fresh full-row CAS, individual verified receipt and matching readback; never retry an uncertain write."
+  ]
+}

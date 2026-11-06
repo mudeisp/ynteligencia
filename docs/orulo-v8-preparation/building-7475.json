@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "mode": "PREPARATION_ONLY_NOT_AUTHORIZATION",
+  "buildingId": "7475",
+  "state": "SP",
+  "preparedAt": "2026-11-06T11:01:47.774Z",
+  "evidenceRunId": "42186120467",
+  "evidenceSha256": "57f3abf133b78c4261ca408941e3abf77f0de27e7799972d08bc1e35b8fa56af",
+  "uuids": [
+    "75db9560-e022-4be3-b29e-e0f39d143673"
+  ],
+  "planIds": [
+    "288503",
+    "288504",
+    "288505",
+    "288506",
+    "288507"
+  ],
+  "distinctPlans": 5,
+  "imageUrls": [
+    "https://static.orulo.com.br/images/properties/large/288503.jpg",
+    "https://static.orulo.com.br/images/properties/large/288504.jpg",
+    "https://static.orulo.com.br/images/properties/large/288505.jpg",
+    "https://static.orulo.com.br/images/properties/large/288506.jpg",
+    "https://static.orulo.com.br/images/properties/large/288507.jpg"
+  ],
+  "occurrences": 5,
+  "allowedField": "raw_data.building.floor_plans[matching existing id].image_url",
+  "targets": [
+    {
+      "uuid": "75db9560-e022-4be3-b29e-e0f39d143673",
+      "externalId": "orulo:7475:16360",
+      "expectedFullHash": "925a3fb0f15a6c1352affaec8a2ff909",
+      "expectedUpdatedAt": "2026-09-29 13:52:37.792+00",
+      "patches": [
+        {
+          "id": "288503",
+          "image_url": "https://static.orulo.com.br/images/properties/large/288503.jpg"
+        },
+        {
+          "id": "288504",
+          "image_url": "https://static.orulo.com.br/images/properties/large/288504.jpg"
+        },
+        {
+          "id": "288505",
+          "image_url": "https://static.orulo.com.br/images/properties/large/288505.jpg"
+        },
+        {
+          "id": "288506",
+          "image_url": "https://static.orulo.com.br/images/properties/large/288506.jpg"
+        },
+        {
+          "id": "288507",
+          "image_url": "https://static.orulo.com.br/images/properties/large/288507.jpg"
+        }
+      ],
+      "current": {
+        "active": true,
+        "state": "SP",
+        "status": "Pronto novo",
+        "stage": "Pronto novo",
+        "price": "785000",
+        "area": "66.34",
+        "buildingStock": 5,
+        "typologyStock": 5
+      }
+    }
+  ],
+  "checks": [
+    {
+      "planId": "288503",
+      "url": "https://static.orulo.com.br/images/properties/large/288503.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "planId": "288504",
+      "url": "https://static.orulo.com.br/images/properties/large/288504.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "planId": "288505",
+      "url": "https://static.orulo.com.br/images/properties/large/288505.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "planId": "288506",
+      "url": "https://static.orulo.com.br/images/properties/large/288506.jpg",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "planId": "288507",
+      "url": "https://static.orulo.com.br/images/properties/large/288507.jpg",
+      "status": 206,
+      "format": "jpeg"
+    }
+  ],
+  "source": "Existing Yincorp proxy to Orulo; current building/state/plan IDs matched; upstream failures may fall back, so future direct source verification remains mandatory.",
+  "writeEnabled": false,
+  "blockers": [
+    "No SQL authorization for this building is added by this proposal.",
+    "Global external-change attribution remains blocked until authoritative actor/transaction evidence is available.",
+    "Any changed row hash/stock/status/plan identity requires review and a new proposal.",
+    "Missing or changed source URL/image signature blocks recovery.",
+    "Historical recovery/uncertain intent or reused authorization blocks recovery.",
+    "Require fresh full-row CAS, individual verified receipt and matching readback; never retry an uncertain write."
+  ]
+}

@@ -7,7 +7,7 @@ import {fetchOruloFloorPlans} from '../orulo-floor-plans.js';
 import {imageOnlyPlans,preserved,buildingIdOf} from './orulo-media-cas.mjs';
 import {validateDispatch,checkGitHub,presence,verifySource,validateManifest} from './orulo-media-recovery-actions.mjs';
 import {digest,openPostgresJournal,postgresTransport,PROJECT_URL,rpcFailureDetails} from './orulo-media-recovery-postgres.mjs';
-import {classifyCaptures,verifyScopeComparison} from './orulo-media-recovery-scope.mjs';
+import {classifyCaptures,classifyBatchIntegrity,verifyScopeComparison} from './orulo-media-recovery-scope.mjs';
 import {PILOT_5971,manifest5971,entry5971,proposal5971,validate5971Row,source5971} from './orulo-media-recovery-5971.mjs';
 const dir=new URL('./orulo-media-recovery-batches/',import.meta.url),read=name=>JSON.parse(readFileSync(new URL(name,dir),'utf8'));
 export const batchCatalog=read('catalog.json'),batchMaster=read('master.json');
@@ -42,6 +42,7 @@ export function batchFailureDetails(error){
  if(['orulo','orulo_cdn'].includes(error?.sourceService))out.sourceService=error.sourceService;
  if(['oauth','floor_plans','image'].includes(error?.sourceAction))out.sourceAction=error.sourceAction;
  if(networkCodes.has(error?.networkFailure))out.networkFailure=error.networkFailure;
+ if(error?.integrityClassification==='SNAPSHOT_INCOMPLETE')out.integrityClassification=error.integrityClassification;
  if(Number.isInteger(error?.sourceHttpStatus)&&error.sourceHttpStatus>=100&&error.sourceHttpStatus<=599)out.sourceHttpStatus=error.sourceHttpStatus;
  if(batchMaster.buildings.some(b=>b.buildingId===error?.buildingId))out.buildingId=error.buildingId;
  return out;
@@ -204,16 +205,23 @@ export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBa
    if(preserved(post.row)!==preserved(row)||!isDeepStrictEqual(post.row.raw_data.building.floor_plans,desired)||pre.fullHash!==result.receipt.beforeFullHash||pre.contentHash!==result.receipt.expectedBeforeContentHash||post.fullHash!==result.receipt.afterFullHash||post.contentHash!==result.receipt.expectedAfterContentHash)throw Error('BATCH_POST_WRITE_DIVERGENCE');
    await journal.record({type:'CLIENT_READBACK',stage:'BATCH_ROW_VERIFIED',operationId,id:currentId,fullHash:post.fullHash,contentHash:post.contentHash});
    recovered+=desired.filter((p,i)=>hasImage(p)&&!hasImage(row.raw_data.building.floor_plans[i])).length;
-   verified.push({id:currentId,operationId,receipt:result.receipt});
+   const changedFields=desired.flatMap((plan,index)=>Object.keys(plan).filter(key=>!isDeepStrictEqual(plan[key],row.raw_data.building.floor_plans[index]?.[key])).map(key=>`raw_data.building.floor_plans[${index}].${key}`));
+   if(post.row.updated_at!==row.updated_at)changedFields.push('updated_at');
+   verified.push({id:currentId,operationId,status:result.status,receipt:result.receipt,readback:{fullHash:post.fullHash,contentHash:post.contentHash},changedFields});
   }
-  batchStage='GLOBAL_READBACK';const after=await journal.snapshot('READBACK_V2'),review=classifyCaptures(before.capture,after.capture),attributed=new Set();
-  for(const r of verified){const d=review.changes.find(c=>c.uuid===r.id);if(!d||d.before?.fullHash!==r.receipt.beforeFullHash||d.after?.fullHash!==r.receipt.afterFullHash||d.before?.contentHash!==r.receipt.expectedBeforeContentHash||d.after?.contentHash!==r.receipt.expectedAfterContentHash)throw Error('BATCH_RECEIPT_ATTRIBUTION_FAILED');attributed.add(r.id);}
-  batchStage='INTEGRITY';const unexplained=review.changes.filter(c=>!attributed.has(c.uuid));await journal.record({type:'CLIENT_READBACK',stage:'BATCH_INTEGRITY',batchId:batch.id,review,attributedIds:[...attributed],unexplained});
-  if(!review.schemaMatch||!review.captureStable||unexplained.length)throw Error('BATCH_UNATTRIBUTED_GLOBAL_CHANGE');
+  batchStage='GLOBAL_READBACK';const after=await journal.snapshot('READBACK_V2');
+  const {review,...attributionV8}=classifyBatchIntegrity(before.capture,after.capture,{targetIds,verified});
+  const attributed=new Set(attributionV8.changes.filter(c=>c.classification==='AUTHORIZED_TARGET_CHANGE').map(c=>c.uuid));
+  batchStage='INTEGRITY';const unexplained=review?.changes.filter(c=>!attributed.has(c.uuid))??[];
+  await journal.record({type:'CLIENT_READBACK',stage:review?'BATCH_INTEGRITY':'BATCH_INTEGRITY_V8',batchId:batch.id,review,attributedIds:[...attributed],unexplained,attributionV8});
+  if(!review||!review.schemaMatch||!review.captureStable)throw Object.assign(Error('BATCH_UNATTRIBUTED_GLOBAL_CHANGE'),{integrityClassification:'SNAPSHOT_INCOMPLETE'});
+  if(verified.some(r=>!attributed.has(r.id)))throw Error('BATCH_RECEIPT_ATTRIBUTION_FAILED');
+  if(attributionV8.blocked||unexplained.length)throw Error('BATCH_UNATTRIBUTED_GLOBAL_CHANGE');
   batchStage='FINISH';const finish=await journal.batchFinish();verifyScopeComparison(review,finish.entry.event.comparison);
   return {result:verified.length?'APROVADO':'COMPLETED_NO_CHANGES',batchId:batch.id,buildings:proposed.sourceBuildings,rowsWritten:verified.length,
    recoveredImageOccurrences:recovered,distinctPlannedUrls:proposed.distinctUrls,runUuid:journal.runUuid,headHash:finish.ack.hash,nextBatchAuthorized:false};
  }catch(error){
+  if(['BASELINE','GLOBAL_READBACK'].includes(batchStage))error.integrityClassification='SNAPSHOT_INCOMPLETE';
   error.batchStage??=batchStage;error.batchRunUuid=journal.runUuid;const diagnostic=batchFailureDetails(error);
   if(currentId)try{error.observed=await transport.control('batch_row',rowArgs(currentId));}catch{}
   try{await journal.record({type:'CLIENT_STOP',stage:'BATCH_STOP',batchId:batch.id,id:currentId,confirmedRows:confirmed,verifiedRows:verified.length,code:'BATCH_HALTED_RECONCILIATION_REQUIRED',diagnostic});}catch{}
