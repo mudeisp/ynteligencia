@@ -12,10 +12,14 @@ docker run -d --name "$container" --pull=always \
   -e POSTGRES_PASSWORD="$password" -e POSTGRES_DB=orulo_v9_auth_test \
   -e POSTGRES_HOST_AUTH_METHOD=scram-sha-256 \
   postgres:17.6 >/dev/null
+ready=false
 for i in $(seq 1 50); do
-  if docker exec "$container" pg_isready -U postgres -d orulo_v9_auth_test >/dev/null 2>&1; then break; fi
+  # The entrypoint's temporary socket-only server can be ready before CREATE DB.
+  # Require the final TCP listener AND the requested database, not pg_isready.
+  if docker exec -e PGPASSWORD="$password" "$container" psql -X -h 127.0.0.1 -U postgres -d orulo_v9_auth_test -At -c 'select 1' >/dev/null 2>&1; then ready=true; break; fi
   sleep 1
 done
+[[ "$ready" == 'true' ]] || { echo 'V9_DATABASE_TCP_READINESS_TIMEOUT'; exit 1; }
 psql_local(){ docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d orulo_v9_auth_test "$@"; }
 # The official image allows local-loopback trust by default. Force the tested TCP
 # endpoint to SCRAM, otherwise a wrong-password test can pass without auth.

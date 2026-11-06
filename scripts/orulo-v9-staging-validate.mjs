@@ -18,7 +18,7 @@ export async function validateStaging({target,ca,passwords,Pool,Client,ci=false,
  const pools=Object.fromEntries(['postgres','orulo_webhook_writer','orulo_provenance_reader'].map(role=>[role,new Pool({...stagingPoolConfig(target,role,passwords[role],ca,{ci}),Client:ObservedClient})]));
  const admin=pools.postgres,writer=pools.orulo_webhook_writer,reader=pools.orulo_provenance_reader;
  for(const p of Object.values(pools))p.on('error',()=>{}); // Errors are checked by queries; no secret-bearing error logs.
- const checks=[],check=(name,fn)=>Promise.resolve().then(fn).then(()=>checks.push({name,passed:true}));
+ const checks=[],check=(name,fn)=>Promise.resolve().then(fn).then(()=>checks.push({name,passed:true})).catch(error=>{error.v9Stage=name;throw error;});
  let fixture;const buildingId=String(8100000+randomInt(1,99999));
  const oldId=process.env.ORULO_CLIENT_ID,oldSecret=process.env.ORULO_CLIENT_SECRET;
  try{
@@ -68,4 +68,4 @@ async function main(){
  const result=await validateStaging({target,ca,Pool,Client,ci,passwords:{postgres:process.env.V9_STAGING_ADMIN_PASSWORD,orulo_webhook_writer:process.env.V9_STAGING_WRITER_PASSWORD,orulo_provenance_reader:process.env.V9_STAGING_READER_PASSWORD}});
  const json=JSON.stringify(result,null,2)+'\n';const path=process.env.V9_STAGING_REPORT||'v9-staging-report.json';writeFileSync(path,json);writeFileSync(path+'.sha256',createHash('sha256').update(json).digest('hex')+'\n');console.log(JSON.stringify({status:result.status,checks:result.checks.length,measurements:result.measurements}));
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)main().catch(()=>{console.error('V9_STAGING_VALIDATION_FAILED_NO_AUTOMATIC_RETRY');process.exitCode=1;});
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)main().catch(error=>{console.error(JSON.stringify({status:'V9_STAGING_VALIDATION_FAILED_NO_AUTOMATIC_RETRY',stage:error.v9Stage??'CONFIG_OR_PREFLIGHT',databaseCode:/^[0-9A-Z]{5}$/.test(error.code||'')?error.code:null}));process.exitCode=1;});
