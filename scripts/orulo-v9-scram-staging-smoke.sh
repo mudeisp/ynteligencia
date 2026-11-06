@@ -15,6 +15,11 @@ for i in $(seq 1 50); do
   sleep 1
 done
 psql_local(){ docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d orulo_v9_auth_test "$@"; }
+# The official image allows local-loopback trust by default. Force the tested TCP
+# endpoint to SCRAM, otherwise a wrong-password test can pass without auth.
+docker exec "$container" bash -ceu 'conf="$(psql -X -At -U postgres -d orulo_v9_auth_test -c "show hba_file")"; sed -i "1i host all all 127.0.0.1/32 scram-sha-256" "$conf"; psql -X -U postgres -d orulo_v9_auth_test -c "select pg_reload_conf()" >/dev/null'
+rule=$(docker exec "$container" psql -X -At -U postgres -d orulo_v9_auth_test -c "select auth_method from pg_hba_file_rules where type=\x27host\x27 and address=\x27127.0.0.1\x27 order by rule_number limit 1")
+[[ "$rule" == 'scram-sha-256' ]] || { echo 'SCRAM_HBA_NOT_ACTIVE'; exit 1; }
 psql_tcp(){ docker exec -i -e PGPASSWORD="$2" "$container" psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U "$1" -d orulo_v9_auth_test -At -c "$3"; }
 psql_local <<'SQL'
 do $$begin
