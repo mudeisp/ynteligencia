@@ -21,6 +21,10 @@ on:
       - 'scripts/orulo-media-recovery*'
       - 'orulo-floor-plans*'
       - 'test-support/orulo-cas/**'
+      - 'supabase/migrations/*orulo_webhook_provenance.sql'
+      - 'scripts/orulo-webhook-provenance*'
+      - 'lib/orulo-webhook-core.js'
+      - 'lib/orulo-webhook-provenance.js'
 permissions:
   contents: read
 concurrency:
@@ -74,4 +78,13 @@ jobs:
           PGUSER: postgres
           PGDATABASE: orulo_audit_test
         run: node --test scripts/orulo-media-recovery-pg-concurrency.test.mjs
+      - name: V9 isolated transactional provenance, identity and spoofing tests
+        env:
+          ORULO_SYNTHETIC_PG: 'true'
+          PGHOST: '127.0.0.1'
+          PGPORT: '5432'
+          PGDATABASE: orulo_v9_test
+        run: node --test scripts/orulo-webhook-provenance.test.mjs
+      - name: V9 webhook adapter and commercial payload regression
+        run: node --test scripts/orulo-webhook-provenance-adapters.test.mjs inventory-coordinates.test.js
 
