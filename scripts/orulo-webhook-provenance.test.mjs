@@ -151,6 +151,31 @@ test('concurrent webhook update defeats stale authorized CAS without overwrite; 
 test('missing sealed readback or transition evidence never produces an attestation',async()=>{
  const id=await seed();await start();assert.equal(await proof(id),null);await snapshot('READBACK_V2');assert.equal(await proof(id),null);
 });
+test('duplicate normalized events are no-ops for media, timestamps and receipts, including removed rows',async()=>{
+ const building='64517',payload=row(building),first=await apply([payload],writer,false,building),id=first.savedRows[0].id;
+ const before=await current(id),evidence=await transitions(id);
+ const repeat={...payload,updated_at:'2026-05-05T00:00:00Z'};
+ const duplicate=await apply([repeat],writer,false,building);
+ assert.equal(duplicate.status,'APPLIED');assert.equal(duplicate.protocol,'ORULO_WEBHOOK_TRANSACTION_V1');
+ assert.deepEqual(duplicate.savedRows[0],first.savedRows[0]);assert.deepEqual(await current(id),before);assert.deepEqual(await transitions(id),evidence);
+ await apply([],writer,true,building);const removed=await current(id),receipts=await transitions(id);
+ await apply([],writer,true,building);assert.deepEqual(await current(id),removed);assert.deepEqual(await transitions(id),receipts);
+});
+test('conflicting nested building/typology identity cannot attach media to the wrong property',async()=>{
+ const variants=[{building:{id:'64516'}},{typology_id:'2'},{typology:{id:2}}];
+ for(const variant of variants){const v=row();v.raw_data={...v.raw_data,...variant};await assert.rejects(apply([v]),/V9_ROW_SCOPE_OR_FIELDS_DENIED/);}
+});
+test('invalid receipt hash is rejected by SQL, and a coherent hash cannot hide mismatched receipt fields',async()=>{
+ const building='64518',id=await seed(building);await start();await apply([row(building,201)],writer,false,building);await snapshot('READBACK_V2');assert.ok(await proof(id));
+ await db.query('begin;alter table orulo_audit.property_transitions disable trigger immutable_rows');
+ await assert.rejects(db.query(`update orulo_audit.property_transitions set evidence_hash=repeat('0',64) where id='${id}'`),/check constraint/);
+ await db.query('rollback');assert.ok(await proof(id));
+ // Tamper inside a rollback-only administrative fixture, never remote history.
+ await db.query(`begin;alter table orulo_audit.property_transitions disable trigger immutable_rows;update orulo_audit.property_transitions set changed_fields='["/forged"]' where id='${id}';set session authorization orulo_provenance_reader`);
+ try{assert.equal(await json(db,`select orulo_audit.read_webhook_provenance('${run}','${id}') r`),null);}
+ finally{await db.query('reset session authorization;rollback');}
+ assert.ok(await proof(id));
+});
 test('even dedicated-writer evidence is rejected when its transaction also appears in the executor journal',async()=>{
  const id=await seed();await start();
  await db.query('begin;set session authorization orulo_webhook_writer');

@@ -91,3 +91,37 @@ A CI existente `orulo-cas.yml` inclui esses testes sem secrets, usando PostgreSQ
 5. O trigger não prova autenticidade do remetente HTTP Órulo: prova a identidade do processo DB exclusivo. Verificação do acesso ao endpoint e proteção da credencial desse processo precisam fazer parte da revisão de ativação. Uma credencial dedicada comprometida continua sendo risco; não tratar sua posse como autorização de recuperação.
 6. As janelas são conservadoras: alteração iniciada antes de registrar uma página mas confirmada depois pode não ser atribuível; isso gera bloqueio, não aprovação. Histórico anterior à instalação não ganha proveniência retroativa. Mais de 100 transições/UUID ou schema/membership drift bloqueiam diagnóstico positivo.
 7. Manter `STRICT_GLOBAL_V1` e os controles de CAS existentes. Somente outra revisão completa poderá mudar a política de finish no servidor. O presente PR não fornece nem consome autorização de mídia, não libera os cinco candidatos V8 e não reabre históricos.
+
+## Validação intensiva — 2026-11-06
+
+O HEAD inicial desta rodada foi `597c7707bba266374a3ada92d21280bc2d510a74`. A CI `42217087829` já estava aprovada nos três jobs, inclusive SCRAM. O erro de quoting/inspeção de `pg_hba_file_rules` do desenvolvimento anterior estava corrigido; não foi repetido nem contornado. Nenhum AGENTS.md foi encontrado no repositório ou nos diretórios ancestrais de trabalho inspecionados.
+
+O script com nome histórico `orulo-v9-scram-staging-smoke.sh` cria somente um contêiner CI descartável. Ele **não é staging**. O nome do job e seu marcador terminal agora explicitam essa distinção. Não há entrada que aceite host/DSN remoto.
+
+### Provas adicionais e regressões
+
+- SCRAM real em TCP: HBA exige `scram-sha-256`, verificadores são inspecionados apenas como booleanos/contagem (nunca impressos), e senha incorreta é recusada.
+- TLS real: CA e certificado sintéticos temporários, `sslmode=verify-full`, verificação de `pg_stat_ssl`, rejeição de CA errada, hostname errado e conexão sem criptografia. Usa libpq/psql e servidor PostgreSQL reais, sem mock de autenticação. Segue [libpq SSL](https://www.postgresql.org/docs/17/libpq-ssl.html) e [password authentication](https://www.postgresql.org/docs/17/auth-password.html).
+- Reconexões reais confirmam sessões diferentes e ausência de estado herdado. Isso **não valida um pool**: nenhum driver/pool operacional está integrado. Reuso/reset, descarte de conexão quebrada, limites, COMMIT e comportamento de pooler continuam requisitos de staging.
+- A função é exercitada pelo escritor autenticado em TLS: aplicação, repetição idêntica sem novo efeito, rollback integral e COMMIT seguido de perda de conexão. A última condição é reconciliada por leitura, sem repetir a escrita.
+- Três testes novos falharam contra a implementação original: `UNKNOWN` com arrays era aceito pelo adapter; IDs internos conflitantes eram aceitos; payloads repetidos geravam novos timestamps/recibos. As correções são restritas ao caminho V9 não ativado.
+- A resposta SQL agora inclui protocolo/status, building, tipo da operação e xid. O adapter exige `ORULO_WEBHOOK_TRANSACTION_V1`/`APPLIED` e escopo compatível. Resposta incompleta, ambígua ou `UNKNOWN` falha sem retry/fallback.
+- SQL rejeita conflito explícito entre `raw_data.building.id`, `building_id`, IDs de tipologia e `external_id`. Isso prova consistência de identidade, **não a correção visual de cada imagem nem a autenticidade da resposta HTTP da fonte**.
+- Payload normalizado idêntico, excluindo apenas `updated_at`, não altera a linha nem gera novo recibo. Linhas já inativas não são regravadas nas desativações. A representação e os contadores de linhas selecionadas permanecem disponíveis. Não há ledger/event ID novo; isso não promete deduplicação global de eventos diferentes ou ordenação de notificações atrasadas.
+- Os testes de integridade recusam hash de recibo inválido e inconsistência entre campos e envelope, mesmo quando o hash do envelope em si permanece coerente. Fixtures administrativas corrompidas são rollback-only e locais; nenhuma evidência histórica remota foi alterada.
+
+### Descoberta de staging e procedimento pendente
+
+As consultas somente leitura disponíveis listaram os projetos `yinteligencia` (`wzaegidwtdjuhqchpdpd`, produção conhecida) e `agente.yincorp` (`bgggafirdjvxihqselha`, outro sistema), além de **zero branches** de desenvolvimento no projeto de inventário. Não foi encontrada identificação/autorização de uma base staging isolada no repositório. Nomes de projetos ou um Preview Vercel não demonstram isolamento de dados. Não foram consultados valores de secrets, criados serviços ou executados DDL/DML remoto.
+
+Estado máximo possível nesta rodada: **CI_VALIDATED**, com **STAGING_BLOCKED** enquanto faltar ambiente identificado e autorizado. Não declarar `STAGING_VALIDATED` com base no contêiner ou nos testes locais.
+
+Para a próxima execução autorizada, em ordem:
+
+1. Registrar project/ref, host, database, proprietário, região e autorização de staging; provar recursos/credenciais/filas/webhooks/storage independentes de produção e bloquear os dois refs acima como destinos de ensaio. Se houver compartilhamento ou dúvida, não escrever.
+2. Com acesso administrativo exclusivo de staging, inspecionar versão, schema, defaults/unique `external_id`, RLS/ACL e nomes/memberships dos papéis; confirmar ausência de dados reais e de consumidores/webhooks comerciais. Fazer o preflight antes de aplicar qualquer migration.
+3. Aplicar a migration versionada revisada somente nessa base; instalar credenciais exclusivas SCRAM/TLS por procedimento seguro, sem copiá-las de produção. Confirmar `session_user`, HBA/SSL, verificadores sem imprimir conteúdo e os testes negativos de senha/CA/hostname/ACL.
+4. Integrar e ensaiar o driver/pool candidato com autocommit confirmado, reset de sessão, timeout e descarte de conexões quebradas. Um resultado de função dentro de uma transação aberta **não é prova de COMMIT**. Preservar a hidratação existente de plantas e não adicionar retry de mutação após perda de resposta.
+5. Reutilizar os cenários automatizados do PR com UUIDs/external IDs sintéticos: duplicidade, identidade conflitante, cadeia, concorrência, rollback, perda de conexão após COMMIT e readback. Não retirar os guards locais dos testes destrutivos para apontá-los para staging; adaptar o harness por revisão específica ao ambiente identificado.
+6. Exercitar o webhook HTTP controlado sem distribuição real, demonstrar autenticação do remetente, payload/response da fonte e vínculo entre planta e mídia. Medir latência p95, volume por transição, retenção e recuperação operacional. Não inferir essas provas a partir de logs de CI.
+7. Anexar evidências do HEAD efetivamente executado, ambiente, CA/hostname verificados, fixtures, resultados e zero acesso à produção. Somente então avaliar `STAGING_VALIDATED`. `STRICT_GLOBAL_V1`, autorizações de recuperação e produção continuam fora dessa liberação.

@@ -91,7 +91,7 @@ jobs:
 
 
   v9-scram:
-    name: V9 isolated SCRAM identity and migration staging smoke
+    name: V9 disposable SCRAM TLS identity smoke (not staging)
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -99,5 +99,5 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Validate dedicated SCRAM sessions with disposable PostgreSQL
+      - name: Validate real SCRAM, verify-full TLS and reconnection in disposable PostgreSQL
         run: bash scripts/orulo-v9-scram-staging-smoke.sh

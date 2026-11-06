@@ -94,19 +94,28 @@ begin
   for r in select value from jsonb_array_elements(p_rows) loop
    if jsonb_typeof(r) is distinct from 'object' or r->>'source' is distinct from 'novos' or r->>'external_id' !~ ('^orulo:'||p_building||':[0-9]+$')
    or r->>'external_id' is null or r->'raw_data'->>'building_id' is distinct from p_building or r->'active' is distinct from 'true'::jsonb
+   or (r->'raw_data'->'building'?'id' and r->'raw_data'->'building'->>'id' is distinct from p_building)
+   or (r->'raw_data'?'typology_id' and r->'raw_data'->>'typology_id' is distinct from split_part(r->>'external_id',':',3))
+   or (r->'raw_data'->'typology'?'id' and r->'raw_data'->'typology'->>'id' is distinct from split_part(r->>'external_id',':',3))
    or not(r?'updated_at') or exists(select 1 from jsonb_object_keys(r) k where k<>all(allowed)) then raise exception 'V9_ROW_SCOPE_OR_FIELDS_DENIED'; end if;
    -- Reject collision with another source instead of silently updating it.
    if exists(select 1 from public.properties p where external_id=r->>'external_id' and (source<>'novos' or raw_data->>'building_id' is distinct from p_building)) then raise exception 'V9_EXTERNAL_ID_COLLISION'; end if;
    select string_agg(format('%I',k),',' order by k),string_agg(format('x.%I',k),',' order by k),
     string_agg(format('%I=excluded.%I',k,k),',' order by k) into cols,vals,updates from jsonb_object_keys(r) k;
-   execute format('insert into public.properties(%s) select %s from jsonb_populate_record(null::public.properties,$1) x on conflict(external_id) do update set %s returning to_jsonb(properties)',cols,vals,updates) into changed using r;
+   execute format('insert into public.properties(%s) select %s from jsonb_populate_record(null::public.properties,$1) x on conflict(external_id) do update set %s where not (select bool_and(to_jsonb(properties)->k is not distinct from to_jsonb(excluded)->k) from jsonb_object_keys($1-''updated_at'') k) returning to_jsonb(properties)',cols,vals,updates) into changed using r;
+   -- An identical normalized payload is a no-op, including its timestamp. Keep
+   -- return=representation semantics without inventing a second receipt/event.
+   if changed is null then select to_jsonb(p) into changed from public.properties p where external_id=r->>'external_id'; end if;
    saved:=saved||jsonb_build_array(changed);
   end loop;
  end if;
- with affected as(update public.properties set active=false,updated_at=p_updated_at
-  where source='novos' and raw_data->>'building_id'=p_building and (p_removed or external_id not in(select value->>'external_id' from jsonb_array_elements(p_rows))) returning *)
- select coalesce(jsonb_agg(to_jsonb(affected)),'[]') into deactivated from affected;
- return jsonb_build_object('existingRows',existing,'savedRows',saved,'deactivatedRows',deactivated);
+ update public.properties set active=false,updated_at=p_updated_at
+  where source='novos' and raw_data->>'building_id'=p_building and active is distinct from false
+  and (p_removed or external_id not in(select value->>'external_id' from jsonb_array_elements(p_rows)));
+ select coalesce(jsonb_agg(to_jsonb(p)),'[]') into deactivated from public.properties p
+  where source='novos' and raw_data->>'building_id'=p_building and (p_removed or external_id not in(select value->>'external_id' from jsonb_array_elements(p_rows)));
+ return jsonb_build_object('protocol','ORULO_WEBHOOK_TRANSACTION_V1','status','APPLIED','buildingId',p_building,'removed',p_removed,
+  'transactionId',pg_current_xact_id()::text,'existingRows',existing,'savedRows',saved,'deactivatedRows',deactivated);
 end$$;
 alter function orulo_audit.apply_webhook(text,jsonb,boolean,timestamptz) owner to orulo_webhook_owner;
 revoke all on function orulo_audit.apply_webhook(text,jsonb,boolean,timestamptz) from public,anon,authenticated,service_role;

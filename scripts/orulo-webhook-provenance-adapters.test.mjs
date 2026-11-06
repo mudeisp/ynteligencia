@@ -18,6 +18,14 @@ test('default handler retains the existing REST removal behavior without an inje
  try{await createWebhookHandler()({method:'POST',body:{name:'BUILDING_UPDATE',properties:{building_id:64515,status:'removed'}}},res);assert.equal(calls,1);assert.equal(result.processed,true);assert.equal(result.affected,1);}
  finally{globalThis.fetch=oldFetch;if(oldKey===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=oldKey;}
 });
+test('UNKNOWN, mismatched scope and incomplete transaction responses cannot be interpreted as success',async()=>{
+ const valid={protocol:'ORULO_WEBHOOK_TRANSACTION_V1',status:'APPLIED',buildingId:'64515',removed:false,transactionId:'123',existingRows:[],savedRows:[],deactivatedRows:[]};
+ for(const patch of [{status:'UNKNOWN'},{protocol:'other'},{buildingId:'64516'},{removed:true},{transactionId:''},{transactionId:'NaN'},{savedRows:null}]){
+  let calls=0;const writer=createTransactionalWebhookWriter({query:async()=>{calls++;return{rows:[{result:{...valid,...patch}}]};}});
+  await assert.rejects(writer.syncBuilding('64515',[]),/V9_TRANSACTION_RESPONSE_UNCERTAIN_NO_RETRY/);assert.equal(calls,1);
+ }
+ const writer=createTransactionalWebhookWriter({query:async()=>({rows:[{result:valid}]})});assert.deepEqual(await writer.syncBuilding('64515',[]),valid);
+});
 test('reader uses private server snapshots; no caller proof, mismatched run/hash or missing result accepted',async()=>{
  let calls=0;const change={uuid:'00000000-0000-4000-8000-000000000001',scope:'OUT_OF_SCOPE',before:{fullHash:'a'.repeat(32)},after:{fullHash:'b'.repeat(32)}};
  const reader=createProvenanceReader({query:async(sql,args)=>{calls++;assert.match(sql,/read_webhook_provenance\(\$1/);assert.equal(args.length,2);return {rows:[{proof:{kind:'INDEPENDENT_WRITER_ATTESTATION_V1',runUuid:'other',uuid:change.uuid,beforeFullHash:change.before.fullHash,afterFullHash:change.after.fullHash,policy:'STRICT_GLOBAL_V1'}}]};}});
