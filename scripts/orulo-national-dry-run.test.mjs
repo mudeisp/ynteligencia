@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,mkdtempSync} from 'node:fs';
+import {readFileSync,mkdtempSync,writeFileSync,unlinkSync,readdirSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {selectBatch,validateDispatch,publicCredential,readOnlyTransport,inventoryUrl,dryRun,saveReport,sealReport,digest,MANIFEST_SHA256,PROJECT} from './orulo-national-dry-run.mjs';
+import {selectBatch,validateDispatch,publicCredential,readOnlyTransport,inventoryUrl,dryRun,saveReport,sealReport,verifyReport,digest,MANIFEST_SHA256,PROJECT} from './orulo-national-dry-run.mjs';
 const bytes=readFileSync(new URL('./orulo-national-dry-run-manifest.json',import.meta.url)),manifest=JSON.parse(bytes);
 const selection=()=>selectBatch(bytes,'V4-SP-P1-NEW-002');
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status});
@@ -99,4 +101,55 @@ test('an interrupted checkpoint is sealed without losing its completed items',()
 });
 test('workflow is manual for operational access and has no deploy Environment or write key',()=>{
   const yml=readFileSync(new URL('../.github/workflows/orulo-national-dry-run.yml',import.meta.url),'utf8');assert.match(yml,/workflow_dispatch:/);assert.match(yml,/timeout-minutes: 10/);assert.match(yml,/cancel-in-progress: false/);assert.match(yml,/run_attempt == '1'/);assert.match(yml,/if: always\(\)/);assert.doesNotMatch(yml,/schedule:|environment:|SUPABASE_SECRET_KEY|SERVICE_ROLE|actions: write|contents: write|\$\{\{ inputs.batch_id \}\}.*run:/);
+});
+
+test('terminal success, auth failure, source HTTP error and timeout preserve the final JSON and valid artifact pair',async()=>{
+  const ids=selection().batch.buildingIds;
+  for(const [options,limits,status]of [
+    [{},{},'COMPLETED'],
+    [{authStatus:401},{},'BLOCKED'],
+    [{floorStatus:{[ids[0]]:500}},{},'COMPLETED_WITH_SOURCE_ERRORS'],
+    [{hangId:ids[1]},{maxDurationMs:150,httpTimeoutMs:1000},'TIME_LIMIT']
+  ]){
+    const f=fixture(options),path=join(mkdtempSync(join(tmpdir(),'orulo-artifact-')),'report.json');
+    const report=await f.run({...limits,save:r=>saveReport(r,path)});
+    assert.equal(report.status,status);
+    const before=readFileSync(path);sealReport(path);
+    assert.deepEqual(readFileSync(path),before);assert.deepEqual(verifyReport(path),report);
+    assert.equal(report.writes,0);
+    for(const secret of ['SECRET_DO_NOT_LOG','TOKEN_DO_NOT_LOG','CLIENT_DO_NOT_LOG','sb_publishable_fixture'])assert.ok(!before.toString().includes(secret));
+  }
+});
+
+test('missing JSON or SHA and corrupted hash fail verification; seal repairs only the checksum of terminal JSON',()=>{
+  const path=join(mkdtempSync(join(tmpdir(),'orulo-integrity-')),'report.json');
+  assert.throws(()=>sealReport(path),/ENOENT/);assert.throws(()=>verifyReport(path),/ENOENT/);
+  saveReport({status:'BLOCKED',writes:0},path);const original=readFileSync(path);
+  unlinkSync(path+'.sha256');assert.throws(()=>verifyReport(path),/ENOENT/);
+  sealReport(path);assert.deepEqual(readFileSync(path),original);assert.equal(verifyReport(path).status,'BLOCKED');
+  writeFileSync(path+'.sha256','0'.repeat(64)+'  report.json\n');assert.throws(()=>verifyReport(path),/REPORT_SHA256_MISMATCH/);
+  sealReport(path);assert.deepEqual(readFileSync(path),original);assert.equal(verifyReport(path).status,'BLOCKED');
+  writeFileSync(path,'invalid JSON');const invalid=readFileSync(path);assert.throws(()=>sealReport(path));assert.deepEqual(readFileSync(path),invalid);
+});
+
+test('seal and verify CLI fail explicitly on absent or incomplete artifacts without inventing reports',()=>{
+  const cwd=mkdtempSync(join(tmpdir(),'orulo-cli-')),script=fileURLToPath(new URL('./orulo-national-dry-run.mjs',import.meta.url));
+  const run=arg=>spawnSync(process.execPath,[script,arg],{cwd,encoding:'utf8'});
+  for(const arg of ['--seal','--verify']){const result=run(arg);assert.equal(result.status,1);assert.match(result.stderr,/REPORT_ARTIFACT_INTEGRITY_FAILED/);}
+  assert.deepEqual(readdirSync(cwd),[]);
+  const path=join(cwd,'.orulo-national-dry-run','report.json');saveReport({status:'RUNNING',items:[{buildingId:'4942'}],writes:0},path);
+  assert.equal(run('--seal').status,0);assert.equal(run('--verify').status,0);assert.equal(verifyReport(path).status,'INTERRUPTED');
+  unlinkSync(path+'.sha256');assert.equal(run('--verify').status,1);
+});
+
+test('upload includes exactly both hidden report files after integrity verification, even after dry-run failure',()=>{
+  const yml=readFileSync(new URL('../.github/workflows/orulo-national-dry-run.yml',import.meta.url),'utf8');
+  const seal=yml.slice(yml.indexOf('      - name: Seal interrupted checkpoint'));
+  assert.match(seal,/if: always\(\)\n\s+run: node scripts\/orulo-national-dry-run.mjs --seal/);
+  assert.match(seal,/id: report-integrity\n\s+if: always\(\)\n\s+run: node scripts\/orulo-national-dry-run.mjs --verify/);
+  assert.match(seal,/if: always\(\) && steps.report-integrity.outcome == 'success'/);
+  assert.match(seal,/include-hidden-files: true/);assert.match(seal,/if-no-files-found: error/);
+  assert.match(seal,/name: orulo-dry-run-\$\{\{ github.run_id \}\}/);
+  assert.match(seal,/path: \|\n\s+\.orulo-national-dry-run\/report.json\n\s+\.orulo-national-dry-run\/report.json.sha256\n/);
+  assert.doesNotMatch(seal,/continue-on-error:|report.json\*/);
 });

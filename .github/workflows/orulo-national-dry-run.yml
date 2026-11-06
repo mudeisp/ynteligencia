@@ -62,10 +62,17 @@ jobs:
       - name: Seal interrupted checkpoint without credentials
         if: always()
         run: node scripts/orulo-national-dry-run.mjs --seal
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - name: Verify both artifact files and final JSON hash
+        id: report-integrity
         if: always()
+        run: node scripts/orulo-national-dry-run.mjs --verify
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always() && steps.report-integrity.outcome == 'success'
         with:
           name: orulo-dry-run-${{ github.run_id }}
-          path: .orulo-national-dry-run/report.json*
+          path: |
+            .orulo-national-dry-run/report.json
+            .orulo-national-dry-run/report.json.sha256
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
