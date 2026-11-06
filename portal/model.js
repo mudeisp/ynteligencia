@@ -1,5 +1,29 @@
 import { createHash } from 'node:crypto';
 import { normalizeUnit, projectDetails } from './details.js';
+import { classifyDevelopment } from './eligibility.js';
+
+export function groupEligibleDevelopments(rows,{catalog=false}={}) {
+  const grouped=new Map();
+  for(const row of rows){
+    const key=String(row.building_id||/^orulo:(\d+):/.exec(row.external_id||'')?.[1]||row.id);
+    if(!grouped.has(key))grouped.set(key,[]);
+    grouped.get(key).push(row);
+  }
+  const result=[];
+  for(const inputs of grouped.values()){
+    const decisions=inputs.map(classifyDevelopment);
+    // Conflicting identity/classification must not be hidden by a representative row.
+    if(decisions.some(d=>d.classification==='EXCLUDED'))continue;
+    if(new Set(inputs.map(r=>`${r.state}/${slug(r.city)}`)).size!==1)continue;
+    const eligible=inputs.flatMap((row,i)=>decisions[i].classification==='INDEXABLE'
+      ? decisions[i].units.map(unit=>({...row,...unit,unit_facets:undefined})):[]);
+    const classification=eligible.length?'INDEXABLE':'CATALOG_ONLY';
+    if(!eligible.length&&!catalog)continue;
+    const unique=[...new Map((eligible.length?eligible:inputs).map(r=>[r.id,r])).values()];
+    for(const group of groupDevelopments(unique))result.push({...group,eligibility:classification});
+  }
+  return result;
+}
 
 export const STATES = Object.freeze({AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'});
 export const PAGE_SIZE = 18;
