@@ -1,4 +1,5 @@
-import { groupDevelopments, geography, parseRoute, parseFilters, listDevelopments, STATES, slug, html, positive } from './model.js';
+import { NATIONAL_MARKETS } from './eligibility.js';
+import { groupEligibleDevelopments, groupDevelopments, geography, parseRoute, parseFilters, listDevelopments, STATES, slug, html, positive } from './model.js';
 import { renderListing, renderDevelopment, renderError } from './render.js';
 import { renderInvestment, INVESTMENT_PATH } from './investment.js';
 
@@ -20,15 +21,16 @@ export function sitemap(groups,base) {
       for(const n of c.neighborhoods.values()) paths.set(`${root}/${c.slug}/${n.slug}`,null);
     }
   }
-  for(const g of groups) paths.set(g.path,g.updatedAt);
+  for(const g of groups) paths.set(g.path,null);
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...paths].map(([path,updated])=>`<url><loc>${html(base+path)}</loc>${updated?`<lastmod>${new Date(updated).toISOString()}</lastmod>`:''}</url>`).join('')}</urlset>`;
 }
-export function createPortalHandler({inventory,preview=false,canonicalOrigin,p0,pointLookupStates}={}) {
+export function createPortalHandler({inventory,preview=false,canonicalOrigin,p0,pointLookupStates,nationalEligibility=false}={}) {
   // Weak keys follow the inventory snapshot lifetime; no second unbounded cache.
   const groupedSnapshots=new WeakMap();
+  const qualify=(rows,options)=>nationalEligibility?groupEligibleDevelopments(rows,options):groupDevelopments(rows);
   const groupListing=(rows,enabled)=>{
-    if(!enabled)return groupDevelopments(rows);
-    if(!groupedSnapshots.has(rows))groupedSnapshots.set(rows,groupDevelopments(rows));
+    if(!enabled)return qualify(rows);
+    if(!groupedSnapshots.has(rows))groupedSnapshots.set(rows,qualify(rows));
     return groupedSnapshots.get(rows);
   };
   return async function portal(req,res) {
@@ -41,29 +43,30 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin,p0,
     const url=new URL(req.url || '/',base);
     const path=String(req.query?.portalPath || url.searchParams.get('portalPath') || url.pathname);
     url.searchParams.delete('portalPath');
-    const finish=(status,body,type='text/html; charset=utf-8')=>{res.setHeader('Content-Type',type);res.setHeader('Cache-Control',status===200 && !isPreview?'public, max-age=0, s-maxage=60, stale-while-revalidate=120':'no-store');res.status(status);return req.method==='HEAD'?res.end():res.send(body);};
+    const finish=(status,body,type='text/html; charset=utf-8')=>{if(status!==200||isPreview||String(body).includes('content="noindex,follow"'))res.setHeader('X-Robots-Tag','noindex, follow');res.setHeader('Content-Type',type);res.setHeader('Cache-Control',status===200 && !isPreview?'public, max-age=0, s-maxage=60, stale-while-revalidate=120':'no-store');res.status(status);return req.method==='HEAD'?res.end():res.send(body);};
     const redirect=(path)=>{res.setHeader('Cache-Control','no-store');res.setHeader('Location',path);return res.status(308).end();};
     let route;
     try {
       if(path==='/sitemap-portal.xml') {
-        const states=[...new Set(String(process.env.PORTAL_SITEMAP_STATES || 'ES,SP').toUpperCase().split(',').map(s=>s.trim()))].filter(s=>STATES[s]);
+        const states=[...new Set(String(process.env.PORTAL_SITEMAP_STATES || (nationalEligibility?NATIONAL_MARKETS.join(','):'ES,SP')).toUpperCase().split(',').map(s=>s.trim()))].filter(s=>STATES[s]);
         const all=(await Promise.all(states.map(s=>inventory(s,{mode:'listing'})))).flat();
-        return finish(200,sitemap(groupDevelopments(all),base),'application/xml; charset=utf-8');
+        return finish(200,sitemap(qualify(all),base),'application/xml; charset=utf-8');
       }
       route=parseRoute(path);
+      if(nationalEligibility&&route&&!NATIONAL_MARKETS.includes(route.state))route=null;
       if(!route) return finish(404,renderError(404,{origin:base,preview:isPreview}));
       const optimized=p0 ?? process.env.PORTAL_P0!=='0';
       // Enable the narrower resolver only where the audit proved the large-state
       // cost. ES keeps its single index GET and benefits from snapshot reuse.
       // Expand the allowlist after benchmarking each market, without route changes.
       const pointStates=pointLookupStates ?? String(process.env.PORTAL_POINT_LOOKUP_STATES || 'SP').toUpperCase().split(',').map(s=>s.trim());
-      if(optimized && pointStates.includes(route.state) && ['development','unit'].includes(route.kind) && /^orulo-\d+$/.test(route.token)) {
+      if(optimized && (nationalEligibility || pointStates.includes(route.state)) && ['development','unit'].includes(route.kind) && /^orulo-\d+$/.test(route.token)) {
         const buildingId=route.token.slice(6);
         const lightRows=await inventory(route.state,{mode:'project-index',buildingIds:[buildingId]});
-        const lightProject=groupDevelopments(lightRows).find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
+        const lightProject=qualify(lightRows,{catalog:true}).find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
         if(!lightProject)return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
         const detailRows=await inventory(route.state,{mode:'project',ids:lightProject.units.map(u=>u.id)});
-        const project=groupDevelopments(detailRows).find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
+        const project=qualify(detailRows,{catalog:true}).find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
         const unit=route.unitId?project?.units.find(u=>u.id===route.unitId):undefined;
         if(!project || (route.unitId && !unit))return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
         const target=project.path+(unit?`/tipologia/${unit.id}`:'');
@@ -77,12 +80,14 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin,p0,
         let related;
         // A zero/negative aggregate can hide a positive facet. Preserve the old
         // positive-price semantics rather than silently changing recommendations.
-        if(summaries.some(r=>r.price!==null && r.price!==undefined && Number(r.price)<=0)) {
+        if(nationalEligibility){
+          related=qualify(summaries).filter(g=>g.token!==project.token&&g.city===project.city&&g.state===project.state).sort((a,b)=>Number(b.neighborhood===project.neighborhood)-Number(a.neighborhood===project.neighborhood)||Math.abs((a.price??Infinity)-(project.price??0))-Math.abs((b.price??Infinity)-(project.price??0))||a.path.localeCompare(b.path)).slice(0,3);
+        }else if(summaries.some(r=>r.price!==null && r.price!==undefined && Number(r.price)<=0)) {
           const all=groupListing(await inventory(route.state,{mode:'listing'}),true);
           related=all.filter(g=>g.token!==project.token && g.city===project.city && g.state===project.state).sort((a,b)=>Number(b.neighborhood===project.neighborhood)-Number(a.neighborhood===project.neighborhood) || Math.abs((a.price??Infinity)-(project.price??0))-Math.abs((b.price??Infinity)-(project.price??0)) || a.path.localeCompare(b.path)).slice(0,3);
         }else{
           const relatedRows=candidates.length?await inventory(route.state,{mode:'project-index',buildingIds:candidates.map(r=>String(r.building_id))}):[];
-          const selected=groupDevelopments(relatedRows);
+          const selected=qualify(relatedRows);
           related=candidates.map(r=>selected.find(g=>g.token===`orulo-${r.building_id}` && g.city===project.city && g.state===project.state)).filter(Boolean);
         }
         return finish(200,renderDevelopment({project,route,unit,related,canonical:base+project.path,origin:base,preview:isPreview}));
@@ -101,7 +106,7 @@ export function createPortalHandler({inventory,preview=false,canonicalOrigin,p0,
         const lightProject=groups.find(g=>g.state===route.state && slug(g.city)===route.city && g.token===route.token);
         if(!lightProject)return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
         const detailRows=await inventory(route.state,{mode:'project',ids:lightProject.units.map(u=>u.id)});
-        const project=groupDevelopments(detailRows).find(g=>g.token===lightProject.token);
+        const project=qualify(detailRows,{catalog:true}).find(g=>g.token===lightProject.token);
         const unit=route.unitId?project?.units.find(u=>u.id===route.unitId):undefined;
         if(!project || (route.unitId && !unit))return finish(404,renderError(404,{origin:base,preview:isPreview,state:route.state}));
         const target=project.path+(unit?`/tipologia/${unit.id}`:'');

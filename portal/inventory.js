@@ -1,3 +1,4 @@
+import {newDevelopmentIndexFilters} from './eligibility.js';
 import { STATES } from './model.js';
 
 // Public editorial portal = development inventory. Used/resale listings remain in the app
@@ -37,8 +38,8 @@ async function indexRequest(request,params) {
 const chunks=(values,size)=>Array.from({length:Math.ceil(values.length/size)},(_,i)=>values.slice(i*size,(i+1)*size));
 const parseTotal=value=>{const match=/\/(\d+)$/.exec(String(value||''));return match?Number(match[1]):null;};
 
-async function fetchListingPage(request,state,offset,{count=false}={}) {
-  const params=new URLSearchParams({select:'*',state:`eq.${state}`,order:'id.asc',limit:'1000',offset:String(offset)});
+async function fetchListingPage(request,state,offset,{count=false,nationalEligibility=false}={}) {
+  const params=new URLSearchParams({...nationalEligibility?newDevelopmentIndexFilters():{},select:'*',state:`eq.${state}`,order:'id.asc',limit:'1000',offset:String(offset)});
   const response=await request(`portal_development_index?${params}`,{method:'GET',signal:AbortSignal.timeout(20000),prefer:count?'count=exact':undefined,includeContentRange:count});
   if(!response.ok || !Array.isArray(response.data)) {
     const payload=response?.data && typeof response.data==='object' ? response.data : {};
@@ -47,8 +48,8 @@ async function fetchListingPage(request,state,offset,{count=false}={}) {
   }
   return response;
 }
-async function readListingIndex(request,state) {
-  const first=await fetchListingPage(request,state,0,{count:true});
+async function readListingIndex(request,state,nationalEligibility=false) {
+  const first=await fetchListingPage(request,state,0,{count:true,nationalEligibility});
   const rows=[...first.data];
   const total=parseTotal(first.contentRange);
   if(first.data.length<1000 || total===rows.length)return rows;
@@ -56,38 +57,38 @@ async function readListingIndex(request,state) {
     if(total>50000)throw new Error('inventory_read_limit');
     const offsets=[];for(let offset=1000;offset<total;offset+=1000)offsets.push(offset);
     for(const batch of chunks(offsets,6)) {
-      const pages=await Promise.all(batch.map(offset=>fetchListingPage(request,state,offset)));
+      const pages=await Promise.all(batch.map(offset=>fetchListingPage(request,state,offset,{nationalEligibility})));
       for(const page of pages)rows.push(...page.data);
     }
     if(rows.length<total)throw new Error('inventory_incomplete');
     return rows;
   }
   for(let offset=1000;offset<50000;offset+=1000) {
-    const page=await fetchListingPage(request,state,offset);
+    const page=await fetchListingPage(request,state,offset,{nationalEligibility});
     rows.push(...page.data);
     if(page.data.length<1000)return rows;
   }
   throw new Error('inventory_read_limit');
 }
 
-export async function readInventory(state,{request,configured,now=Date.now,cacheable=false,mode='full',ids=[],buildingIds=[],city,p0=process.env.PORTAL_P0!=='0'}={}) {
+export async function readInventory(state,{request,configured,now=Date.now,cacheable=false,mode='full',ids=[],buildingIds=[],city,nationalEligibility=false,p0=process.env.PORTAL_P0!=='0'}={}) {
   if(!STATES[state]) throw new Error('invalid_state');
   if(!configured()) throw new Error('inventory_not_configured');
   if(mode==='project-index') {
     const buildings=[...new Set(buildingIds.map(String))];
     if(!buildings.length || buildings.length>3 || buildings.some(id=>!/^\d+$/.test(id)))throw new Error('invalid_building_ids');
-    return snapshot(request,`${state}:projects:${buildings.slice().sort().join(',')}`,async()=>{
-      const params=new URLSearchParams({select:'*',state:`eq.${state}`,building_id:`in.(${buildings.join(',')})`,order:'id.asc',limit:'3'});
+    return snapshot(request,`${state}:${nationalEligibility}:projects:${buildings.slice().sort().join(',')}`,async()=>{
+      const params=new URLSearchParams({...nationalEligibility?newDevelopmentIndexFilters():{},select:'*',state:`eq.${state}`,building_id:`in.(${buildings.join(',')})`,order:'id.asc',limit:'3'});
       return (await indexRequest(request,params)).data;
     },{cacheable,now});
   }
   if(mode==='city-summary') {
     if(typeof city!=='string' || !city || city.length>200)throw new Error('invalid_city');
-    return snapshot(request,`${state}:city:${city}`,async()=>{
+    return snapshot(request,`${state}:city:${city}:${nationalEligibility}`,async()=>{
       const rows=[];
       // City names originate from the inventory, not route interpolation.
       for(let offset=0;offset<50000;offset+=1000){
-        const params=new URLSearchParams({select:SUMMARY_SELECT,state:`eq.${state}`,city:`eq.${city}`,order:'id.asc',limit:'1000',offset:String(offset)});
+        const params=new URLSearchParams({...nationalEligibility?newDevelopmentIndexFilters():{},select:nationalEligibility?'*':SUMMARY_SELECT,state:`eq.${state}`,city:`eq.${city}`,order:'id.asc',limit:'1000',offset:String(offset)});
         const response=await indexRequest(request,params);rows.push(...response.data);
         if(response.data.length<1000)return rows;
       }
@@ -106,12 +107,12 @@ export async function readInventory(state,{request,configured,now=Date.now,cache
     }
     return rows;
   }
-  const cacheKey=`${state}:listing:${PORTAL_SOURCE}`;
-  if(p0 && mode==='listing')return snapshot(request,cacheKey,()=>readListingIndex(request,state),{cacheable,now});
+  const cacheKey=`${state}:listing:${PORTAL_SOURCE}:${nationalEligibility}`;
+  if(p0 && mode==='listing')return snapshot(request,cacheKey,()=>readListingIndex(request,state,nationalEligibility),{cacheable,now});
   const cached=cache.get(cacheKey);
   if(cacheable && cached && cached.expires>now()) return cached.rows;
   if(mode==='listing') {
-    const rows=await readListingIndex(request,state);
+    const rows=await readListingIndex(request,state,nationalEligibility);
     if(cacheable)cache.set(cacheKey,{expires:now()+60000,rows});
     return rows;
   }
