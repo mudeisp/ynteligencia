@@ -6,7 +6,7 @@ container="orulo-v9-scram-${GITHUB_RUN_ID:-local}"
 password='synthetic-ci-password-only'
 cleanup(){ docker rm -f "$container" >/dev/null 2>&1 || :; }
 trap cleanup EXIT
-docker run -d --name "$container" --pull=never \
+docker run -d --name "$container" --pull=always \
   -e POSTGRES_PASSWORD="$password" -e POSTGRES_DB=orulo_v9_auth_test \
   -e POSTGRES_HOST_AUTH_METHOD=scram-sha-256 \
   postgres:17.6 >/dev/null
