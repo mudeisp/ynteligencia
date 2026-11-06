@@ -88,7 +88,9 @@ begin
  if p_building !~ '^[1-9][0-9]*$' or p_building is null or p_updated_at is null or p_removed is null or jsonb_typeof(p_rows) is distinct from 'array'
  or jsonb_array_length(p_rows)>1000 or (p_removed and jsonb_array_length(p_rows)<>0) or (not p_removed and jsonb_array_length(p_rows)=0) then raise exception 'V9_INVALID_BUILDING_OPERATION'; end if;
  perform pg_advisory_xact_lock(hashtextextended('orulo-webhook:'||p_building,0));
- select coalesce(jsonb_agg(to_jsonb(p)),'[]') into existing from public.properties p where source='novos' and raw_data->>'building_id'=p_building;
+ -- Preserve locking even when a duplicate/inactive row needs no UPDATE.
+ select coalesce(jsonb_agg(to_jsonb(p)),'[]') into existing from
+  (select * from public.properties where source='novos' and raw_data->>'building_id'=p_building order by id for update) p;
  if not p_removed then
   if (select count(*)<>count(distinct value->>'external_id') from jsonb_array_elements(p_rows)) then raise exception 'V9_DUPLICATE_EXTERNAL_ID'; end if;
   for r in select value from jsonb_array_elements(p_rows) loop

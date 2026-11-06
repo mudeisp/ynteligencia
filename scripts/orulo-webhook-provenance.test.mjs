@@ -161,6 +161,15 @@ test('duplicate normalized events are no-ops for media, timestamps and receipts,
  await apply([],writer,true,building);const removed=await current(id),receipts=await transitions(id);
  await apply([],writer,true,building);assert.deepEqual(await current(id),removed);assert.deepEqual(await transitions(id),receipts);
 });
+test('idempotent inactive-row operations retain row locks until commit against legacy writers',async()=>{
+ const building='64519',id=await seed(building);await apply([],writer,true,building);const before=await transitions(id);
+ await writer.query('begin');await apply([],writer,true,building);
+ let released=false;const pending=service.query(`update public.properties set active=true where id='${id}'`).then(()=>{released=true;});
+ let prematurelyReleased;
+ try{await new Promise(r=>setTimeout(r,100));prematurelyReleased=released;}
+ finally{await writer.query('commit');await pending;}
+ assert.equal(prematurelyReleased,false);assert.equal((await transitions(id)).length,before.length+1);assert.equal((await current(id)).active,true);
+});
 test('conflicting nested building/typology identity cannot attach media to the wrong property',async()=>{
  const variants=[{building:{id:'64516'}},{typology_id:'2'},{typology:{id:2}}];
  for(const variant of variants){const v=row();v.raw_data={...v.raw_data,...variant};await assert.rejects(apply([v]),/V9_ROW_SCOPE_OR_FIELDS_DENIED/);}
