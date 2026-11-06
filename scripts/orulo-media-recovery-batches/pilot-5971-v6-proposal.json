@@ -1,0 +1,127 @@
+{
+  "mode": "PREPARATION_ONLY_NO_WRITE_AUTHORIZATION",
+  "preparedAt": "2026-11-06T08:30:44.923Z",
+  "sourceRunId": "42186120467",
+  "sourceCommit": "d08f4264da2f63001ca84f2bafe941a5613c622b",
+  "evidenceSha256": "57f3abf133b78c4261ca408941e3abf77f0de27e7799972d08bc1e35b8fa56af",
+  "buildingId": "5971",
+  "state": "SP",
+  "targetIds": [
+    "55701ebd-747e-4968-92f1-647d2e6a79d9"
+  ],
+  "planIds": [
+    "251614",
+    "251615"
+  ],
+  "targets": [
+    {
+      "id": "55701ebd-747e-4968-92f1-647d2e6a79d9",
+      "buildingId": "5971",
+      "patches": [
+        {
+          "id": "251614",
+          "image_url": "https://static.orulo.com.br/images/properties/large/251614.JPG"
+        },
+        {
+          "id": "251615",
+          "image_url": "https://static.orulo.com.br/images/properties/large/251615.JPG"
+        }
+      ]
+    }
+  ],
+  "distinctImages": 2,
+  "occurrences": 2,
+  "checks": [
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/251614.JPG",
+      "status": 206,
+      "format": "jpeg",
+      "checkedAt": "2026-11-06T08:30:44.466Z"
+    },
+    {
+      "url": "https://static.orulo.com.br/images/properties/large/251615.JPG",
+      "status": 206,
+      "format": "jpeg",
+      "checkedAt": "2026-11-06T08:30:44.919Z"
+    }
+  ],
+  "before": {
+    "rowSha256": "4a684ef76960b24ad81a6504e4d9c5b236c921857fcb74cfd6ee92bb9676cfee",
+    "plans": [
+      {
+        "id": "251614",
+        "type": "Área condominial",
+        "description": "Planta 01 - 1 dorm 28m² - studio",
+        "associations": {
+          "typologies": [],
+          "building_units": []
+        }
+      },
+      {
+        "id": "251615",
+        "type": "Área condominial",
+        "description": "Planta 02 - 1 dorm 31m² - studio",
+        "associations": {
+          "typologies": [],
+          "building_units": []
+        }
+      }
+    ]
+  },
+  "after": {
+    "plans": [
+      {
+        "id": "251614",
+        "type": "Área condominial",
+        "description": "Planta 01 - 1 dorm 28m² - studio",
+        "associations": {
+          "typologies": [],
+          "building_units": []
+        },
+        "image_url": "https://static.orulo.com.br/images/properties/large/251614.JPG"
+      },
+      {
+        "id": "251615",
+        "type": "Área condominial",
+        "description": "Planta 02 - 1 dorm 31m² - studio",
+        "associations": {
+          "typologies": [],
+          "building_units": []
+        },
+        "image_url": "https://static.orulo.com.br/images/properties/large/251615.JPG"
+      }
+    ]
+  },
+  "authorizedContentPaths": [
+    "raw_data.building.floor_plans[0].image_url",
+    "raw_data.building.floor_plans[1].image_url"
+  ],
+  "existingCasTechnicalPath": "updated_at (server-owned, only if explicitly approved)",
+  "writes": 0,
+  "prerequisites": [
+    "Owner authorization must bind this building, UUID, plans, exact image fields and hash.",
+    "Existing database gates deny building 5971; reviewed narrow authorization/database change required before execution. Do not replace historical pilot 43126 or reopen old batches.",
+    "Fresh dedicated Orulo floor_plans response must confirm both plan IDs and URLs immediately before any future write; public proxy may fall back and is not alone sufficient for production authorization.",
+    "Fresh full-row read and CAS comparison under row lock; an intervening commercial or media change aborts and requires a new proposal.",
+    "Revalidate both image signatures and source identity; abort on missing/changed plan or source errors.",
+    "Require durable existing INTENT and CAS_RESULT, server receipt and matching readback; uncertain response means read-only reconciliation, never automatic mutation retry."
+  ],
+  "abortOn": [
+    "scope/hash/source identity mismatch",
+    "expired or missing authorization",
+    "historical UUID or administrative conflict",
+    "plan identity/order or non-image field change",
+    "concurrent row change",
+    "ambiguous response or failed readback"
+  ],
+  "futureVerification": [
+    "Compare all non-image fields, price, stock, status, photos, videos, tours and plan metadata.",
+    "Verify server receipt before/after hashes and current image fields after exactly one write.",
+    "Record confirmed result in existing audit only during a separately authorized future run; never repeat a confirmed operation."
+  ],
+  "limitations": [
+    "Proposal is not an approval receipt or an executable production command.",
+    "The reviewed current snapshot is evidence, never a replacement row payload.",
+    "No production CAS or SQL function was invoked."
+  ]
+}

@@ -8,6 +8,7 @@ import {imageOnlyPlans,preserved,buildingIdOf} from './orulo-media-cas.mjs';
 import {validateDispatch,checkGitHub,presence,verifySource,validateManifest} from './orulo-media-recovery-actions.mjs';
 import {digest,openPostgresJournal,postgresTransport,PROJECT_URL,rpcFailureDetails} from './orulo-media-recovery-postgres.mjs';
 import {classifyCaptures,verifyScopeComparison} from './orulo-media-recovery-scope.mjs';
+import {PILOT_5971,manifest5971,entry5971,proposal5971,validate5971Row,source5971} from './orulo-media-recovery-5971.mjs';
 const dir=new URL('./orulo-media-recovery-batches/',import.meta.url),read=name=>JSON.parse(readFileSync(new URL(name,dir),'utf8'));
 export const batchCatalog=read('catalog.json'),batchMaster=read('master.json');
 const original=JSON.parse(readFileSync(new URL('./orulo-media-recovery-lote1.ids.json',import.meta.url),'utf8'));validateManifest(original);
@@ -67,6 +68,7 @@ export async function batchSourceClient(env,request=fetch){
  };
 }
 export function loadBatch(id){
+ if(id===PILOT_5971)return manifest5971();
  const entry=batchCatalog.batches[id];if(!entry)throw Error('BATCH_UNKNOWN');const m=read(entry.file);
  if(digest(JSON.stringify(m))!==entry.hash || m.masterHash!==batchCatalog.masterHash || m.id!==id || m.buildingIds.length>(m.phase===1?20:30) ||
   new Set(m.buildingIds).size!==m.buildingIds.length || m.buildingIds.some(id=>!batchMaster.buildings.some(b=>b.buildingId===id)) ||
@@ -76,8 +78,9 @@ export function loadBatch(id){
 export function validateBatchDispatch(env){
  validateDispatch(env);loadBatch(env.ORULO_BATCH_ID);
  if(env.ORULO_BATCH_READY!=='true' || env.ORULO_BATCH_APPROVED_SHA!==env.GITHUB_WORKFLOW_SHA || !/^[a-f0-9]{40}$/.test(env.ORULO_BATCH_APPROVED_SHA||''))throw Error('BATCH_REVIEWED_CONTROL_SHA_REQUIRED');
- if(!batchCatalog.batches[env.ORULO_BATCH_ID].released)throw Error('BATCH_PHASE_NOT_RELEASED');
+ if(!batchEntry(env.ORULO_BATCH_ID)?.released)throw Error('BATCH_PHASE_NOT_RELEASED');
 }
+const batchEntry=id=>id===PILOT_5971?entry5971():batchCatalog.batches[id];
 export async function verifyBatchImage(url,request=fetch){
  if(typeof url!=='string'||!pattern.test(url))throw Error('BATCH_UNTRUSTED_IMAGE_URL');
  let r;const context={sourceService:'orulo_cdn',sourceAction:'image',batchStage:'IMAGE_VALIDATION'};
@@ -118,7 +121,7 @@ export async function batchPatches(rows,fetchPlans,checkImage=verifyBatchImage){
 }
 const merge=(row,patches)=>imageOnlyPlans(row.raw_data,patches).map((p,i)=>hasImage(row.raw_data.building.floor_plans[i])?row.raw_data.building.floor_plans[i]:p);
 export function batchApprovalSql(p){
- if(!/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(p.runUuid)||!/^[a-f0-9]{64}$/.test(p.headHash)||!/^[1-9][0-9]*$/.test(p.githubRunId)||!/^[a-f0-9]{40}$/.test(p.controlSha)||!batchCatalog.batches[p.batchId])throw Error('BATCH_APPROVAL_INVALID');
+ if(!/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(p.runUuid)||!/^[a-f0-9]{64}$/.test(p.headHash)||!/^[1-9][0-9]*$/.test(p.githubRunId)||!/^[a-f0-9]{40}$/.test(p.controlSha)||!batchEntry(p.batchId))throw Error('BATCH_APPROVAL_INVALID');
  return `-- Explicit owner confirmation in authenticated SQL Editor only. No public endpoint.\nbegin;\nset local lock_timeout='5s';\ndo $batch_approval$\nbegin\n perform orulo_audit.lock_run('${p.runUuid}'::uuid);\n if not exists(select 1 from orulo_audit.entries e where run_uuid='${p.runUuid}'::uuid and sequence=(select max(sequence) from orulo_audit.entries where run_uuid=e.run_uuid) and hash='${p.headHash}' and event->>'stage'='BATCH_PLAN' and event->>'batchId'='${p.batchId}' and created_at>=clock_timestamp()-interval '10 minutes') then raise exception 'BATCH_PLAN_EXPIRED_OR_CHANGED'; end if;\n perform orulo_audit.authorize_pilot('${p.runUuid}'::uuid,'${p.headHash}','${p.githubRunId}','${p.controlSha}','Owner explicitly confirms only this reviewed batch, UUIDs and image patches');\nend $batch_approval$;\ncommit;`;
 }
 export function batchApprovalView(p){
@@ -171,15 +174,20 @@ export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBa
  const rowArgs=id=>({p_run:journal.runUuid,p_event:{batchId:batch.id,id}});let currentId=null,batchStage='INVENTORY';const verified=[];let recovered=0,confirmed=0;
  try{
   const inventory=await transport.control('batch_inventory',{p_run:journal.runUuid,p_event:{batchId:batch.id}});
-  if(inventory.masterHash!==batchCatalog.masterHash||inventory.batchManifestHash!==batchCatalog.batches[batch.id].hash||!inventory.targets?.length||inventory.targets.some(t=>!batch.targets.some(a=>a.id===t.id&&a.buildingId===t.buildingId)))throw Error('BATCH_INVENTORY_INVALID_OR_EMPTY');
-  batchStage='TARGET_READ';const rows=[];for(const t of inventory.targets)rows.push((await transport.control('batch_row',rowArgs(t.id))).row);
-  batchStage='SOURCE_AUTH';const source=fetchPlans||await batchSourceClient(env);
-  batchStage='SOURCE_PLANS';const proposed=await batchPatches(rows,source,checkImage);
+  if(inventory.masterHash!==batchCatalog.masterHash||inventory.batchManifestHash!==batchEntry(batch.id).hash||!inventory.targets?.length||inventory.targets.some(t=>!batch.targets.some(a=>a.id===t.id&&a.buildingId===t.buildingId)))throw Error('BATCH_INVENTORY_INVALID_OR_EMPTY');
+  batchStage='TARGET_READ';const rows=[];let expectedFullHash;
+  for(const t of inventory.targets){const current=await transport.control('batch_row',rowArgs(t.id));if(batch.id===PILOT_5971){validate5971Row(current.row);expectedFullHash=current.fullHash;}rows.push(current.row);}
+  if(batch.id===PILOT_5971&&rows.length!==1)throw Error('PILOT5971_ROW_SCOPE_INVALID');
+  batchStage='SOURCE_AUTH';const rawSource=fetchPlans||await batchSourceClient(env),source=batch.id===PILOT_5971?source5971(rawSource):rawSource;
+  const imageCheck=batch.id===PILOT_5971?async url=>{const checked=await checkImage(url);if(checked?.format!=='jpeg')throw Error('PILOT5971_JPEG_REQUIRED');return checked;}:checkImage;
+  batchStage='SOURCE_PLANS';const proposed=await batchPatches(rows,source,imageCheck);
   const targetIds=proposed.targets.map(t=>t.id);if(!isDeepStrictEqual(targetIds,inventory.targets.map(t=>t.id)))throw Error('BATCH_PLAN_COVERAGE_INVALID');
-  batchStage='PLAN';const plan=await journal.record({type:'CLIENT_READBACK',stage:'BATCH_PLAN',batchId:batch.id,masterHash:batchCatalog.masterHash,batchManifestHash:batchCatalog.batches[batch.id].hash,
+  if(batch.id===PILOT_5971&&!isDeepStrictEqual(proposed.targets,proposal5971().proposal.targets))throw Error('PILOT5971_PATCH_SCOPE_INVALID');
+  batchStage='PLAN';const plan=await journal.record({type:'CLIENT_READBACK',stage:'BATCH_PLAN',batchId:batch.id,masterHash:batchCatalog.masterHash,batchManifestHash:batchEntry(batch.id).hash,
+   ...(batch.id===PILOT_5971?{proposalText:proposal5971().proposalText,proposalHash:proposal5971().proposalHash,expectedFullHash}:{}),
    buildingIds:[...new Set(proposed.targets.map(t=>t.buildingId))].sort((a,b)=>Number(a)-Number(b)),targetIds,...proposed,writeEnabled:false});
   await onPlan({runUuid:journal.runUuid,githubRunId:env.GITHUB_RUN_ID,controlSha:env.GITHUB_WORKFLOW_SHA,headHash:plan.ack.hash,batchId:batch.id,
-   buildingIds:[...new Set(proposed.targets.map(t=>t.buildingId))],targetIds,targets:proposed.targets,patchableOccurrences:proposed.patchableOccurrences,distinctUrls:proposed.distinctUrls,masterHash:batchCatalog.masterHash,batchManifestHash:batchCatalog.batches[batch.id].hash});
+   buildingIds:[...new Set(proposed.targets.map(t=>t.buildingId))],targetIds,targets:proposed.targets,patchableOccurrences:proposed.patchableOccurrences,distinctUrls:proposed.distinctUrls,masterHash:batchCatalog.masterHash,batchManifestHash:batchEntry(batch.id).hash});
   batchStage='AUTHORIZATION_WAIT';const deadline=now()+600000;while(!await journal.adoptBatchAuthorization(batch.id,plan.ack.hash,targetIds)){
    if(now()>=deadline)throw Error('BATCH_AUTHORIZATION_WAIT_TIMEOUT');await wait(5000);
   }
@@ -187,6 +195,7 @@ export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBa
   const baseline=new Map(before.capture.records.map(r=>[r[0],r]));
   for(const target of proposed.targets){batchStage='PRE_CAS';currentId=target.id;const pre=await transport.control('batch_row',rowArgs(currentId)),row=pre.row;
    if(row.id!==target.id||buildingIdOf(row)!==target.buildingId||row.state!=='SP'||row.source!=='novos'||row.active!==true||pre.fullHash!==baseline.get(currentId)?.[4])throw Error('BATCH_CONCURRENT_CHANGE_BEFORE_CAS');
+   if(batch.id===PILOT_5971){validate5971Row(row);if(pre.fullHash!==expectedFullHash)throw Error('PILOT5971_APPROVED_STATE_CHANGED');}
    const desired=merge(row,target.patches);if(isDeepStrictEqual(desired,row.raw_data.building.floor_plans))continue;
    batchStage='INTENT';const operationId=randomUUID();await journal.record({type:'INTENT',operationId,id:currentId,buildingId:target.buildingId,expected:row,desiredPlans:desired});
    batchStage='CAS';const result=await journal.apply(operationId);if(result.status!=='UPDATED'||result.id!==currentId||result.receipt?.verified!==true)throw Error('BATCH_STOP_'+result.status);
