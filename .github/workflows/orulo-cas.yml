@@ -23,6 +23,7 @@ on:
       - 'test-support/orulo-cas/**'
       - 'supabase/migrations/*orulo_webhook_provenance.sql'
       - 'scripts/orulo-webhook-provenance*'
+      - 'scripts/orulo-v9-scram-staging-smoke.sh'
       - 'lib/orulo-webhook-core.js'
       - 'lib/orulo-webhook-provenance.js'
 permissions:
@@ -88,3 +89,15 @@ jobs:
       - name: V9 webhook adapter and commercial payload regression
         run: node --test scripts/orulo-webhook-provenance-adapters.test.mjs inventory-coordinates.test.js
 
+
+  v9-scram:
+    name: V9 isolated SCRAM identity and migration staging smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate dedicated SCRAM sessions with disposable PostgreSQL
+        run: bash scripts/orulo-v9-scram-staging-smoke.sh
