@@ -68,3 +68,45 @@ export function verifyScopeComparison(review,comparison){
     Object.entries(review.totals).some(([key,value])=>comparison?.[key]!==value))
   throw Error('POSTGRES_SCOPE_SERVER_COMPARISON_DIVERGENCE');
 }
+
+// Versioned diagnostics only. The operational executor supplies no external
+// attestor: neither an OUT_OF_SCOPE label nor a client-provided JSON flag is proof.
+// A future trusted reader must independently authenticate the writer, transaction
+// and exact transition. Even fixture-attested changes remain blocked by the
+// existing STRICT_GLOBAL_V1 server policy; this function cannot authorize writes.
+export function classifyBatchIntegrity(before,after,{targetIds=[],verified=[],attestExternal}={}){
+ const classifications=['AUTHORIZED_TARGET_CHANGE','EXTERNAL_CHANGE_VERIFIED','EXTERNAL_CHANGE_UNATTRIBUTED','UNEXPECTED_TARGET_CHANGE','SNAPSHOT_INCOMPLETE'];
+ const result={version:1,policy:'STRICT_GLOBAL_V1',review:null,changes:[],counts:Object.fromEntries(classifications.map(k=>[k,0])),blocked:true};
+ const add=record=>{result.changes.push(record);result.counts[record.classification]++;};
+ try{result.review=classifyCaptures(before,after);}catch(error){
+  add({uuid:null,classification:'SNAPSHOT_INCOMPLETE',reason:['POSTGRES_SCOPE_CAPTURE_INCOMPLETE','POSTGRES_SCOPE_RECORD_INVALID','POSTGRES_SCOPE_HASH_INCONSISTENCY'].includes(error.message)?error.message:'UNVERIFIABLE_SNAPSHOT',
+   beforeRecords:before?.records?.length??null,afterRecords:after?.records?.length??null});return result;
+ }
+ const targets=new Set(targetIds),receipts=new Map(verified.map(r=>[r.id,r]));
+ if(targets.size!==targetIds.length||receipts.size!==verified.length)add({uuid:null,classification:'UNEXPECTED_TARGET_CHANGE',reason:'DUPLICATE_TARGET_OR_RECEIPT'});
+ const validReceipt=(change,r)=>r?.status==='UPDATED'&&r.receipt?.verified===true&&r.receipt.id===change.uuid&&uuid.test(r.operationId||'')&&
+  change.before?.fullHash===r.receipt.beforeFullHash&&change.after?.fullHash===r.receipt.afterFullHash&&
+  change.before?.contentHash===r.receipt.expectedBeforeContentHash&&change.after?.contentHash===r.receipt.expectedAfterContentHash&&
+  r.readback?.fullHash===change.after?.fullHash&&r.readback?.contentHash===change.after?.contentHash;
+ for(const change of result.review.changes){
+  const record={...change,changedFields:change.type==='timestampOnly'?['updated_at']:null};
+  if(targets.has(change.uuid)||receipts.has(change.uuid)){
+   const receipt=receipts.get(change.uuid),ok=targets.has(change.uuid)&&validReceipt(change,receipt);
+   add({...record,classification:ok?'AUTHORIZED_TARGET_CHANGE':'UNEXPECTED_TARGET_CHANGE',changedFields:ok&&Array.isArray(receipt.changedFields)?[...receipt.changedFields]:record.changedFields,reason:ok?'MATCHED_AUTHORIZED_CAS_AND_READBACK':'MISSING_OR_DIVERGENT_AUTHORIZED_RECEIPT',operationId:receipt?.operationId??null});continue;
+  }
+  let proof;try{proof=typeof attestExternal==='function'?attestExternal(change):null;}catch{}
+  const attested=change.scope==='OUT_OF_SCOPE'&&proof?.kind==='INDEPENDENT_WRITER_ATTESTATION_V1'&&proof.uuid===change.uuid&&
+   typeof proof.process==='string'&&proof.process.length>0&&typeof proof.eventId==='string'&&proof.eventId.length>0&&
+   typeof proof.transactionId==='string'&&/^[1-9]\d*$/.test(proof.transactionId)&&proof.executorTransactionExcluded===true&&
+   proof.beforeFullHash===change.before?.fullHash&&proof.afterFullHash===change.after?.fullHash&&
+   Array.isArray(proof.changedFields)&&proof.changedFields.length>0&&proof.changedFields.every(f=>typeof f==='string'&&f.length>0);
+  add({...record,classification:attested?'EXTERNAL_CHANGE_VERIFIED':'EXTERNAL_CHANGE_UNATTRIBUTED',
+   changedFields:attested?[...proof.changedFields]:record.changedFields,
+   reason:attested?'INDEPENDENT_ATTESTATION_DIAGNOSTIC_ONLY':'NO_AUTHENTICATED_WRITER_AND_EXACT_TRANSITION_PROOF',
+   ...(attested?{origin:{process:proof.process,eventId:proof.eventId,transactionId:proof.transactionId}}:{})});
+ }
+ for(const r of verified)if(!result.review.changes.some(c=>c.uuid===r.id))add({uuid:r.id,classification:'UNEXPECTED_TARGET_CHANGE',reason:'RECEIPT_WITHOUT_MATCHING_SNAPSHOT_CHANGE',operationId:r.operationId??null});
+ if(!result.review.schemaMatch||!result.review.captureStable)add({uuid:null,classification:'SNAPSHOT_INCOMPLETE',reason:!result.review.schemaMatch?'SCHEMA_CHANGED':'CAPTURE_UNSTABLE'});
+ result.blocked=result.changes.some(c=>c.classification!=='AUTHORIZED_TARGET_CHANGE');
+ return result;
+}

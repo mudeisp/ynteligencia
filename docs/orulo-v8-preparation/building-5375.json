@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "mode": "PREPARATION_ONLY_NOT_AUTHORIZATION",
+  "buildingId": "5375",
+  "state": "SP",
+  "preparedAt": "2026-11-06T11:01:48.680Z",
+  "evidenceRunId": "42186120467",
+  "evidenceSha256": "57f3abf133b78c4261ca408941e3abf77f0de27e7799972d08bc1e35b8fa56af",
+  "uuids": [
+    "029ee566-28dd-4e91-969f-e3412d9f25f0",
+    "a52c9311-d646-44b4-a7f0-3664b6303033"
+  ],
+  "planIds": [
+    "235246",
+    "235247",
+    "235248",
+    "235249"
+  ],
+  "distinctPlans": 4,
+  "imageUrls": [
+    "https://static.orulo.com.br/images/properties/large/235246.JPG",
+    "https://static.orulo.com.br/images/properties/large/235247.JPG",
+    "https://static.orulo.com.br/images/properties/large/235248.JPG",
+    "https://static.orulo.com.br/images/properties/large/235249.JPG"
+  ],
+  "occurrences": 8,
+  "allowedField": "raw_data.building.floor_plans[matching existing id].image_url",
+  "targets": [
+    {
+      "uuid": "029ee566-28dd-4e91-969f-e3412d9f25f0",
+      "externalId": "orulo:5375:13254",
+      "expectedFullHash": "49815c19adbba722851471ef97af1444",
+      "expectedUpdatedAt": "2026-10-14 01:00:29.307+00",
+      "patches": [
+        {
+          "id": "235246",
+          "image_url": "https://static.orulo.com.br/images/properties/large/235246.JPG"
+        },
+        {
+          "id": "235247",
+          "image_url": "https://static.orulo.com.br/images/properties/large/235247.JPG"
+        },
+        {
+          "id": "235248",
+          "image_url": "https://static.orulo.com.br/images/properties/large/235248.JPG"
+        },
+        {
+          "id": "235249",
+          "image_url": "https://static.orulo.com.br/images/properties/large/235249.JPG"
+        }
+      ],
+      "current": {
+        "active": true,
+        "state": "SP",
+        "status": "Pronto novo",
+        "stage": "Pronto novo",
+        "price": "419500",
+        "area": "50.83",
+        "buildingStock": 9,
+        "typologyStock": 8
+      }
+    },
+    {
+      "uuid": "a52c9311-d646-44b4-a7f0-3664b6303033",
+      "externalId": "orulo:5375:13255",
+      "expectedFullHash": "73a2b66687c4c9009b063ff58281b4ae",
+      "expectedUpdatedAt": "2026-10-14 01:00:29.307+00",
+      "patches": [
+        {
+          "id": "235246",
+          "image_url": "https://static.orulo.com.br/images/properties/large/235246.JPG"
+        },
+        {
+          "id": "235247",
+          "image_url": "https://static.orulo.com.br/images/properties/large/235247.JPG"
+        },
+        {
+          "id": "235248",
+          "image_url": "https://static.orulo.com.br/images/properties/large/235248.JPG"
+        },
+        {
+          "id": "235249",
+          "image_url": "https://static.orulo.com.br/images/properties/large/235249.JPG"
+        }
+      ],
+      "current": {
+        "active": true,
+        "state": "SP",
+        "status": "Pronto novo",
+        "stage": "Pronto novo",
+        "price": "499900",
+        "area": "61.08",
+        "buildingStock": 9,
+        "typologyStock": 1
+      }
+    }
+  ],
+  "checks": [
+    {
+      "planId": "235246",
+      "url": "https://static.orulo.com.br/images/properties/large/235246.JPG",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "planId": "235247",
+      "url": "https://static.orulo.com.br/images/properties/large/235247.JPG",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "planId": "235248",
+      "url": "https://static.orulo.com.br/images/properties/large/235248.JPG",
+      "status": 206,
+      "format": "jpeg"
+    },
+    {
+      "planId": "235249",
+      "url": "https://static.orulo.com.br/images/properties/large/235249.JPG",
+      "status": 206,
+      "format": "jpeg"
+    }
+  ],
+  "source": "Existing Yincorp proxy to Orulo; current building/state/plan IDs matched; upstream failures may fall back, so future direct source verification remains mandatory.",
+  "writeEnabled": false,
+  "blockers": [
+    "No SQL authorization for this building is added by this proposal.",
+    "Global external-change attribution remains blocked until authoritative actor/transaction evidence is available.",
+    "Any changed row hash/stock/status/plan identity requires review and a new proposal.",
+    "Missing or changed source URL/image signature blocks recovery.",
+    "Historical recovery/uncertain intent or reused authorization blocks recovery.",
+    "Require fresh full-row CAS, individual verified receipt and matching readback; never retry an uncertain write."
+  ]
+}
