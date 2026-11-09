@@ -3,10 +3,10 @@ on:
   workflow_dispatch:
     inputs:
       stage:
-        description: Executar somente preflight ou circuito nacional após preflight
+        description: Preflight, circuito nacional ou descoberta isolada da API Orulo
         type: choice
         default: preflight
-        options: [preflight, national-readonly]
+        options: [preflight, national-readonly, source-discovery]
   pull_request:
     branches: [main]
     paths:
@@ -217,3 +217,62 @@ jobs:
             ${{ runner.temp }}/orulo-national-v2-output/simulation-console.txt
           if-no-files-found: ignore
           retention-days: 7
+
+  source-discovery:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' && inputs.stage == 'source-discovery' &&
+          github.ref == 'refs/heads/main' && github.repository == 'mudeisp/ynteligencia' &&
+          github.actor == 'mudeisp' && github.actor_id == '323805541' &&
+          github.triggering_actor == 'mudeisp' && github.run_attempt == '1' }}
+    needs: verify-package
+    runs-on: ubuntu-latest
+    environment: orulo-lote1
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f
+          persist-credentials: false
+      - name: Verify frozen source queue and pinned package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f"
+          sha256sum -c orulo-national-v2/handoff/PACKAGE-SHA256SUMS
+          (cd orulo-national-v2/manifest && sha256sum -c manifest.sha256)
+          (cd orulo-national-v2/handoff && sha256sum -c source-queue.sha256)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Discover authenticated source only without Supabase or CAS
+        id: discovery
+        shell: bash
+        env:
+          ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
+          ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$ORULO_CLIENT_ID" && test -n "$ORULO_CLIENT_SECRET" || { echo "::error::BLOCKER_ORULO_AUTH"; exit 1; }
+          umask 077
+          node scripts/orulo-national-source-readonly.mjs \
+            --queue orulo-national-v2/handoff/source-queue.json \
+            --queue-sha256 b6726aa08aca9673e4d76d10e405b071682b1c8ed88a8ce93a934392b814f11e \
+            --max-buildings 100 \
+            --output-dir "$RUNNER_TEMP/orulo-source-discovery"
+      - name: Print safe discovery summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib,collections
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'orulo-source-discovery/index.json'
+          if not p.is_file():
+              print('ORULO_SOURCE_DISCOVERY=NO_INDEX')
+          else:
+              x=json.loads(p.read_text())
+              summary={'status':x.get('status'),'examinedBuildings':len(x.get('results',[])),
+                'pendingBuildings':len(x.get('unexaminedBuildingIds',[])),
+                'requests':x.get('requests',{}),'productionWrites':0,'realCASCalls':0,
+                'sharedServiceBlocked':x.get('sharedServiceBlocked',False)}
+              print('ORULO_SOURCE_DISCOVERY='+json.dumps(summary,sort_keys=True))
+          PY
