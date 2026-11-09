@@ -147,6 +147,40 @@ jobs:
               code = 'PG_CLIENT_EXECUTION_ERROR'
           print('::error::ORULO_V2_SAFE_CONNECTION_DIAGNOSTIC=' + code)
           PY
+            # On successful authentication, compare frozen manifest against live hashes.
+            # No row content, UUID, or credential is emitted or uploaded.
+            python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          manifest = json.loads(Path('orulo-national-v2/manifest/national-v2.json').read_text())
+          expected = {str(x['id']): str(x['recordSha256']) for x in manifest['properties']}
+          sql = """BEGIN READ ONLY;
+          SET LOCAL search_path = pg_catalog;
+          SELECT id::text || E'\\t' || encode(sha256(convert_to(to_jsonb(p)::text,'UTF8')),'hex')
+          FROM public.properties p
+          WHERE source='novos' AND external_id LIKE 'orulo:%' ORDER BY id;
+          COMMIT;"""
+          try:
+              p = subprocess.run(['psql','service=orulo_v2_readonly','-X','-w','-qAt',
+                  '-v','ON_ERROR_STOP=1'],input=sql,text=True,capture_output=True,
+                  timeout=100,env=os.environ)
+              if p.returncode:
+                  print('::error::ORULO_V2_RECONCILIATION=QUERY_FAILED')
+              else:
+                  current = dict(line.split('\\t',1) for line in p.stdout.splitlines() if '\\t' in line)
+                  added = current.keys() - expected.keys()
+                  missing = expected.keys() - current.keys()
+                  changed = {k for k in expected.keys() & current.keys() if expected[k]!=current[k]}
+                  result = {'status':'READ_ONLY_RECONCILIATION','manifestCount':len(expected),
+                      'currentCount':len(current),'newIds':len(added),'missingIds':len(missing),
+                      'changedHashes':len(changed),'unchanged':len(expected.keys() & current.keys())-len(changed),
+                      'nationalDryRunStarted':False,'productionWrites':0}
+                  print('ORULO_V2_RECONCILIATION_COUNTS='+json.dumps(result,sort_keys=True))
+                  out = Path(os.environ['RUNNER_TEMP'])/'orulo-national-v2-reconciliation-summary.json'
+                  out.write_text(json.dumps(result,sort_keys=True)+'\\n')
+          except (OSError,ValueError,KeyError,subprocess.TimeoutExpired):
+              print('::error::ORULO_V2_RECONCILIATION=UNAVAILABLE')
+          PY
             exit 1
           fi
           if [ "$ORULO_V2_STAGE" = national-readonly ]; then
@@ -164,6 +198,7 @@ jobs:
           name: orulo-national-v2-readonly-summary-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/orulo-national-v2-dependency-status.json
+            ${{ runner.temp }}/orulo-national-v2-reconciliation-summary.json
             ${{ runner.temp }}/orulo-national-v2-output/stage-results.tsv
             ${{ runner.temp }}/orulo-national-v2-output/source-console.txt
             ${{ runner.temp }}/orulo-national-v2-output/export-console.txt
