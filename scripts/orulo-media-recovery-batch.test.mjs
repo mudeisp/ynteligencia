@@ -32,8 +32,8 @@ async function run(o={}){
 }
 const kinds=async r=>(await db.query('select kind from orulo_audit.entries where run_uuid=$1 order by sequence',[r.uuid])).rows.map(x=>x.kind);
 test('immutable manifests partition exactly 83 buildings and 314 UUIDs; phases 20/30/30/3; gates owner/manual/main/first attempt',()=>{
- const originalIds=['phase1-20','phase2-30-a','phase2-30-b','phase3-rest'];const all=originalIds.map(loadBatch);assert.deepEqual(all.map(b=>b.buildingIds.length),[20,30,30,3]);const terrarium=loadBatch('terrarium-51496-v7');assert.deepEqual(terrarium.buildingIds,['51496']);assert.equal(terrarium.targets.length,6);assert.ok(terrarium.targets.every(t=>t.buildingId==='51496'&&t.missingPlanIds.length===17));assert.equal(batchCatalog.batches['phase2-30-b'].released,false);assert.equal(new Set(all.flatMap(b=>b.buildingIds)).size,83);assert.equal(new Set(all.flatMap(b=>b.targets.map(t=>t.id))).size,314);validateBatchDispatch(env());
- for(const p of [{GITHUB_ACTOR:'other'},{GITHUB_REF:'refs/heads/other'},{GITHUB_EVENT_NAME:'push'},{GITHUB_RUN_ATTEMPT:'2'},{ORULO_BATCH_READY:''},{ORULO_BATCH_ID:'phase2-30-b'},{ORULO_BATCH_APPROVED_SHA:'b'.repeat(40)}])assert.throws(()=>validateBatchDispatch({...env(),...p}));
+ const originalIds=['phase1-20','phase2-30-a','phase2-30-b','phase3-rest'];const all=originalIds.map(loadBatch);assert.deepEqual(all.map(b=>b.buildingIds.length),[20,30,30,3]);const terrarium=loadBatch('terrarium-51496-v7');assert.deepEqual(terrarium.buildingIds,['51496']);assert.equal(terrarium.targets.length,6);assert.ok(terrarium.targets.every(t=>t.buildingId==='51496'&&t.missingPlanIds.length===17));assert.equal(batchCatalog.batches['phase2-30-b'].released,true);assert.equal(new Set(all.flatMap(b=>b.buildingIds)).size,83);assert.equal(new Set(all.flatMap(b=>b.targets.map(t=>t.id))).size,314);validateBatchDispatch(env());
+ for(const p of [{GITHUB_ACTOR:'other'},{GITHUB_REF:'refs/heads/other'},{GITHUB_EVENT_NAME:'push'},{GITHUB_RUN_ATTEMPT:'2'},{ORULO_BATCH_READY:''},{ORULO_BATCH_ID:'phase3-rest'},{ORULO_BATCH_APPROVED_SHA:'b'.repeat(40)}])assert.throws(()=>validateBatchDispatch({...env(),...p}));
  const w=readFileSync(new URL('../.github/workflows/orulo-batch-manual.yml',import.meta.url),'utf8');assert.match(w,/workflow_dispatch:/);assert.match(w,/group: orulo-lote1-production/);assert.match(w,/ref: \$\{\{ github.workflow_sha \}\}/);assert.doesNotMatch(w,/schedule:|--write|id-token:|aws-actions/);
 });
 test('registration push is self-file/main only; registration is inert and all operational jobs require manual owner/main/first attempt',()=>{
@@ -54,7 +54,7 @@ test('registration push is self-file/main only; registration is inert and all op
   for(const patch of [{event_name:'push'},{event_name:'pull_request'},{event_name:'schedule'},{event_name:'workflow_run'},{ref:'refs/heads/feature'},{actor:'other'},{actor_id:'1'},{triggering_actor:'other'},{run_attempt:'2'}])assert.equal(evaluate(job,{...manual,...patch}),false,job+JSON.stringify(patch));
  }
  assert.equal(evaluate('register',{...manual,event_name:'push'}),true);assert.equal(evaluate('register',manual),false);assert.equal(evaluate('register',{...manual,event_name:'push',ref:'refs/heads/feature'}),false);
- for(const id of ['phase2-30-b','phase3-rest']){assert.equal(batchCatalog.batches[id].released,false);assert.throws(()=>validateBatchDispatch({...env(),ORULO_BATCH_ID:id}),/PHASE_NOT_RELEASED/);}
+ assert.equal(batchCatalog.batches['phase2-30-b'].released,true);validateBatchDispatch({...env(),ORULO_BATCH_ID:'phase2-30-b'});assert.equal(batchCatalog.batches['phase3-rest'].released,false);assert.throws(()=>validateBatchDispatch({...env(),ORULO_BATCH_ID:'phase3-rest'}),/PHASE_NOT_RELEASED/);
 });
 test('multiple buildings and plans: fresh baseline, durable INTENT, atomic CAS and full readback preserve existing images and commercial data',async()=>{
  const r=await run();if(r.error)throw r.error;assert.equal(r.result.rowsWritten,2);assert.equal(r.result.nextBatchAuthorized,false);assert.equal(r.result.recoveredImageOccurrences,targets.reduce((n,t)=>n+t.missingPlanIds.length,0));
@@ -159,7 +159,7 @@ test('original 33 UUID manifest safely narrows to 30 UUIDs/18 buildings/122 miss
  for(const t of r.plan.targets){assert.ok(!completedIds.includes(t.id));assert.deepEqual(t.patches.map(p=>p.id).sort(),batch.targets.find(x=>x.id===t.id).missingPlanIds);}
  assert.equal((await db.query('select md5(jsonb_agg(to_jsonb(p) order by id)::text) h from public.properties p')).rows[0].h,r.fingerprint);
  assert.deepEqual(await kinds(r),['START','CLIENT_READBACK','CLIENT_STOP']);
- for(const id of ['phase2-30-b','phase3-rest'])assert.equal(batchCatalog.batches[id].released,false);
+ assert.equal(batchCatalog.batches['phase2-30-b'].released,true);assert.equal(batchCatalog.batches['phase3-rest'].released,false);
 });
 test('approval view is compact, accurate and secret-free; full patches remain in the journal and SQL remains unchanged',async()=>{
  let view,original;
