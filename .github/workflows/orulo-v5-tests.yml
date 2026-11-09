@@ -1,0 +1,20 @@
+name: Orulo V5 queue safety tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/orulo-v5-*.mjs'
+      - '.github/workflows/orulo-v5-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run read-only queue and artifact verification tests
+        run: node --test scripts/orulo-v5-queue.test.mjs scripts/orulo-v5-reports.test.mjs scripts/orulo-v5-artifacts.test.mjs
