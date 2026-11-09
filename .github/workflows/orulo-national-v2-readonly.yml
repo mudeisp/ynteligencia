@@ -111,7 +111,44 @@ jobs:
           export PGSERVICEFILE="$RUNNER_TEMP/orulo-v2-pg/pg_service.conf"
           export PGPASSFILE="$RUNNER_TEMP/orulo-v2-pg/pgpass"
           export PGCONNECT_TIMEOUT=15
-          python3 scripts/orulo-national-v2-pg-preflight.py
+          if ! python3 scripts/orulo-national-v2-pg-preflight.py; then
+            # Diagnostic is read-only and prints fixed categories only, never libpq stderr.
+            python3 - <<'PY'
+          import os, subprocess
+          try:
+              p = subprocess.run(
+                  ['psql', 'service=orulo_v2_readonly', '-X', '-w', '-qAt',
+                   '-v', 'ON_ERROR_STOP=1', '-c', 'SELECT 1'],
+                  capture_output=True, text=True, timeout=25, env=os.environ)
+              err = p.stderr.lower()
+              if p.returncode == 0:
+                  code = 'PG_CONNECT_OK_PREFLIGHT_SQL_FAILED'
+              elif 'password authentication failed' in err or 'no password supplied' in err or 'fe_sendauth' in err:
+                  code = 'PG_AUTH_PASSWORD_OR_PGPASS'
+              elif 'tenant or user not found' in err or 'invalid tenant' in err:
+                  code = 'PG_POOLER_TENANT_OR_USER'
+              elif 'could not translate host name' in err or 'name or service not known' in err:
+                  code = 'PG_DNS_FAILURE'
+              elif 'timeout' in err or 'timed out' in err:
+                  code = 'PG_NETWORK_TIMEOUT'
+              elif 'connection refused' in err or 'network is unreachable' in err or 'no route to host' in err:
+                  code = 'PG_NETWORK_UNREACHABLE'
+              elif 'no pg_hba.conf entry' in err or 'ssl' in err or 'certificate' in err:
+                  code = 'PG_TLS_OR_ACCESS_POLICY'
+              elif 'role ' in err and 'does not exist' in err:
+                  code = 'PG_ROLE_NOT_FOUND'
+              elif 'permission denied' in err:
+                  code = 'PG_PERMISSION_DENIED'
+              else:
+                  code = 'PG_CONNECTION_OTHER'
+          except subprocess.TimeoutExpired:
+              code = 'PG_NETWORK_TIMEOUT'
+          except OSError:
+              code = 'PG_CLIENT_EXECUTION_ERROR'
+          print('::error::ORULO_V2_SAFE_CONNECTION_DIAGNOSTIC=' + code)
+          PY
+            exit 1
+          fi
           if [ "$ORULO_V2_STAGE" = national-readonly ]; then
             bash scripts/orulo-national-operational-readonly.sh --service orulo_v2_readonly --output-dir "$RUNNER_TEMP/orulo-national-v2-output"
           fi
