@@ -1,0 +1,64 @@
+name: Orulo National V2 - operational read-only
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/orulo-national-v2-readonly.yml'
+      - 'scripts/orulo-national-*'
+      - 'orulo-national-v2/**'
+permissions:
+  contents: read
+concurrency:
+  group: orulo-national-v2-readonly
+  cancel-in-progress: false
+jobs:
+  verify-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify original V2 package and hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f scripts/orulo-national-operational-readonly.sh || { echo "::error::BLOCKER_ORIGINAL_RUNNER_NOT_COMMITTED"; exit 1; }
+          test -f orulo-national-v2/handoff/PACKAGE-SHA256SUMS || { echo "::error::BLOCKER_ORIGINAL_PACKAGE_NOT_COMMITTED"; exit 1; }
+          sha256sum -c orulo-national-v2/handoff/PACKAGE-SHA256SUMS
+      - name: Run original transfer tests
+        run: node --test scripts/orulo-national-transfer.test.mjs
+  national-readonly:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1
+    needs: verify-package
+    runs-on: ubuntu-latest
+    environment: orulo-lote1
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Run original operational circuit
+        shell: bash
+        env:
+          ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
+          ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
+          ORULO_V2_PG_SERVICE_CONF: ${{ secrets.ORULO_V2_PG_SERVICE_CONF }}
+          ORULO_V2_PGPASS: ${{ secrets.ORULO_V2_PGPASS }}
+        run: |
+          set -euo pipefail
+          test -n "$ORULO_CLIENT_ID" && test -n "$ORULO_CLIENT_SECRET" || { echo "::error::BLOCKER_ORULO_AUTH"; exit 1; }
+          test -n "$ORULO_V2_PG_SERVICE_CONF" && test -n "$ORULO_V2_PGPASS" || { echo "::error::BLOCKER_READONLY_PG_PROFILE"; exit 1; }
+          umask 077
+          mkdir -p "$HOME/.pg"
+          printf '%s' "$ORULO_V2_PG_SERVICE_CONF" > "$HOME/.pg/pg_service.conf"
+          printf '%s' "$ORULO_V2_PGPASS" > "$HOME/.pg/pgpass"
+          export PGSERVICEFILE="$HOME/.pg/pg_service.conf" PGPASSFILE="$HOME/.pg/pgpass"
+          bash scripts/orulo-national-operational-readonly.sh --service orulo_v2_readonly --output-dir "$RUNNER_TEMP/orulo-national-v2-output"
+      - name: Upload private audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orulo-national-v2-readonly-${{ github.run_id }}
+          path: ${{ runner.temp }}/orulo-national-v2-output/
+          if-no-files-found: ignore
+          retention-days: 7
