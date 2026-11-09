@@ -24,7 +24,7 @@ AS $function$
   ), '{batches,phase2-30-b,released}', 'true'::jsonb, false),
     '{batches,phase3-rest,released}', 'true'::jsonb, false
   );
-$function$
+$function$;
 
 DO $verify$
 BEGIN
