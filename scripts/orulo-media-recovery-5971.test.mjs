@@ -53,7 +53,7 @@ async function fixture(t,options={}){
 }
 test('exact proposal bytes, building, UUID and plan IDs are immutable; tampered hash rejected',()=>{
  assert.equal(proposal5971().proposalHash,PROPOSAL_5971_SHA);assert.equal(entry5971().hash,'7b05ead9d4583ae07682ffda7d52fe490ca7450710879d2066b1cea467e7f188');
- assert.deepEqual(loadBatch(PILOT_5971),manifest5971());assert.equal(Object.keys(batchCatalog.batches).length,4);
+ assert.deepEqual(loadBatch(PILOT_5971),manifest5971());assert.deepEqual(Object.keys(batchCatalog.batches).sort(),['phase1-20','phase2-30-a','phase2-30-b','phase3-rest','terrarium-51496-v7'].sort());
  assert.throws(()=>proposal5971(Buffer.from(proposal5971().proposalText+' ')),/HASH_MISMATCH/);
  for(const change of [{id:'00000000-0000-4000-8000-000000000001'},{raw_data:{building_id:'1',building:{floor_plans:[{id:'251614'},{id:'251615'}]}}}])assert.throws(()=>validate5971Row({...{id:UUID_5971,state:'SP',source:'novos',active:true,raw_data:{building_id:'5971',building:{floor_plans:[{id:'251614'},{id:'251615'}]}}},...change}));
 });
