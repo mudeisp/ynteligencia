@@ -30,7 +30,7 @@ begin
  update orulo_audit.v5_approvals set expires_at=approved_time+interval '1 hour', approved_commit_sha=repeat('c',40) where manifest_hash=h;
  if orulo_audit.v5_staging_authorization_check(h,rid,'999','1001') then
    raise exception 'COMMIT_MISMATCH_PASSED'; end if;
- if has_function_privilege('public'::regrole,'orulo_audit.v5_staging_authorization_check(text,uuid,text,text)','EXECUTE') then
+ if exists (select 1 from pg_proc p, lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where p.oid='orulo_audit.v5_staging_authorization_check(text,uuid,text,text)'::regprocedure and a.grantee=0 and a.privilege_type='EXECUTE') then
    raise exception 'PUBLIC_EXECUTE_GRANTED'; end if;
 end $test$;
 rollback;
