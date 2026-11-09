@@ -37,7 +37,7 @@ begin
  then raise exception 'V5_UNEXPECTED_RLS_POLICY'; end if;
  if not (select relrowsecurity from pg_class where oid='orulo_audit.v5_manifests'::regclass)
  then raise exception 'V5_RLS_DISABLED'; end if;
- if has_table_privilege('public','orulo_audit.v5_manifests','INSERT')
+ if exists(select 1 from information_schema.role_table_grants where table_schema='orulo_audit' and table_name='v5_manifests' and grantee='PUBLIC' and privilege_type in ('INSERT','UPDATE','DELETE'))
  then raise exception 'V5_PUBLIC_WRITE_GRANT'; end if;
 end $test$;
 rollback;
