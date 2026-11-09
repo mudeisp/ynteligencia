@@ -273,6 +273,20 @@ jobs:
               summary={'status':x.get('status'),'examinedBuildings':len(x.get('results',[])),
                 'pendingBuildings':len(x.get('unexaminedBuildingIds',[])),
                 'requests':x.get('requests',{}),'productionWrites':0,'realCASCalls':0,
-                'sharedServiceBlocked':x.get('sharedServiceBlocked',False)}
+                'sharedServiceBlocked':x.get('sharedServiceBlocked',False),
+                'incidentCodes':dict(collections.Counter(
+                    str(i.get('code','UNKNOWN')) for i in x.get('incidents',[]))),
+                'incidentHttpStatuses':dict(collections.Counter(
+                    str(i.get('httpStatus','UNKNOWN')) for i in x.get('incidents',[]) if i.get('httpStatus') is not None))}
+              # Per-building incidents are sanitized to fixed code and HTTP status only.
+              for r in x.get('results',[])[:3]:
+                  rp=p.parent/'buildings'/str(r['buildingId'])/'result.json'
+                  if rp.is_file():
+                      b=json.loads(rp.read_text())
+                      for i in b.get('incidents',[]):
+                          code=str(i.get('code','UNKNOWN'))
+                          if code not in ('SOURCE_CREDENTIALS_UNAVAILABLE','SOURCE_AUTH_HTTP_ERROR','SOURCE_AUTH_INVALID','SOURCE_NETWORK_OR_TIMEOUT','SOURCE_HTTP_ERROR','SOURCE_INVALID_JSON','SOURCE_INVALID_RESPONSE','SOURCE_INCOMPLETE_RESPONSE','SOURCE_EVIDENCE_ERROR'):
+                              code='SOURCE_EVIDENCE_ERROR'
+                          summary.setdefault('buildingIncidentCodes',[]).append({'code':code,'httpStatus':i.get('httpStatus'),'scope':i.get('scope')})
               print('ORULO_SOURCE_DISCOVERY='+json.dumps(summary,sort_keys=True))
           PY
