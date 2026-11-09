@@ -1,0 +1,55 @@
+name: Orulo five source verification (read only)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/orulo-five-live-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: ${{ github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read only OAuth and five Órulo floor plans
+        env:
+          ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
+          ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {fetchOruloFloorPlans} from './orulo-floor-plans.js';
+          if (!process.env.ORULO_CLIENT_ID || !process.env.ORULO_CLIENT_SECRET) throw Error('ORULO_CREDENTIALS_NOT_AVAILABLE');
+          const auth = await fetch('https://www.orulo.com.br/oauth/token', {
+            method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),
+            headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:new URLSearchParams({grant_type:'client_credentials',client_id:process.env.ORULO_CLIENT_ID,client_secret:process.env.ORULO_CLIENT_SECRET})
+          });
+          if(!auth.ok)throw Error('ORULO_AUTH_HTTP_'+auth.status);
+          const {access_token}=await auth.json();
+          if(typeof access_token!=='string'||!access_token)throw Error('ORULO_AUTH_RESPONSE_INVALID');
+          let verified=0;
+          for(const buildingId of ['51496','41230','40580','5422','73923']){
+            try {
+              const plans=await fetchOruloFloorPlans(buildingId,{Authorization:'Bearer '+access_token,Accept:'application/json'},{
+                fetchImpl:(url,options)=>fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(15000)})
+              });
+              const candidates=plans.filter(p=>typeof p.image_url==='string'&&/^https:\/\/static\.orulo\.com\.br\/images\/properties\//.test(p.image_url));
+              let valid=false;
+              if(candidates.length){
+                const response=await fetch(candidates[0].image_url,{headers:{Range:'bytes=0-0',Accept:'image/*'},redirect:'error',signal:AbortSignal.timeout(15000)});
+                valid=response.ok && (response.headers.get('content-type')||'').startsWith('image/');
+              }
+              console.log(JSON.stringify({buildingId,plans:plans.length,withImage:candidates.length,imageVerified:valid}));
+              if(valid)verified++;
+            }catch(e){console.log(JSON.stringify({buildingId,error:String(e.message).slice(0,100)}));}
+          }
+          console.log(JSON.stringify({verifiedBuildings:verified,totalBuildings:5,writes:0}));
+          if(verified!==5)process.exitCode=1;
+          NODE
