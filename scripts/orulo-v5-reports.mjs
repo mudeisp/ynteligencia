@@ -8,7 +8,7 @@ export function queueFromVerifiedReports(reports,{batchSize=10}={}){
  for(const report of reports){
   if(!report || report.writes!==0 || !Array.isArray(report.items) ||
     !['COMPLETED','COMPLETED_WITH_SOURCE_ERRORS'].includes(report.status) ||
-    !/^[A-F0-9]{2}$/.test(report.state||'') || !report.batchId)
+    !/^[A-Z]{2}$/.test(report.state||'') || !report.batchId)
       throw Error('V5_UNVERIFIED_OR_INCOMPLETE_REPORT');
   for(const row of report.items){
    const buildingId=String(row.buildingId||'');
