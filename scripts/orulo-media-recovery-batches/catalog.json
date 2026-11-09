@@ -27,7 +27,7 @@
       "file": "phase3-rest.json",
       "hash": "86de0194d405759242ade9a2059a4575def36e90e33e8fd43f8d1eabcb5520fc",
       "phase": 3,
-      "released": false,
+      "released": true,
       "prerequisite": "phase2-30-b"
     },
     "terrarium-51496-v7": {
