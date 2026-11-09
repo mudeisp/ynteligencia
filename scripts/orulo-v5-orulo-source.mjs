@@ -1,30 +1,34 @@
-// Read-only Órulo API adapter. Requires explicit endpoint and a server-side token.
-// Does not infer undocumented Órulo response shapes or leak credentials.
-const numeric=v=>typeof v==='string'&&/^[1-9][0-9]*$/.test(v);
-const https=v=>{const u=new URL(v);if(u.protocol!=='https:')throw Error('ORULO_HTTPS_REQUIRED');return u;};
-export function createOruloSource({baseUrl,token,fetchImpl=fetch,timeoutMs=12000}={}) {
- if(!baseUrl||!token||typeof token!=='string'||typeof fetchImpl!=='function')throw Error('ORULO_CONFIG_REQUIRED');
- const base=https(baseUrl);
+// Production Órulo OAuth + floor-plans adapter. No database writes.
+import {fetchOruloFloorPlans} from '../orulo-floor-plans.js';
+export function createOruloSource({clientId,clientSecret,fetchImpl=fetch,timeoutMs=15000}={}) {
+ if(!clientId||!clientSecret||typeof fetchImpl!=='function')throw Error('ORULO_CONFIG_REQUIRED');
  if(!Number.isInteger(timeoutMs)||timeoutMs<1000||timeoutMs>60000)throw Error('ORULO_TIMEOUT_INVALID');
- return async function source(buildingId) {
-  if(!numeric(buildingId))throw Error('ORULO_BUILDING_ID_INVALID');
-  const endpoint=new URL(base.href.replace(/\/$/,'')+'/buildings/'+encodeURIComponent(buildingId));
-  if(endpoint.origin!==base.origin)throw Error('ORULO_ORIGIN_MISMATCH');
-  const response=await fetchImpl(endpoint.href,{method:'GET',headers:{Authorization:'Bearer '+token,Accept:'application/json'},signal:AbortSignal.timeout(timeoutMs),redirect:'error'});
-  if(!response.ok)throw Error('ORULO_SOURCE_HTTP_'+response.status);
-  const data=await response.json();
-  const building=data?.building??data?.data?.building??data;
-  if(String(building?.id)!==buildingId||!Array.isArray(building?.floor_plans))
-    throw Error('ORULO_SOURCE_SCHEMA_MISMATCH');
-  return {floor_plans:building.floor_plans};
+ let token=null;
+ const call=async(url,options={})=>fetchImpl(url,{...options,redirect:'error',signal:AbortSignal.timeout(timeoutMs)});
+ return async buildingId=>{
+  if(!/^[1-9][0-9]*$/.test(String(buildingId)))throw Error('ORULO_BUILDING_ID_INVALID');
+  if(!token){
+   const auth=await call('https://www.orulo.com.br/oauth/token',{
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({client_id:clientId,client_secret:clientSecret,grant_type:'client_credentials'}).toString()
+   });
+   if(!auth.ok)throw Error('ORULO_AUTH_HTTP_'+auth.status);
+   const data=await auth.json();
+   if(typeof data?.access_token!=='string'||!data.access_token)throw Error('ORULO_AUTH_INVALID_RESPONSE');
+   token=data.access_token;
+  }
+  const plans=await fetchOruloFloorPlans(buildingId,{Authorization:'Bearer '+token,Accept:'application/json'},{fetchImpl:call});
+  if(!Array.isArray(plans)||plans.some(p=>p?.id==null)||new Set(plans.map(p=>String(p.id))).size!==plans.length)
+   throw Error('ORULO_SOURCE_SCHEMA_MISMATCH');
+  return {floor_plans:plans};
  };
 }
 export function createImageChecker({fetchImpl=fetch,timeoutMs=10000}={}) {
  return async url=>{
   try {
-   const parsed=https(url);
-   if(parsed.username||parsed.password||!parsed.hostname)return false;
-   const response=await fetchImpl(parsed.href,{method:'GET',headers:{Range:'bytes=0-0',Accept:'image/*'},redirect:'error',signal:AbortSignal.timeout(timeoutMs)});
+   const u=new URL(url);
+   if(u.protocol!=='https:'||u.hostname!=='static.orulo.com.br'||!u.pathname.startsWith('/images/properties/')||u.username||u.password||u.port||u.search||u.hash)return false;
+   const response=await fetchImpl(u.href,{method:'GET',headers:{Range:'bytes=0-0',Accept:'image/*'},redirect:'error',signal:AbortSignal.timeout(timeoutMs)});
    return response.ok && (response.headers.get('content-type')??'').toLowerCase().startsWith('image/');
   }catch{return false;}
  };
