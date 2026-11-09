@@ -1,0 +1,17 @@
+{
+  "existingRegressionCommand": "npm test --prefix test-support/orulo-cas",
+  "existingRegressionTests": 153,
+  "existingRegressionPass": 153,
+  "existingRegressionFail": 0,
+  "existingRegressionDurationMs": 52749.55799,
+  "newPackagerTests": 6,
+  "newPackagerTestsPass": 6,
+  "packagerCommand": "python scripts/orulo-national-v2.test.py",
+  "pgliteVersion": "0.5.15",
+  "productionConnectionsDuringTests": 0,
+  "manifestSha256": "f94cf3139fa2516d55b98c0e242c64193107f0f65be924f36c936dc7952ab070",
+  "reproducibility": "PASS: diff -qr /workspace/orulo-sealed /workspace/orulo-reproduced returned 0; all 31 generated files byte-identical",
+  "hashVerification": "PASS",
+  "nationalEndToEndDryRun": "UNKNOWN",
+  "productionWrites": 0
+}

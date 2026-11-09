@@ -1,0 +1,1 @@
+[{"code":"SOURCE_SECRET_UNAVAILABLE","blocks":["source-validation","patches","complete-dry-run"]},{"code":"PROXY_PROVENANCE_UNRELIABLE","blocks":["proxy-based-eligibility"]},{"code":"NATIONAL_SCOPE_NOT_IN_SERVER_CATALOG","blocks":["future-execution"]},{"code":"FULL_CAS_EXPECTED_ROWS_NOT_CAPTURED","blocks":["future-execution"]}]

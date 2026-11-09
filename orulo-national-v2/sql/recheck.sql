@@ -1,0 +1,1 @@
+BEGIN READ ONLY; SET LOCAL TIME ZONE 'UTC'; SELECT clock_timestamp() observed_at,count(*) properties,encode(sha256(convert_to(string_agg(id::text||':'||encode(sha256(convert_to(to_jsonb(p)::text,'UTF8')),'hex'),E'\n' ORDER BY id),'UTF8')),'hex') inventory_sha256 FROM public.properties p WHERE source='novos' AND external_id LIKE 'orulo:%'; COMMIT;

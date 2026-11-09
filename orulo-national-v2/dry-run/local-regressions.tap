@@ -1,0 +1,343 @@
+
+> orulo-cas-tests@1.0.0 test
+> node --test ../../scripts/orulo-media-recovery-5971.test.mjs ../../scripts/orulo-media-recovery-batch.test.mjs ../../scripts/orulo-media-recovery-pilot.test.mjs ../../scripts/orulo-media-recovery-scope.test.mjs ../../scripts/orulo-media-recovery-postgres.test.mjs ../../scripts/orulo-media-cas.test.mjs ../../scripts/orulo-media-recovery-actions.test.mjs ../../scripts/orulo-media-recovery-stop.test.mjs ../../scripts/orulo-media-recovery.test.mjs ../../orulo-floor-plans.test.js
+
+✔ fetchOruloFloorPlans requests official endpoint and normalizes best image (1.721601ms)
+✔ mergeFloorPlans enriches existing records without losing descriptions (0.306109ms)
+✔ SQL CAS success preserves all non-authorized fields (37.002044ms)
+✔ SQL rejects a concurrent content update even when updated_at did not change (9.079432ms)
+✔ SQL missing PK and repeated operation (9.004009ms)
+✔ SQL stale second writer with a different image cannot overwrite the first (6.92318ms)
+✔ SQL cannot change descriptions, plan order/count, price or other fields (11.461833ms)
+✔ SQL enforces service_role and database-side SP batch scope (33.474625ms)
+✔ SQL rolls back trigger-induced changes to protected fields (12.828742ms)
+✔ client fresh read -> RPC -> readback; durable intent and known result (7.81124ms)
+✔ client timeout after commit resolves through readback without retry or false attribution (7.288968ms)
+✔ client ambiguous timeout without observed commit stays blocked; no automatic retry (5.693886ms)
+✔ client concurrent update returns conflict and never overwrites it (5.81652ms)
+✔ client unexplained post-write readback divergence halts immediately (6.142599ms)
+✔ image enrichment preserves all declared plans and metadata (0.171157ms)
+✔ explicit authorized list is mandatory before any network call (0.888883ms)
+✔ ledger is exclusive, durable and reusable only through explicit manual reconciliation (3.753587ms)
+✔ SQL timestamp-only concurrent update is a conflict, not a version-only proof (5.783461ms)
+✔ client post-commit readback failure stays ambiguous without a retry (4.119587ms)
+✔ client refuses mutation if the durable intent cannot be saved (2.743082ms)
+✔ client missing row is recorded without a mutating request (4.37603ms)
+✔ exact proposal bytes, building, UUID and plan IDs are immutable; tampered hash rejected (2.923513ms)
+✔ source identity and image URLs are fixed; no other provider fields enter patches (1.39419ms)
+✔ one exact UUID receives two image_url fields with audited receipt/readback; historical events unchanged (2205.72211ms)
+✔ wrong UUID, building or plant in the current row cannot be authorized (3473.309848ms)
+✔ forged proposal hash, content, UUID, plan and non-image fields fail before any CAS (5558.753172ms)
+✔ price or stock change after plan blocks authorization rather than accepting stale snapshot (2112.323826ms)
+✔ concurrent commercial change after authorization blocks pre-CAS and preserves it (1167.811976ms)
+✔ forged stale expected row, metadata or extra image field in durable INTENT cannot bypass server checks (4415.168935ms)
+✔ row change between INTENT and CAS is a conflict and consumes no unverified success (1086.781806ms)
+✔ repeated administrative authorization and repeated apply are rejected without another mutation (1191.423719ms)
+✔ uncertain acknowledgement after commit recovers durable receipt once without automatic retry (1137.878354ms)
+✔ a new run cannot reuse the consumed recovery even if another actor removes the image fields (1167.239553ms)
+✔ a trigger changing updated_at rolls back both images atomically rather than permitting another field (1175.430189ms)
+✔ uncertain response before commit leaves pending INTENT with no partial image mutation (1182.517316ms)
+✔ non-JPEG or failure of the second image stops the complete proposal with zero CAS (2471.812261ms)
+✔ divergent readback after commit halts and retains the individual receipt for reconciliation (1301.208525ms)
+✔ SQL preparation has no property DML, new ledger or production workflow; drift fails closed (1272.402725ms)
+✔ the adapted SQL retains the historical batch path and its existing receipt semantics (1277.320918ms)
+✔ manual main dispatch, explicit storage approval and first attempt are mandatory (1.586548ms)
+✔ single-owner Environment accepts no reviewers while retaining no admin bypass and main-only policy (0.315503ms)
+✔ GitHub protection lookup is read-only and never requests secret values (1.124075ms)
+✔ approved source and complete immutable 99-building manifest are required (0.531838ms)
+✔ secret handling returns presence only and rejects missing bindings (0.868021ms)
+✔ durable store needs valid account/config, private bucket, encryption and versioning (0.405908ms)
+✔ remote acknowledgement and matching version/checksum are required (0.891776ms)
+✔ immutable JSONL journal preserves root events, order and hash chain (3.8358ms)
+✔ ambiguous journal failure freezes subsequent appends without retry (0.463825ms)
+✔ lost acknowledgement after remote persistence keeps evidence and forbids automatic reuse (0.689122ms)
+✔ concurrent appends freeze both callers before either can proceed to CAS (0.530355ms)
+✔ CAS cannot issue a mutation before the durable INTENT acknowledgement (7.817017ms)
+✔ failed remote INTENT prevents CAS entirely (0.419989ms)
+✔ CLI adapter uses conditional encrypted writes, no retries and removes local scratch (1.537585ms)
+✔ PostgreSQL preflight requires durable ACKs and never enables writes (1.743664ms)
+✔ workflow is manual-only, protected, SHA-pinned and has no operational backfill step (0.403034ms)
+✔ only the pinned owner account can initiate or trigger the dispatch (0.19288ms)
+✔ automatic events and every ref other than the main branch fail closed (0.437676ms)
+✔ invalid initiator, automatic event or wrong ref cannot reach GitHub metadata or durable store (0.274101ms)
+✔ single-owner guard is repeated before secret access; protected job has matching immutable guards (0.250335ms)
+✔ audit journal records the verified owner without leaking credentials or enabling writes (0.695933ms)
+✔ immutable manifests partition exactly 83 buildings and 314 UUIDs; phases 20/30/30/3; gates owner/manual/main/first attempt (4.896891ms)
+✔ registration push is self-file/main only; registration is inert and all operational jobs require manual owner/main/first attempt (1.736353ms)
+✔ multiple buildings and plans: fresh baseline, durable INTENT, atomic CAS and full readback preserve existing images and commercial data (162.729701ms)
+✔ authorization absent: zero CAS, unchanged rows, durable STOP and administrative reconciliation preserve original events (18.458574ms)
+✔ RPC failure after START or inaccessible source halts before plan or CAS (24.862655ms)
+✔ expired authorization, reused approval and service_role privilege escalation rejected (20.384421ms)
+✔ whole-row concurrency conflict preserves competing update and stops before next UUID (41.915221ms)
+✔ timeout after commit: one CAS, read-only recovery, frozen journal and no retry (40.583204ms)
+✔ readback failure after trusted commit records one confirmed row separately from zero verified rows (42.926066ms)
+✔ unexpected global insertion blocks FINISHED with durable evidence (77.872054ms)
+✔ V8 records exact target paths and CAS attribution in the existing hash-chained CLIENT_READBACK (59.967716ms)
+✔ V8 retains multiple external changes and blocks without actor provenance, despite valid target receipts (62.547443ms)
+✔ V8 failed global readback capture reports SNAPSHOT_INCOMPLETE and cannot finish or retry CAS (59.233555ms)
+✔ hash-chain tamper rejected before authorization or CAS (5.60905ms)
+✔ mismatched/duplicate source IDs, untrusted/unavailable/invalid images rejected; existing images skipped (21.518792ms)
+✔ private admin stays inaccessible to all API roles; audited CAS only service; duplicate stored IDs rejected (2.63478ms)
+✔ safe source diagnostics distinguish OAuth HTTP/timeout, plan HTTP/JSON and CDN failure without secrets or retries (3.444184ms)
+✔ source failure persists exact safe stage/building in STOP and never authorizes or applies CAS (11.887703ms)
+✔ original 33 UUID manifest safely narrows to 30 UUIDs/18 buildings/122 missing plans after three rows are filled (51.755253ms)
+✔ approval view is compact, accurate and secret-free; full patches remain in the journal and SQL remains unchanged (60.636779ms)
+✔ building 20333 plan 632499: uppercase JPG keeps strict image request controls (1.034341ms)
+✔ extension casing accepts existing allowed image types without changing host/path casing (0.984516ms)
+✔ malicious or out-of-scope URLs are refused before any network request (0.440801ms)
+✔ uppercase extension still rejects redirects, unavailable responses and non-image bytes (0.869604ms)
+✔ SQL batch_merge accepts reviewed uppercase extensions and preserves every other restriction (18.988928ms)
+✔ uppercase URLs pass private authorization, audited CAS and readback; malicious URLs never authorize (112.530475ms)
+✔ pilot gate rejects unset readiness, unapproved control SHA, non-owner/ref/rerun and locks first manifest member (2.281721ms)
+✔ full pilot success: explicit admin event then fresh baseline, durable INTENT/CAS_RESULT, readback and finish (164.3046ms)
+✔ no authorization times out with zero CAS; service_role cannot invoke admin authorization (23.810628ms)
+✔ owner summary presents filled SQL without authorizing; explicit admin execution uses existing function and rejects reuse (78.647075ms)
+✔ filled authorization rejects unsafe identifiers and a reconciled old plan without emitting authorization (14.056504ms)
+✔ target RPC timeout before plan preserves START/STOP, sanitized diagnosis, properties and safe reconciliation (17.511533ms)
+✔ concurrent price mutation after committed INTENT stops on conflict and never reaches next UUID (39.351126ms)
+✔ lost response after commit reads durable result, never retries CAS or advances to next UUID (36.210978ms)
+✔ fresh full-row baseline comparison blocks inventory changes before any CAS (28.182423ms)
+✔ admin authorization binds head, GitHub run and control SHA; other authorized buildings and UUIDs are rejected (27.721351ms)
+✔ expired authorization and missing fresh baseline reject CAS before property mutation (26.058407ms)
+✔ private append-only audit: no table/schema access or RPC for anonymous/authenticated; no direct service DML (61.812278ms)
+✔ run reuse, active interrupted run, sequence races, reserved events and unauthorised writes rejected (56.540525ms)
+✔ durable V2 snapshots compare keys, content, timestamps, insertions/deletions independent of row order (81.303219ms)
+✔ CAS with previously committed INTENT atomically stores result and preserves every forbidden field (26.545035ms)
+✔ real content concurrency without timestamp change returns audited CONFLICT (20.836066ms)
+✔ missing row, repeated payload, pending INTENT and scope exclusions fail safely (64.389061ms)
+✔ same-transaction INTENT is forbidden; audit insertion failure rolls back CAS but preserves committed INTENT (28.647528ms)
+✔ typology edits and trigger side effects abort the whole audited transaction (34.671409ms)
+✔ paged capture rejects gaps/repeats/oversized pages and preserves tombstones and IDs inserted behind cursor (30.035358ms)
+✔ page cancellation rolls back event AND records; partial capture remains durable and blocks a new run (31.415098ms)
+✔ schema change during capture stops before another page and all capture tables remain private/immutable (17.811853ms)
+✔ known-failure administrative procedure verifies anchored chain, only appends ABORTED and refuses repetition (21.568736ms)
+✔ real SQL bridge: preflight verifies every paginated ACK and compares 105 UUIDs without property mutations (70.578369ms)
+✔ client verifies committed INTENT ACK/readback before apply; lost CAS ACK recovers read-only and freezes (0.755613ms)
+✔ checksum tampering or ambiguous append freezes client; no CAS or retries (0.489243ms)
+✔ valid SHA digest with wrong previous link still blocks and freezes before scope approval (0.830024ms)
+✔ a FINISHED preflight allows an independent new UUID/run ID while its history stays immutable (20.548806ms)
+✔ lost page acknowledgement preserves event but freezes capture without retry or seal (0.889183ms)
+✔ concurrent local appends freeze both callers; health and transport fail closed without revealing secrets (0.912989ms)
+✔ RPC errors retain action/status/SQLSTATE only, without server messages, secrets or automatic retries (0.642473ms)
+✔ exact allowlisted database reasons distinguish active run from scope failure; all arbitrary payloads remain hidden (22.167343ms)
+✔ two external content changes pass with warning and preserve UUID/both building bindings/hashes/type (1.771776ms)
+✔ every ID in immutable manifest remains protected, including content/price/stock hash changes (2.16087ms)
+✔ deletion requires prior audited binding; insertion requires an unambiguous observed binding (0.317266ms)
+✔ reassociation cannot evade scope; ambiguous external reassociation is blocked (0.256595ms)
+✔ unchanged records without building IDs do not fabricate divergences; timestamp changes follow scope (0.285438ms)
+✔ schema drift, incomplete capture, missing membership and malformed/inconsistent hashes fail closed (0.676695ms)
+✔ V8 classifies an exact authorized transition only with verified receipt and matching readback (0.482013ms)
+✔ V8 unexpected target change, absent receipt and divergent readback all block (0.390215ms)
+✔ V8 unknown external content changes retain every UUID/hash and do not invent field names (0.552869ms)
+✔ V8 timestamp-only evidence identifies updated_at but never proves an external actor (0.357076ms)
+✔ V8 independently attested fixture origin is diagnostic only; strict server policy still blocks (0.394001ms)
+✔ V8 incomplete snapshots, unstable membership and schema drift never permit finish (0.24054ms)
+✔ V8 duplicate receipts and a receipt without a snapshot delta cannot hide another operation (0.242484ms)
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_CONFLICT'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_NOT_FOUND'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_CONFLICT'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_NOT_FOUND'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_AMBIGUOUS'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_AMBIGUOUS'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_AMBIGUOUS'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_AMBIGUOUS'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_POST_WRITE_DIVERGENCE'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_POST_WRITE_DIVERGENCE'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_POST_WRITE_DIVERGENCE'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'fresh read failed'
+}
+ORULO_MEDIA_RECOVERY_STOPPED { buildingId: '43126', id: null, error: 'source timeout' }
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: null,
+  error: 'ORULO_FLOOR_PLANS_FETCH_FAILED_503'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'intent ledger unavailable'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'result ledger unavailable'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000002',
+  error: 'CAS_STOP_CONFLICT'
+}
+ORULO_MEDIA_RECOVERY_STOP_LEDGER_FAILED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_CONFLICT',
+  ledgerError: 'stop ledger unavailable'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_CONFLICT'
+}
+ORULO_MEDIA_RECOVERY_STOPPED {
+  buildingId: '43126',
+  id: '00000000-0000-4000-8000-000000000001',
+  error: 'CAS_STOP_CONFLICT'
+}
+ORULO_MEDIA_RECOVERY_BUILDING {
+  buildingId: '43126',
+  development: 'Fixture 43126',
+  before: {
+    photos: 1,
+    floorPlans: 1,
+    floorPlanImages: 0,
+    videos: 0,
+    virtualTour: false,
+    status: 'MEDIA_INCOMPLETE_FLOOR_PLANS'
+  },
+  livePlans: 1,
+  liveImages: 1,
+  write: true
+}
+ORULO_MEDIA_RECOVERY_BUILDING {
+  buildingId: '4969',
+  development: 'Fixture 4969',
+  before: {
+    photos: 1,
+    floorPlans: 1,
+    floorPlanImages: 0,
+    videos: 0,
+    virtualTour: false,
+    status: 'MEDIA_INCOMPLETE_FLOOR_PLANS'
+  },
+  livePlans: 1,
+  liveImages: 1,
+  write: true
+}
+ORULO_MEDIA_RECOVERY_BUILDING {
+  buildingId: '43126',
+  development: 'Fixture 43126',
+  before: {
+    photos: 1,
+    floorPlans: 1,
+    floorPlanImages: 0,
+    videos: 0,
+    virtualTour: false,
+    status: 'MEDIA_INCOMPLETE_FLOOR_PLANS'
+  },
+  livePlans: 1,
+  liveImages: 1,
+  write: true
+}
+ORULO_MEDIA_RECOVERY_BUILDING {
+  buildingId: '4969',
+  development: 'Fixture 4969',
+  before: {
+    photos: 1,
+    floorPlans: 1,
+    floorPlanImages: 0,
+    videos: 0,
+    virtualTour: false,
+    status: 'MEDIA_INCOMPLETE_FLOOR_PLANS'
+  },
+  livePlans: 1,
+  liveImages: 1,
+  write: true
+}
+✔ runner halts on CONFLICT before another UUID or building (5.934216ms)
+✔ runner halts on NOT_FOUND before another UUID or building (1.005757ms)
+✔ runner halts on fresh-CONFLICT before another UUID or building (0.9809ms)
+✔ runner halts on fresh-NOT_FOUND before another UUID or building (0.982122ms)
+✔ runner halts on timeout-before before another UUID or building (4.799075ms)
+✔ runner halts on timeout-after before another UUID or building (0.994021ms)
+✔ runner halts on invalid-response before another UUID or building (0.906579ms)
+✔ runner halts on readback-error before another UUID or building (0.757555ms)
+✔ runner halts on readback-missing before another UUID or building (0.82702ms)
+✔ runner halts on integrity-error before another UUID or building (1.179979ms)
+✔ runner halts on plan-divergence before another UUID or building (0.904596ms)
+✔ runner halts on pre-read-error before another UUID or building (0.695954ms)
+✔ runner halts on source-error before another UUID or building (0.368412ms)
+✔ runner halts on source-http-error before another UUID or building (0.474321ms)
+✔ runner halts on intent-ledger-error before another UUID or building (1.130025ms)
+✔ runner halts on result-ledger-error before another UUID or building (0.93426ms)
+✔ earlier confirmed updates remain diagnosed but the next UUID/building is never processed (0.839469ms)
+✔ STOP ledger failure preserves the original CAS result/error and still cannot resume (0.780841ms)
+✔ real exclusive JSONL ledger retains INTENT, RESULT and STOP after runner rejects (4.995364ms)
+✔ confirmed success may continue, with one RPC per UUID (2.027169ms)
+✔ confirmed unchanged may continue, with one RPC per UUID (1.562943ms)
+ORULO_MEDIA_RECOVERY_BUILDING {
+  buildingId: '46939',
+  development: null,
+  before: {
+    photos: 0,
+    floorPlans: 1,
+    floorPlanImages: 0,
+    videos: 0,
+    virtualTour: false,
+    status: 'MEDIA_INCOMPLETE_FLOOR_PLANS'
+  },
+  livePlans: 1,
+  liveImages: 1,
+  write: false
+}
+orulo-media-recovery tests: ok
+✔ ../../scripts/orulo-media-recovery.test.mjs (45.84478ms)
+ℹ tests 153
+ℹ suites 0
+ℹ pass 153
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 52749.55799
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice
