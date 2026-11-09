@@ -1,19 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createOruloSource,createImageChecker} from './orulo-v5-orulo-source.mjs';
-test('fetches matching building from configured HTTPS endpoint',async()=>{
- let called='';
- const source=createOruloSource({baseUrl:'https://api.example.test/v1',token:'secret',
- fetchImpl:async(url,opts)=>{called=url;assert.equal(opts.headers.Authorization,'Bearer secret');return {ok:true,json:async()=>({building:{id:51496,floor_plans:[{id:7,image_url:'https://cdn.example.test/a.jpg'}]}})};}});
- const result=await source('51496');assert.equal(result.floor_plans.length,1);assert.equal(called,'https://api.example.test/v1/buildings/51496');
+test('OAuth authenticates and fetches actual Órulo floor_plans endpoint',async()=>{
+ const calls=[];
+ const source=createOruloSource({clientId:'client',clientSecret:'secret',fetchImpl:async(url,opts)=>{
+  calls.push({url,opts});
+  if(url.endsWith('/oauth/token'))return {ok:true,json:async()=>({access_token:'token'})};
+  return {ok:true,json:async()=>({floor_plans:[{id:7,'1024x1024':'https://static.orulo.com.br/images/properties/a.jpg'}]})};
+ }});
+ const result=await source('51496');
+ assert.equal(result.floor_plans[0].image_url,'https://static.orulo.com.br/images/properties/a.jpg');
+ assert.equal(calls[0].url,'https://www.orulo.com.br/oauth/token');
+ assert.match(calls[1].url,/\/api\/v2\/buildings\/51496\/floor_plans\?/);
+ assert.equal(calls[1].opts.headers.Authorization,'Bearer token');
 });
-test('rejects unexpected source building',async()=>{
- const source=createOruloSource({baseUrl:'https://api.example.test/v1',token:'secret',fetchImpl:async()=>({ok:true,json:async()=>({building:{id:999,floor_plans:[]}})})});
+test('rejects malformed source plan IDs',async()=>{
+ const source=createOruloSource({clientId:'a',clientSecret:'b',fetchImpl:async url=>url.endsWith('/oauth/token')?{ok:true,json:async()=>({access_token:'x'})}:{ok:true,json:async()=>({floor_plans:[{id:7},{id:7}]})}});
  await assert.rejects(source('51496'),/ORULO_SOURCE_SCHEMA_MISMATCH/);
 });
-test('rejects non HTTPS configuration',()=>assert.throws(()=>createOruloSource({baseUrl:'http://example.test',token:'x'}),/ORULO_HTTPS_REQUIRED/));
-test('checks image content type',async()=>{
+test('requires credentials',()=>assert.throws(()=>createOruloSource({}),/ORULO_CONFIG_REQUIRED/));
+test('checks image content type and trusted host',async()=>{
  const check=createImageChecker({fetchImpl:async()=>({ok:true,headers:{get:()=> 'image/jpeg'}})});
- assert.equal(await check('https://cdn.example.test/a.jpg'),true);
- assert.equal(await check('http://cdn.example.test/a.jpg'),false);
+ assert.equal(await check('https://static.orulo.com.br/images/properties/a.jpg'),true);
+ assert.equal(await check('https://other.example.test/a.jpg'),false);
 });
