@@ -46,3 +46,6 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-authorization.test.sql
           psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-cas-fixture.staging.sql
           psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-cas-fixture.test.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-ledger-fixture.staging.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-ledger-fixture.seed.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-ledger-fixture.test.sql
