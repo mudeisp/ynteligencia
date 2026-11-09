@@ -1,0 +1,33 @@
+{
+  "preparation": "COMPLETE",
+  "operationalExecutionInWork": "NOT_EXECUTED",
+  "baseCommit": "a46a508c3205e1af3ce44dcc48f118d63fcbf8cf",
+  "protocolFilesVerifiedUnchanged": 56,
+  "tests": {
+    "existingProtocolRegression": 153,
+    "collectorAndSimulator": 14,
+    "exporter": 4,
+    "manifestPackager": 6,
+    "realLocalPostgresReadOnlySQL": 2,
+    "total": 179,
+    "failures": 0
+  },
+  "productionWrites": 0,
+  "realCASCalls": 0,
+  "publicPRCreated": false,
+  "newRevisionPushed": false,
+  "manifestSha256": "f94cf3139fa2516d55b98c0e242c64193107f0f65be924f36c936dc7952ab070",
+  "queueSha256": "b6726aa08aca9673e4d76d10e405b071682b1c8ed88a8ce93a934392b814f11e",
+  "productionGoNoGo": "NO_GO",
+  "completeOperationalDryRun": "UNKNOWN",
+  "checks": [
+    "Pinned preliminary manifest unchanged",
+    "Deduplicated queue associations verified",
+    "Original protocol file bytes equal base commit",
+    "READ ONLY templates exercised in local PGlite",
+    "Local read-only transaction refuses UPDATE",
+    "Bash wrapper syntax checked",
+    "No external endpoint called by fixture tests"
+  ],
+  "testSummaryScope": "Final successful runs; initial local SQL fixture failures preserved separately and resolved."
+}

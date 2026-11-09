@@ -1,5 +1,7 @@
 # Resultado executivo — 09/11/2026
 
+Este relatório preserva os resultados do levantamento de base `a46a508`. A preparação posterior do pacote privado de continuidade está concluída e documentada em `../handoff/README.md`; as pendências abaixo pertencem à etapa operacional separada.
+
 **NO-GO. Dry run completo: UNKNOWN. Pronto para solicitar autorização: NO.** A auditoria nacional e a verificação dos hashes foram concluídas; a validação autenticada de origem e a simulação de recuperação permanecem pendentes. O trabalho não atende ainda ao critério final solicitado.
 
 | Indicador | Resultado |

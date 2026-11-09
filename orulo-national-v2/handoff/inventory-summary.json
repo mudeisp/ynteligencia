@@ -1,0 +1,12 @@
+{
+  "logicalBatches": 1,
+  "writeAuthorized": false,
+  "manifestSha256": "f94cf3139fa2516d55b98c0e242c64193107f0f65be924f36c936dc7952ab070",
+  "queueSha256": "b6726aa08aca9673e4d76d10e405b071682b1c8ed88a8ce93a934392b814f11e",
+  "buildings": 2667,
+  "distinctBuildingPlans": 17011,
+  "properties": 7284,
+  "sourceEvidence": "NOT_EXECUTED_IN_WORK",
+  "originalInventoryFingerprint": "ae6084ff766fb45b8cbd5e6c12d9225db37d3908a1cade8043d79b3341649c42",
+  "sourceScriptSha256": "20155768701bd023ec90f5c81012b667a5f9d3c3a50311f421871794783cd24d"
+}

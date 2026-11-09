@@ -1,0 +1,286 @@
+{
+  "baseCommit": "a46a508c3205e1af3ce44dcc48f118d63fcbf8cf",
+  "protocolModified": false,
+  "files": [
+    {
+      "path": ".github/workflows/orulo-batch-manual.yml",
+      "sha256": "5b04e6b3e803158439ded43eaa65efade90c0737fb7426bc80cbd020a770d494",
+      "matchesBase": true
+    },
+    {
+      "path": ".github/workflows/orulo-cas.yml",
+      "sha256": "5e6a20fe457e4d624fc97eeb8bc06e27b26dc0728e17d4e8d63eb7a626216160",
+      "matchesBase": true
+    },
+    {
+      "path": ".github/workflows/orulo-five-live-check.yml",
+      "sha256": "05088ab0768d6bca7575e44792d7a9c94d415cab4dd5b0b529a4ae18badfefb9",
+      "matchesBase": true
+    },
+    {
+      "path": ".github/workflows/orulo-lote1-manual.yml",
+      "sha256": "4e6ca0f3fa4541ceaba597ad46f32b3b352124a2500d0457dcc8ea672ee926f1",
+      "matchesBase": true
+    },
+    {
+      "path": ".github/workflows/orulo-national-dry-run.yml",
+      "sha256": "6758881e6b637e489b879ca7ff5008534607de764664155a8c3428847ad5f316",
+      "matchesBase": true
+    },
+    {
+      "path": ".github/workflows/orulo-pilot-manual.yml",
+      "sha256": "6722afad1c06f7688f55ce4ff714c79c364e51a1fd85941a453e29e17052e8b2",
+      "matchesBase": true
+    },
+    {
+      "path": "api/development.js",
+      "sha256": "8b344d6a4bf1dea0a2afd9955cc392e4a54c49b0fcbc0e1e64422e15ed9bf59f",
+      "matchesBase": true
+    },
+    {
+      "path": "orulo-floor-plans.js",
+      "sha256": "9ff436a916d867f3ec4264f2a3ee8d8f9416fc7cea3fa7a63490bb147e31a5a1",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-cas.mjs",
+      "sha256": "6dc51069edcae41a50997d3173e6b3a0ea5c00e2eb9d0e360fc1690a7d15d825",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-cas.test.mjs",
+      "sha256": "521546940253efdbf790637049aa15afcedb23a7759ad37588917482a3b83400",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-5971.mjs",
+      "sha256": "e78585aefaf1fb232711c8b1b08412deb341ee84d2809f36f372d1d7328c5cb9",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-5971.test.mjs",
+      "sha256": "0e10e6af94d5e690d0fcc7db08af311a35e204bb5d0756880f21003cd97e57cb",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-actions.mjs",
+      "sha256": "9618f522476dbf2f5ba0e271d30f47b752348253909be93ea73b6cdc5b94e186",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-actions.test.mjs",
+      "sha256": "632fccd305720271a6b6c2222826173dd7034bd9be5420dfcaa43bad08036a1f",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batch.mjs",
+      "sha256": "7fbb3eaaed0b228e69533aa55a9716ba19263d6bfb07394316d99fe5097817dc",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batch.test.mjs",
+      "sha256": "bdc0354b36b774141b2aa93957208192e91a16e2041283684c5c38e1e73c573a",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batches/catalog.json",
+      "sha256": "f54c0ca4b4b3e7d6b0cc8983fd8e05d3657ce20e13114d4d74b2695f0caeb509",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batches/master.json",
+      "sha256": "03a6663333f6a01aa16e6e61a0023b821030f7476cc0247ce11645fa8da12447",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batches/phase1-20.json",
+      "sha256": "06ece691fb20769ff249e14aa9df02054e533b838f3a35f1912f46236dd9d92b",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batches/phase2-30-a.json",
+      "sha256": "6ca254766b9ef4ababdb9cf835d2b2fb9261aaf2005355d0b6bb40bbe49ab310",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batches/phase2-30-b.json",
+      "sha256": "02e50df772ed4f5f74a61bf60adf394150525446d6a19c9194b740dea6f07ce4",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batches/phase3-rest.json",
+      "sha256": "7b469f5f1308fcbfa524a250bb93904851df48498a50e0bacb3f834bba9f4bde",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batches/pilot-5971-v6-proposal.json",
+      "sha256": "4c6a3576d91fcca4f7c526daf7f62981df756dd9bab9bbb7f3b96a4d3c242eae",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-batches/terrarium-51496-v7.json",
+      "sha256": "373d801b0adec45aedeef0ab8934d3253c447c563dfb74ba4422e957ee1da58a",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-journal.mjs",
+      "sha256": "6cca9fe5c585081066399f5de4e4595185fbc30eb572660596363ac47e8b11d4",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-lote1.ids.json",
+      "sha256": "b21719da3ca4bdb6a0713b282424b04cfeb1fd83ab517416cdff3962922415b6",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-pg-concurrency.test.mjs",
+      "sha256": "a6b159c732b56f7d3dbd46e6e6aa0013c5bb3946f3e98756c77bcfcc9df6b140",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-pilot.mjs",
+      "sha256": "a3a79bc10fbbe607ead4b61ef677e9eb3a5ff1eef830d5590dffc591afcfdabd",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-pilot.test.mjs",
+      "sha256": "52a1daa36161bfed27a243d2514de2301cd6e4f6ff259b03fc5a8be9427cee74",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-postgres.mjs",
+      "sha256": "663864d351a47164bcbe4db007f8f1aff484707b4bb97f2b2c53fcd0697bce4f",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-postgres.test.mjs",
+      "sha256": "1e3412413679eab5b5a9e09fa3cf139a54fbf020bda68397c55aa547c48fd119",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-scope.mjs",
+      "sha256": "24bad77143efc4b3ff505bc9edbe2ae8be27adae337ce4e19a1e7c7533ea1e36",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-scope.test.mjs",
+      "sha256": "930c57740bfab4357e89bd013b6252fd8f83965f9fdacebd046f5125667b969f",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery-stop.test.mjs",
+      "sha256": "fae1a5efe8503c7bb5d21629486d73830026d5e3c2b716707e27f5c60b61a5ad",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery.mjs",
+      "sha256": "45e1ed6be1688a644ba7ba2b8b779a926e38b5fe2ccc46028b5483581184bf7b",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-media-recovery.test.mjs",
+      "sha256": "4721a5e05ef2ad25c77b527886e11c98e7d340a28f8d2f4719b0663251be2612",
+      "matchesBase": true
+    },
+    {
+      "path": "scripts/orulo-national-dry-run.mjs",
+      "sha256": "69b356efa0e4312b311ddbc635872e7eee409b3108719fda157a22f7e7ddabaf",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261104093722_orulo_postgres_audit.sql",
+      "sha256": "dcb2b9990d611494dd90bf599d7926d60ac224eb4c1aa60d36abf3256dd1e420",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261104102956_orulo_paged_snapshots.sql",
+      "sha256": "17109979250afb084c31b72c2d4d33c72ad44d8183fdb4edeade5d6738a8ffe9",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261104114348_orulo_pilot_authorization.sql",
+      "sha256": "474ae05bb532e0759c516b0dab5ca7d10fca360b5573d8bc0186e283ff1ae199",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261104135027_orulo_pilot_indexed_targets.sql",
+      "sha256": "2f55105f6cc86b2226ffd2e06948fc3203d6260e2bc84fd3f8c63307663e83db",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261104151850_orulo_manifest_batches.sql",
+      "sha256": "fdc1c2f1751d2bc47c405e9e25b99a8b14855baf4b0ee5aafcfd763bcdb80ac8",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261105151448_orulo_manifest_batches.sql",
+      "sha256": "ac1393027e75157b2039de9ad1aea05670beb89e696eeab0dfeb81773651e14a",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261105170248_orulo_manifest_batches.sql",
+      "sha256": "15d0f785bb70d27f826a44c4567be265482b4c1e05ee56194290f9322acc4dc2",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261109070000_orulo_phase2a_reconciled_prerequisite.sql",
+      "sha256": "e3f6eaa066c7eae2725c3ceb04e6faebe5fe18ec33d8f078038322b202a0d393",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/migrations/20261109080000_orulo_phase3_rest_catalog_release.sql",
+      "sha256": "f85ec7f35db67e924774cc795329d19e1a0149bb542dc612ae9605bfa3cd7fc1",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_media_cas.sql",
+      "sha256": "e8b3adfda6bf636298c2ece21a69975f2fc339818f86d4748042cb77d8860906",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_media_cas_rollback.sql",
+      "sha256": "9207581ec2c7ac4e769f4b00b478d7b6258a3d3fade2af9e606547e082999249",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_pilot_5971.sql",
+      "sha256": "a4538a88ce42accadfa8229da42acf87c640b063a8c6b689e5edfb8049c17054",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_postgres_audit_rollback.sql",
+      "sha256": "80fa7d4ce0cd5b283897a1a629c1ca503e3d111d75035c3f1e0d2f07185097e0",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_reconcile_41813891981.sql",
+      "sha256": "8fcd26f081e657e85d29c73125a07dfb3111bca51cc164e5073342d0f5b049b6",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_reconcile_41832262256.sql",
+      "sha256": "5230d5db78dbd7491f509b5ee9adf70ee666864cecb775054005024c04f8dfd7",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_reconcile_41840098939.sql",
+      "sha256": "de428ba79a49c61cc7401fd0639704589b23b21bb35880ab7d0613442bfd8e87",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_reconcile_42051049087.sql",
+      "sha256": "5ded167da1538d52c6abfdb7ebb51d0922a340471347ce32514cde726a3114c9",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_reconcile_42069211000.sql",
+      "sha256": "2b430d1870d18c40d09c526ae7ffefe1fa3d02fc4f7a927121b1fa87102e9dea",
+      "matchesBase": true
+    },
+    {
+      "path": "supabase/orulo_terrarium_51496_v7_catalog.sql",
+      "sha256": "f9feb5d6f03a73b2d89e3c9b6c13b6e2e319ce2a1d4133be995d6a6b5ffa0a78",
+      "matchesBase": true
+    }
+  ]
+}

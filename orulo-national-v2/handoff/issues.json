@@ -1,0 +1,154 @@
+{
+  "classificationScope": "Each classification blocks only its declared dependent stage; preparation and independent safe stages continue.",
+  "baseCommit": "a46a508c3205e1af3ce44dcc48f118d63fcbf8cf",
+  "workOperationalExecution": "NOT_EXECUTED",
+  "issues": [
+    {
+      "id": "WORK_CREDENTIALS_ABSENT",
+      "classification": "NON_BLOCKER",
+      "scope": "PREPARATION",
+      "evidence": [
+        "audit/credential-access.json"
+      ],
+      "action": "Transfer scripts; do not repair or extract credentials in Work.",
+      "operationalDependency": "BLOCKER if existing authorized OAuth credentials are unavailable in the operational runner."
+    },
+    {
+      "id": "PUBLIC_PR_REJECTED_AND_OUT_OF_SCOPE",
+      "classification": "NON_BLOCKER",
+      "scope": "PRIVATE_HANDOFF",
+      "evidence": [
+        "User explicitly forbids public PR in the continuation request."
+      ],
+      "action": "No PR, no push of the new local revision; deliver private archive and bundle."
+    },
+    {
+      "id": "PROXY_ORIGIN_FALLBACK",
+      "classification": "BLOCKER",
+      "scope": "PROXY_AS_SOURCE_EVIDENCE",
+      "evidence": [
+        "audit/vulnerabilities.json",
+        "discovery/source-validation.json",
+        "api/development.js"
+      ],
+      "action": "Use direct OAuth/API collector; preserve historical proxy evidence without promoting it."
+    },
+    {
+      "id": "PUBLIC_REST_SCOPE_INCOMPLETE",
+      "classification": "BLOCKER",
+      "scope": "NATIONAL_EXPORT_VIA_PUBLIC_REST",
+      "evidence": [
+        "audit/baseline.json"
+      ],
+      "action": "Use READ ONLY SQL and a verified whole-inventory fingerprint; independent source discovery remains allowed."
+    },
+    {
+      "id": "LEGACY_DATA_ANOMALIES",
+      "classification": "NON_BLOCKER",
+      "scope": "OTHER_PROPERTIES",
+      "evidence": [
+        "audit/baseline.json",
+        "audit/url-anomalies.json"
+      ],
+      "action": "Exclude malformed/invalid targets for review; do not repair unrelated data."
+    },
+    {
+      "id": "FRESH_ROWS_NOT_COLLECTED_IN_WORK",
+      "classification": "NON_BLOCKER",
+      "scope": "PREPARATION",
+      "evidence": [
+        "handoff/README.md",
+        "sql/operational-dry-run-rows.sql"
+      ],
+      "action": "Collect canonical rows and recheck separately in the operational environment.",
+      "operationalDependency": "BLOCKER for local candidate proposals until a complete verified snapshot exists."
+    },
+    {
+      "id": "THIRD_PARTY_CHANGE",
+      "classification": "BLOCKER",
+      "scope": "AFFECTED_PROPERTY_ONLY",
+      "evidence": [
+        "scripts/orulo-national-simulate.mjs"
+      ],
+      "action": "Skip changed properties; keep processing independent properties; do not replace expected hashes by assumption."
+    },
+    {
+      "id": "AUTH_OR_SHARED_RATE_LIMIT",
+      "classification": "BLOCKER",
+      "scope": "DEPENDENT_SOURCE_SERVICE",
+      "evidence": [
+        "scripts/orulo-national-source-readonly.mjs",
+        "handoff/validation/transfer-tests.tap"
+      ],
+      "action": "Stop shared-dependent requests, preserve Retry-After and diagnosis evidence, continue independent export/offline work."
+    },
+    {
+      "id": "LOCAL_SOURCE_FAILURE",
+      "classification": "BLOCKER",
+      "scope": "AFFECTED_BUILDING_OR_PLAN",
+      "evidence": [
+        "handoff/validation/transfer-tests.tap"
+      ],
+      "action": "Record SOURCE_ERROR/SOURCE_NOT_FOUND/REQUIRES_REVIEW; continue other buildings."
+    },
+    {
+      "id": "INTERRUPTED_LOCAL_EVIDENCE",
+      "classification": "UNKNOWN",
+      "scope": "AFFECTED_BUILDING_OR_LOCAL_STORAGE",
+      "evidence": [
+        "handoff/validation/transfer-tests.tap"
+      ],
+      "action": "Quarantine interrupted buildings and continue independent items; preserve uncertain index/lock evidence."
+    },
+    {
+      "id": "FULL_IMAGE_CONTENT_AND_VISUAL_MATCH",
+      "classification": "UNKNOWN",
+      "scope": "IMAGE_PROOF",
+      "evidence": [
+        "handoff/eligibility.md"
+      ],
+      "action": "Do not infer full-image equality or visual correctness from prefixes. Record pending validation."
+    },
+    {
+      "id": "OPERATIONAL_CAPACITY_AND_DURATION",
+      "classification": "UNKNOWN",
+      "scope": "PHYSICAL_SEGMENT_SIZING",
+      "evidence": [
+        "manifest/batch-plan.json",
+        "handoff/README.md"
+      ],
+      "action": "Retain one logical batch; measure actual windows, payloads, storage, memory, rate limits and contention before recommending physical segments."
+    },
+    {
+      "id": "LOCAL_MODELS_NOT_POSTGRES_CAS_PROOF",
+      "classification": "UNKNOWN",
+      "scope": "PRODUCTION_CAS_SEMANTICS",
+      "evidence": [
+        "handoff/eligibility.md",
+        "scripts/orulo-national-simulate.mjs"
+      ],
+      "action": "Keep exact PostgreSQL comparison, locks, precision, triggers, snapshots and receipts as mandatory existing-protocol requirements."
+    },
+    {
+      "id": "NATIONAL_BATCH_NOT_AUTHORIZED",
+      "classification": "BLOCKER",
+      "scope": "FUTURE_PRODUCTION_WRITE_ONLY",
+      "evidence": [
+        "audit/inputs/functions.json",
+        "reports/go-no-go.md"
+      ],
+      "action": "No catalog changes, migrations, authorization shortcuts, real CAS or operational workflow dispatch. Discovery and offline preparation can continue."
+    },
+    {
+      "id": "INITIAL_LOCAL_SQL_TEST_FIXTURE",
+      "classification": "NON_BLOCKER",
+      "scope": "LOCAL_TEST_HARNESS",
+      "resolved": true,
+      "evidence": [
+        "handoff/validation/readonly-sql-tests-initial-failure.tap",
+        "handoff/validation/readonly-sql-tests.tap"
+      ],
+      "action": "Fixed substitution in the test harness and supplied required fixture columns; final real local SQL tests pass. Operational SQL and existing protocol were not changed to bypass the check."
+    }
+  ]
+}

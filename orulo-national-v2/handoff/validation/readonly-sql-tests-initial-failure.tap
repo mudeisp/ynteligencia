@@ -1,0 +1,82 @@
+✖ real PostgreSQL read exports and global recheck agree, preserving exact canonical bytes for precise numerics (8.163149ms)
+✖ READ ONLY rejects a mutation, leaving the exported property unchanged (2.88129ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12111.870711
+
+✖ failing tests:
+
+test at scripts/orulo-national-readonly-sql.test.mjs:14:1
+✖ real PostgreSQL read exports and global recheck agree, preserving exact canonical bytes for precise numerics (8.163149ms)
+  error: invalid input syntax for type uuid: "__AFTER__"
+      at Ie.bn (/workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:4:30984)
+      at Ie.yi (/workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:4:28354)
+      at Ie.parse (/workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:4:27009)
+      at ne.Jn (/workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:15:1789)
+      at /workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:15:1161
+      at wasm://wasm/022a9842:wasm-function[10951]:0x52a924
+      at wasm://wasm/022a9842:wasm-function[3597]:0x215883
+      at wasm://wasm/022a9842:wasm-function[3639]:0x21ccfb
+      at wasm://wasm/022a9842:wasm-function[3649]:0x21cf30
+      at wasm://wasm/022a9842:wasm-function[9933]:0x4d6fd7 {
+    length: 109,
+    severity: 'ERROR',
+    code: '22P02',
+    detail: undefined,
+    hint: undefined,
+    position: '390',
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'uuid.c',
+    line: '194',
+    routine: 'string_to_uuid',
+    query: "-- Execute ONLY in the separately authorized operational environment.\n-- Substitute 00000000-0000-0000-0000-000000000000 (UUID) and 100 (integer, e.g. 100).\n-- Read-only export for local simulation, NOT a production CAS baseline.\nBEGIN READ ONLY;\nSET LOCAL TIME ZONE 'UTC';\nWITH page AS (\n SELECT p.* FROM public.properties p\n WHERE source='novos' AND external_id LIKE 'orulo:%'\n AND id > '__AFTER__'::uuid ORDER BY id LIMIT __LIMIT__\n)\nSELECT coalesce(jsonb_agg(jsonb_build_object(\n 'id',p.id,\n 'recordCanonical',to_jsonb(p)::text,\n 'recordSha256',encode(sha256(convert_to(to_jsonb(p)::text,'UTF8')),'hex')\n) ORDER BY p.id),'[]'::jsonb) AS rows FROM page p;\nCOMMIT;\n",
+    params: undefined,
+    queryOptions: undefined
+  }
+
+test at scripts/orulo-national-readonly-sql.test.mjs:23:1
+✖ READ ONLY rejects a mutation, leaving the exported property unchanged (2.88129ms)
+  error: current transaction is aborted, commands ignored until end of transaction block
+      at Ie.bn (/workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:4:30984)
+      at Ie.yi (/workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:4:28354)
+      at Ie.parse (/workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:4:27009)
+      at ne.Jn (/workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:15:1789)
+      at /workspace/ynteligencia/test-support/orulo-cas/node_modules/@electric-sql/pglite/dist/index.cjs:15:1161
+      at wasm://wasm/022a9842:wasm-function[10951]:0x52a924
+      at wasm://wasm/022a9842:wasm-function[3597]:0x215883
+      at wasm://wasm/022a9842:wasm-function[3639]:0x21ccfb
+      at wasm://wasm/022a9842:wasm-function[3649]:0x21cf30
+      at wasm://wasm/022a9842:wasm-function[9933]:0x4d6fd7 {
+    length: 144,
+    severity: 'ERROR',
+    code: '25P02',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'postgres.c',
+    line: '1246',
+    routine: 'exec_simple_query',
+    query: 'begin read only',
+    params: undefined,
+    queryOptions: undefined
+  }

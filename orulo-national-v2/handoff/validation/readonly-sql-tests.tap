@@ -1,0 +1,10 @@
+✔ real PostgreSQL read exports and global recheck agree, preserving exact canonical bytes for precise numerics (8.2983ms)
+✔ READ ONLY rejects a mutation, leaving the exported property unchanged (4.487728ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1809.093847

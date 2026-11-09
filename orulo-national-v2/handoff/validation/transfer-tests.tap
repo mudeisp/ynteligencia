@@ -1,0 +1,22 @@
+✔ queue deduplication preserves exact associations and refuses fabricated candidate data (1.670364ms)
+✔ input hash tampering is rejected before discovery (0.775733ms)
+✔ missing credentials are a shared blocker with no network calls (3.073207ms)
+✔ direct source and CDN evidence join into an offline patch, with existing metadata preserved (25.441473ms)
+✔ paginated or malformed source does not become SOURCE_NOT_FOUND and independent buildings continue (7.327846ms)
+✔ an absent plan is SOURCE_NOT_FOUND, without invented URL or CDN request (2.064957ms)
+✔ untrusted image hosts are rejected before request and another building is still examined (4.850802ms)
+✔ source 429 stops dependent calls, preserves evidence and forbids automatic shared-service resume (2.260739ms)
+✔ MIME and binary signature failures stay blocked (4.907657ms)
+✔ partial discovery resumes pending work without repeating successful buildings (4.940708ms)
+✔ orphan building evidence is quarantined and independent buildings continue (4.984853ms)
+✔ tampered image prefix is a local building blocker rather than trusted recovery (3.182672ms)
+✔ fresh row drift and incomplete snapshots block proposals, while current complete rows are excluded (3.157064ms)
+✔ the existing patch helper rejects unvalidated URLs; no alternate patch path exists (0.284817ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 140.973781

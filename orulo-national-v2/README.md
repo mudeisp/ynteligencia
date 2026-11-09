@@ -1,4 +1,6 @@
-# Auditoria nacional Órulo V2 — preparação bloqueada
+# Auditoria nacional Órulo V2 — inventário preliminar e transferência
+
+Continuidade: o [pacote privado de transferência operacional](handoff/README.md) foi preparado no Work a partir de `a46a508`, com scripts de descoberta autenticada e simulação, fila deduplicada e classificações BLOCKER/NON_BLOCKER/UNKNOWN. A preparação está concluída; as consultas operacionais ocorrerão separadamente no ambiente ChatGPT autorizado. Não abrir PR público ou publicar a nova revisão.
 
 Auditoria de leitura executada em 09/11/2026. **NO-GO: o critério de conclusão solicitado ainda não foi atingido.** Existe um manifesto nacional verificável do inventário, mas faltam comprovação autenticada na origem, patches elegíveis e simulação completa. Não solicitar autorização de produção com este material.
 
@@ -35,4 +37,4 @@ As credenciais Órulo e `MIA_READ_TOKEN` existem na Vercel como Secret/sensitive
 
 O endpoint público `/api/development` foi inspecionado e amostrado em três empreendimentos. Ele pode usar fallback do Supabase e ainda declarar `floor_plans_source=orulo_api`. As 18 URLs retornadas tiveram HTTP 206 e assinatura binária válida via curl, mas isso não remove a ambiguidade de procedência. A primeira tentativa com outro agente HTTP recebeu 403; ambas as observações foram preservadas. Prefixos de 4 KiB foram verificados; não são hashes de imagens completas nem validação visual.
 
-Para concluir, configurar acesso autenticado de leitura à Órulo neste ambiente ou fornecer um canal de diagnóstico existente que exponha origem e erros sem fallback silencioso. Configurar valores secretos pelas configurações seguras do ambiente, nunca no chat ou Git. Depois será necessário consultar os 2.667 empreendimentos candidatos, validar cada planta/URL/variante e construir novos patches e evidências, sem liberar escrita.
+Para concluir a etapa operacional de leitura, usar acesso autenticado existente à Órulo no ambiente ChatGPT operacional, conforme `handoff/README.md`. A ausência dessas credenciais no Work não bloqueia a preparação. Valores secretos devem permanecer nos mecanismos seguros já autorizados, nunca no chat ou Git. No ambiente operacional será necessário consultar os 2.667 empreendimentos candidatos, validar cada planta/URL/variante e construir novos patches e evidências, sem liberar escrita.
