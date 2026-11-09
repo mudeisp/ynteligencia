@@ -17,4 +17,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run V5 queue, provenance and CAS preflight tests
-        run: node --test scripts/orulo-v5-queue.test.mjs scripts/orulo-v5-reports.test.mjs scripts/orulo-v5-artifacts.test.mjs scripts/orulo-v5-cas-preflight.test.mjs
+        run: node --test scripts/orulo-v5-queue.test.mjs scripts/orulo-v5-reports.test.mjs scripts/orulo-v5-artifacts.test.mjs scripts/orulo-v5-cas-preflight.test.mjs scripts/orulo-v5-runner.test.mjs
