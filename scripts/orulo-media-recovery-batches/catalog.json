@@ -34,7 +34,7 @@
       "file": "terrarium-51496-v7.json",
       "hash": "8051760fa1b7e076a8916d600611c131421177640daa412a3ef2ccab62732871",
       "phase": 2,
-      "released": false,
+      "released": true,
       "prerequisite": null
     }
   }
