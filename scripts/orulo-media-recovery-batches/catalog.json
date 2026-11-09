@@ -29,6 +29,13 @@
       "phase": 3,
       "released": false,
       "prerequisite": "phase2-30-b"
+    },
+    "terrarium-51496-v7": {
+      "file": "terrarium-51496-v7.json",
+      "hash": "8051760fa1b7e076a8916d600611c131421177640daa412a3ef2ccab62732871",
+      "phase": 2,
+      "released": false,
+      "prerequisite": null
     }
   }
 }

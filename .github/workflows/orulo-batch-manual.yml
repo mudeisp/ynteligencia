@@ -9,7 +9,7 @@ on:
         description: Reviewed immutable batch (later phases remain blocked)
         required: true
         type: choice
-        options: [phase1-20, phase2-30-a, phase2-30-b, phase3-rest, pilot-5971-images]
+        options: [phase1-20, phase2-30-a, phase2-30-b, phase3-rest, pilot-5971-images, terrarium-51496-v7]
 permissions: {}
 concurrency:
   group: orulo-lote1-production
