@@ -42,3 +42,5 @@ jobs:
         run: |
           psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-manifest-registry.staging.sql
           psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-manifest-registry.test.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-authorization.staging.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-authorization.test.sql
