@@ -226,7 +226,7 @@ jobs:
           github.triggering_actor == 'mudeisp' && github.run_attempt == '1' }}
     needs: verify-package
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -256,7 +256,7 @@ jobs:
           node scripts/orulo-national-source-readonly.mjs \
             --queue orulo-national-v2/handoff/source-queue.json \
             --queue-sha256 b6726aa08aca9673e4d76d10e405b071682b1c8ed88a8ce93a934392b814f11e \
-            --max-buildings 100 \
+            --max-buildings 2667 \
             --output-dir "$RUNNER_TEMP/orulo-source-discovery"
       - name: Print safe discovery summary
         if: always()
