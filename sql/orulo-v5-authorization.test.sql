@@ -24,10 +24,10 @@ begin
    raise exception 'UNKNOWN_BUILDING_PASSED'; end if;
  if orulo_audit.v5_staging_authorization_check(h,'00000000-0000-0000-0000-000000000001','999','1001') then
    raise exception 'UNKNOWN_RUN_PASSED'; end if;
- update orulo_audit.v5_approvals set expires_at=approved_time-interval '1 second' where manifest_hash=h;
+ update orulo_audit.v5_approvals set approved_at=approved_time-interval '2 hours', expires_at=approved_time-interval '1 hour' where manifest_hash=h;
  if orulo_audit.v5_staging_authorization_check(h,rid,'999','1001') then
    raise exception 'EXPIRED_APPROVAL_PASSED'; end if;
- update orulo_audit.v5_approvals set expires_at=approved_time+interval '1 hour', approved_commit_sha=repeat('c',40) where manifest_hash=h;
+ update orulo_audit.v5_approvals set approved_at=approved_time, expires_at=approved_time+interval '1 hour', approved_commit_sha=repeat('c',40) where manifest_hash=h;
  if orulo_audit.v5_staging_authorization_check(h,rid,'999','1001') then
    raise exception 'COMMIT_MISMATCH_PASSED'; end if;
  if exists (select 1 from pg_proc p, lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where p.oid='orulo_audit.v5_staging_authorization_check(text,uuid,text,text)'::regprocedure and a.grantee=0 and a.privilege_type='EXECUTE') then
