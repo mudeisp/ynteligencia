@@ -167,7 +167,19 @@ jobs:
               if p.returncode:
                   print('::error::ORULO_V2_RECONCILIATION=QUERY_FAILED')
               else:
-                  current = dict(line.split('\\t',1) for line in p.stdout.splitlines() if '\\t' in line)
+                  lines = p.stdout.splitlines()
+                  if not lines:
+                      raise ValueError('EMPTY_RESULT')
+                  current = {}
+                  for line in lines:
+                      parts = line.split()
+                      if len(parts) != 2 or len(parts[1]) != 64:
+                          raise ValueError('MALFORMED_RESULT')
+                      if parts[0] in current:
+                          raise ValueError('DUPLICATE_ID')
+                      current[parts[0]] = parts[1]
+                  if len(current) != len(lines):
+                      raise ValueError('INCOMPLETE_RESULT')
                   added = current.keys() - expected.keys()
                   missing = expected.keys() - current.keys()
                   changed = {k for k in expected.keys() & current.keys() if expected[k]!=current[k]}
