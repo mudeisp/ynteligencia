@@ -27,7 +27,7 @@ async function run(o={}){
  if(o.tamper&&a==='read'&&out)out.event={...out.event,tampered:true};return out;
  },apply:async(r,op)=>{calls.push('CAS');if(o.beforeApply)await o.beforeApply(r,op);const v=await service('select public.orulo_audited_cas($1,$2) r',[r,op]);if(o.loseAck)throw Error('synthetic timeout after commit');return v;}};
  let result,error;
- try{result=await executeBatch({env:e,transport,fetchPlans:o.fetchPlans|| (async id=>fixtureTargets.filter(t=>t.buildingId===id).slice(0,1).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:image(id),description:'untrusted'})))),checkImage:async()=>{if(o.badImage)throw Error('BATCH_IMAGE_UNAVAILABLE');},onPlan:async p=>{plan=p;if(o.authorize!==false)await db.exec(batchApprovalSql(p));if(o.onPlan)await o.onPlan(p);},wait:async()=>{},now:(()=>{let n=0;return()=>n+=600001;})()});}catch(x){error=x;}
+ try{result=await executeBatch({env:e,readProvenance:o.readProvenance,transport,fetchPlans:o.fetchPlans|| (async id=>fixtureTargets.filter(t=>t.buildingId===id).slice(0,1).flatMap(t=>t.missingPlanIds.map(id=>({id,image_url:image(id),description:'untrusted'})))),checkImage:async()=>{if(o.badImage)throw Error('BATCH_IMAGE_UNAVAILABLE');},onPlan:async p=>{plan=p;if(o.authorize!==false)await db.exec(batchApprovalSql(p));if(o.onPlan)await o.onPlan(p);},wait:async()=>{},now:(()=>{let n=0;return()=>n+=600001;})()});}catch(x){error=x;}
  return {result,error,calls,uuid,plan,env:e,fingerprint};
 }
 const kinds=async r=>(await db.query('select kind from orulo_audit.entries where run_uuid=$1 order by sequence',[r.uuid])).rows.map(x=>x.kind);
@@ -112,6 +112,20 @@ test('V8 retains multiple external changes and blocks without actor provenance, 
 test('V8 failed global readback capture reports SNAPSHOT_INCOMPLETE and cannot finish or retry CAS',async()=>{
  const r=await run({beforeControl:async(a,p)=>{if(a==='snapshot_begin'&&p.p_event.kind==='READBACK_V2')throw Error('POSTGRES_AUDIT_RPC_FAILED');}});
  assert.ok(r.error);assert.equal(batchFailureDetails(r.error).integrityClassification,'SNAPSHOT_INCOMPLETE');assert.equal(r.calls.filter(c=>c==='CAS').length,2);assert.ok(!(await kinds(r)).includes('FINISHED'));
+});
+test('V9 positive reader evidence and reader failure both retain STRICT_GLOBAL_V1 and never repeat CAS',async()=>{
+ for(const unavailable of [false,true]){
+  const id='00000000-0000-4000-8000-000000000099';let called=0;
+  const r=await run({onPlan:async()=>{await db.query("insert into properties values($1,'orulo:64515:1','novos','SP',true,'{\"building_id\":\"64515\"}',100,now(),now())",[id]);},
+   beforeControl:async(a,p)=>{if(a==='snapshot_begin'&&p.p_event.kind==='READBACK_V2')await db.query('update properties set price=200 where id=$1',[id]);},
+   readProvenance:async({runUuid,changes})=>{called++;assert.ok(runUuid);assert.ok(changes.some(c=>c.uuid===id));if(unavailable)throw Error('private test connection unavailable');
+    return c=>c.uuid===id?{kind:'INDEPENDENT_WRITER_ATTESTATION_V1',uuid:id,process:'synthetic-independent-webhook',eventId:'synthetic-event',transactionId:'999999',executorTransactionExcluded:true,beforeFullHash:c.before.fullHash,afterFullHash:c.after.fullHash,changedFields:['/price']}:null;
+   }});
+  assert.equal(called,1);assert.match(r.error.message,/GLOBAL_CHANGE/);assert.equal(r.calls.filter(c=>c==='CAS').length,2);assert.ok(!(await kinds(r)).includes('FINISHED'));
+  const e=(await db.query("select event from orulo_audit.entries where run_uuid=$1 and event->>'stage'='BATCH_INTEGRITY'",[r.uuid])).rows[0].event;
+  assert.equal(e.attributionV8.blocked,true);assert.equal(e.attributionV8.policy,'STRICT_GLOBAL_V1');assert.equal(e.attributionV8.provenanceV9.status,unavailable?'FAILED_CLOSED':'READ_ONLY_DIAGNOSTIC');
+  assert.equal(e.attributionV8.counts[unavailable?'EXTERNAL_CHANGE_UNATTRIBUTED':'EXTERNAL_CHANGE_VERIFIED'],1);assert.equal(e.unexplained.length,1);
+ }
 });
 test('hash-chain tamper rejected before authorization or CAS',async()=>{const r=await run({tamper:true});assert.ok(r.error);assert.equal(r.calls.includes('CAS'),false);});
 test('mismatched/duplicate source IDs, untrusted/unavailable/invalid images rejected; existing images skipped',async()=>{
