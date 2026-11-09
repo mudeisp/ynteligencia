@@ -1,0 +1,135 @@
+name: Orulo National V2 - operational read-only
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: Executar somente preflight ou circuito nacional após preflight
+        type: choice
+        default: preflight
+        options: [preflight, national-readonly]
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/orulo-national-v2-readonly.yml'
+      - 'scripts/orulo-national-*'
+      - 'orulo-national-v2/**'
+permissions:
+  contents: read
+concurrency:
+  group: orulo-national-v2-readonly
+  cancel-in-progress: false
+jobs:
+  verify-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f
+          persist-credentials: false
+      - name: Verify pinned source integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f"
+          sha256sum -c <<'PINNED_SHA256'
+          aacdcce0695829cb6ee917e3b7551fa0cdacef3826f4a8825005a2922fdb4a41  scripts/orulo-national-v2-pg-preflight.py
+          b88be1cea2f68f5913811348423453948ce2113dd6cfb90d120d3670450516e3  scripts/orulo-national-v2-workflow.test.py
+          9c37d4fea3fc96d8b3f51a72c0c93173556efe6931fc22717baff03a2c033f43  orulo-national-v2/handoff/PACKAGE-SHA256SUMS
+          PINNED_SHA256
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify original V2 package and hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f scripts/orulo-national-operational-readonly.sh || { echo "::error::BLOCKER_ORIGINAL_RUNNER_NOT_COMMITTED"; exit 1; }
+          test -f orulo-national-v2/handoff/PACKAGE-SHA256SUMS || { echo "::error::BLOCKER_ORIGINAL_PACKAGE_NOT_COMMITTED"; exit 1; }
+          sha256sum -c orulo-national-v2/handoff/PACKAGE-SHA256SUMS
+          (cd orulo-national-v2 && sha256sum -c REVIEW-SHA256SUMS)
+          (cd orulo-national-v2/manifest && sha256sum -c manifest.sha256)
+          (cd orulo-national-v2/handoff && sha256sum -c source-queue.sha256)
+          python3 scripts/orulo-national-v2.py verify orulo-national-v2
+      - name: Install original locked local test dependency
+        run: npm ci --prefix test-support/orulo-cas --ignore-scripts
+      - name: Run original protocol and transfer tests without production credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test --prefix test-support/orulo-cas
+          node --test scripts/orulo-national-transfer.test.mjs scripts/orulo-national-readonly-sql.test.mjs
+          python3 scripts/orulo-national-export-readonly.test.py
+          python3 scripts/orulo-national-v2.test.py
+          python3 scripts/orulo-national-v2-workflow.test.py
+          bash -n scripts/orulo-national-operational-readonly.sh
+  national-readonly:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+          github.repository == 'mudeisp/ynteligencia' && github.actor == 'mudeisp' &&
+          github.actor_id == '323805541' && github.triggering_actor == 'mudeisp' &&
+          github.run_attempt == '1' && github.sha == github.workflow_sha }}
+    needs: verify-package
+    runs-on: ubuntu-latest
+    environment: orulo-lote1
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f
+          persist-credentials: false
+      - name: Verify pinned source integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f"
+          sha256sum -c <<'PINNED_SHA256'
+          aacdcce0695829cb6ee917e3b7551fa0cdacef3826f4a8825005a2922fdb4a41  scripts/orulo-national-v2-pg-preflight.py
+          b88be1cea2f68f5913811348423453948ce2113dd6cfb90d120d3670450516e3  scripts/orulo-national-v2-workflow.test.py
+          9c37d4fea3fc96d8b3f51a72c0c93173556efe6931fc22717baff03a2c033f43  orulo-national-v2/handoff/PACKAGE-SHA256SUMS
+          PINNED_SHA256
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify original package before requesting any source
+        run: sha256sum -c orulo-national-v2/handoff/PACKAGE-SHA256SUMS
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Validate dependencies then run the original operational circuit
+        shell: bash
+        env:
+          ORULO_V2_STAGE: ${{ inputs.stage }}
+          ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
+          ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
+          ORULO_V2_PG_SERVICE_CONF: ${{ secrets.ORULO_V2_PG_SERVICE_CONF }}
+          ORULO_V2_PGPASS: ${{ secrets.ORULO_V2_PGPASS }}
+        run: |
+          set -euo pipefail
+          test -n "$ORULO_CLIENT_ID" && test -n "$ORULO_CLIENT_SECRET" || { echo "::error::BLOCKER_ORULO_AUTH"; exit 1; }
+          test -n "$ORULO_V2_PG_SERVICE_CONF" && test -n "$ORULO_V2_PGPASS" || { echo "::error::BLOCKER_READONLY_PG_PROFILE"; exit 1; }
+          umask 077
+          export PGSERVICEFILE="$RUNNER_TEMP/orulo-v2-pg/pg_service.conf"
+          export PGPASSFILE="$RUNNER_TEMP/orulo-v2-pg/pgpass"
+          export PGCONNECT_TIMEOUT=15
+          python3 scripts/orulo-national-v2-pg-preflight.py
+          if [ "$ORULO_V2_STAGE" = national-readonly ]; then
+            bash scripts/orulo-national-operational-readonly.sh --service orulo_v2_readonly --output-dir "$RUNNER_TEMP/orulo-national-v2-output"
+          fi
+      - name: Remove temporary credential files
+        if: always()
+        shell: bash
+        run: |
+          rm -f -- "$RUNNER_TEMP/orulo-v2-pg/pg_service.conf" "$RUNNER_TEMP/orulo-v2-pg/pgpass"
+      - name: Upload diagnostic summaries without credentials or full property records
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: orulo-national-v2-readonly-summary-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/orulo-national-v2-dependency-status.json
+            ${{ runner.temp }}/orulo-national-v2-output/stage-results.tsv
+            ${{ runner.temp }}/orulo-national-v2-output/source-console.txt
+            ${{ runner.temp }}/orulo-national-v2-output/export-console.txt
+            ${{ runner.temp }}/orulo-national-v2-output/simulation-console.txt
+          if-no-files-found: ignore
+          retention-days: 7
