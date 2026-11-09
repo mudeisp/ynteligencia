@@ -65,7 +65,7 @@ jobs:
           bash -n scripts/orulo-national-operational-readonly.sh
   national-readonly:
     if: >-
-      ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+      ${{ github.event_name == 'workflow_dispatch' && inputs.stage != 'source-discovery' && github.ref == 'refs/heads/main' &&
           github.repository == 'mudeisp/ynteligencia' && github.actor == 'mudeisp' &&
           github.actor_id == '323805541' && github.triggering_actor == 'mudeisp' &&
           github.run_attempt == '1' }}
@@ -226,7 +226,6 @@ jobs:
           github.triggering_actor == 'mudeisp' && github.run_attempt == '1' }}
     needs: verify-package
     runs-on: ubuntu-latest
-    environment: orulo-lote1
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
