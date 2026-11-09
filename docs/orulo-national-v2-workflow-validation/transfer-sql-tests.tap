@@ -1,0 +1,24 @@
+✔ real PostgreSQL read exports and global recheck agree, preserving exact canonical bytes for precise numerics (9.082146ms)
+✔ READ ONLY rejects a mutation, leaving the exported property unchanged (5.120817ms)
+✔ queue deduplication preserves exact associations and refuses fabricated candidate data (1.62758ms)
+✔ input hash tampering is rejected before discovery (0.877416ms)
+✔ missing credentials are a shared blocker with no network calls (3.393467ms)
+✔ direct source and CDN evidence join into an offline patch, with existing metadata preserved (27.035076ms)
+✔ paginated or malformed source does not become SOURCE_NOT_FOUND and independent buildings continue (4.356461ms)
+✔ an absent plan is SOURCE_NOT_FOUND, without invented URL or CDN request (2.61487ms)
+✔ untrusted image hosts are rejected before request and another building is still examined (4.667327ms)
+✔ source 429 stops dependent calls, preserves evidence and forbids automatic shared-service resume (1.921901ms)
+✔ MIME and binary signature failures stay blocked (4.948879ms)
+✔ partial discovery resumes pending work without repeating successful buildings (4.750482ms)
+✔ orphan building evidence is quarantined and independent buildings continue (4.563312ms)
+✔ tampered image prefix is a local building blocker rather than trusted recovery (2.788251ms)
+✔ fresh row drift and incomplete snapshots block proposals, while current complete rows are excluded (3.672946ms)
+✔ the existing patch helper rejects unvalidated URLs; no alternate patch path exists (0.234531ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2078.763793

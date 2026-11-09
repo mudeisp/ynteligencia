@@ -1,0 +1,69 @@
+{
+  "sourceArchiveSha256": "7b640ea79e06fc304fc0ffe5d53cc77937e9fe1640f4d62f79e7d4cbe9688809",
+  "remoteBranchCompared": "0c3cae0beb315a45adabf584c76c1502e8acfe0e",
+  "originalArchiveRepositoryFiles": 383,
+  "originalFilesByteIdentical": true,
+  "originalChecksumEntries": 381,
+  "originalProtocolFilesUnchanged": 56,
+  "originalOperationalFilesMissingOnRemote": 28,
+  "restoredOriginalDocumentationAndChecksumFiles": 3,
+  "workflowPath": ".github/workflows/orulo-national-v2-readonly.yml",
+  "workflowSha256": "aaf40bac4f8961ada815d568a76b4925ae8e4e21363f23e356ba155110c4940a",
+  "pgDependencyCheckerSha256": "7328db7f799101936abce5d07b52d81f6528dc0670b85fa10c70d384efc7f660",
+  "originalManifestSha256": "f94cf3139fa2516d55b98c0e242c64193107f0f65be924f36c936dc7952ab070",
+  "originalQueueSha256": "b6726aa08aca9673e4d76d10e405b071682b1c8ed88a8ce93a934392b814f11e",
+  "tests": {
+    "protocol-tests.tap": 153,
+    "transfer-sql-tests.tap": 16,
+    "export-tests.txt": 4,
+    "manifest-tests.txt": 6,
+    "workflow-tests.txt": 11
+  },
+  "localTestsTotal": 190,
+  "localFailures": 0,
+  "yamlParse": "PASS",
+  "productionConnectionValidation": "UNKNOWN_NOT_EXECUTED",
+  "nationalDryRunExecuted": false,
+  "productionWrites": 0,
+  "mergeExecuted": false,
+  "deployExecuted": false,
+  "newCommitsPushed": false,
+  "readyForReview": true,
+  "readyForAuthorizedNationalDispatch": false,
+  "githubEnvironment": {
+    "name": "orulo-lote1",
+    "branchPolicy": [
+      "main"
+    ],
+    "changed": false
+  },
+  "githubSecretsMetadata": {
+    "environmentSecretsHTTPStatus": 403,
+    "repositorySecretsHTTPStatus": 403,
+    "repositoryVariablesHTTPStatus": 403,
+    "valuesRead": false
+  },
+  "postgresqlConnectionIdentification": "NOT_PROVEN_FROM_ACCESSIBLE_SOURCES",
+  "publicBranchDeploymentEvidence": {
+    "commit": "0c3cae0beb315a45adabf584c76c1502e8acfe0e",
+    "statuses": [
+      {
+        "context": "Vercel – ynteligencia",
+        "state": "success",
+        "targetUrl": "https://vercel.com/rafael-8f11/ynteligencia/66u9Ykp8pb8hoYQ5QVTEaaQP5ppp"
+      },
+      {
+        "context": "Vercel – ynteligencia-app",
+        "state": "success",
+        "targetUrl": "https://vercel.com/rafael-8f11/ynteligencia-app/2Nm3oKmBQL742xK56PwPqgZQJYUU"
+      }
+    ]
+  },
+  "testLogSha256": {
+    "export-tests.txt": "d094b1bd2c8318c96097f80c50da282add5b2972970a77046de8db6c8935f6ca",
+    "manifest-tests.txt": "065c7d15facfd20f14fb9182747be315f3349fa1d5e1a0e966047509f4bfa9b1",
+    "protocol-tests.tap": "c45c5d37436682281cf021528cd64548fbfe6d36bc762878d46c1955e242a94e",
+    "transfer-sql-tests.tap": "214c1cb92cf5f308d0b5ebd90ab0076a2e07c94d6a6b8a41ee3d0c3a854296b6",
+    "workflow-tests.txt": "16d5575b5c12fdd3cb3821897078e120a7b6c79374a6413ab89bc74de7bf704a"
+  }
+}
