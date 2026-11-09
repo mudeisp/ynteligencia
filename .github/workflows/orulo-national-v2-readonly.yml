@@ -68,7 +68,7 @@ jobs:
       ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
           github.repository == 'mudeisp/ynteligencia' && github.actor == 'mudeisp' &&
           github.actor_id == '323805541' && github.triggering_actor == 'mudeisp' &&
-          github.run_attempt == '1' && github.sha == github.workflow_sha }}
+          github.run_attempt == '1' }}
     needs: verify-package
     runs-on: ubuntu-latest
     environment: orulo-lote1
