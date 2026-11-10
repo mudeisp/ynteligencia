@@ -47,7 +47,9 @@ def url_status(url):
 def inspect_image(url, evidence):
     try:
         deadline = time.monotonic() + 20
-        with build_opener(NoRedirect()).open(Request(url, headers={"Accept-Encoding": "identity"}), timeout=5) as response:
+        # Match the HTTP client identifier used by the source checkpoint collector.
+        request = Request(url, headers={"Accept-Encoding": "identity", "User-Agent": "node"})
+        with build_opener(NoRedirect()).open(request, timeout=5) as response:
             if response.status != 200:
                 return "SOURCE_HTTP_ERROR"
             mime = response.headers.get_content_type()
