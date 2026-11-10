@@ -52,6 +52,7 @@ jobs:
           python3 scripts/orulo-v2-source-chunk.py --queue pinned/orulo-national-v2/handoff/source-queue.json --index ${{ inputs.chunk }} --size 500 --output "$RUNNER_TEMP/chunk-queue.json" > "$RUNNER_TEMP/chunk-metadata"
           sed -n 's/^QUEUE_SHA256=//p' "$RUNNER_TEMP/chunk-metadata" > "$RUNNER_TEMP/chunk-queue.sha256"
       - name: Require evidence encryption certificate
+        id: evidence_cert
         shell: bash
         env:
           CERT_B64: ${{ secrets.ORULO_V2_EVIDENCE_CERT_B64 }}
@@ -65,7 +66,7 @@ jobs:
           if value.startswith("-----BEGIN CERTIFICATE-----"):
               pem = value.encode("ascii", errors="strict")
           else:
-              compact = re.sub(r"\\s+", "", value)
+              compact = re.sub(r"\s+", "", value)
               try:
                   pem = base64.b64decode(compact, validate=True)
               except (binascii.Error, ValueError):
@@ -92,7 +93,8 @@ jobs:
           test -n "$ORULO_CLIENT_ID" && test -n "$ORULO_CLIENT_SECRET" || { echo '::error::SOURCE_AUTH_MISSING'; exit 1; }
           node pinned/scripts/orulo-national-source-readonly.mjs --queue "$RUNNER_TEMP/chunk-queue.json" --queue-sha256 "$(cat "$RUNNER_TEMP/chunk-queue.sha256")" --max-buildings 500 --output-dir "$RUNNER_TEMP/v2-source-chunk"
       - name: Seal checkpoint including per-building evidence
-        if: always()
+        id: seal
+        if: ${{ always() && steps.evidence_cert.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -105,7 +107,7 @@ jobs:
           (cd "$RUNNER_TEMP/v2-sealed" && sha256sum source.cms > source.cms.sha256)
           echo 'V2_ENCRYPTED_CHECKPOINT_CREATED; PRODUCTION_WRITES=0'
       - name: Persist encrypted checkpoint
-        if: always()
+        if: ${{ always() && steps.seal.outcome == 'success' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: orulo-v2-source-chunk-${{ inputs.chunk }}-${{ github.run_id }}
