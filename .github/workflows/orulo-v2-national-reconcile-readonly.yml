@@ -32,7 +32,7 @@ jobs:
           from urllib.parse import urlsplit
           raw=os.environ["ORULO_V2_DB_URL"]
           try:
-              if raw != raw.strip() or any(c in raw for c in "\\r\\n"):
+              if raw != raw.strip() or any(c in raw for c in "\r\n"):
                   raise ValueError("EXTRA_WHITESPACE")
               parsed=urlsplit(raw)
               if parsed.scheme not in ("postgresql","postgres") or not parsed.hostname:
