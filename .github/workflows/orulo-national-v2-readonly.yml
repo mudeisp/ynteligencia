@@ -6,7 +6,7 @@ on:
         description: Preflight, circuito nacional ou descoberta isolada da API Orulo
         type: choice
         default: preflight
-        options: [preflight, national-readonly, source-discovery]
+        options: [preflight, national-readonly, source-discovery, pilot-source-evidence]
   pull_request:
     branches: [main]
     paths:
@@ -65,7 +65,7 @@ jobs:
           bash -n scripts/orulo-national-operational-readonly.sh
   national-readonly:
     if: >-
-      ${{ github.event_name == 'workflow_dispatch' && inputs.stage != 'source-discovery' && github.ref == 'refs/heads/main' &&
+      ${{ github.event_name == 'workflow_dispatch' && inputs.stage != 'source-discovery' && inputs.stage != 'pilot-source-evidence' && github.ref == 'refs/heads/main' &&
           github.repository == 'mudeisp/ynteligencia' && github.actor == 'mudeisp' &&
           github.actor_id == '323805541' && github.triggering_actor == 'mudeisp' &&
           github.run_attempt == '1' }}
@@ -289,3 +289,85 @@ jobs:
                           summary.setdefault('buildingIncidentCodes',[]).append({'code':code,'httpStatus':i.get('httpStatus'),'scope':i.get('scope')})
               print('ORULO_SOURCE_DISCOVERY='+json.dumps(summary,sort_keys=True))
           PY
+
+  pilot-source-evidence:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.stage == 'pilot-source-evidence' && github.ref == 'refs/heads/main' && github.repository
+      == 'mudeisp/ynteligencia' && github.actor == 'mudeisp' && github.actor_id == '323805541' && github.triggering_actor == 'mudeisp' && github.run_attempt
+      == '1' && github.sha == github.workflow_sha }}
+    needs: verify-package
+    runs-on: ubuntu-latest
+    environment: orulo-lote1
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        ref: ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f
+        persist-credentials: false
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: '22'
+    - name: Verify frozen package and prepare exactly five source requests
+      shell: bash
+      run: |
+        set -euo pipefail
+        umask 077
+        test "$(git rev-parse HEAD)" = ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f
+        sha256sum -c orulo-national-v2/handoff/PACKAGE-SHA256SUMS
+        python3 - <<'PYDATA'
+        import os,base64,json,hashlib
+        from pathlib import Path
+        p=Path(os.environ['RUNNER_TEMP'])/'orulo-pilot-inputs';p.mkdir(mode=0o700)
+        queue=base64.b64decode('ewogICJ2ZXJzaW9uIjogMSwKICAibG9naWNhbEJhdGNoSWQiOiAib3J1bG8tbmF0aW9uYWwtdjIiLAogICJ3cml0ZUF1dGhvcml6ZWQiOiBmYWxzZSwKICAicHVycG9zZSI6ICJSRUFEX09OTFlfUElMT1RfU09VUkNFX0VWSURFTkNFX09OTFlfRlJPTV9GUk9aRU5fUVVFVUVfTk9UX0NBU19BVVRIT1JJWkFUSU9OIiwKICAibWFuaWZlc3RTaGEyNTYiOiAiZjk0Y2YzMTM5ZmEyNTE2ZDU1Yjk4YzBlMjQyYzY0MTkzMTA3ZjBmNjViZTkyNGYzNmM5MzZkYzc5NTJhYjA3MCIsCiAgImJ1aWxkaW5ncyI6IFsKICAgIHsKICAgICAgImJ1aWxkaW5nSWQiOiAiNzk5NTkiLAogICAgICAicGxhbnMiOiBbCiAgICAgICAgewogICAgICAgICAgInBsYW5JZCI6ICIyNTQ1MTA4IiwKICAgICAgICAgICJwcm9wZXJ0eUlkcyI6IFsKICAgICAgICAgICAgIjA1YmJiZDVmLTIzNDItNGEyMC1iODc3LWEzODU2YThiZWEyMyIKICAgICAgICAgIF0KICAgICAgICB9CiAgICAgIF0KICAgIH0sCiAgICB7CiAgICAgICJidWlsZGluZ0lkIjogIjY0NTAwIiwKICAgICAgInBsYW5zIjogWwogICAgICAgIHsKICAgICAgICAgICJwbGFuSWQiOiAiMjA0NTI1MCIsCiAgICAgICAgICAicHJvcGVydHlJZHMiOiBbCiAgICAgICAgICAgICIwNzI2ZWU1MC1iYjBkLTRiODItYjJmNS1mZWI2MjRhNmRmODQiCiAgICAgICAgICBdCiAgICAgICAgfQogICAgICBdCiAgICB9LAogICAgewogICAgICAiYnVpbGRpbmdJZCI6ICI2OTgwMSIsCiAgICAgICJwbGFucyI6IFsKICAgICAgICB7CiAgICAgICAgICAicGxhbklkIjogIjIyMzQ1MDciLAogICAgICAgICAgInByb3BlcnR5SWRzIjogWwogICAgICAgICAgICAiMDgwMmVjNjMtODEwYy00YWQwLTg4NTgtN2QzYmExNDNkMzcwIgogICAgICAgICAgXQogICAgICAgIH0KICAgICAgXQogICAgfSwKICAgIHsKICAgICAgImJ1aWxkaW5nSWQiOiAiNjQyOTkiLAogICAgICAicGxhbnMiOiBbCiAgICAgICAgewogICAgICAgICAgInBsYW5JZCI6ICIyMDQwNjU5IiwKICAgICAgICAgICJwcm9wZXJ0eUlkcyI6IFsKICAgICAgICAgICAgIjBhNWIyNGMzLWQ2ZTAtNDI0NC1hNmNiLTYyMzdjMzllMDQ5NSIKICAgICAgICAgIF0KICAgICAgICB9CiAgICAgIF0KICAgIH0sCiAgICB7CiAgICAgICJidWlsZGluZ0lkIjogIjY4OTY0IiwKICAgICAgInBsYW5zIjogWwogICAgICAgIHsKICAgICAgICAgICJwbGFuSWQiOiAiMjE5Mzk1MCIsCiAgICAgICAgICAicHJvcGVydHlJZHMiOiBbCiAgICAgICAgICAgICIwYjQ5ZWZmMi02ZDlhLTRjOWUtYmQ2Zi0zYjhiNjI1NDFjNmMiCiAgICAgICAgICBdCiAgICAgICAgfQogICAgICBdCiAgICB9CiAgXQp9Cg==')
+        assert hashlib.sha256(queue).hexdigest()=='0d1e1eb1095aad43570cf1b3b3d06fe1a9f07bd37b75940e2adb686d593105b9'
+        x=json.loads(queue)
+        expected={'79959':'05bbbd5f-2342-4a20-b877-a3856a8bea23','64500':'0726ee50-bb0d-4b82-b2f5-feb624a6df84','69801':'0802ec63-810c-4ad0-8858-7d3ba143d370','64299':'0a5b24c3-d6e0-4244-a6cb-6237c39e0495','68964':'0b49eff2-6d9a-4c9e-bd6f-3b8b62541c6c'}
+        assert len(x['buildings'])==5 and {b['buildingId'] for b in x['buildings']}==set(expected)
+        assert x['writeAuthorized'] is False
+        for b in x['buildings']:
+         assert len(b['plans'])==1 and b['plans'][0]['propertyIds']==[expected[b['buildingId']]]
+        (p/'queue.json').write_bytes(queue)
+        (p/'recipient.crt').write_bytes(base64.b64decode('LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUVUVENDQXJXZ0F3SUJBZ0lVTVY2ZTRxSFNZdTdyWWxpOS9EYVlQdXBMcnNnd0RRWUpLb1pJaHZjTkFRRUwKQlFBd05qRTBNRElHQTFVRUF3d3JUM0oxYkc4dFVHbHNiM1F0VTI5MWNtTmxMVVYyYVdSbGJtTmxMVVZ1WTNKNQpjSFJwYjI0dFQyNXNlVEFlRncweU5qRXhNVEF4TURVeU16bGFGdzB5TnpFeE1UQXhNRFV5TXpsYU1EWXhOREF5CkJnTlZCQU1NSzA5eWRXeHZMVkJwYkc5MExWTnZkWEpqWlMxRmRtbGtaVzVqWlMxRmJtTnllWEIwYVc5dUxVOXUKYkhrd2dnR2lNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJqd0F3Z2dHS0FvSUJnUURYaitqcmg0VFlQOUdHOWV3bwp3R3VZSEEvUkNwcnBtOE1uanJNYXdDQkdBVjFHbzhuMnNuZkp1RUY0cytuSkdKNTdKbDJpbDVaVGU4YU9MWVZiClZpTk9UdXVsNkVpN2I2S2Rzemg2SEZRMVMwbkRCQWROamtlTjl3bldyeHBkTXdIZVdmanhUWThXb0h4bnJsMmkKMWpjYXdRbWNzWkNRV1JaZi9Ec01nM3ZlSXFWbThmbnVRbHNjdWJJTmxITkt0dWhxSS9TL0xqTm5TMEVYdE1CMgpLMUhuRVQydGpDYmUxWllLUURhakFveC9KMkkvbXg3SjJEWGNYSnBjN1o4N1UxVGxqcW03emkxTTUwN3QwRGRzCmJjRi80YWRwMU1SMjhvSUJsdWxzSEZZTDNPeXRCanR6SmV6SlQxU2Y3SVRxQkRFTVZlWEJub2Jwd3FzS1IyMloKMXdXQlQwdVpTWGxEWVk2ZTRXVDhDS1Z3WjdyM05EV1d6SmNYTzJJaHdTRXhoVEwrSTlvYXo1WEIvazdxOTlhMgpxcHZrMjRzWVIxVFJBdFFQZ3VUazhxUGt5ZzlBUHZDWVhNY3NlNHJ1c2lWUGkxM2c2WmVYclJtS3NBV29LUE9BCll2Qkk5RTg2YlBkM3BlWnFUc2p4ZkVOaHV3ZUQwR3BBZXl0THhubUZ0NDluVlJrQ0F3RUFBYU5UTUZFd0hRWUQKVlIwT0JCWUVGSnc3U2xBekQ0OVFTQnN0bnp3Z0FJZkx5VFRpTUI4R0ExVWRJd1FZTUJhQUZKdzdTbEF6RDQ5UQpTQnN0bnp3Z0FJZkx5VFRpTUE4R0ExVWRFd0VCL3dRRk1BTUJBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0dCCkFIVDlnTGpTendGSTAxTktEalRjTGQyM2RWQUVCU25EeHdEYytnQ2llQXBXb3pydFFIWGNpc3dHdFp4Zk5hM24KNzdWaW5BL3ArM3RDOXd5VkpJLzZ0OWxHN0EybzVKZm1JWDduMXhtVnNzUFFzQ1hwYzFwN1R6b2V4UFY0byt4Ngp3dkdSVVdvYWQ1SFdhK3d4RHdTWTlmN2ZVeFM5MnBVRTZhdWlsbmFhY1pOV25kWm9oQTdab05ncVdWVVZXL3JaCjY4OUxGeHB3T3NsODVFeVRKSk5TaVFlYlJUYm5BS2VSWHFQdmRoam8vaWxXRTQ5UGxaMS9JeVB1ZkRwTkdJZUkKOVJYRVNETG84VkZtTDg1WTZ0Qi8xcDY2K1lTYk90S0o1anBtdmpISGZkNVp4UTdVKzlvVWU4OVR3ejB4UXNZTQpJTzd2V0w5d0pBMzdQM1lrOEgzTTFreVVUcjA1dWR0WjZUS2JTQUlRQm93WnhoSEtEWWk4VzdRS0VjaDRtQWNnCkZreUx3TndmZVo3US9QbkRPSTBPYmdIdmt5UWRNYnljRWVsZEhFZ3l5S1BDRFJFWGQ3UEt6VUpFMVZmY3pLc0EKaEx3S3pqcXhLZ0ZNYWhCRmpHN084SUxrZXpMc0x3cC9KSUJLbFZPV1AxNnMxeFJ1Uno1Q3VVZk5FLzRoV3ZxdAowUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K'))
+        PYDATA
+    - name: Collect authenticated source only for the five approved candidate IDs
+      shell: bash
+      env:
+        ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
+        ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
+      run: |
+        set -euo pipefail
+        test -n "$ORULO_CLIENT_ID" && test -n "$ORULO_CLIENT_SECRET" || { echo '::error::SOURCE_CREDENTIALS_NOT_AVAILABLE_TO_JOB'; exit 1; }
+        umask 077
+        node scripts/orulo-national-source-readonly.mjs \
+         --queue "$RUNNER_TEMP/orulo-pilot-inputs/queue.json" \
+         --queue-sha256 0d1e1eb1095aad43570cf1b3b3d06fe1a9f07bd37b75940e2adb686d593105b9 \
+         --max-buildings 5 \
+         --output-dir "$RUNNER_TEMP/orulo-pilot-source-evidence"
+    - name: Seal private source evidence with recipient public certificate
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        umask 077
+        test -d "$RUNNER_TEMP/orulo-pilot-source-evidence" || { echo '::error::NO_SOURCE_EVIDENCE_CREATED'; exit 1; }
+        mkdir -m 700 "$RUNNER_TEMP/orulo-pilot-sealed"
+        tar -czf "$RUNNER_TEMP/orulo-pilot-source.tgz" -C "$RUNNER_TEMP" orulo-pilot-source-evidence
+        openssl cms -encrypt -binary -aes-256-gcm \
+         -in "$RUNNER_TEMP/orulo-pilot-source.tgz" \
+         -out "$RUNNER_TEMP/orulo-pilot-sealed/source-evidence.cms" -outform DER \
+         "$RUNNER_TEMP/orulo-pilot-inputs/recipient.crt"
+        (cd "$RUNNER_TEMP/orulo-pilot-sealed" && sha256sum source-evidence.cms > source-evidence.cms.sha256)
+        echo 'SOURCE_EVIDENCE_SEALED; NO_SUPABASE_OR_CAS_CALLS; CONTENT_REVIEW_REQUIRED'
+    - name: Upload encrypted evidence only
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: orulo-pilot-five-source-${{ github.run_id }}
+        path: ${{ runner.temp }}/orulo-pilot-sealed/
+        if-no-files-found: error
+        retention-days: 7
+    - name: Remove private runner scratch files
+      if: always()
+      shell: bash
+      run: |
+        rm -rf -- "$RUNNER_TEMP/orulo-pilot-source-evidence" "$RUNNER_TEMP/orulo-pilot-inputs"
+        rm -f -- "$RUNNER_TEMP/orulo-pilot-source.tgz"
