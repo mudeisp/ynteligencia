@@ -74,5 +74,81 @@ class BatchTest(unittest.TestCase):
             self.assertCountEqual(pool.map(apply_concurrently, ["1", "3"]), [1, 0])
 
 
+    def test_pilot_five_occurrences_and_audit_readback(self):
+        """Five occurrence pilot on disposable PostgreSQL, never production."""
+        import uuid
+        original = self.record()
+        property_ids = [ID] + [str(uuid.uuid4()) for _ in range(4)]
+        for pid in property_ids[1:]:
+            self.conn.execute(
+                "INSERT INTO public.properties VALUES (%s, 'novos', 'orulo:10:test', %s)",
+                (pid, Jsonb(original["raw_data"])),
+            )
+        items = []
+        for pid in property_ids:
+            baseline = self.conn.execute(
+                "SELECT to_jsonb(p) FROM public.properties p WHERE id=%s", (pid,)
+            ).fetchone()[0]
+            items.append({"property_id": pid, "building_id": "10", "plan_id": "1",
+                          "baseline": baseline, "images": [URL]})
+        self.assertEqual(self.apply(items), 5)
+        for pid in property_ids:
+            after = self.conn.execute(
+                "SELECT to_jsonb(p) FROM public.properties p WHERE id=%s", (pid,)
+            ).fetchone()[0]
+            before = next(item["baseline"] for item in items if item["property_id"] == pid)
+            self.assertEqual(after["raw_data"]["building"]["floor_plans"][0]["images"], [URL])
+            restored = dict(after)
+            restored["raw_data"] = dict(after["raw_data"])
+            restored["raw_data"]["building"] = dict(after["raw_data"]["building"])
+            restored["raw_data"]["building"]["floor_plans"] = [
+                dict(p) for p in after["raw_data"]["building"]["floor_plans"]
+            ]
+            restored["raw_data"]["building"]["floor_plans"][0].pop("images")
+            self.assertEqual(restored, before)
+        self.assertEqual(self.conn.execute(
+            "SELECT count(*) FROM orulo_recovery.cas_batch_audit"
+        ).fetchone()[0], 5)
+        self.assertEqual(self.apply(items), 0)
+        self.assertEqual(self.conn.execute(
+            "SELECT count(*) FROM orulo_recovery.cas_batch_audit"
+        ).fetchone()[0], 5)
+
+    def test_pilot_stale_baseline_rolls_back_all_five(self):
+        import uuid
+        items = [self.item("1")]
+        for _ in range(4):
+            pid = str(uuid.uuid4())
+            self.conn.execute(
+                "INSERT INTO public.properties VALUES (%s, 'novos', 'orulo:10:test', %s)",
+                (pid, Jsonb(self.baseline["raw_data"])),
+            )
+            baseline = self.conn.execute(
+                "SELECT to_jsonb(p) FROM public.properties p WHERE id=%s", (pid,)
+            ).fetchone()[0]
+            items.append({"property_id": pid, "building_id": "10", "plan_id": "1",
+                          "baseline": baseline, "images": [URL]})
+        items[-1]["baseline"] = {**items[-1]["baseline"], "external_id": "orulo:10:stale"}
+        with self.assertRaisesRegex(psycopg.Error, "CAS_BATCH_CONFLICT"):
+            self.apply(items)
+        self.assertEqual(self.conn.execute(
+            "SELECT count(*) FROM orulo_recovery.cas_batch_audit"
+        ).fetchone()[0], 0)
+        self.assertEqual(self.conn.execute(
+            "SELECT count(*) FROM public.properties WHERE raw_data #> '{building,floor_plans,0,images}' IS NOT NULL"
+        ).fetchone()[0], 0)
+
+    def test_pilot_duplicate_plan_id_is_blocked(self):
+        duplicated = dict(self.baseline["raw_data"])
+        duplicated["building"] = {"floor_plans": [{"id": "1"}, {"id": "1"}]}
+        self.conn.execute("UPDATE public.properties SET raw_data=%s WHERE id=%s",
+                          (Jsonb(duplicated), ID))
+        current = self.record()
+        item = self.item("1")
+        item["baseline"] = current
+        with self.assertRaisesRegex(psycopg.Error, "CAS_BATCH_CONFLICT"):
+            self.apply([item])
+        self.assertEqual(self.record(), current)
+
 if __name__ == "__main__":
     unittest.main()
