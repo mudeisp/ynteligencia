@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION orulo_recovery.cas_replace_existing_plan(
   p_building_id text,
   p_plan_id text,
   p_expected_record jsonb,
-  p_replacement_plan jsonb
+  p_recovered_images jsonb
 ) RETURNS boolean
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -21,10 +21,13 @@ DECLARE
   v_plans jsonb;
   v_new_plans jsonb;
   v_match_count int;
+  v_old_plan jsonb;
+  v_new_plan jsonb;
 BEGIN
   IF p_building_id !~ '^[0-9]+$' OR p_plan_id !~ '^[0-9]+$'
-    OR p_replacement_plan->>'id' IS DISTINCT FROM p_plan_id
-    OR jsonb_typeof(p_replacement_plan) <> 'object'
+    OR jsonb_typeof(p_recovered_images) <> 'array'
+    OR jsonb_array_length(p_recovered_images)=0
+    OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_recovered_images) e WHERE jsonb_typeof(e.value)<>'string' OR e.value #>> '{}' !~ '^https://static[.]orulo[.]com[.]br/images/')
     OR jsonb_typeof(p_expected_record) <> 'object'
     THEN RETURN false;
   END IF;
@@ -41,7 +44,10 @@ BEGIN
   SELECT count(*) INTO v_match_count FROM jsonb_array_elements(v_plans) AS p(plan)
   WHERE p.plan->>'id'=p_plan_id;
   IF v_match_count <> 1 THEN RETURN false; END IF;
-  SELECT jsonb_agg(CASE WHEN items.plan->>'id'=p_plan_id THEN p_replacement_plan ELSE items.plan END ORDER BY ordinal)
+  SELECT p.plan INTO v_old_plan FROM jsonb_array_elements(v_plans) p(plan) WHERE p.plan->>'id'=p_plan_id;
+  IF jsonb_typeof(v_old_plan)<>'object' THEN RETURN false; END IF;
+  v_new_plan:=jsonb_set(v_old_plan,'{images}',p_recovered_images,true);
+  SELECT jsonb_agg(CASE WHEN items.plan->>'id'=p_plan_id THEN v_new_plan ELSE items.plan END ORDER BY ordinal)
   INTO v_new_plans FROM jsonb_array_elements(v_plans) WITH ORDINALITY AS items(plan,ordinal);
   UPDATE public.properties
   SET raw_data=jsonb_set(v_current.raw_data,'{building,floor_plans}',v_new_plans,false)
