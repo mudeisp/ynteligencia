@@ -89,7 +89,13 @@ jobs:
               if not hosts or not all(hosts):
                   raise ValueError("EMPTY_LIBPQ_HOST")
               if any(h != parsed.hostname for h in hosts):
-                  raise ValueError("LIBPQ_HOST_DIFFERS_FROM_URI_HOST")
+                  from urllib.parse import parse_qs
+                  q=parse_qs(parsed.query,keep_blank_values=True)
+                  if "host" in q or "hostaddr" in q:
+                      raise ValueError("URI_QUERY_OVERRIDES_HOST_REMOVE_HOST_AND_HOSTADDR")
+                  if parsed.password and any(ch in parsed.password for ch in "@:/?#"):
+                      raise ValueError("URI_PASSWORD_MAY_REQUIRE_PERCENT_ENCODING")
+                  raise ValueError("LIBPQ_HOST_DIFFERS_FROM_URI_HOST_CHECK_URI_ENCODING")
               if cfg.get("hostaddr"):
                   raise ValueError("UNEXPECTED_HOSTADDR_OVERRIDE")
               if len(hosts)!=1:
