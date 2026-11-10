@@ -49,9 +49,9 @@ BEGIN
       ELSE item.value END ORDER BY item.ordinality
   ) INTO v_new_plans
   FROM jsonb_array_elements(v_plans) WITH ORDINALITY item(value,ordinality);
-  UPDATE public.properties
+  UPDATE public.properties AS target
   SET raw_data=jsonb_set(v_current.raw_data,'{building,floor_plans}',v_new_plans,false)
-  WHERE id=p_property_id AND to_jsonb(public.properties)=p_expected_record;
+  WHERE target.id=p_property_id AND to_jsonb(target)=p_expected_record;
   RETURN FOUND;
 END;
 $cas$;
