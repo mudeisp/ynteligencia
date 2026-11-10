@@ -117,6 +117,20 @@ class BatchTest(unittest.TestCase):
             ORDER BY a.property_id
         """).fetchall()
         self.assertEqual(len(audit), 5)
+        links = self.conn.execute("""
+            SELECT previous_entry_sha256, entry_sha256,
+                   encode(sha256(convert_to(
+                     concat_ws('|', transaction_id::text, property_id::text,
+                       building_id, plan_id, baseline_sha256, result_sha256,
+                       previous_entry_sha256), 'UTF8')), 'hex')
+            FROM orulo_recovery.cas_batch_audit
+            ORDER BY property_id, building_id, plan_id
+        """).fetchall()
+        previous = "0" * 64
+        for prev_hash, entry_hash, recomputed in links:
+            self.assertEqual(prev_hash, previous)
+            self.assertEqual(entry_hash, recomputed)
+            previous = entry_hash
         for pid, before_hash, after_hash, live_hash in audit:
             self.assertEqual(after_hash, live_hash)
             self.assertRegex(before_hash, r"^[0-9a-f]{64}$")
