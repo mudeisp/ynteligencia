@@ -26,7 +26,7 @@ DECLARE
   v_existing_images jsonb;
 BEGIN
   IF p_building_id IS NULL OR p_plan_id IS NULL
-    OR p_building_id !~ '^[0-9]+    OR jsonb_typeof(p_recovered_images) IS DISTINCT FROM 'array'
+    OR p_building_id !~ '^[0-9]+
     OR CASE WHEN jsonb_typeof(p_recovered_images)='array' THEN jsonb_array_length(p_recovered_images)=0 ELSE true END
     OR EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_recovered_images)='array' THEN p_recovered_images ELSE '[]'::jsonb END) e WHERE jsonb_typeof(e.value) IS DISTINCT FROM 'string' OR e.value #>> '{}' !~ '^https://static[.]orulo[.]com[.]br/images/')
     OR jsonb_typeof(p_expected_record) IS DISTINCT FROM 'object'
@@ -62,7 +62,8 @@ END;
 $$;
 -- Do not grant EXECUTE to anon/authenticated/public. Keep schema outside Data API.
 REVOKE ALL ON FUNCTION orulo_recovery.cas_replace_existing_plan(uuid,text,text,jsonb,jsonb) FROM PUBLIC;
-    OR p_plan_id !~ '^[0-9]+    OR jsonb_typeof(p_recovered_images) IS DISTINCT FROM 'array'
+
+    OR p_plan_id !~ '^[0-9]+
     OR CASE WHEN jsonb_typeof(p_recovered_images)='array' THEN jsonb_array_length(p_recovered_images)=0 ELSE true END
     OR EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_recovered_images)='array' THEN p_recovered_images ELSE '[]'::jsonb END) e WHERE jsonb_typeof(e.value) IS DISTINCT FROM 'string' OR e.value #>> '{}' !~ '^https://static[.]orulo[.]com[.]br/images/')
     OR jsonb_typeof(p_expected_record) IS DISTINCT FROM 'object'
@@ -98,7 +99,7 @@ END;
 $$;
 -- Do not grant EXECUTE to anon/authenticated/public. Keep schema outside Data API.
 REVOKE ALL ON FUNCTION orulo_recovery.cas_replace_existing_plan(uuid,text,text,jsonb,jsonb) FROM PUBLIC;
-    OR jsonb_typeof(p_recovered_images) IS DISTINCT FROM 'array'
+
     OR CASE WHEN jsonb_typeof(p_recovered_images)='array' THEN jsonb_array_length(p_recovered_images)=0 ELSE true END
     OR EXISTS (SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_recovered_images)='array' THEN p_recovered_images ELSE '[]'::jsonb END) e WHERE jsonb_typeof(e.value) IS DISTINCT FROM 'string' OR e.value #>> '{}' !~ '^https://static[.]orulo[.]com[.]br/images/')
     OR jsonb_typeof(p_expected_record) IS DISTINCT FROM 'object'
