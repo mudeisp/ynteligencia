@@ -1,6 +1,39 @@
 name: Orulo National V2 - persistent source checkpoints
 on:
   workflow_dispatch:
+    inputs:
+      chunk:
+        description: 'V2 chunk number 0-26; run one checkpoint at a time'
+        required: true
+        type: choice
+        options:
+          - '0'
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+          - '6'
+          - '7'
+          - '8'
+          - '9'
+          - '10'
+          - '11'
+          - '12'
+          - '13'
+          - '14'
+          - '15'
+          - '16'
+          - '17'
+          - '18'
+          - '19'
+          - '20'
+          - '21'
+          - '22'
+          - '23'
+          - '24'
+          - '25'
+          - '26'
 permissions:
   contents: read
 jobs:
@@ -8,11 +41,6 @@ jobs:
     if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        chunk: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -32,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          python3 scripts/orulo-v2-source-chunk.py --queue orulo-national-v2/handoff/source-queue.json --index ${{ matrix.chunk }} --output "$RUNNER_TEMP/chunk-queue.json" > "$RUNNER_TEMP/chunk-metadata"
+          python3 scripts/orulo-v2-source-chunk.py --queue orulo-national-v2/handoff/source-queue.json --index ${{ inputs.chunk }} --output "$RUNNER_TEMP/chunk-queue.json" > "$RUNNER_TEMP/chunk-metadata"
           sed -n 's/^QUEUE_SHA256=//p' "$RUNNER_TEMP/chunk-metadata" > "$RUNNER_TEMP/chunk-queue.sha256"
       - name: Require evidence encryption certificate
         shell: bash
@@ -70,7 +98,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: orulo-v2-source-chunk-${{ matrix.chunk }}-${{ github.run_id }}
+          name: orulo-v2-source-chunk-${{ inputs.chunk }}-${{ github.run_id }}
           path: ${{ runner.temp }}/v2-sealed/
           if-no-files-found: error
           retention-days: 30
