@@ -5,10 +5,10 @@ from pathlib import Path
 p=argparse.ArgumentParser()
 p.add_argument('--queue',required=True)
 p.add_argument('--index',required=True,type=int)
-p.add_argument('--size',type=int,default=100)
+p.add_argument('--size',type=int,default=500)
 p.add_argument('--output',required=True)
 a=p.parse_args()
-if not (0<=a.index<27 and a.size==100): raise SystemExit('INVALID_CHUNK')
+if not (0<=a.index<6 and a.size==500): raise SystemExit('INVALID_CHUNK')
 q=json.loads(Path(a.queue).read_bytes())
 if q.get('writeAuthorized') is not False or len(q['buildings'])!=2667: raise SystemExit('FROZEN_V2_QUEUE_MISMATCH')
 ids=[str(b['buildingId']) for b in q['buildings']]
