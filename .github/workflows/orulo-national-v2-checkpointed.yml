@@ -34,6 +34,9 @@ jobs:
           sha256sum -c orulo-national-v2/handoff/PACKAGE-SHA256SUMS
           (cd orulo-national-v2/manifest && sha256sum -c manifest.sha256)
           (cd orulo-national-v2/handoff && sha256sum -c source-queue.sha256)
+      - name: Verify six non-overlapping 500-building partitions
+        shell: bash
+        run: python3 tests/orulo-v2-source-chunk.test.py
       - name: Prepare isolated source queue
         shell: bash
         run: |
