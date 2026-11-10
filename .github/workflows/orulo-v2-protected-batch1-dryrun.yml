@@ -19,7 +19,7 @@ permissions:
   actions: read
 jobs:
   validate:
-    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 && inputs.dry_run && !inputs.cas_writes_authorized && inputs.batch_size == 2000 && inputs.batch_number >= 1 && inputs.batch_number <= 5 }}
+    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 && inputs.dry_run && !inputs.cas_writes_authorized && ((inputs.batch_size == 2000 && inputs.batch_number >= 1 && inputs.batch_number <= 5) || (inputs.batch_size == 5000 && inputs.batch_number >= 6 && inputs.batch_number <= 10)) }}
     runs-on: ubuntu-latest
     environment: orulo-v2-reconciliation
     timeout-minutes: 60
@@ -35,6 +35,7 @@ jobs:
           PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
           ORULO_V2_DB_URL: ${{ secrets.ORULO_V2_DB_URL }}
           BATCH_NUMBER: ${{ inputs.batch_number }}
+          BATCH_SIZE: ${{ inputs.batch_size }}
         run: |
           set -euo pipefail
           umask 077
@@ -154,4 +155,24 @@ jobs:
             subprocess.run(['openssl','cms','-decrypt','-binary','-inform','DER','-in',str(cms),
               '-inkey',str(work/'key.pem'),'-out',str(tgz)],check=True,stdout=subprocess.DEVNULL)
           PY
+          # The pinned validator uses fixed 2,000-record windows. For batches 6-10,
+          # apply a narrowly asserted, in-memory-compatible window adjustment only.
+          # Batches 1-5 retain their original code and offsets.
+          if [ "$BATCH_SIZE" = "5000" ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/orulo-v2-national-dry-run.py')
+          s=p.read_text()
+          replacements={
+            'start = (batch_number - 1) * 2000': 'start = 10000 + (batch_number - 6) * 5000',
+            'batch = candidates[start:start + 2000]': 'batch = candidates[start:start + 5000]',
+            '"batchSize": 2000': '"batchSize": 5000',
+          }
+          for before,after in replacements.items():
+              if s.count(before)!=1:
+                  raise SystemExit('PINNED_VALIDATOR_WINDOW_PATCH_MISMATCH')
+              s=s.replace(before,after)
+          p.write_text(s)
+          PY
+          fi
           python3 scripts/orulo-v2-national-dry-run.py "$WORK/manifest.json" "$WORK/reconciliation.json" "$BATCH_NUMBER" "$WORK"
