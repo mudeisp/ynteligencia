@@ -76,6 +76,31 @@ jobs:
             -inkey "$WORK/key.pem" -out "$WORK/manifest.json"
           echo "6f6248375b5d5459496465d1c202e38e10adfade30bdef2442a7d59f00f313cc  $WORK/manifest.json" | sha256sum -c --status
           python3 -m pip install --disable-pip-version-check --quiet 'psycopg[binary]==3.2.12'
+          # Validate the effective libpq host(s), including URI query overrides.
+          python3 - <<'PY'
+          import os,socket,sys
+          from urllib.parse import urlsplit
+          from psycopg.conninfo import conninfo_to_dict
+          raw=os.environ["ORULO_V2_DB_URL"]
+          try:
+              parsed=urlsplit(raw)
+              cfg=conninfo_to_dict(raw)
+              hosts=[h.strip() for h in cfg.get("host","").split(",")]
+              if not hosts or not all(hosts):
+                  raise ValueError("EMPTY_LIBPQ_HOST")
+              if any(h != parsed.hostname for h in hosts):
+                  raise ValueError("LIBPQ_HOST_DIFFERS_FROM_URI_HOST")
+              if cfg.get("hostaddr"):
+                  raise ValueError("UNEXPECTED_HOSTADDR_OVERRIDE")
+              if len(hosts)!=1:
+                  raise ValueError("MULTIPLE_LIBPQ_HOSTS")
+              socket.getaddrinfo(hosts[0],int(cfg.get("port") or 5432),type=socket.SOCK_STREAM)
+              print("LIBPQ_EFFECTIVE_HOST_DNS_RESOLVED=true",flush=True)
+          except (ValueError,TypeError,socket.gaierror) as exc:
+              reason="LIBPQ_DNS_LOOKUP_FAILED" if isinstance(exc,socket.gaierror) else str(exc)
+              print("::error::ORULO_V2_LIBPQ_PREFLIGHT:"+reason,file=sys.stderr)
+              sys.exit(2)
+          PY
           python3 scripts/orulo-v2-reconcile-target-readonly.py "$WORK/manifest.json" "$WORK/target-reconciliation.json"
           openssl req -new -x509 -key "$WORK/key.pem" -out "$WORK/cert.pem" \
             -subj "/CN=orulo-v2-target-reconciliation" -days 1 >/dev/null 2>&1
