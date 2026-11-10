@@ -1,0 +1,116 @@
+name: Orulo V2 - six-checkpoint recovery manifest
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reconcile:
+    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    environment: orulo-v2-reconciliation
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Securely validate and decrypt six immutable checkpoints
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          test -n "$PRIVATE_KEY" || { echo '::error::PRIVATE_KEY_SECRET_MISSING'; exit 1; }
+          WORK="$(mktemp -d)"
+          trap 'rm -rf -- "$WORK"' EXIT
+          printf '%s\n' "$PRIVATE_KEY" > "$WORK/key.pem"
+          unset PRIVATE_KEY
+          openssl pkey -in "$WORK/key.pem" -noout >/dev/null
+          python3 - "$WORK" <<'PY'
+          import sys,os,subprocess,zipfile,hashlib,json,tarfile
+          from pathlib import Path
+          work=Path(sys.argv[1])
+          artifacts=[
+            (0,13764479763,'7b58d364cc024bf7de0d40068be116f88c61b132243858af83dfaf640dafb87e'),
+            (1,13770122746,'4a2bebe0c6178ecb942e206ccef7d8e1a8859dc0dc1d17b693bd1e521c8f1a0e'),
+            (2,13770564877,'f348c73505699ced2fb03372275fc0d63e3de81645418614529059ff47c8298d'),
+            (3,13775147239,'647d43da3d8f1291033bb02faa49572b9c15ff45ca06b7c98ce4d55284c4cb44'),
+            (4,13781323906,'90156adc363e2e32593b24970d5c97670e1a398e0e334af949127d66b9d5bd00'),
+            (5,13782288400,'01887e757a825ef83498cd5e42248e391acf3e504b5e4bf3002949ecaec42fda'),
+          ]
+          seen=set()
+          for chunk,aid,digest in artifacts:
+            dest=work/str(chunk);dest.mkdir()
+            archive=dest/'artifact.zip'
+            with archive.open('wb') as out:
+              subprocess.run(['curl','--fail','--silent','--show-error','--location','--header',
+                'Authorization: Bearer '+os.environ['GH_TOKEN'],
+                '--header','Accept: application/vnd.github+json',
+                f'https://api.github.com/repos/mudeisp/ynteligencia/actions/artifacts/{aid}/zip'],
+                stdout=out,check=True)
+            assert hashlib.sha256(archive.read_bytes()).hexdigest()==digest,'ARTIFACT_DIGEST_MISMATCH'
+            with zipfile.ZipFile(archive) as z:
+              names=set(z.namelist())
+              assert {'source.cms','source.cms.sha256'}<=names,'ARTIFACT_FILES_MISSING'
+              encrypted=z.read('source.cms')
+              expected=z.read('source.cms.sha256').decode().split()[0]
+              assert hashlib.sha256(encrypted).hexdigest()==expected,'CMS_DIGEST_MISMATCH'
+            cms=dest/'source.cms';cms.write_bytes(encrypted)
+            tgz=dest/'source.tgz'
+            subprocess.run(['openssl','cms','-decrypt','-binary','-inform','DER','-in',str(cms),
+              '-inkey',str(work/'key.pem'),'-out',str(tgz)],check=True,stdout=subprocess.DEVNULL)
+            with tarfile.open(tgz,'r:gz') as tar:
+              members=tar.getmembers()
+              assert all(m.isfile() or m.isdir() for m in members),'UNSAFE_TAR_MEMBER'
+              assert all(not Path(m.name).is_absolute() and '..' not in Path(m.name).parts for m in members),'UNSAFE_TAR_PATH'
+              index_member=next((m for m in members if m.name=='v2-source-chunk/index.json'),None)
+              assert index_member,'SOURCE_INDEX_MISSING'
+              idx=json.load(tar.extractfile(index_member))
+              buildings=[r['buildingId'] for r in idx.get('results',[])]
+              assert not (set(buildings)&seen),'DUPLICATE_BUILDING_ACROSS_CHUNKS'
+              seen.update(buildings)
+              counts={}
+              plans_seen=set()
+              for entry in idx.get('results',[]):
+                building=str(entry['buildingId'])
+                member=next((m for m in members if m.name==f'v2-source-chunk/buildings/{building}/result.json'),None)
+                assert member is not None,'BUILDING_EVIDENCE_MISSING'
+                payload=tar.extractfile(member).read()
+                assert hashlib.sha256(payload).hexdigest()==entry['sha256'],'BUILDING_EVIDENCE_HASH_MISMATCH'
+                result=json.loads(payload)
+                assert str(result.get('buildingId'))==building,'BUILDING_ID_MISMATCH'
+                assert result.get('writeAuthorized') is False,'UNEXPECTED_WRITE_AUTHORIZATION'
+                for plan in result.get('plans',[]):
+                  pid=str(plan['planId'])
+                  key=(building,pid)
+                  assert key not in plans_seen,'DUPLICATE_BUILDING_PLAN'
+                  plans_seen.add(key)
+                  status=plan.get('status','UNKNOWN')
+                  counts[status]=counts.get(status,0)+1
+                  if status=='RECOVERABLE':
+                    assert plan.get('normalizedPlan') is not None,'RECOVERABLE_WITHOUT_SOURCE_PLAN'
+                    assert len(plan.get('imageChecks',[]))>0,'RECOVERABLE_WITHOUT_IMAGE_EVIDENCE'
+              print(json.dumps({'chunk':chunk,'sourcePlanClassifications':counts,
+                'uniqueSourcePlanPairs':len(plans_seen),'supabaseCASCompared':0},sort_keys=True))
+              print(json.dumps({'chunk':chunk,'status':idx.get('status'),'buildings':len(buildings),
+                'requests':idx.get('requests'),'productionWrites':idx.get('productionWrites')},sort_keys=True))
+            cms.unlink();archive.unlink()
+          print(json.dumps({'status':'SOURCE_EVIDENCE_RECONCILIATION_DRY_RUN_COMPLETE',
+            'uniqueBuildings':len(seen),'supabaseWrites':0}))
+          PY
+
+          python3 scripts/orulo-v2-build-recovery-manifest.py "$WORK/manifest.json" "$WORK/0/source.tgz" "$WORK/1/source.tgz" "$WORK/2/source.tgz" "$WORK/3/source.tgz" "$WORK/4/source.tgz" "$WORK/5/source.tgz"
+          openssl req -new -x509 -key "$WORK/key.pem" -out "$WORK/cert.pem" -subj "/CN=orulo-v2-recovery-manifest" -days 1 >/dev/null 2>&1
+          openssl cms -encrypt -binary -aes-256-cbc -in "$WORK/manifest.json" -outform DER -out "$WORK/recovery-manifest.cms" "$WORK/cert.pem"
+          mkdir -p "$GITHUB_WORKSPACE/secure-output"
+          cp "$WORK/recovery-manifest.cms" "$GITHUB_WORKSPACE/secure-output/recovery-manifest.cms"
+      - name: Upload encrypted manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: orulo-v2-recovery-manifest-encrypted
+          path: secure-output/recovery-manifest.cms
+          retention-days: 7
+          if-no-files-found: error
