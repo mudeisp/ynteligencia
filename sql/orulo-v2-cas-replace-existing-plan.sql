@@ -12,6 +12,8 @@ DECLARE
   v_plans jsonb;
   v_new_plans jsonb;
   v_old_plan jsonb;
+  v_after public.properties%ROWTYPE;
+  v_desired jsonb;
   v_count integer;
 BEGIN
   IF p_property_id IS NULL OR p_building_id IS NULL OR p_plan_id IS NULL
@@ -49,10 +51,17 @@ BEGIN
       ELSE item.value END ORDER BY item.ordinality
   ) INTO v_new_plans
   FROM jsonb_array_elements(v_plans) WITH ORDINALITY item(value,ordinality);
+  v_desired := p_expected_record || jsonb_build_object('raw_data',
+    jsonb_set(v_current.raw_data,'{building,floor_plans}',v_new_plans,false));
   UPDATE public.properties AS target
   SET raw_data=jsonb_set(v_current.raw_data,'{building,floor_plans}',v_new_plans,false)
-  WHERE target.id=p_property_id AND to_jsonb(target)=p_expected_record;
-  RETURN FOUND;
+  WHERE target.id=p_property_id AND to_jsonb(target)=p_expected_record
+  RETURNING target.* INTO v_after;
+  IF NOT FOUND THEN RETURN false; END IF;
+  IF to_jsonb(v_after) IS DISTINCT FROM v_desired THEN
+    RAISE EXCEPTION 'CAS_UNAUTHORIZED_TRIGGER_CHANGE';
+  END IF;
+  RETURN true;
 END;
 $cas$;
 REVOKE ALL ON FUNCTION orulo_recovery.cas_replace_existing_plan(uuid,text,text,jsonb,jsonb) FROM PUBLIC;
@@ -110,7 +119,14 @@ BEGIN
     END IF;
     -- A replay may find the exact desired state. It must still verify identity
     -- and a unique plan before treating that occurrence as already applied.
-    IF v_record->>'source'='novos'
+    IF v_record = jsonb_set(v_item.baseline, '{raw_data,building,floor_plans}',
+       (SELECT jsonb_agg(CASE WHEN patch.images IS NULL THEN plan ELSE
+          plan || jsonb_build_object('images',patch.images) END ORDER BY ordinal)
+        FROM jsonb_array_elements(v_item.baseline#>'{raw_data,building,floor_plans}')
+             WITH ORDINALITY AS plans(plan,ordinal)
+        LEFT JOIN jsonb_to_recordset(p_items) AS patch(property_id uuid,plan_id text,images jsonb)
+          ON patch.property_id=v_item.property_id AND patch.plan_id=plan->>'id'), false)
+       AND v_record->>'source'='novos' 
        AND v_record->>'external_id' LIKE 'orulo:'||v_item.building_id||':%'
        AND v_record#>>'{raw_data,building_id}'=v_item.building_id
        AND v_item.building_id ~ '^[0-9]+$' AND v_item.plan_id ~ '^[0-9]+$'

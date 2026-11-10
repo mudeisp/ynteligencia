@@ -56,6 +56,31 @@ class BatchTest(unittest.TestCase):
         self.assertEqual(self.apply(items), 0)
         self.assertEqual(self.record(), after)
 
+    def test_replay_rejects_unrelated_record_change(self):
+        items = [self.item("1"), self.item("3")]
+        self.assertEqual(self.apply(items), 2)
+        self.conn.execute("UPDATE public.properties SET raw_data=raw_data || '{\"unrelated\":true}'::jsonb")
+        changed = self.record()
+        with self.assertRaisesRegex(psycopg.Error, "CAS_BATCH_CONFLICT"):
+            self.apply(items)
+        self.assertEqual(self.record(), changed)
+        self.assertEqual(self.conn.execute("SELECT count(*) FROM orulo_recovery.cas_batch_audit").fetchone()[0], 2)
+
+    def test_trigger_change_rolls_back_property_and_audit(self):
+        self.conn.execute("""
+            CREATE FUNCTION public.test_cas_change() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN NEW.external_id := 'orulo:10:changed'; RETURN NEW; END $$;
+            CREATE TRIGGER test_cas_change BEFORE UPDATE ON public.properties
+            FOR EACH ROW EXECUTE FUNCTION public.test_cas_change();
+        """)
+        try:
+            with self.assertRaisesRegex(psycopg.Error, "CAS_UNAUTHORIZED_TRIGGER_CHANGE"):
+                self.apply([self.item("1")])
+            self.assertEqual(self.record(), self.baseline)
+            self.assertEqual(self.conn.execute("SELECT count(*) FROM orulo_recovery.cas_batch_audit").fetchone()[0], 0)
+        finally:
+            self.conn.execute("DROP FUNCTION public.test_cas_change() CASCADE")
+
     def test_competing_transactions(self):
         barrier = Barrier(2, timeout=10)
 
