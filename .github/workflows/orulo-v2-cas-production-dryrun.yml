@@ -1,0 +1,61 @@
+name: Orulo V2 - production CAS dry run
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cas-dry-run:
+    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 }}
+    environment: orulo-v2-reconciliation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Compare live Supabase records to a frozen source snapshot, fail closed
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.ORULO_V2_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.ORULO_V2_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 - <<'PY'
+          import os,json,urllib.request,urllib.parse,hashlib
+          url=os.environ.get('SUPABASE_URL','').rstrip('/')
+          key=os.environ.get('SUPABASE_SERVICE_ROLE_KEY','')
+          if not url.startswith('https://') or not key:
+            raise SystemExit('BLOCKED: configure ORULO_V2_SUPABASE_URL and ORULO_V2_SUPABASE_SERVICE_ROLE_KEY as protected environment secrets')
+          rows=[]
+          for offset in range(0,100000,1000):
+            query=urllib.parse.urlencode({'select':'id,external_id,raw_data,updated_at','source':'eq.novos','external_id':'like.orulo:*','order':'id.asc','limit':'1000','offset':str(offset)})
+            req=urllib.request.Request(url+'/rest/v1/properties?'+query,headers={'apikey':key,'Authorization':'Bearer '+key,'Accept':'application/json'})
+            with urllib.request.urlopen(req,timeout=30) as response:
+              if response.status!=200:raise SystemExit('BLOCKED: SUPABASE_READ_FAILED')
+              page=json.load(response)
+            rows.extend(page)
+            if len(page)<1000:break
+          else:raise SystemExit('BLOCKED: PAGINATION_LIMIT')
+          invalid=0
+          unique=set()
+          with_images=0
+          for row in rows:
+            raw=row.get('raw_data') or {}
+            ext=str(row.get('external_id') or '')
+            bid=str(raw.get('building_id') or '')
+            tid=str(raw.get('typology_id') or '')
+            if not bid or not tid or ext!='orulo:'+bid+':'+tid or row['id'] in unique:invalid+=1
+            unique.add(row['id'])
+            if 'images' in raw:with_images+=1
+          # No source-plan-to-typology mapping has been established; refuse to
+          # infer it from numeric IDs, and refuse to fabricate a CAS baseline.
+          result={'mode':'PRODUCTION_CAS_READ_ONLY_DRY_RUN','records':len(rows),
+                  'identityInvalid':invalid,'recordsWithImages':with_images,
+                  'sourcePlanToTypologyMapping':'UNVERIFIED',
+                  'frozenCASBaseline':'MISSING',
+                  'casEligible':0,'plannedWrites':0,'actualWrites':0,
+                  'gate':'BLOCKED_UNVERIFIED_SOURCE_TO_TARGET_MAPPING'}
+          print(json.dumps(result,sort_keys=True))
+          if invalid:raise SystemExit('BLOCKED: SUPABASE_IDENTITY_INCONSISTENT')
+          PY
