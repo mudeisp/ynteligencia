@@ -1,18 +1,18 @@
 import hashlib
 import json
 import os
-import re
+import tarfile
 import sys
 from collections import Counter
 from pathlib import Path
-from urllib.error import URLError
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from concurrent.futures import ThreadPoolExecutor
+
+from orulo_v2_image_validation import VALID, validate_plan
 
 import psycopg
 
 REPORT_HASH = "2a9e409d6db81e4d70a6ddaee942eedb9887f4302347e333dec4c122cab8e66e"
 SOURCE_HASH = "6f6248375b5d5459496465d1c202e38e10adfade30bdef2442a7d59f00f313cc"
-CDN_URL = re.compile(r"https://static[.]orulo[.]com[.]br/images/[A-Za-z0-9_./%-]+")
 BASELINE = """
 SELECT to_jsonb(p), encode(sha256(convert_to(to_jsonb(p)::text,'UTF8')),'hex')
 FROM public.properties p
@@ -22,31 +22,11 @@ WHERE id = %s AND source = 'novos'
 """
 
 
-class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
-        return None
-
-
 def verified_json(path, expected):
     payload = Path(path).read_bytes()
     if hashlib.sha256(payload).hexdigest() != expected:
         raise ValueError("INPUT_DIGEST_MISMATCH")
     return json.loads(payload)
-
-
-def read_image(url):
-    if not isinstance(url, str) or not CDN_URL.fullmatch(url):
-        return False
-    try:
-        opener = build_opener(NoRedirect())
-        with opener.open(Request(url, headers={"Range": "bytes=0-31"}), timeout=8) as response:
-            header = response.read(32)
-            return response.headers.get_content_type().startswith("image/") and (
-                header.startswith((b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"GIF87a", b"GIF89a"))
-                or (header.startswith(b"RIFF") and header[8:12] == b"WEBP")
-            )
-    except (URLError, OSError, ValueError):
-        return False
 
 
 def classify_target(row, plan_id):
@@ -62,12 +42,40 @@ def classify_target(row, plan_id):
     plan = matches[0]
     if plan.get("images") not in (None, []):
         return "TARGET_IMAGES_PRESENT"
-    if any(plan.get(field) not in (None, "") for field in ("image_url", "520x280", "1024x1024", "2280x1800")):
+    if any(plan.get(field) not in (None, "") for field in ("image_url", "520x280", "1024x1024", "2280x1800", "url")):
         return "ALTERNATE_IMAGE_FIELDS_PRESENT"
     return None
 
 
-def run(source_path, report_path, batch_number):
+def load_evidence(directory, indexed, keys):
+    requested = {}
+    for key in keys:
+        plan = indexed[key]
+        paths = requested.setdefault(plan["sourceChunk"], set())
+        paths.update(check["evidence"] for check in plan["imageChecks"])
+    evidence = {}
+    for chunk, paths in requested.items():
+        evidence[chunk] = {}
+        with tarfile.open(directory / str(chunk) / "source.tgz", "r|gz") as archive:
+            for member in archive:
+                path = member.name.removeprefix("v2-source-chunk/")
+                if path in paths and member.isfile() and member.size <= 16384:
+                    if path in evidence[chunk]:
+                        raise ValueError("DUPLICATE_CHECKPOINT_EVIDENCE")
+                    evidence[chunk][path] = archive.extractfile(member).read()
+    return evidence
+
+
+def occurrence_status(row, plan_id, expected_hash, source_status):
+    reason = classify_target(row, plan_id)
+    if reason:
+        return reason
+    if row[1] != expected_hash:
+        return "BASELINE_CHANGED_SINCE_RECONCILIATION"
+    return "ELIGIBLE" if source_status == VALID else source_status
+
+
+def run(source_path, report_path, batch_number, evidence_dir):
     source = verified_json(source_path, SOURCE_HASH)
     report = verified_json(report_path, REPORT_HASH)
     if (source["writesAuthorized"] is not False or report["casWritesAuthorized"] is not False
@@ -85,20 +93,18 @@ def run(source_path, report_path, batch_number):
     if not batch:
         raise ValueError("EMPTY_BATCH")
     counts = Counter()
-    image_results = {}
-    for key, _ in batch:
-        if key in image_results:
-            continue
-        source_plan = indexed[key]
-        normalized = source_plan.get("normalizedPlan")
-        images = normalized.get("images") if isinstance(normalized, dict) else None
-        image_results[key] = (
-            source_plan["status"] == "RECOVERABLE"
-            and bool(source_plan.get("imageChecks"))
-            and isinstance(images, list)
-            and bool(images)
-            and all(read_image(url) for url in images)
-        )
+    keys = list(dict.fromkeys(key for key, _ in batch))
+    evidence = load_evidence(evidence_dir, indexed, keys)
+
+    def validate(key):
+        plan = indexed[key]
+        return validate_plan(plan, key[1], evidence[plan["sourceChunk"]])
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        image_results = dict(zip(keys, pool.map(validate, keys)))
+    source_counts = Counter()
+    legacy_empty_images = 0
+    baseline_conflicts = 0
     with psycopg.connect(os.environ["ORULO_V2_DB_URL"], connect_timeout=20,
                          options="-c default_transaction_read_only=on -c statement_timeout=30000") as conn:
         with conn.cursor() as cursor:
@@ -106,18 +112,21 @@ def run(source_path, report_path, batch_number):
             for (building_id, plan_id), target in batch:
                 cursor.execute(BASELINE, (target["propertyId"], building_id, building_id))
                 row = cursor.fetchone()
-                reason = classify_target(row, plan_id)
-                if reason:
-                    counts[reason] += 1
-                elif not image_results[(building_id, plan_id)]:
-                    counts["SOURCE_IMAGE_VALIDATION_FAILED"] += 1
-                else:
-                    counts["ELIGIBLE"] += 1
+                key = (building_id, plan_id)
+                source_status = image_results[key]
+                source_counts[source_status] += 1
+                normalized = indexed[key].get("normalizedPlan") or {}
+                if not isinstance(normalized.get("images"), list) or not normalized["images"]:
+                    legacy_empty_images += 1
+                counts[occurrence_status(row, plan_id, target["recordSha256"], source_status)] += 1
                 if row is not None and row[1] != target["recordSha256"]:
-                    counts["BASELINE_CHANGED_SINCE_RECONCILIATION"] += 1
+                    baseline_conflicts += 1
+    if sum(counts.values()) != len(batch):
+        raise ValueError("CLASSIFICATION_COUNT_MISMATCH")
     return {"batchSize": 2000, "batchNumber": batch_number, "scanned": len(batch),
             "pendingOutsideBatch": len(candidates) - len(batch),
-            "counts": dict(counts), "databaseWrites": 0, "casWritesAuthorized": False}
+            "counts": dict(counts), "sourceCounts": dict(source_counts),
+            "baselineConflicts": baseline_conflicts, "legacyEmptyImages": legacy_empty_images, "databaseWrites": 0, "casWritesAuthorized": False}
 
 
 if __name__ == "__main__":
@@ -125,6 +134,6 @@ if __name__ == "__main__":
         number = int(sys.argv[3])
         if number < 1:
             raise ValueError("INVALID_BATCH")
-        print(json.dumps(run(sys.argv[1], sys.argv[2], number), sort_keys=True))
+        print(json.dumps(run(sys.argv[1], sys.argv[2], number, Path(sys.argv[4])), sort_keys=True))
     except Exception:
         sys.exit("ORULO_V2_BATCH_VALIDATION_FAILED")

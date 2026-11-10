@@ -42,7 +42,7 @@ BEGIN
     AND v_old_plan->'images' IS DISTINCT FROM 'null'::jsonb
     AND v_old_plan->'images' IS DISTINCT FROM '[]'::jsonb
   THEN RETURN false; END IF;
-  IF EXISTS (SELECT 1 FROM unnest(ARRAY['image_url','520x280','1024x1024','2280x1800']) f(name) WHERE COALESCE(v_old_plan->>f.name,'') <> '') THEN RETURN false; END IF;
+  IF EXISTS (SELECT 1 FROM unnest(ARRAY['image_url','520x280','1024x1024','2280x1800','url']) f(name) WHERE COALESCE(v_old_plan->>f.name,'') <> '') THEN RETURN false; END IF;
   SELECT jsonb_agg(
     CASE WHEN item.value->>'id'=p_plan_id
       THEN jsonb_set(item.value,'{images}',p_recovered_images,true)
