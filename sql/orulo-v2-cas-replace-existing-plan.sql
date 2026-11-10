@@ -38,10 +38,10 @@ BEGIN
   END IF;
   v_plans:=v_current.raw_data#>'{building,floor_plans}';
   IF jsonb_typeof(v_plans) IS DISTINCT FROM 'array' THEN RETURN false; END IF;
-  SELECT count(*) INTO v_match_count FROM jsonb_array_elements(v_plans) AS plan
-  WHERE plan->>'id'=p_plan_id;
+  SELECT count(*) INTO v_match_count FROM jsonb_array_elements(v_plans) AS p(plan)
+  WHERE p.plan->>'id'=p_plan_id;
   IF v_match_count <> 1 THEN RETURN false; END IF;
-  SELECT jsonb_agg(CASE WHEN plan->>'id'=p_plan_id THEN p_replacement_plan ELSE plan END ORDER BY ordinal)
+  SELECT jsonb_agg(CASE WHEN items.plan->>'id'=p_plan_id THEN p_replacement_plan ELSE items.plan END ORDER BY ordinal)
   INTO v_new_plans FROM jsonb_array_elements(v_plans) WITH ORDINALITY AS items(plan,ordinal);
   UPDATE public.properties
   SET raw_data=jsonb_set(v_current.raw_data,'{building,floor_plans}',v_new_plans,false)
