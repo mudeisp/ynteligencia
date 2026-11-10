@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS orulo_recovery.cas_batch_audit (
   plan_id text NOT NULL,
   baseline_sha256 text NOT NULL,
   result_sha256 text NOT NULL,
+  previous_entry_sha256 text NOT NULL,
+  entry_sha256 text NOT NULL,
   applied_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   PRIMARY KEY (transaction_id, property_id, plan_id)
 );
@@ -82,6 +84,10 @@ DECLARE
   v_initial jsonb;
   v_before jsonb;
   v_applied integer := 0;
+  v_previous_hash text := repeat('0',64);
+  v_baseline_hash text;
+  v_result_hash text;
+  v_entry_hash text;
 BEGIN
   IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
     RAISE EXCEPTION 'INVALID_BATCH';
@@ -123,11 +129,18 @@ BEGIN
     THEN RAISE EXCEPTION 'CAS_BATCH_CONFLICT'; END IF;
     v_applied := v_applied + 1;
     SELECT to_jsonb(p) INTO STRICT v_record FROM public.properties p WHERE p.id=v_item.property_id;
+    v_baseline_hash := encode(sha256(convert_to(v_before::text,'UTF8')),'hex');
+    v_result_hash := encode(sha256(convert_to(v_record::text,'UTF8')),'hex');
+    v_entry_hash := encode(sha256(convert_to(
+      concat_ws('|',pg_current_xact_id()::text,v_item.property_id::text,
+        v_item.building_id,v_item.plan_id,v_baseline_hash,v_result_hash,v_previous_hash),
+      'UTF8')),'hex');
     INSERT INTO orulo_recovery.cas_batch_audit
-      (property_id, building_id, plan_id, baseline_sha256, result_sha256)
+      (property_id, building_id, plan_id, baseline_sha256, result_sha256,
+       previous_entry_sha256, entry_sha256)
     VALUES (v_item.property_id, v_item.building_id, v_item.plan_id,
-      encode(sha256(convert_to(v_before::text,'UTF8')),'hex'),
-      encode(sha256(convert_to(v_record::text,'UTF8')),'hex'));
+      v_baseline_hash,v_result_hash,v_previous_hash,v_entry_hash);
+    v_previous_hash := v_entry_hash;
   END LOOP;
   RETURN v_applied;
 END;
