@@ -109,6 +109,19 @@ class BatchTest(unittest.TestCase):
         self.assertEqual(self.conn.execute(
             "SELECT count(*) FROM orulo_recovery.cas_batch_audit"
         ).fetchone()[0], 5)
+        audit = self.conn.execute("""
+            SELECT a.property_id::text, a.baseline_sha256, a.result_sha256,
+                   encode(sha256(convert_to(to_jsonb(p)::text, 'UTF8')), 'hex')
+            FROM orulo_recovery.cas_batch_audit a
+            JOIN public.properties p ON p.id = a.property_id
+            ORDER BY a.property_id
+        """).fetchall()
+        self.assertEqual(len(audit), 5)
+        for pid, before_hash, after_hash, live_hash in audit:
+            self.assertEqual(after_hash, live_hash)
+            self.assertRegex(before_hash, r"^[0-9a-f]{64}$")
+            self.assertRegex(after_hash, r"^[0-9a-f]{64}$")
+            self.assertNotEqual(before_hash, after_hash)
         self.assertEqual(self.apply(items), 0)
         self.assertEqual(self.conn.execute(
             "SELECT count(*) FROM orulo_recovery.cas_batch_audit"
