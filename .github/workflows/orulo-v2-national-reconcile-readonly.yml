@@ -100,6 +100,19 @@ jobs:
                   raise ValueError("UNEXPECTED_HOSTADDR_OVERRIDE")
               if len(hosts)!=1:
                   raise ValueError("MULTIPLE_LIBPQ_HOSTS")
+              # Never print usernames, passwords, hostnames or full URI.
+              expected="postgres.wzaegidwtdjuhqchpdpd"
+              uri_user=parsed.username
+              effective_user=cfg.get("user")
+              if uri_user != expected:
+                  raise ValueError("URI_USER_NOT_PROJECT_SCOPED")
+              if effective_user != expected:
+                  from urllib.parse import parse_qs
+                  q=parse_qs(parsed.query,keep_blank_values=True)
+                  if "user" in q:
+                      raise ValueError("QUERY_USER_OVERRIDES_PROJECT_USER")
+                  raise ValueError("LIBPQ_USER_DIFFERS_FROM_PROJECT_USER")
+              print("LIBPQ_PROJECT_USER_VALIDATED=true",flush=True)
               socket.getaddrinfo(hosts[0],int(cfg.get("port") or 5432),type=socket.SOCK_STREAM)
               print("LIBPQ_EFFECTIVE_HOST_DNS_RESOLVED=true",flush=True)
           except (ValueError,TypeError,socket.gaierror) as exc:
