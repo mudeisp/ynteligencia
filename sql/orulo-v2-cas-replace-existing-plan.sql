@@ -23,6 +23,7 @@ DECLARE
   v_match_count int;
   v_old_plan jsonb;
   v_new_plan jsonb;
+  v_existing_images jsonb;
 BEGIN
   IF p_building_id !~ '^[0-9]+$' OR p_plan_id !~ '^[0-9]+$'
     OR jsonb_typeof(p_recovered_images) <> 'array'
@@ -46,6 +47,10 @@ BEGIN
   IF v_match_count <> 1 THEN RETURN false; END IF;
   SELECT p.plan INTO v_old_plan FROM jsonb_array_elements(v_plans) p(plan) WHERE p.plan->>'id'=p_plan_id;
   IF jsonb_typeof(v_old_plan)<>'object' THEN RETURN false; END IF;
+  v_existing_images:=v_old_plan->'images';
+  -- Existing images are immutable in this first recovery phase; only fill missing images.
+  IF v_existing_images IS NOT NULL AND v_existing_images <> 'null'::jsonb
+     AND v_existing_images <> '[]'::jsonb THEN RETURN false; END IF;
   v_new_plan:=jsonb_set(v_old_plan,'{images}',p_recovered_images,true);
   SELECT jsonb_agg(CASE WHEN items.plan->>'id'=p_plan_id THEN v_new_plan ELSE items.plan END ORDER BY ordinal)
   INTO v_new_plans FROM jsonb_array_elements(v_plans) WITH ORDINALITY AS items(plan,ordinal);
