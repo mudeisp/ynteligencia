@@ -4,6 +4,10 @@ on:
     branches: [feat/orulo-v2-cas-executor-v1]
   workflow_dispatch:
     inputs:
+      prepare_pilot:
+        description: Prepare five real targets only, without CAS or national dry run
+        type: boolean
+        default: false
       batch_size:
         type: number
         default: 2000
@@ -42,7 +46,8 @@ jobs:
           python3 tests/orulo-v2-cas-batch.test.py
           python3 tests/orulo-v2-image-validation.test.py
   validate:
-    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.actor == 'mudeisp' && inputs.dry_run && !inputs.cas_writes_authorized && inputs.batch_size == 2000 && inputs.batch_number >= 1 }}
+    needs: postgres-tests
+    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.actor == 'mudeisp' && ((github.event_name == 'workflow_dispatch' && inputs.dry_run && !inputs.cas_writes_authorized && inputs.batch_size == 2000 && inputs.batch_number >= 1) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[prepare-five]'))) }}
     runs-on: ubuntu-latest
     environment: orulo-v2-reconciliation
     timeout-minutes: 60
@@ -56,7 +61,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
           ORULO_V2_DB_URL: ${{ secrets.ORULO_V2_DB_URL }}
-          BATCH_NUMBER: ${{ inputs.batch_number }}
+          BATCH_NUMBER: ${{ inputs.batch_number || 1 }}
+          PREPARE_PILOT: ${{ inputs.prepare_pilot || (github.event_name == 'push' && contains(github.event.head_commit.message, '[prepare-five]')) }}
         run: |
           set -euo pipefail
           umask 077
@@ -176,4 +182,20 @@ jobs:
             subprocess.run(['openssl','cms','-decrypt','-binary','-inform','DER','-in',str(cms),
               '-inkey',str(work/'key.pem'),'-out',str(tgz)],check=True,stdout=subprocess.DEVNULL)
           PY
-          python3 scripts/orulo-v2-national-dry-run.py "$WORK/manifest.json" "$WORK/reconciliation.json" "$BATCH_NUMBER" "$WORK"
+          if [ "$PREPARE_PILOT" = "true" ]; then
+            python3 scripts/orulo-v2-prepare-pilot.py "$WORK/manifest.json" "$WORK/reconciliation.json" "$WORK"
+            openssl req -new -x509 -key "$WORK/key.pem" -out "$WORK/cert.pem" -subj "/CN=orulo-v2-five-proposal" -days 1 >/dev/null 2>&1
+            mkdir -m 700 -p "$GITHUB_WORKSPACE/pilot-output"
+            openssl cms -encrypt -binary -aes-256-cbc -in "$WORK/pilot-manifest.json" -outform DER -out "$GITHUB_WORKSPACE/pilot-output/pilot-manifest.cms" "$WORK/cert.pem"
+            cp "$WORK/pilot-summary.json" "$GITHUB_WORKSPACE/pilot-output/"
+          else
+            python3 scripts/orulo-v2-national-dry-run.py "$WORK/manifest.json" "$WORK/reconciliation.json" "$BATCH_NUMBER" "$WORK"
+          fi
+      - name: Upload five-target proposal
+        if: ${{ inputs.prepare_pilot || (github.event_name == 'push' && contains(github.event.head_commit.message, '[prepare-five]')) }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: orulo-v2-five-proposal-${{ github.run_id }}
+          path: pilot-output/
+          retention-days: 7
+          if-no-files-found: error
