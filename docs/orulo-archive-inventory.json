@@ -1,0 +1,1093 @@
+{
+  "source": "Supabase MCP BEGIN READ ONLY",
+  "project": "wzaegidwtdjuhqchpdpd",
+  "observedAt": "2026-11-10",
+  "catalog": {
+    "tables": [
+      {
+        "rls": true,
+        "name": "entries",
+        "forceRls": true,
+        "heapBytes": 2424832,
+        "totalBytes": 209739776
+      },
+      {
+        "rls": true,
+        "name": "runs",
+        "forceRls": true,
+        "heapBytes": 16384,
+        "totalBytes": 81920
+      },
+      {
+        "rls": true,
+        "name": "snapshot_sets",
+        "forceRls": true,
+        "heapBytes": 16384,
+        "totalBytes": 5906432
+      },
+      {
+        "rls": true,
+        "name": "snapshot_records",
+        "forceRls": true,
+        "heapBytes": 92102656,
+        "totalBytes": 130252800
+      }
+    ],
+    "policies": [
+      {
+        "cmd": "ALL",
+        "qual": "true",
+        "roles": [
+          "orulo_audit_owner"
+        ],
+        "tablename": "runs",
+        "permissive": "PERMISSIVE",
+        "policyname": "owner_only",
+        "schemaname": "orulo_audit",
+        "with_check": "true"
+      },
+      {
+        "cmd": "ALL",
+        "qual": "true",
+        "roles": [
+          "orulo_audit_owner"
+        ],
+        "tablename": "entries",
+        "permissive": "PERMISSIVE",
+        "policyname": "owner_only",
+        "schemaname": "orulo_audit",
+        "with_check": "true"
+      },
+      {
+        "cmd": "ALL",
+        "qual": "true",
+        "roles": [
+          "orulo_audit_owner"
+        ],
+        "tablename": "snapshot_sets",
+        "permissive": "PERMISSIVE",
+        "policyname": "owner_only",
+        "schemaname": "orulo_audit",
+        "with_check": "true"
+      },
+      {
+        "cmd": "ALL",
+        "qual": "true",
+        "roles": [
+          "orulo_audit_owner"
+        ],
+        "tablename": "snapshot_records",
+        "permissive": "PERMISSIVE",
+        "policyname": "owner_only",
+        "schemaname": "orulo_audit",
+        "with_check": "true"
+      }
+    ],
+    "triggers": [
+      {
+        "table": "orulo_audit.runs",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON orulo_audit.runs FOR EACH ROW EXECUTE FUNCTION orulo_audit.immutable()"
+      },
+      {
+        "table": "orulo_audit.entries",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON orulo_audit.entries FOR EACH ROW EXECUTE FUNCTION orulo_audit.immutable()"
+      },
+      {
+        "table": "orulo_audit.runs",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER immutable_table BEFORE TRUNCATE ON orulo_audit.runs FOR EACH STATEMENT EXECUTE FUNCTION orulo_audit.immutable()"
+      },
+      {
+        "table": "orulo_audit.entries",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER immutable_table BEFORE TRUNCATE ON orulo_audit.entries FOR EACH STATEMENT EXECUTE FUNCTION orulo_audit.immutable()"
+      },
+      {
+        "table": "orulo_audit.snapshot_sets",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON orulo_audit.snapshot_sets FOR EACH ROW EXECUTE FUNCTION orulo_audit.immutable()"
+      },
+      {
+        "table": "orulo_audit.snapshot_sets",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER immutable_table BEFORE TRUNCATE ON orulo_audit.snapshot_sets FOR EACH STATEMENT EXECUTE FUNCTION orulo_audit.immutable()"
+      },
+      {
+        "table": "orulo_audit.snapshot_records",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER immutable_rows BEFORE DELETE OR UPDATE ON orulo_audit.snapshot_records FOR EACH ROW EXECUTE FUNCTION orulo_audit.immutable()"
+      },
+      {
+        "table": "orulo_audit.snapshot_records",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER immutable_table BEFORE TRUNCATE ON orulo_audit.snapshot_records FOR EACH STATEMENT EXECUTE FUNCTION orulo_audit.immutable()"
+      }
+    ],
+    "functions": [
+      {
+        "name": "orulo_audit.admin_event(uuid,text,text,boolean)",
+        "securityDefiner": true,
+        "definitionSha256": "a540b0e7894d85ac0626191d44ca0da8ae06db7dd8412a3293a4e6f4612ed4c0"
+      },
+      {
+        "name": "orulo_audit.append(uuid,bigint,text,jsonb)",
+        "securityDefiner": false,
+        "definitionSha256": "8dd906e953df5cb09f7cf8e234763a18c5190c65f07bcd6664d46f5ece0f55d1"
+      },
+      {
+        "name": "orulo_audit.audited_cas_core(uuid,uuid)",
+        "securityDefiner": true,
+        "definitionSha256": "eb7e278cd351999f20249dcfd6e627cb52d5d9ea29228189bd6cf7c09833dda6"
+      },
+      {
+        "name": "orulo_audit.authorize_before5971(uuid,text,text,text,text)",
+        "securityDefiner": true,
+        "definitionSha256": "09beed4592f58134d012268f81fe41a202418dd11d62654b260803df7932bc0c"
+      },
+      {
+        "name": "orulo_audit.authorize_pilot(uuid,text,text,text,text)",
+        "securityDefiner": true,
+        "definitionSha256": "f0f9de0fda6fe36016e9b75d33aacb4c2773fe37e2a0484be2f7425010abba81"
+      },
+      {
+        "name": "orulo_audit.authorize_single_pilot(uuid,text,text,text,text)",
+        "securityDefiner": true,
+        "definitionSha256": "2d37130b2039bee11f205585ff48e292a5994d5dfcc456a436c13225c4c7c8f6"
+      },
+      {
+        "name": "orulo_audit.batch_auth(uuid)",
+        "securityDefiner": false,
+        "definitionSha256": "93c01fb8a00478b5a7b7aa60d4eaef9c31f3f5aa39a89d7d8bb6947ba2b844e0"
+      },
+      {
+        "name": "orulo_audit.batch_catalog()",
+        "securityDefiner": false,
+        "definitionSha256": "7ee6391bf8521f5ddd7c9c549293d8201622ab5350312edc53290fadacde64d5"
+      },
+      {
+        "name": "orulo_audit.batch_catalog_before5971()",
+        "securityDefiner": false,
+        "definitionSha256": "01248af6a6022bb24244f79874f3f46623b6b79d24c31edbcaa05f09d6c80261"
+      },
+      {
+        "name": "orulo_audit.batch_has_image(jsonb)",
+        "securityDefiner": false,
+        "definitionSha256": "69471a3cc5f621cdc67f78aee4b3b6ff314e0a58607a53c02aba4d646830c391"
+      },
+      {
+        "name": "orulo_audit.batch_inventory(text)",
+        "securityDefiner": false,
+        "definitionSha256": "1a3f83ef7b6b150869a1501978f956ec2222e903076482d189946ac924972429"
+      },
+      {
+        "name": "orulo_audit.batch_merge(jsonb,jsonb)",
+        "securityDefiner": false,
+        "definitionSha256": "2023b0f63e13433e12f96efbad0b180dbc50419a42380c365f590c01c76a8678"
+      },
+      {
+        "name": "orulo_audit.batch_missing_ids(jsonb)",
+        "securityDefiner": false,
+        "definitionSha256": "be89319a776e0e8c3c244408f89998932ffff3fb2f6511b9d6a321301f7f9bd7"
+      },
+      {
+        "name": "orulo_audit.batch_prerequisite_result(text)",
+        "securityDefiner": false,
+        "definitionSha256": "5c5764c2373bfba314d9c7ce9b7e1e7fec9254608f4250387feed97ed80adc98"
+      },
+      {
+        "name": "orulo_audit.cas_core(uuid,jsonb,jsonb)",
+        "securityDefiner": false,
+        "definitionSha256": "d08ba2e9c9d242148916d370bf93ecfb94aed6522fd77967740a453be8c9a8a1"
+      },
+      {
+        "name": "orulo_audit.columns_v2()",
+        "securityDefiner": false,
+        "definitionSha256": "3aa4d73c7a7100a523c23507c836299bd90dee4dacfcf772f6084469b713cea3"
+      },
+      {
+        "name": "orulo_audit.compare_legacy_v2(uuid)",
+        "securityDefiner": false,
+        "definitionSha256": "688886087370dab02f99958ad5edc2f27f4e8f74c40e25078384fe2340e3542e"
+      },
+      {
+        "name": "orulo_audit.compare_v2(uuid)",
+        "securityDefiner": false,
+        "definitionSha256": "be8e9054de9960c25692c9304a1905da5c9323710e4875e0bb60a2146e694e83"
+      },
+      {
+        "name": "orulo_audit.control_paged(text,uuid,bigint,text,jsonb)",
+        "securityDefiner": true,
+        "definitionSha256": "d93eaa6979d90ca59a49e05565c2b2a8b32517840b51e6ea8beeda45e9a69782"
+      },
+      {
+        "name": "orulo_audit.control_pilot(text,uuid,bigint,text,jsonb)",
+        "securityDefiner": true,
+        "definitionSha256": "d14f88326cb70379770f842c0451ada793fd115b9c1ca035e2fecea2f147824c"
+      },
+      {
+        "name": "orulo_audit.control_v1(text,uuid,bigint,text,jsonb)",
+        "securityDefiner": true,
+        "definitionSha256": "5ffbf3fada5b4d39b913a24b60a09a62e1828639914ed6fe9158cd3293e11185"
+      },
+      {
+        "name": "orulo_audit.immutable()",
+        "securityDefiner": false,
+        "definitionSha256": "ff535dffe62eb0ded2c2dadc92946315190f4c5fcb1f80874603efd36132a55f"
+      },
+      {
+        "name": "orulo_audit.lock_run(uuid)",
+        "securityDefiner": false,
+        "definitionSha256": "4bd74b5fafc13b0ba0ae57d7cf25e229e5865a0767db95c84334f4532e85297c"
+      },
+      {
+        "name": "orulo_audit.pilot_auth(uuid)",
+        "securityDefiner": false,
+        "definitionSha256": "06d2f8da8977e71b8d195009dc28a4cb1cb8bc3ed1804208e58b1b009777b253"
+      },
+      {
+        "name": "orulo_audit.pilot_cas_guard(uuid,uuid)",
+        "securityDefiner": true,
+        "definitionSha256": "e8b4a2ddddc63b216c6fa31b711901855880d82fbdc1cee6eabe026dd69512f4"
+      },
+      {
+        "name": "orulo_audit.pilot_targets()",
+        "securityDefiner": false,
+        "definitionSha256": "8b65c861a29fbdb3762b64dab9878b6b11805acfe21056fdde6dd35c6d8c838c"
+      },
+      {
+        "name": "orulo_audit.require_service()",
+        "securityDefiner": false,
+        "definitionSha256": "114a0f8c0d58c70969a7bf5f78e2dff2ab5d685e75ddca4fc9be1a3c1a081f29"
+      },
+      {
+        "name": "orulo_audit.scope_ok(jsonb)",
+        "securityDefiner": false,
+        "definitionSha256": "3678a928747ec26fae0b92e3be4f0c17beced9df9428808fff364ba2996308a6"
+      },
+      {
+        "name": "orulo_audit.snapshot_rows()",
+        "securityDefiner": false,
+        "definitionSha256": "724a9087ceaef5d63917ade6d018854a85fbe8c9f6ba000206e41cf5aaee0480"
+      }
+    ],
+    "constraints": [
+      {
+        "table": "orulo_audit.runs",
+        "definition": "UNIQUE (github_run_id)"
+      },
+      {
+        "table": "orulo_audit.entries",
+        "definition": "CHECK ((sequence > 0))"
+      },
+      {
+        "table": "orulo_audit.runs",
+        "definition": "CHECK ((github_run_id ~ '^[1-9][0-9]*$'::text))"
+      },
+      {
+        "table": "orulo_audit.runs",
+        "definition": "PRIMARY KEY (run_uuid)"
+      },
+      {
+        "table": "orulo_audit.entries",
+        "definition": "CHECK ((hash = encode(sha256(convert_to(canonical, 'UTF8'::name)), 'hex'::text)))"
+      },
+      {
+        "table": "orulo_audit.entries",
+        "definition": "PRIMARY KEY (run_uuid, sequence)"
+      },
+      {
+        "table": "orulo_audit.entries",
+        "definition": "UNIQUE (event_uuid)"
+      },
+      {
+        "table": "orulo_audit.entries",
+        "definition": "FOREIGN KEY (run_uuid) REFERENCES orulo_audit.runs(run_uuid)"
+      },
+      {
+        "table": "orulo_audit.snapshot_sets",
+        "definition": "CHECK ((kind = ANY (ARRAY['BASELINE_V2'::text, 'READBACK_V2'::text])))"
+      },
+      {
+        "table": "orulo_audit.snapshot_sets",
+        "definition": "PRIMARY KEY (run_uuid, kind)"
+      },
+      {
+        "table": "orulo_audit.snapshot_sets",
+        "definition": "FOREIGN KEY (run_uuid) REFERENCES orulo_audit.runs(run_uuid)"
+      },
+      {
+        "table": "orulo_audit.snapshot_records",
+        "definition": "PRIMARY KEY (run_uuid, kind, id)"
+      },
+      {
+        "table": "orulo_audit.snapshot_records",
+        "definition": "FOREIGN KEY (run_uuid, kind) REFERENCES orulo_audit.snapshot_sets(run_uuid, kind)"
+      },
+      {
+        "table": "orulo_audit.snapshot_records",
+        "definition": "FOREIGN KEY (run_uuid, page_sequence) REFERENCES orulo_audit.entries(run_uuid, sequence)"
+      }
+    ],
+    "databaseBytes": 547228819,
+    "viewsDependingOnAudit": null
+  },
+  "runs": [
+    {
+      "run_uuid": "06f09809-61f7-4653-94f3-f7417f4aed33",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 98824,
+      "head_sequence": 4,
+      "head_hash": "efb2ae8b2f81216fc951bc4540448f30c2ab89fe42f6feec55f97389f766e2a7",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "26556e29-7a3b-450e-9169-3f894f231077",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 5344,
+      "head_sequence": 4,
+      "head_hash": "bb299e56a2c6af82c560dbd0dae9920e3234e0302eb8f930664cd551f2864a57",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "28c6cb35-06da-4eb1-ab56-cf5b27dfaa5a",
+      "entries": 1077,
+      "snapshot_records": 43548,
+      "datum_bytes": 35432448,
+      "head_sequence": 1077,
+      "head_hash": "7c53ea52e1dcf48da6cbbd47f04827aee540b42b47e6f01312c6ca15d6e18e68",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": true,
+      "kinds": [
+        "ABORTED",
+        "BASELINE_V2",
+        "CAS_RESULT",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "INTENT",
+        "READBACK_V2",
+        "SNAPSHOT_BEGIN",
+        "SNAPSHOT_PAGE",
+        "START",
+        "WRITE_AUTHORIZED"
+      ],
+      "snapshot_sets": [
+        {
+          "kind": "BASELINE_V2",
+          "beginSequence": 4,
+          "expectedRecords": 21774
+        },
+        {
+          "kind": "READBACK_V2",
+          "beginSequence": 637,
+          "expectedRecords": 21774
+        }
+      ],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [
+        "orulo_audit.batch_prerequisite_result(text)"
+      ],
+      "authorizations": 1,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "2bea2a3c-4cff-4d3b-bc6f-ded6fbf33dfc",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 21536,
+      "head_sequence": 4,
+      "head_hash": "62be84414750a7b1ba3a2e7bfd48ec0561fb7086941c68f57d46798d1774a5ea",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "2e30e874-5eb9-40dc-9532-832f47cd01de",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 57096,
+      "head_sequence": 4,
+      "head_hash": "e363ed7894e77c066a70350b58fdcc7062de7e755cbc4032376dac58a9604100",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "32a88632-5f4a-4302-9411-0df42269b8ac",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 20440,
+      "head_sequence": 4,
+      "head_hash": "0f7f63382cec35b92e544a130bbdc29e06d09b995e203da3a5d73da96995bb03",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "3317c6e4-07c3-4aef-8432-7ecacf844c9d",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 5560,
+      "head_sequence": 4,
+      "head_hash": "06858c5b41ce12c51c1a0f390aae185d4ae99ece0d45696534c32895432b2bd4",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "343bce25-07f7-4ff2-af4c-ac854d4f3838",
+      "entries": 906,
+      "snapshot_records": 43832,
+      "datum_bytes": 34655304,
+      "head_sequence": 906,
+      "head_hash": "6d4127833410caae01ee2bfce7e526ecc1d275a709ea424edd7fc9eaa5e8c4c4",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": true,
+      "kinds": [
+        "ABORTED",
+        "BASELINE_V2",
+        "CAS_RESULT",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "INTENT",
+        "READBACK_V2",
+        "SNAPSHOT_BEGIN",
+        "SNAPSHOT_PAGE",
+        "START",
+        "WRITE_AUTHORIZED"
+      ],
+      "snapshot_sets": [
+        {
+          "kind": "BASELINE_V2",
+          "beginSequence": 4,
+          "expectedRecords": 21916
+        },
+        {
+          "kind": "READBACK_V2",
+          "beginSequence": 463,
+          "expectedRecords": 21916
+        }
+      ],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 1,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "55c664a5-e24d-4527-a7aa-68b0da01f039",
+      "entries": 3,
+      "snapshot_records": 0,
+      "datum_bytes": 3360,
+      "head_sequence": 3,
+      "head_hash": "8bcc4c2ee0c3ea9f3d47535cae5d1bd8384e9a674e7c8bf2934f8635a1f83641",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "6e5290ce-971a-404c-ae18-881a01e30f7c",
+      "entries": 3,
+      "snapshot_records": 0,
+      "datum_bytes": 3184,
+      "head_sequence": 3,
+      "head_hash": "d36ddfe0717eba73048f1eb11af540d8a6b9c511d55ced336517867d18324fb3",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "READ_ONLY_PREFLIGHT",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "72279b09-ad08-45c9-b229-e7b35ac5e890",
+      "entries": 1172,
+      "snapshot_records": 43834,
+      "datum_bytes": 36336168,
+      "head_sequence": 1172,
+      "head_hash": "b28af1cd01f59df9c996bbe4ada5dca9145ec2f4f0ac96d34fe6e5d15d5262ff",
+      "finished": true,
+      "aborted": false,
+      "write_authorized": true,
+      "kinds": [
+        "BASELINE_V2",
+        "CAS_RESULT",
+        "CLIENT_READBACK",
+        "FINISHED",
+        "INTENT",
+        "READBACK_V2",
+        "SNAPSHOT_BEGIN",
+        "SNAPSHOT_PAGE",
+        "START",
+        "WRITE_AUTHORIZED"
+      ],
+      "snapshot_sets": [
+        {
+          "kind": "BASELINE_V2",
+          "beginSequence": 4,
+          "expectedRecords": 21917
+        },
+        {
+          "kind": "READBACK_V2",
+          "beginSequence": 730,
+          "expectedRecords": 21917
+        }
+      ],
+      "operationalStatus": "FINISHED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 1,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "73aab281-30a6-443c-98e7-71e0212d4fe8",
+      "entries": 3,
+      "snapshot_records": 0,
+      "datum_bytes": 97504,
+      "head_sequence": 3,
+      "head_hash": "4ab02fee02fc1609489c0fea1268eea53083cbbe8946be027314b4b82215c16d",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "80075d5c-12a6-4109-9573-8f25a2598e00",
+      "entries": 3,
+      "snapshot_records": 0,
+      "datum_bytes": 3952,
+      "head_sequence": 3,
+      "head_hash": "4dc7f836d5d75dc6a54649090e8c52259ebb94c2030da372f4f015c34d622a20",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "8057f532-8a78-40e2-bfe4-1d542e962cbf",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 32944,
+      "head_sequence": 4,
+      "head_hash": "df601db227c6ace204a889889aff9f3187332d3cc2b6dcd6ff13e7d7fb3bb4ff",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "8c3b6881-69fa-4737-a29f-6aeebe1b94b9",
+      "entries": 957,
+      "snapshot_records": 43492,
+      "datum_bytes": 34645056,
+      "head_sequence": 957,
+      "head_hash": "4e9b652387480e73eb6c0058b8ec456bd0874ca345e4f3be1cdaf26ce40246a6",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": true,
+      "kinds": [
+        "ABORTED",
+        "BASELINE_V2",
+        "CAS_RESULT",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "INTENT",
+        "READBACK_V2",
+        "SNAPSHOT_BEGIN",
+        "SNAPSHOT_PAGE",
+        "START",
+        "WRITE_AUTHORIZED"
+      ],
+      "snapshot_sets": [
+        {
+          "kind": "BASELINE_V2",
+          "beginSequence": 4,
+          "expectedRecords": 21746
+        },
+        {
+          "kind": "READBACK_V2",
+          "beginSequence": 519,
+          "expectedRecords": 21746
+        }
+      ],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [
+        "orulo_audit.batch_prerequisite_result(text)"
+      ],
+      "authorizations": 1,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "98a9afa9-a08d-46f1-bef9-4d4e670c786f",
+      "entries": 931,
+      "snapshot_records": 43390,
+      "datum_bytes": 34468520,
+      "head_sequence": 931,
+      "head_hash": "08e3546ef22a7af8991b33708b036f4bfe72630fa29e88bb3448c38ec899bf6e",
+      "finished": true,
+      "aborted": false,
+      "write_authorized": true,
+      "kinds": [
+        "BASELINE_V2",
+        "CAS_RESULT",
+        "CLIENT_READBACK",
+        "FINISHED",
+        "INTENT",
+        "READBACK_V2",
+        "SNAPSHOT_BEGIN",
+        "SNAPSHOT_PAGE",
+        "START",
+        "WRITE_AUTHORIZED"
+      ],
+      "snapshot_sets": [
+        {
+          "kind": "BASELINE_V2",
+          "beginSequence": 4,
+          "expectedRecords": 21695
+        },
+        {
+          "kind": "READBACK_V2",
+          "beginSequence": 494,
+          "expectedRecords": 21695
+        }
+      ],
+      "operationalStatus": "FINISHED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 1,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "a613aae9-4a99-47bd-b7c4-d58b9f0c7c72",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 60616,
+      "head_sequence": 4,
+      "head_hash": "73730a2570da9884a4719c96897dfdd2a1807068c56a4871f4d98ac27e3f319d",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "a94d942c-9bbe-4fd3-ab98-3e7a87d91627",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 32968,
+      "head_sequence": 4,
+      "head_hash": "cb61bf9c427345006fa987f996a44915a7132ed59cbc3e83d330d630bde3dac7",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "bcc8512e-87c3-46dd-9f0c-8e6a27172f73",
+      "entries": 3,
+      "snapshot_records": 0,
+      "datum_bytes": 3000,
+      "head_sequence": 3,
+      "head_hash": "2db4054134ff4fe2e3f93161785f87c70bea88f19db0fba2ef53f31cfe6fc6be",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "d6061f6d-5dac-448e-bce2-90d38780cc3b",
+      "entries": 4,
+      "snapshot_records": 0,
+      "datum_bytes": 20256,
+      "head_sequence": 4,
+      "head_hash": "ca7651cd813e1946d3730a6f382094ba6f112e1f04c976cefd722016e642ace9",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": false,
+      "kinds": [
+        "ABORTED",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "START"
+      ],
+      "snapshot_sets": [],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "dbc2b806-3c1f-4c61-b4cd-d1f65d882900",
+      "entries": 887,
+      "snapshot_records": 43658,
+      "datum_bytes": 34393104,
+      "head_sequence": 887,
+      "head_hash": "a2e60ba6cddb19097dc1cfc233d462ab36a34039cc5ee0e0a85d6103818d7c37",
+      "finished": false,
+      "aborted": true,
+      "write_authorized": true,
+      "kinds": [
+        "ABORTED",
+        "BASELINE_V2",
+        "CAS_RESULT",
+        "CLIENT_READBACK",
+        "CLIENT_STOP",
+        "INTENT",
+        "READBACK_V2",
+        "SNAPSHOT_BEGIN",
+        "SNAPSHOT_PAGE",
+        "START",
+        "WRITE_AUTHORIZED"
+      ],
+      "snapshot_sets": [
+        {
+          "kind": "BASELINE_V2",
+          "beginSequence": 4,
+          "expectedRecords": 21829
+        },
+        {
+          "kind": "READBACK_V2",
+          "beginSequence": 446,
+          "expectedRecords": 21829
+        }
+      ],
+      "operationalStatus": "ABORTED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 1,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "e6dcb9f6-8b7c-41a5-9d8f-c5aff8a8a153",
+      "entries": 873,
+      "snapshot_records": 43294,
+      "datum_bytes": 34082240,
+      "head_sequence": 873,
+      "head_hash": "9d391befc44653824e0edc7d0770da2ac5ade09699ab090657a81b8244c04803",
+      "finished": true,
+      "aborted": false,
+      "write_authorized": false,
+      "kinds": [
+        "BASELINE_V2",
+        "FINISHED",
+        "READ_ONLY_PREFLIGHT",
+        "READBACK_V2",
+        "SNAPSHOT_BEGIN",
+        "SNAPSHOT_PAGE",
+        "START"
+      ],
+      "snapshot_sets": [
+        {
+          "kind": "BASELINE_V2",
+          "beginSequence": 3,
+          "expectedRecords": 21647
+        },
+        {
+          "kind": "READBACK_V2",
+          "beginSequence": 438,
+          "expectedRecords": 21647
+        }
+      ],
+      "operationalStatus": "FINISHED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    },
+    {
+      "run_uuid": "ff26cfd1-85ac-4ea8-a98a-9f55b5585d3d",
+      "entries": 874,
+      "snapshot_records": 43296,
+      "datum_bytes": 34086424,
+      "head_sequence": 874,
+      "head_hash": "b50b8e1395636d010ae88535183bb5efbf820b3bdb81f75e26b68b1540816315",
+      "finished": true,
+      "aborted": false,
+      "write_authorized": false,
+      "kinds": [
+        "BASELINE_V2",
+        "CLIENT_READBACK",
+        "FINISHED",
+        "READ_ONLY_PREFLIGHT",
+        "READBACK_V2",
+        "SNAPSHOT_BEGIN",
+        "SNAPSHOT_PAGE",
+        "START"
+      ],
+      "snapshot_sets": [
+        {
+          "kind": "BASELINE_V2",
+          "beginSequence": 3,
+          "expectedRecords": 21648
+        },
+        {
+          "kind": "READBACK_V2",
+          "beginSequence": 438,
+          "expectedRecords": 21648
+        }
+      ],
+      "operationalStatus": "FINISHED",
+      "dependencyReview": "BLOCKED_NOT_REVIEWED",
+      "archiveStatus": "BLOCKED_NO_DURABLE_COPY",
+      "restoreStatus": "NOT_PERFORMED_FOR_THIS_RUN",
+      "removalEligible": false,
+      "recoverableBytesGuaranteed": 0,
+      "functionsReferencingRun": [],
+      "authorizations": 0,
+      "intentsWithoutResult": 0
+    }
+  ]
+}

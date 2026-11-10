@@ -1,0 +1,6 @@
+BEGIN READ ONLY; SET LOCAL statement_timeout='45s';
+WITH e AS (SELECT run_uuid,count(*) AS entries,sum(pg_column_size(entries)) AS entry_datum_bytes,max(sequence) AS head_sequence,(array_agg(hash ORDER BY sequence DESC))[1] AS head_hash,bool_or(kind='FINISHED') AS finished,bool_or(kind='ABORTED') AS aborted,bool_or(kind='WRITE_AUTHORIZED') AS write_authorized,array_agg(DISTINCT kind ORDER BY kind) AS kinds FROM orulo_audit.entries GROUP BY run_uuid),
+s AS (SELECT run_uuid,count(*) AS snapshot_records,sum(pg_column_size(snapshot_records)) AS snapshot_datum_bytes FROM orulo_audit.snapshot_records GROUP BY run_uuid),
+ss AS(SELECT run_uuid,jsonb_agg(jsonb_build_object('kind',kind,'expectedRecords',cardinality(keys),'beginSequence',begin_sequence) ORDER BY kind) AS snapshot_sets FROM orulo_audit.snapshot_sets GROUP BY run_uuid)
+SELECT r.run_uuid,e.entries,coalesce(s.snapshot_records,0) AS snapshot_records,coalesce(e.entry_datum_bytes,0)+coalesce(s.snapshot_datum_bytes,0) AS datum_bytes,e.head_sequence,e.head_hash,coalesce(e.finished,false) AS finished,coalesce(e.aborted,false) AS aborted,coalesce(e.write_authorized,false) AS write_authorized,e.kinds,coalesce(ss.snapshot_sets,'[]'::jsonb) AS snapshot_sets
+FROM orulo_audit.runs r LEFT JOIN e USING(run_uuid) LEFT JOIN s USING(run_uuid) LEFT JOIN ss USING(run_uuid) ORDER BY r.run_uuid; COMMIT;
