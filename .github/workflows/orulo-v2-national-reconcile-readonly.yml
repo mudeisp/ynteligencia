@@ -26,6 +26,33 @@ jobs:
           umask 077
           test -n "$PRIVATE_KEY" || { echo "::error::ORULO_V2_PRIVATE_KEY_PEM_MISSING"; exit 1; }
           test -n "$ORULO_V2_DB_URL" || { echo "::error::ORULO_V2_DB_URL_MISSING"; exit 1; }
+          # Fail closed before decryption or DB access; never print the secret or host.
+          python3 - <<'PY'
+          import os,socket,sys
+          from urllib.parse import urlsplit
+          raw=os.environ["ORULO_V2_DB_URL"]
+          try:
+              if raw != raw.strip() or any(c in raw for c in "\\r\\n"):
+                  raise ValueError("EXTRA_WHITESPACE")
+              parsed=urlsplit(raw)
+              if parsed.scheme not in ("postgresql","postgres") or not parsed.hostname:
+                  raise ValueError("INVALID_POSTGRES_URI")
+              if parsed.username is None or parsed.password is None:
+                  raise ValueError("MISSING_USER_OR_PASSWORD")
+              host=parsed.hostname
+              if any(c in host for c in ("{","}","<",">"," ")):
+                  raise ValueError("HOST_CONTAINS_PLACEHOLDERS")
+              if host.endswith(".supabase.co") and host.startswith("db."):
+                  print("DB_CONNECTION_MODE=direct; GitHub Actions IPv4 connectivity may require session pooler")
+              else:
+                  print("DB_CONNECTION_MODE=pooler_or_custom")
+              socket.getaddrinfo(host,parsed.port or 5432,type=socket.SOCK_STREAM)
+              print("DB_DNS_RESOLVED=true")
+          except (ValueError,TypeError,socket.gaierror) as exc:
+              reason="DNS_LOOKUP_FAILED" if isinstance(exc,socket.gaierror) else str(exc)
+              print("::error::ORULO_V2_DB_URL_INVALID_OR_UNRESOLVABLE:"+reason,file=sys.stderr)
+              sys.exit(2)
+          PY
           WORK="$(mktemp -d)"
           trap 'rm -rf -- "$WORK"' EXIT
           printf '%s\n' "$PRIVATE_KEY" > "$WORK/key.pem"
