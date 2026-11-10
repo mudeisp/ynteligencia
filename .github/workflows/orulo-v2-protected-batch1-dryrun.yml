@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-          ref: 7e274d059fc5e3060d79956513a3c448d174393a
+          ref: 3488aa3db36e216ed69f53a4cdfe3b8e9d631f1b
       - name: Validate pinned reconciliation batch
         shell: bash
         env:
