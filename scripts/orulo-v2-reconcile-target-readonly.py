@@ -27,7 +27,7 @@ WITH plan_rows AS (
    CASE WHEN jsonb_typeof(p.raw_data#>'{building,floor_plans}')='array'
         THEN p.raw_data#>'{building,floor_plans}' ELSE '[]'::jsonb END
  ) pl(value)
- WHERE p.source='novos' AND p.external_id LIKE 'orulo:%'
+ WHERE p.source='novos' AND p.external_id LIKE 'orulo:%%'
    AND p.raw_data->>'building_id' = ANY(%s)
 )
 SELECT property_id, external_id, building_id, plan_id,
