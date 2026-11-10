@@ -1,0 +1,21 @@
+name: Orulo V2 checkpoint partition checks
+on:
+  pull_request:
+    paths:
+      - 'scripts/orulo-v2-source-chunk.py'
+      - 'tests/orulo-v2-source-chunk.test.py'
+      - '.github/workflows/orulo-national-v2-checkpointed.yml'
+      - '.github/workflows/orulo-v2-checkpoint-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-partition-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate deterministic V2 partitions without external credentials
+        run: python3 tests/orulo-v2-source-chunk.test.py

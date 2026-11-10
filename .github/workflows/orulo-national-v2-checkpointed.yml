@@ -1,0 +1,103 @@
+name: Orulo National V2 - persistent source checkpoints
+on:
+  workflow_dispatch:
+    inputs:
+      chunk:
+        description: 'V2 chunk number 0-5; run one checkpoint at a time'
+        required: true
+        type: choice
+        options:
+          - '0'
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+permissions:
+  contents: read
+jobs:
+  checkpoint-source:
+    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Checkout immutable original V2 source package
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f
+          path: pinned
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify original V2 package and frozen queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C pinned rev-parse HEAD)" = ca2df52153f9dcc50b9fda80a3aca6e7ea68f32f
+          (cd pinned && sha256sum -c orulo-national-v2/handoff/PACKAGE-SHA256SUMS)
+          (cd pinned/orulo-national-v2/manifest && sha256sum -c manifest.sha256)
+          (cd pinned/orulo-national-v2/handoff && sha256sum -c source-queue.sha256)
+      - name: Verify six non-overlapping 500-building partitions
+        shell: bash
+        run: python3 tests/orulo-v2-source-chunk.test.py
+      - name: Prepare isolated source queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 scripts/orulo-v2-source-chunk.py --queue pinned/orulo-national-v2/handoff/source-queue.json --index ${{ inputs.chunk }} --size 500 --output "$RUNNER_TEMP/chunk-queue.json" > "$RUNNER_TEMP/chunk-metadata"
+          sed -n 's/^QUEUE_SHA256=//p' "$RUNNER_TEMP/chunk-metadata" > "$RUNNER_TEMP/chunk-queue.sha256"
+      - name: Require evidence encryption certificate
+        shell: bash
+        env:
+          CERT_B64: ${{ secrets.ORULO_V2_EVIDENCE_CERT_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$CERT_B64" || { echo '::error::MISSING_EVIDENCE_CERT'; exit 1; }
+          printf '%s' "$CERT_B64" | base64 --decode > "$RUNNER_TEMP/recipient.crt"
+          openssl x509 -in "$RUNNER_TEMP/recipient.crt" -noout >/dev/null
+          printf 'V2_ENCRYPTION_PROBE' > "$RUNNER_TEMP/encryption-probe.txt"
+          openssl cms -encrypt -binary -aes-256-gcm -in "$RUNNER_TEMP/encryption-probe.txt" -out "$RUNNER_TEMP/encryption-probe.cms" -outform DER "$RUNNER_TEMP/recipient.crt"
+          test -s "$RUNNER_TEMP/encryption-probe.cms" || { echo '::error::EVIDENCE_ENCRYPTION_PROBE_FAILED'; exit 1; }
+          rm -f "$RUNNER_TEMP/encryption-probe.txt" "$RUNNER_TEMP/encryption-probe.cms"
+      - name: Collect only this V2 chunk, no Supabase or CAS
+        shell: bash
+        env:
+          ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
+          ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$ORULO_CLIENT_ID" && test -n "$ORULO_CLIENT_SECRET" || { echo '::error::SOURCE_AUTH_MISSING'; exit 1; }
+          node pinned/scripts/orulo-national-source-readonly.mjs --queue "$RUNNER_TEMP/chunk-queue.json" --queue-sha256 "$(cat "$RUNNER_TEMP/chunk-queue.sha256")" --max-buildings 500 --output-dir "$RUNNER_TEMP/v2-source-chunk"
+      - name: Seal checkpoint including per-building evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -f "$RUNNER_TEMP/recipient.crt" || { echo '::error::CERT_NOT_AVAILABLE'; exit 1; }
+          test -f "$RUNNER_TEMP/v2-source-chunk/index.json" || { echo '::error::NO_SOURCE_CHECKPOINT'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/v2-sealed"
+          tar -czf "$RUNNER_TEMP/v2-source.tgz" -C "$RUNNER_TEMP" v2-source-chunk chunk-queue.json chunk-queue.sha256
+          openssl cms -encrypt -binary -aes-256-gcm -in "$RUNNER_TEMP/v2-source.tgz" -out "$RUNNER_TEMP/v2-sealed/source.cms" -outform DER "$RUNNER_TEMP/recipient.crt"
+          (cd "$RUNNER_TEMP/v2-sealed" && sha256sum source.cms > source.cms.sha256)
+          echo 'V2_ENCRYPTED_CHECKPOINT_CREATED; PRODUCTION_WRITES=0'
+      - name: Persist encrypted checkpoint
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: orulo-v2-source-chunk-${{ inputs.chunk }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/v2-sealed/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove temporary private files
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- "$RUNNER_TEMP/v2-source-chunk" "$RUNNER_TEMP/v2-sealed"
+          rm -f -- "$RUNNER_TEMP/v2-source.tgz" "$RUNNER_TEMP/recipient.crt" "$RUNNER_TEMP/chunk-queue.json"
