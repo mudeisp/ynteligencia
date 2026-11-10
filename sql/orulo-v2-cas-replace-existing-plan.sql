@@ -33,7 +33,7 @@ BEGIN
   THEN RETURN false; END IF;
   v_plans:=v_current.raw_data#>'{building,floor_plans}';
   IF jsonb_typeof(v_plans) IS DISTINCT FROM 'array' THEN RETURN false; END IF;
-  SELECT count(*), max(p.value) INTO v_count,v_old_plan
+  SELECT count(*), (jsonb_agg(p.value)->0) INTO v_count,v_old_plan
   FROM jsonb_array_elements(v_plans) p(value)
   WHERE p.value->>'id'=p_plan_id;
   IF v_count<>1 OR jsonb_typeof(v_old_plan) IS DISTINCT FROM 'object'
