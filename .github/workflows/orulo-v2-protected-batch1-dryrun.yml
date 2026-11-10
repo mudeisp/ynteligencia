@@ -1,4 +1,4 @@
-name: Orulo V2 - protected batch 1 read-only dry run
+name: Orulo V2 - protected sequential read-only dry run
 on:
   workflow_dispatch:
     inputs:
@@ -19,7 +19,7 @@ permissions:
   actions: read
 jobs:
   validate:
-    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 && inputs.dry_run && !inputs.cas_writes_authorized && inputs.batch_size == 2000 && inputs.batch_number == 1 }}
+    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 && inputs.dry_run && !inputs.cas_writes_authorized && inputs.batch_size == 2000 && inputs.batch_number >= 1 && inputs.batch_number <= 5 }}
     runs-on: ubuntu-latest
     environment: orulo-v2-reconciliation
     timeout-minutes: 60
