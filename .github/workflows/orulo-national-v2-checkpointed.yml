@@ -51,6 +51,10 @@ jobs:
           test -n "$CERT_B64" || { echo '::error::MISSING_EVIDENCE_CERT'; exit 1; }
           printf '%s' "$CERT_B64" | base64 --decode > "$RUNNER_TEMP/recipient.crt"
           openssl x509 -in "$RUNNER_TEMP/recipient.crt" -noout >/dev/null
+          printf 'V2_ENCRYPTION_PROBE' > "$RUNNER_TEMP/encryption-probe.txt"
+          openssl cms -encrypt -binary -aes-256-gcm -in "$RUNNER_TEMP/encryption-probe.txt" -out "$RUNNER_TEMP/encryption-probe.cms" -outform DER "$RUNNER_TEMP/recipient.crt"
+          test -s "$RUNNER_TEMP/encryption-probe.cms" || { echo '::error::EVIDENCE_ENCRYPTION_PROBE_FAILED'; exit 1; }
+          rm -f "$RUNNER_TEMP/encryption-probe.txt" "$RUNNER_TEMP/encryption-probe.cms"
       - name: Collect only this V2 chunk, no Supabase or CAS
         shell: bash
         env:
