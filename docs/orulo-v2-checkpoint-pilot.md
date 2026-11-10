@@ -9,7 +9,7 @@ GitHub Actions run 42693046648 completed 2,667 source buildings and 44,736 CDN r
 1. Review this PR; ensure no source data is published unencrypted.
 2. Configure GitHub Actions secret `ORULO_V2_EVIDENCE_CERT_B64`: base64 of an approved X.509 **public certificate**, with the corresponding private key held securely outside GitHub. Never commit or print the private key.
 3. Merge only after reviewing the workflow, source scope and evidence-handling policy. The workflow dispatch is restricted to main, the repository owner, and first attempt.
-4. Dispatch **Orulo National V2 - persistent source checkpoints** with `chunk=0` only. The source queue is partitioned into 27 fixed, non-overlapping chunks (0–26), each at most 100 buildings.
+4. Dispatch **Orulo National V2 - persistent source checkpoints** with `chunk=0` only (500 buildings; review runtime against the six-hour limit). The source queue is partitioned into 6 fixed, non-overlapping chunks (0–5), each at most 500 buildings (five batches of 500 and one of 167).
 5. Verify the artifact `orulo-v2-source-chunk-0-<run_id>` contains `source.cms` and `source.cms.sha256`. Check the SHA-256 and decrypt **offline** using the authorized private key. Inspect index.json, per-building result hashes, CDN evidence and incident counts.
 6. Do not dispatch remaining chunks until the pilot is independently validated.
 
