@@ -5,11 +5,12 @@ import json
 import os
 import sys
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
 
 import psycopg
-from orulo_v2_image_validation import sha, url_status
+from orulo_v2_image_validation import sha, url_status, validate_plan, VALID
 
 spec = importlib.util.spec_from_file_location('national', Path(__file__).with_name('orulo-v2-national-dry-run.py'))
 national = importlib.util.module_from_spec(spec)
@@ -64,7 +65,7 @@ def build(source_path, report_path, directory):
                     and proof.get('format') in ('jpeg', 'png', 'webp')
                     and type(proof.get('prefixBytes')) is int and 1 <= proof['prefixBytes'] <= 4096
                     and len(proof.get('prefixSha256', '')) == 64, 'SOURCE_PREFIX_PROOF_INVALID')
-            checks.append({'url': url, 'evidenceSha256': check['sha256'], 'evidence': proof})
+            checks.append({'url': url, 'evidenceSha256': check['sha256'], 'evidence': {k: proof[k] for k in ('url', 'status', 'format', 'prefixBytes', 'prefixSha256')}})
         proven[key] = {'id': key[1], 'images': urls, 'checks': checks,
                        'sourceResultSha256': plan['sourceResultSha256'], 'sourceChunk': plan['sourceChunk']}
     # One server-side hash per property, not one full-row transfer per occurrence.
@@ -100,7 +101,25 @@ def build(source_path, report_path, directory):
         target = targets.setdefault(pid, {'id': pid, 'buildingId': building, 'baselineSha256': row[4], 'patches': []})
         require(target['baselineSha256'] == row[4], 'BASELINE_INCONSISTENT')
         target['patches'].append(proven[(building, plan_id)])
-    ordered = sorted(targets.values(), key=lambda t: t['id'])
+    # Consolidation validates each distinct original source pair once, not eleven
+    # repeated national batches. No new source IDs enter the frozen universe.
+    selected_keys = list({(t['buildingId'], p['id']) for t in targets.values() for p in t['patches']})
+    def validate(key):
+        source_plan = indexed[key]
+        return validate_plan(source_plan, key[1], evidence[source_plan['sourceChunk']])
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        source_status = dict(zip(selected_keys, pool.map(validate, selected_keys)))
+    ordered = []
+    for target in sorted(targets.values(), key=lambda t: t['id']):
+        valid = []
+        for patch in target['patches']:
+            status = source_status[(target['buildingId'], patch['id'])]
+            if status == VALID:
+                valid.append({**patch, 'validation': VALID})
+            else:
+                blocked[status] += 1
+        if valid:
+            ordered.append({**target, 'patches': valid})
     for target in ordered:
         target['patches'].sort(key=lambda p: int(p['id']))
     require(bool(ordered), 'EMPTY_NATIONAL_MANIFEST')
@@ -118,7 +137,7 @@ def build(source_path, report_path, directory):
     summary = {'manifestSha256': sha(payload), 'operationUuid': manifest['operationUuid'], 'stats': stats,
                'sourceManifestSha256': national.SOURCE_HASH, 'reconciliationSha256': national.REPORT_HASH,
                'databaseWrites': 0, 'writesAuthorized': False,
-               'urlValidation': 'CHECKPOINT_PROVENANCE_VERIFIED; FULL_BINARY_REVALIDATION_REQUIRED_BEFORE_CAS'}
+               'urlValidation': 'FULL_BINARY_AND_CHECKPOINT_PROVENANCE_VERIFIED; REVALIDATE_BEFORE_CAS'}
     (directory / 'national-summary.json').write_bytes(canonical(summary))
     print(json.dumps(summary, sort_keys=True))
 
