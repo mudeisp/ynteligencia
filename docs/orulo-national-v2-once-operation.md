@@ -53,7 +53,7 @@ Os placeholders acima são uma descrição do contrato. O workflow gera o comand
 
 ## Processamento, orçamento e interrupções
 
-O job tem teto de seis horas. O executor reserva por padrão quatro horas para processar registros, considerando o baseline, e preserva margem para readback global e término. Não há limite de 500 ou 2.000 registros. As requisições de manifesto usam fragmentos de 128 Ki caracteres; os snapshots usam páginas de 100 UUIDs. Esses tamanhos limitam memória e tráfego sem alterar o universo autorizado.
+O job tem teto de seis horas. O executor reserva por padrão quatro horas para processar registros, considerando o baseline, e preserva margem para readback global e término. Não há limite de 500 ou 2.000 registros. As requisições de manifesto usam fragmentos de 128 Ki caracteres; os snapshots usam páginas de 50 UUIDs. Esses tamanhos limitam memória e tráfego sem alterar o universo autorizado. A ordem de execução aproxima imóveis do mesmo empreendimento para reutilizar validações de URL ainda frescas; a ordenação canônica do documento e seu escopo permanecem os mesmos.
 
 O fluxo por imóvel é leitura integral, hash contra o documento, validação de origem, INTENT confirmado, CAS sob `FOR UPDATE`, recibo no mesmo commit e readback integral. Todos os patches daquele imóvel são atômicos. Preço, estoque, tipologia, atividade, UF e outros campos permanecem preservados. URLs e imagens presentes bloqueiam a substituição. IDs duplicados bloqueiam a linha inteira.
 
@@ -92,3 +92,5 @@ A reconciliação somente leitura pode ser solicitada com `national_action=recon
 - Arquivar o manifesto criptografado e os recibos antes da retenção de 30 dias do artefato GitHub. O ledger permanece durável no PostgreSQL.
 
 Os testes isolados usam as definições dos triggers capturadas em produção e exercitam preservação, rollback conjunto de linha/índice/recibo, continuidade e ausência de retry. Eles não constituem autorização de produção nem evidência de imóveis efetivamente gravados nesta tarefa.
+
+O recibo consolidado com hash, UUID, contagens reais e artefato fixado está em [orulo-national-v2-manifest-receipt.json](orulo-national-v2-manifest-receipt.json). O snapshot de consolidação encontrou 42.893 ocorrências elegíveis em 5.684 imóveis de 2.116 empreendimentos, com 39.525 URLs distintas. As 237 pendências permanecem excluídas. Cada baseline será novamente comparado no CAS, sem rebase silencioso.

@@ -105,7 +105,7 @@ export async function openPostgresJournal(env,transport,options={}){
    let state=await transport.control('national_snapshot_state',{p_run:run,p_event:{kind}});
    if(state?.sealed)return;
    if(!state){const begin=await mutate('snapshot_begin',{kind});state={keys:begin.entry.event.keys,processed:0};}
-   for(let offset=state.processed;offset<state.keys.length;offset+=100)await mutate('snapshot_page',{kind,offset,size:100});
+   for(let offset=state.processed;offset<state.keys.length;offset+=50)await mutate('snapshot_page',{kind,offset,size:50});
    await mutate('snapshot_seal',{kind});
   }),
   record:event=>locked(()=>mutate('append',event)),

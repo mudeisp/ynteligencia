@@ -64,7 +64,9 @@ begin
  or (select count(*)<>count(distinct p->>'id') from jsonb_array_elements(raw#>'{building,floor_plans}')p)
  or (select count(*)<>count(distinct p->>'id') from jsonb_array_elements(patches)p) then raise exception 'NATIONAL_DUPLICATE_PLAN_ID'; end if;
  for x in select * from jsonb_array_elements(patches) loop
-  if coalesce(x->>'id','')!~'^[0-9]+$' or jsonb_typeof(x->'images') is distinct from 'array'
+  if coalesce(x->>'id','')!~'^[0-9]+$' or x->>'validation' is distinct from 'SOURCE_IMAGE_VALID'
+    or coalesce(x->>'sourceChunk','')!~'^[0-5]$' or coalesce(x->>'sourceResultSha256','')!~'^[a-f0-9]{64}$'
+    or jsonb_typeof(x->'images') is distinct from 'array'
     or jsonb_array_length(x->'images')=0 then raise exception 'NATIONAL_PATCH_INVALID'; end if;
   select p into old from jsonb_array_elements(raw#>'{building,floor_plans}')p where p->>'id'=x->>'id';
   if old is null then raise exception 'NATIONAL_PLAN_MISSING'; end if;
@@ -315,6 +317,9 @@ begin
   or (doc->'stats'->>'buildings')::bigint is distinct from (select count(distinct t->>'buildingId') from jsonb_array_elements(expected)t)
   or (doc->'stats'->>'distinctUrls')::bigint is distinct from (select count(distinct u#>>'{}') from jsonb_array_elements(expected)t cross join lateral jsonb_array_elements(t->'patches')p cross join lateral jsonb_array_elements(p->'images')u)
   or exists(select 1 from jsonb_array_elements(expected)t where jsonb_array_length(t->'patches')=0)
+  or exists(select 1 from jsonb_array_elements(expected)t cross join lateral jsonb_array_elements(t->'patches')p
+    where p->>'validation' is distinct from 'SOURCE_IMAGE_VALID' or coalesce(p->>'sourceChunk','')!~'^[0-5]$'
+    or coalesce(p->>'sourceResultSha256','')!~'^[a-f0-9]{64}$')
   then raise exception 'NATIONAL_SEALED_SCOPE_MISMATCH'; end if;
   return orulo_audit.append(p_run,p_sequence,p_previous_hash,jsonb_build_object('type','NATIONAL_MANIFEST_SEALED','eventUuid',p_event->>'eventUuid',
   'manifestHash',meta->>'manifestHash','columns',doc->'columns','stats',doc->'stats','targetCount',jsonb_array_length(expected)));
