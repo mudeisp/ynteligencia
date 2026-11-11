@@ -45,6 +45,24 @@ jobs:
           python3 -m pip install --disable-pip-version-check 'psycopg[binary]==3.2.12' 'Pillow==12.2.0'
           python3 tests/orulo-v2-cas-batch.test.py
           python3 tests/orulo-v2-image-validation.test.py
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Legacy and national isolated regression
+        run: |
+          npm ci --prefix test-support/orulo-cas --ignore-scripts --no-audit --no-fund
+          npm test --prefix test-support/orulo-cas
+      - name: National extension on native PostgreSQL
+        env:
+          ORULO_NATIONAL_NATIVE: 'true'
+          PGHOST: '127.0.0.1'
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: test
+          PGDATABASE: orulo_national_test
+        run: |
+          createdb orulo_national_test
+          node --test scripts/orulo-media-recovery-national.test.mjs
   validate:
     services:
       postgres:
