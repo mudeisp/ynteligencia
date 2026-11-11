@@ -46,6 +46,14 @@ jobs:
           python3 tests/orulo-v2-cas-batch.test.py
           python3 tests/orulo-v2-image-validation.test.py
   validate:
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 10
     needs: postgres-tests
     if: ${{ github.repository == 'mudeisp/ynteligencia' && github.actor == 'mudeisp' && ((github.event_name == 'workflow_dispatch' && inputs.dry_run && !inputs.cas_writes_authorized && inputs.batch_size == 2000 && inputs.batch_number >= 1) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[prepare-five]'))) }}
     runs-on: ubuntu-latest
@@ -62,6 +70,7 @@ jobs:
           PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
           ORULO_V2_DB_URL: ${{ secrets.ORULO_V2_DB_URL }}
           BATCH_NUMBER: ${{ inputs.batch_number || 1 }}
+          TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/postgres
           PREPARE_PILOT: ${{ inputs.prepare_pilot || (github.event_name == 'push' && contains(github.event.head_commit.message, '[prepare-five]')) }}
         run: |
           set -euo pipefail
