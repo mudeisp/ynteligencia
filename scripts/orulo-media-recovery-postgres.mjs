@@ -8,6 +8,10 @@ export const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const databaseReasons=new Set(['AUDIT_ACTIVE_RUN_REQUIRES_RECONCILIATION','AUDIT_CONCURRENT_RUN','AUDIT_CONCURRENT_ACCESS',
  'AUDIT_MANUAL_OWNER_SCOPE_REQUIRED','AUDIT_RUN_CLOSED','AUDIT_RUN_NOT_FOUND','AUDIT_PENDING_INTENT','AUDIT_CAPTURE_ALREADY_OPEN',
  'AUDIT_DUPLICATE_OPERATION_USE_RECOVERY','AUDIT_OPERATIONAL_WRITE_BLOCKED','BATCH_MANIFEST_DRIFT','BATCH_PHASE_NOT_RELEASED',
+ 'NATIONAL_FROZEN_TARGET_DIVERGENCE','NATIONAL_EXISTING_IMAGE','NATIONAL_FRESH_INTENT_REQUIRED',
+ 'NATIONAL_FROZEN_BASELINE_CHANGED','NATIONAL_GLOBAL_BASELINE_REQUIRED','NATIONAL_SNAPSHOT_INTEGRITY_FAILED',
+ 'NATIONAL_AUTHORIZATION_REQUIRED','NATIONAL_LEASE_EXPIRED','NATIONAL_SERVER_READBACK_DIVERGENCE',
+ 'NATIONAL_CONTINUATION_RECONCILIATION_REQUIRED','NATIONAL_ADMIN_APPROVAL_INVALID','NATIONAL_MANIFEST_HASH_MISMATCH',
  'BATCH_ROW_SCOPE_DENIED','BATCH_EXPLICIT_AUTHORIZATION_REQUIRED','BATCH_AUTHORIZATION_INVALID_OR_EXPIRED','BATCH_FRESH_BASELINE_REQUIRED']);
 export function rpcFailureDetails(error){
  const out={};
@@ -50,25 +54,26 @@ export function verifyEntry(entry,ack){
   throw Error('POSTGRES_AUDIT_CANONICAL_DIVERGENCE');
  return entry;
 }
-export async function openPostgresJournal(env,transport){
- const health=await transport.control('health');
+export async function openPostgresJournal(env,transport,options={}){
+ const health=await transport.control(options.national?'national_health':'health',options.national?{p_event:{mode:'national-v2-once'}}:{});
  if(health.version!==2 || health.snapshotProtocol!=='paged-v2' || health.storage!=='postgres' || health.durable!==true || health.appendOnly!==true ||
     health.synchronousCommit!=='on' || health.writeEnabled!==false)throw Error('POSTGRES_AUDIT_HEALTH_UNVERIFIED');
- const run= randomUUID();
+ const run= options.runUuid||randomUUID();
  let head,failed=false,busy=false;
  const metadata={eventUuid:randomUUID(),repository:env.GITHUB_REPOSITORY,actor:env.GITHUB_ACTOR,
   actorId:env.GITHUB_ACTOR_ID,triggeringActor:env.GITHUB_TRIGGERING_ACTOR,eventName:env.GITHUB_EVENT_NAME,
   ref:env.GITHUB_REF,attempt:env.GITHUB_RUN_ATTEMPT,githubRunId:env.GITHUB_RUN_ID,
-  workflowSha:env.GITHUB_WORKFLOW_SHA,approvedSha:APPROVED_SHA,manifestHash:MANIFEST_HASH};
+  workflowSha:env.GITHUB_WORKFLOW_SHA,approvedSha:APPROVED_SHA,manifestHash:options.manifestHash||MANIFEST_HASH,
+  ...(options.national?{mode:"national-v2-once"}:{})};
  const verify=async ack=>{
   const entry=await transport.control('read',{p_run:run,p_sequence:ack.sequence});
   return verifyEntry(entry,ack);
  };
  // Existing UUID/GitHub run ID or active interrupted run is never reopened.
  try{
-  head=await transport.control('start',{p_run:run,p_event:metadata});
+  head=await transport.control(options.resume?'national_resume':'start',{p_run:run,p_event:options.resume?{githubRunId:env.GITHUB_RUN_ID,controlSha:env.GITHUB_WORKFLOW_SHA}:metadata});
   const start=await verify(head);
-  if(head.sequence!==1 || start.event.type!=='START' || JSON.parse(start.canonical).previousHash!=='')throw Error('POSTGRES_AUDIT_START_DIVERGENCE');
+  if(!options.resume && (head.sequence!==1 || start.event.type!=='START' || JSON.parse(start.canonical).previousHash!==''))throw Error('POSTGRES_AUDIT_START_DIVERGENCE');
  }catch(error){error.auditRunUuid=run;throw error;} // Identifier for read-only reconciliation, never an automatic retry.
  const locked=async operation=>{
   if(failed)throw Error('POSTGRES_JOURNAL_FROZEN_RECONCILE_REQUIRED');
@@ -86,6 +91,23 @@ export async function openPostgresJournal(env,transport){
  };
  return {
   runUuid:run,
+  head:()=>({...head}),
+  checkpoint:(action,event)=>locked(()=>mutate(action,event)),
+  adoptNationalAuthorization:()=>locked(async()=>{
+   const ack=await transport.control('national_status',{p_run:run});if(!ack)return false;
+   const e=await verify(ack);
+   if(ack.sequence!==head.sequence+1 || JSON.parse(e.canonical).previousHash!==head.hash ||
+      e.event.type!=='WRITE_AUTHORIZED' || e.event.manifestHash!==options.manifestHash ||
+      e.event.controlSha!==env.GITHUB_WORKFLOW_SHA)throw Error('NATIONAL_AUTHORIZATION_DIVERGENCE');
+   head=ack;return true;
+  }),
+  nationalSnapshot:kind=>locked(async()=>{
+   let state=await transport.control('national_snapshot_state',{p_run:run,p_event:{kind}});
+   if(state?.sealed)return;
+   if(!state){const begin=await mutate('snapshot_begin',{kind});state={keys:begin.entry.event.keys,processed:0};}
+   for(let offset=state.processed;offset<state.keys.length;offset+=50)await mutate('snapshot_page',{kind,offset,size:50});
+   await mutate('snapshot_seal',{kind});
+  }),
   record:event=>locked(()=>mutate('append',event)),
   adoptPilotAuthorization:(buildingId,targetIds)=>locked(async()=>{
    const ack=await transport.control('pilot_status',{p_run:run});if(!ack)return false;

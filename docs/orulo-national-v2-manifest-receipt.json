@@ -1,0 +1,32 @@
+{
+  "databaseWrites": 0,
+  "manifestSha256": "ef04d42882f69166f5892efc0163a774814f5f26a7defeee83aa681efa725288",
+  "operationUuid": "1c8ec62a-9c38-41ac-8091-f1ceef98ca91",
+  "reconciliationSha256": "2a9e409d6db81e4d70a6ddaee942eedb9887f4302347e333dec4c122cab8e66e",
+  "sourceManifestSha256": "6f6248375b5d5459496465d1c202e38e10adfade30bdef2442a7d59f00f313cc",
+  "stats": {
+    "blockedOccurrences": 237,
+    "blockedReasons": {
+      "BASELINE_CHANGED_SINCE_RECONCILIATION": 63,
+      "SOURCE_HTTP_ERROR": 21,
+      "SOURCE_RESOURCE_LIMIT": 2,
+      "SOURCE_TIMEOUT": 4,
+      "TARGET_IMAGES_PRESENT": 147
+    },
+    "buildings": 2116,
+    "candidateOccurrences": 43130,
+    "distinctUrls": 39525,
+    "eligibleOccurrences": 42893,
+    "imageUrlOccurrences": 128679,
+    "properties": 5684
+  },
+  "urlValidation": "FULL_BINARY_AND_CHECKPOINT_PROVENANCE_VERIFIED; REVALIDATE_BEFORE_CAS",
+  "writesAuthorized": false,
+  "artifactId": 13818623539,
+  "artifactSha256": "a476e6b4eab8df8b3ffd3140da078c74454e9d9179e296533ca18c9341accc4b",
+  "artifactBytes": 72657891,
+  "workflowRunId": 42934521146,
+  "preparedCommit": "0176f60a53578490935765d0794a56daa7ab5d47",
+  "productionMigrationInstalled": false,
+  "writeAuthorized": false
+}

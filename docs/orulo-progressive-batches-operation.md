@@ -39,3 +39,7 @@ Rollback de código/configuração: desativar prontidão e reverter o controle v
 ## Testes
 
 `npm ci --prefix test-support/orulo-cas --ignore-scripts --no-audit --no-fund` e `npm test --prefix test-support/orulo-cas` executam regressão isolada. O CI `Orulo CAS concurrency` também executa PostgreSQL 17.6 descartável, WAL durável e sessões concorrentes reais. Os fixtures têm UUIDs/IDs do manifesto e dados comerciais sintéticos, sem credenciais de produção. Nunca direcionar testes ao Supabase.
+
+## Modo nacional V2
+
+`national-v2-once` usa o mesmo workflow e ledger, com escopo próprio congelado e autorização administrativa integral. Seu procedimento está em [orulo-national-v2-once-operation.md](orulo-national-v2-once-operation.md). As contagens e restrições dos lotes históricos acima não limitam esse modo. A instalação consulta fingerprints do estado efetivamente instalado, sem sobrescrever atualizações posteriores por uma migration histórica.

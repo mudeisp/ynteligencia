@@ -1,0 +1,152 @@
+{
+  "mode": "national-v2-once",
+  "project": "wzaegidwtdjuhqchpdpd",
+  "currentProduction": {
+    "roles": [
+      {
+        "name": "service_role",
+        "settings": null
+      },
+      {
+        "name": "orulo_audit_owner",
+        "settings": null
+      }
+    ],
+    "properties": 22001,
+    "ledgerBytes": 209739776,
+    "databaseBytes": 549072019,
+    "databaseStatementTimeout": "2min"
+  },
+  "referenceRun": {
+    "githubRunId": "42570702344",
+    "casUpdated": 95,
+    "imageOccurrences": 824,
+    "distinctUrls": 417,
+    "buildings": 17,
+    "finalLedgerKind": "FINISHED"
+  },
+  "historicalCasUpdated": 211,
+  "newReceiptTables": 0,
+  "publicWriteRpc": "public.orulo_audited_cas",
+  "administrativeFunction": "orulo_audit.authorize_pilot",
+  "legacyPolicy": "STRICT_GLOBAL_V1",
+  "migration": "supabase/migrations/20261111004340_orulo_national_v2_once.sql",
+  "migrationInstalled": false,
+  "productionWritesThisTask": 0,
+  "writeAuthorizedIssuedThisTask": 0,
+  "remainingDeploymentGates": [
+    "Explicit deployment approval including the exact-intent RLS policy",
+    "Approved main commit and frozen-manifest variables",
+    "Operational Environment bindings for existing original secrets",
+    "Confirm available database storage and compute before ledger registration"
+  ],
+  "contractSnapshot": "test-support/orulo-cas/production-contract.json",
+  "functionFingerprints": [
+    {
+      "signature": "public.orulo_audit_control(text,uuid,bigint,text,jsonb)",
+      "sha256": "e79102e44204c5c40ac21d4e9118e624d8dc820ddcdbfdb5195fb82db960ba67",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner",
+        "service_role=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "public.orulo_audited_cas(uuid,uuid)",
+      "sha256": "321adef41ee6d268f9e059c1aa6a823c055021bd489f8f56133e467db5d9a4b7",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner",
+        "service_role=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.authorize_pilot(uuid,text,text,text,text)",
+      "sha256": "f0f9de0fda6fe36016e9b75d33aacb4c2773fe37e2a0484be2f7425010abba81",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.cas_core(uuid,jsonb,jsonb)",
+      "sha256": "d08ba2e9c9d242148916d370bf93ecfb94aed6522fd77967740a453be8c9a8a1",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.audited_cas_core(uuid,uuid)",
+      "sha256": "eb7e278cd351999f20249dcfd6e627cb52d5d9ea29228189bd6cf7c09833dda6",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.append(uuid,bigint,text,jsonb)",
+      "sha256": "8dd906e953df5cb09f7cf8e234763a18c5190c65f07bcd6664d46f5ece0f55d1",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.columns_v2()",
+      "sha256": "3aa4d73c7a7100a523c23507c836299bd90dee4dacfcf772f6084469b713cea3",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.compare_v2(uuid)",
+      "sha256": "be8e9054de9960c25692c9304a1905da5c9323710e4875e0bb60a2146e694e83",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.control_paged(text,uuid,bigint,text,jsonb)",
+      "sha256": "d93eaa6979d90ca59a49e05565c2b2a8b32517840b51e6ea8beeda45e9a69782",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.control_v1(text,uuid,bigint,text,jsonb)",
+      "sha256": "5ffbf3fada5b4d39b913a24b60a09a62e1828639914ed6fe9158cd3293e11185",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.immutable()",
+      "sha256": "ff535dffe62eb0ded2c2dadc92946315190f4c5fcb1f80874603efd36132a55f",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.lock_run(uuid)",
+      "sha256": "4bd74b5fafc13b0ba0ae57d7cf25e229e5865a0767db95c84334f4532e85297c",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    },
+    {
+      "signature": "orulo_audit.require_service()",
+      "sha256": "114a0f8c0d58c70969a7bf5f78e2dff2ab5d685e75ddca4fc9be1a3c1a081f29",
+      "owner": "orulo_audit_owner",
+      "acl": [
+        "orulo_audit_owner=X/orulo_audit_owner"
+      ]
+    }
+  ]
+}

@@ -9,7 +9,17 @@ on:
         description: Reviewed immutable batch (later phases remain blocked)
         required: true
         type: choice
-        options: [phase1-20, phase2-30-a, phase2-30-b, phase3-rest, pilot-5971-images, terrarium-51496-v7]
+        options: [phase1-20, phase2-30-a, phase2-30-b, phase3-rest, pilot-5971-images, terrarium-51496-v7, national-v2-once]
+      national_action:
+        description: Same frozen national operation. Continue requires explicit owner continuation grant.
+        required: false
+        type: choice
+        default: execute
+        options: [execute, continue, reconcile]
+      national_run_uuid:
+        description: Frozen operation UUID for continuation or reconciliation
+        required: false
+        type: string
 permissions: {}
 concurrency:
   group: orulo-lote1-production
@@ -48,6 +58,11 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           ORULO_POSTGRES_AUDIT_READY: ${{ vars.ORULO_POSTGRES_AUDIT_READY }}
           ORULO_BATCH_ID: ${{ inputs.batch_id }}
+          ORULO_NATIONAL_READY: ${{ vars.ORULO_NATIONAL_READY }}
+          ORULO_NATIONAL_APPROVED_SHA: ${{ vars.ORULO_NATIONAL_APPROVED_SHA }}
+          ORULO_NATIONAL_MANIFEST_SHA: ${{ vars.ORULO_NATIONAL_MANIFEST_SHA }}
+          ORULO_NATIONAL_ACTION: ${{ inputs.national_action || 'execute' }}
+          ORULO_NATIONAL_RUN_UUID: ${{ inputs.national_run_uuid }}
           ORULO_BATCH_READY: ${{ vars.ORULO_BATCH_READY }}
           ORULO_BATCH_APPROVED_SHA: ${{ vars.ORULO_BATCH_APPROVED_SHA }}
         run: node control/scripts/orulo-media-recovery-batch.mjs github-gate
@@ -58,10 +73,11 @@ jobs:
           github.actor == 'mudeisp' && github.actor_id == '323805541' &&
           github.triggering_actor == 'mudeisp' && github.run_attempt == '1' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: ${{ inputs.batch_id == 'national-v2-once' && 360 || 45 }}
     environment: orulo-lote1
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -69,6 +85,7 @@ jobs:
           path: control
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        if: ${{ inputs.batch_id != 'national-v2-once' }}
         with:
           ref: 2fa6ec8b093346e1a2319e4c6833cdfb0c52825e
           path: approved-source
@@ -76,10 +93,45 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - name: Load the reviewed encrypted national manifest
+        if: ${{ inputs.batch_id == 'national-v2-once' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
+          ARTIFACT_ID: ${{ vars.ORULO_NATIONAL_ARTIFACT_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ "$ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]] && test -n "$PRIVATE_KEY"
+          mkdir -m 700 "$RUNNER_TEMP/orulo-national"
+          trap 'rm -f -- "$RUNNER_TEMP/orulo-national/key.pem"' EXIT
+          printf '%s\n' "$PRIVATE_KEY" > "$RUNNER_TEMP/orulo-national/key.pem"
+          unset PRIVATE_KEY
+          curl --fail --silent --show-error --location --header "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/mudeisp/ynteligencia/actions/artifacts/$ARTIFACT_ID/zip" \
+            -o "$RUNNER_TEMP/orulo-national/manifest.zip"
+          python3 - <<'PYTHON'
+          import os,zipfile
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'orulo-national'
+          with zipfile.ZipFile(path/'manifest.zip') as z:
+              assert set(z.namelist()) == {'national-manifest.cms','national-manifest.cms.sha256','national-summary.json'}
+              (path/'manifest.cms').write_bytes(z.read('national-manifest.cms'))
+          PYTHON
+          openssl cms -decrypt -binary -inform DER -in "$RUNNER_TEMP/orulo-national/manifest.cms" \
+            -inkey "$RUNNER_TEMP/orulo-national/key.pem" -out "$RUNNER_TEMP/orulo-national/manifest.json"
+          python3 -m pip install --disable-pip-version-check --quiet 'Pillow==12.2.0'
+          printf 'ORULO_NATIONAL_MANIFEST_PATH=%s\n' "$RUNNER_TEMP/orulo-national/manifest.json" >> "$GITHUB_ENV"
       - name: Plan selected immutable batch, await private admin authorization, then fresh baseline and audited CAS
         env:
           ORULO_POSTGRES_AUDIT_READY: ${{ vars.ORULO_POSTGRES_AUDIT_READY }}
           ORULO_BATCH_ID: ${{ inputs.batch_id }}
+          ORULO_NATIONAL_READY: ${{ vars.ORULO_NATIONAL_READY }}
+          ORULO_NATIONAL_APPROVED_SHA: ${{ vars.ORULO_NATIONAL_APPROVED_SHA }}
+          ORULO_NATIONAL_MANIFEST_SHA: ${{ vars.ORULO_NATIONAL_MANIFEST_SHA }}
+          ORULO_NATIONAL_ACTION: ${{ inputs.national_action || 'execute' }}
+          ORULO_NATIONAL_RUN_UUID: ${{ inputs.national_run_uuid }}
           ORULO_BATCH_READY: ${{ vars.ORULO_BATCH_READY }}
           ORULO_BATCH_APPROVED_SHA: ${{ vars.ORULO_BATCH_APPROVED_SHA }}
           APPROVED_SOURCE_DIR: ${{ github.workspace }}/approved-source
@@ -87,3 +139,8 @@ jobs:
           ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: node control/scripts/orulo-media-recovery-batch.mjs batch
+      - name: Remove decrypted national evidence
+        if: ${{ always() && inputs.batch_id == 'national-v2-once' }}
+        shell: bash
+        run: |
+          rm -f -- "$RUNNER_TEMP/orulo-national/key.pem" "$RUNNER_TEMP/orulo-national/manifest.json" "$RUNNER_TEMP/orulo-national/manifest.cms" "$RUNNER_TEMP/orulo-national/manifest.zip"

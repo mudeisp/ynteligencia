@@ -229,6 +229,7 @@ export async function executeBatch({env,transport,fetchPlans,checkImage=verifyBa
  }
 }
 async function main(){
+ if(process.env.ORULO_BATCH_ID==='national-v2-once'){const {nationalMain}=await import('./orulo-media-recovery-national.mjs');return nationalMain(process.argv[2]);}
  validateBatchDispatch(process.env);
  if(process.argv[2]==='github-gate'){await checkGitHub(process.env);console.log('Manual owner/main batch gate verified.');return;}
  if(process.argv.length!==3||process.argv[2]!=='batch')throw Error('BATCH_ONLY_COMMAND_REQUIRED');verifySource(process.env.APPROVED_SOURCE_DIR);

@@ -8,6 +8,7 @@ on:
       - '.github/workflows/orulo-pilot-manual.yml'
       - '.github/workflows/orulo-batch-manual.yml'
       - 'supabase/migrations/*orulo_manifest_batches.sql'
+      - 'supabase/migrations/*orulo_national_v2_once.sql'
       - 'scripts/orulo-media-recovery-batches/**'
       - 'supabase/orulo_media_cas.sql'
       - 'supabase/migrations/*orulo_postgres_audit.sql'
@@ -75,3 +76,14 @@ jobs:
           PGDATABASE: orulo_audit_test
         run: node --test scripts/orulo-media-recovery-pg-concurrency.test.mjs
 
+      - name: National mode on native PostgreSQL with durable WAL
+        env:
+          ORULO_NATIONAL_NATIVE: 'true'
+          PGHOST: '127.0.0.1'
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGDATABASE: orulo_national_test
+        run: |
+          createdb orulo_national_test
+          npm ci --prefix test-support/orulo-cas --ignore-scripts --no-audit --no-fund
+          node --test scripts/orulo-media-recovery-national.test.mjs
