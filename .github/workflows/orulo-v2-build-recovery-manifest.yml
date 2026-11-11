@@ -6,7 +6,7 @@ permissions:
   actions: read
 jobs:
   reconcile:
-    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/feat/orulo-v2-cas-executor-v1' && github.actor == 'mudeisp' && github.run_attempt == 1 }}
+    if: ${{ github.repository == 'mudeisp/ynteligencia' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     environment: orulo-v2-reconciliation
     timeout-minutes: 45

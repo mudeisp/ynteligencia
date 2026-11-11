@@ -1,5 +1,7 @@
 # Órulo V2 — five-occurrence CAS pilot: release checklist
 
+Historical prototype evidence. Superseded as an operational requirement by `orulo-national-v2-once-operation.md`. National execution requires the unified audited path and one complete-manifest authorization, with no mandatory pilot.
+
 Status: PREPARATION ONLY. No production writes authorized. PR #117 remains Draft.
 
 ## Verified prerequisite

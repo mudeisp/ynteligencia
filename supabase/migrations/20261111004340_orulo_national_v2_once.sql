@@ -187,11 +187,11 @@ begin
  or coalesce(p_proof_sha,'')!~'^[a-f0-9]{64}$' or coalesce(p_xid,'')!~'^[1-9][0-9]*$'
  or coalesce(length(p_process),0)<1 or coalesce(length(p_event_id),0)<1 or coalesce(length(p_reason),0)<20
  or exists(select 1 from orulo_audit.entries where run_uuid=r and created_xid::text=p_xid)
- or not exists(select 1 from orulo_audit.snapshot_records b full join orulo_audit.snapshot_records a
-  on a.run_uuid=b.run_uuid and a.id=b.id and a.kind='READBACK_V2'
-  where coalesce(b.run_uuid,a.run_uuid)=r and coalesce(b.id,a.id)=p_id
-  and (b.kind='BASELINE_V2' or b.kind is null)
-  and coalesce(b.record->>4,'')=coalesce(p_before,'') and coalesce(a.record->>4,'')=coalesce(p_after,''))
+ or p_before is not distinct from p_after
+ or not exists(select 1 from
+  (select record from orulo_audit.snapshot_records where run_uuid=r and id=p_id and kind='BASELINE_V2') b
+  full join (select record from orulo_audit.snapshot_records where run_uuid=r and id=p_id and kind='READBACK_V2') a on true
+  where coalesce(b.record->>4,'')=coalesce(p_before,'') and coalesce(a.record->>4,'')=coalesce(p_after,''))
  then raise exception 'NATIONAL_INDEPENDENT_EXTERNAL_PROOF_REQUIRED'; end if;
  select * into e from orulo_audit.entries where run_uuid=r order by sequence desc limit 1;
  return orulo_audit.append(r,e.sequence+1,e.hash,jsonb_build_object('type','EXTERNAL_ATTESTATION','eventUuid',gen_random_uuid(),
@@ -320,6 +320,13 @@ begin
   'manifestHash',meta->>'manifestHash','columns',doc->'columns','stats',doc->'stats','targetCount',jsonb_array_length(expected)));
  end if;
  if p_action='append' then
+  if p_event->>'type'='CLIENT_READBACK' and p_event->>'stage'='NATIONAL_ROW_VERIFIED' then
+   select event->'result' into expected from orulo_audit.entries where run_uuid=p_run and kind='CAS_RESULT' and event->>'id'=p_event->>'id';
+   select * into before from public.properties where id=(p_event->>'id')::uuid;
+   if expected->>'status' is distinct from 'UPDATED' or p_event->>'sha256' is distinct from expected->'receipt'->>'afterSha256'
+    or p_event->>'sha256' is distinct from encode(sha256(convert_to(to_jsonb(before)::text,'UTF8')),'hex')
+   then raise exception 'NATIONAL_SERVER_READBACK_DIVERGENCE'; end if;
+  end if;
   if p_event->>'type' not in ('INTENT','CLIENT_READBACK','CLIENT_STOP') then raise exception 'AUDIT_RESERVED_EVENT_TYPE'; end if;
   if p_event->>'type'='INTENT' then
    auth:=orulo_audit.national_authorization(p_run);
@@ -339,7 +346,9 @@ begin
   state:=orulo_audit.national_reconcile(p_run);
   select count(*) into n from orulo_audit.entries where run_uuid=p_run and kind='CAS_RESULT' and event->'result'->>'status'='UPDATED';
   select count(*) into parts from orulo_audit.entries where run_uuid=p_run and kind='NATIONAL_TARGET';
-  if state->>'blocked'='true' or n<>parts then
+  if state->>'blocked'='true' or n<>parts or exists(select 1 from orulo_audit.entries c where c.run_uuid=p_run and c.kind='CAS_RESULT' and c.event->'result'->>'status'='UPDATED' and not exists(
+   select 1 from orulo_audit.entries rb where rb.run_uuid=p_run and rb.kind='CLIENT_READBACK' and rb.event->>'stage'='NATIONAL_ROW_VERIFIED'
+   and rb.event->>'id'=c.event->>'id' and rb.event->>'sha256'=c.event->'result'->'receipt'->>'afterSha256')) then
    return orulo_audit.append(p_run,p_sequence,p_previous_hash,jsonb_build_object('type','NATIONAL_RECONCILIATION_REQUIRED',
     'eventUuid',p_event->>'eventUuid','rowsWritten',n,'targetCount',parts,'reconciliation',state));
   end if;

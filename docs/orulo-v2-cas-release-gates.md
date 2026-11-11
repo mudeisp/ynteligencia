@@ -16,7 +16,7 @@
 6. Write in an audited transaction with full before/after, operation UUID, CAS conflict handling and chain verification.
 7. Read back the persisted record; compare expected fields and confirm unrelated metadata is unchanged.
 8. Exercise staging tests for concurrency, malformed JSON, missing plans, duplicate plans, idempotence, rollback and readback mismatch.
-9. Run a tiny controlled pilot before national batches. Stop on unexpected audit or integrity changes.
+9. For `national-v2-once`, follow the unified legacy-ledger integration and complete-manifest authorization procedure in `orulo-national-v2-once-operation.md`. No five-property pilot or independent record-count batches are required. Stop on unexpected audit or integrity changes.
 
 ## Current PR scope
 The SQL function is a guarded prototype, **not an authorized production executor**.

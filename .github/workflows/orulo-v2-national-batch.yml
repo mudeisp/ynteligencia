@@ -25,10 +25,11 @@ permissions:
   actions: read
 jobs:
   postgres-tests:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17.6
         env:
           POSTGRES_PASSWORD: test
         ports:
@@ -52,6 +53,17 @@ jobs:
         run: |
           npm ci --prefix test-support/orulo-cas --ignore-scripts --no-audit --no-fund
           npm test --prefix test-support/orulo-cas
+      - name: Existing native concurrency, journal and CAS regression
+        env:
+          ORULO_SYNTHETIC_PG: 'true'
+          PGHOST: '127.0.0.1'
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: test
+          PGDATABASE: orulo_audit_test
+        run: |
+          createdb orulo_audit_test
+          node --test scripts/orulo-media-recovery-pg-concurrency.test.mjs
       - name: National extension on native PostgreSQL
         env:
           ORULO_NATIONAL_NATIVE: 'true'
@@ -66,7 +78,7 @@ jobs:
   validate:
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17.6
         env:
           POSTGRES_PASSWORD: test
         ports:
@@ -262,5 +274,75 @@ jobs:
         with:
           name: national-v2-once-manifest-${{ github.run_id }}
           path: national-output/
+          retention-days: 30
+          if-no-files-found: error
+  national-manifest-compatibility:
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[national-compatibility]') }}
+    needs: postgres-tests
+    runs-on: ubuntu-latest
+    environment: orulo-v2-reconciliation
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Seal the entire real manifest on disposable PostgreSQL
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
+          PGHOST: '127.0.0.1'
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: test
+          PGDATABASE: orulo_national_manifest_test
+        run: |
+          set -euo pipefail
+          umask 077
+          WORK="$(mktemp -d)"
+          trap 'rm -rf -- "$WORK"' EXIT
+          printf '%s\n' "$PRIVATE_KEY" > "$WORK/key.pem"
+          unset PRIVATE_KEY
+          readarray -t PINNED < <(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('docs/orulo-national-v2-manifest-receipt.json').read_text())
+          assert str(x['artifactId']).isdecimal() and len(x['manifestSha256'])==64
+          print(x['artifactId']);print(x['manifestSha256']);print(x['artifactSha256'])
+          PY
+          )
+          curl --fail --silent --show-error --location --header "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/mudeisp/ynteligencia/actions/artifacts/${PINNED[0]}/zip" -o "$WORK/artifact.zip"
+          printf '%s  %s\n' "${PINNED[2]}" "$WORK/artifact.zip" | sha256sum -c --status
+          python3 - "$WORK" <<'PY'
+          import sys,zipfile
+          from pathlib import Path
+          p=Path(sys.argv[1])
+          with zipfile.ZipFile(p/'artifact.zip') as z:
+              assert set(z.namelist())=={'national-manifest.cms','national-manifest.cms.sha256','national-summary.json'}
+              (p/'manifest.cms').write_bytes(z.read('national-manifest.cms'))
+          PY
+          openssl cms -decrypt -binary -inform DER -in "$WORK/manifest.cms" -inkey "$WORK/key.pem" -out "$WORK/manifest.json"
+          export ORULO_NATIONAL_MANIFEST_SHA="${PINNED[1]}"
+          createdb orulo_national_manifest_test
+          mkdir -m 700 -p national-stage-output
+          node scripts/orulo-national-manifest-stage.mjs "$WORK/manifest.json" national-stage-output/registration-seal.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: national-v2-once-compatibility-${{ github.run_id }}
+          path: national-stage-output/
           retention-days: 30
           if-no-files-found: error

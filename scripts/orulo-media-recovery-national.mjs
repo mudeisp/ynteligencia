@@ -64,7 +64,7 @@ export function verifyNationalImages(checks){
 export async function executeNational({env,bytes,transport,verifyImages=verifyNationalImages,onPlan=()=>{},wait=ms=>new Promise(r=>setTimeout(r,ms)),now=Date.now}){
  validateNationalDispatch(env);const manifest=loadNationalManifest(bytes,env.ORULO_NATIONAL_MANIFEST_SHA);
  const run=manifest.operationUuid,action=env.ORULO_NATIONAL_ACTION||'execute';
- if(env.ORULO_NATIONAL_RUN_UUID&&env.ORULO_NATIONAL_RUN_UUID!==run)throw Error('NATIONAL_OPERATION_UUID_DIVERGENCE');
+ if((action==='continue'&&!uuid.test(env.ORULO_NATIONAL_RUN_UUID||''))||(env.ORULO_NATIONAL_RUN_UUID&&env.ORULO_NATIONAL_RUN_UUID!==run))throw Error('NATIONAL_OPERATION_UUID_DIVERGENCE');
  if(action==='reconcile')return {operationUuid:run,result:await transport.control('national_report',{p_run:run})};
  if(action==='continue'){
   const state=await transport.control('national_report',{p_run:run});
@@ -123,8 +123,9 @@ export async function nationalMain(command,env=process.env){
  if(command==='github-gate'){await checkGitHub(env);console.log('National manual owner/main/environment gate verified.');return;}
  if(command!=='batch')throw Error('NATIONAL_COMMAND_INVALID');
  const bytes=readFileSync(env.ORULO_NATIONAL_MANIFEST_PATH);
+ const operationUuid=loadNationalManifest(bytes,env.ORULO_NATIONAL_MANIFEST_SHA).operationUuid;
  try{console.log(JSON.stringify(await executeNational({env,bytes,transport:postgresTransport({url:PROJECT_URL,key:env.SUPABASE_SECRET_KEY}),onPlan:p=>{
   const view=JSON.stringify({operationUuid:p.runUuid,manifestHash:env.ORULO_NATIONAL_MANIFEST_SHA,stats:p.stats,authorizationPending:true})+'\n'+nationalApprovalSql(p);
   console.log(view);if(env.GITHUB_STEP_SUMMARY)appendFileSync(env.GITHUB_STEP_SUMMARY,'```text\n'+view+'\n```\n');
- }})));}catch(error){console.error(JSON.stringify({code:/^NATIONAL_[A-Z_]+$/.test(error.message)?error.message:'NATIONAL_HALTED_RECONCILIATION_REQUIRED',...rpcFailureDetails(error)}));process.exitCode=1;}
+ }})));}catch(error){console.error(JSON.stringify({operationUuid,code:/^NATIONAL_[A-Z_]+$/.test(error.message)?error.message:'NATIONAL_HALTED_RECONCILIATION_REQUIRED',...rpcFailureDetails(error)}));process.exitCode=1;}
 }
