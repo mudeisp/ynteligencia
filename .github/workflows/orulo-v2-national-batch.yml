@@ -208,3 +208,41 @@ jobs:
           path: pilot-output/
           retention-days: 7
           if-no-files-found: error
+  national-manifest:
+    # Preparation only. This CI job has no CAS, administrative or property-write path.
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[national-manifest]') }}
+    needs: postgres-tests
+    runs-on: ubuntu-latest
+    environment: orulo-v2-reconciliation
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Consolidate original national universe without database writes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
+          ORULO_V2_DB_URL: ${{ secrets.ORULO_V2_DB_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          WORK="$(mktemp -d)"
+          trap 'rm -rf -- "$WORK"' EXIT
+          source scripts/orulo-v2-load-evidence.sh
+          python3 scripts/orulo-v2-national-manifest.py "$WORK/manifest.json" "$WORK/reconciliation.json" "$WORK"
+          openssl req -new -x509 -key "$WORK/key.pem" -out "$WORK/cert.pem" -subj "/CN=orulo-national-v2-once" -days 1 >/dev/null 2>&1
+          mkdir -m 700 -p national-output
+          openssl cms -encrypt -binary -aes-256-cbc -in "$WORK/national-manifest.json" -outform DER -out national-output/national-manifest.cms "$WORK/cert.pem"
+          cp "$WORK/national-summary.json" national-output/
+          sha256sum national-output/national-manifest.cms > national-output/national-manifest.cms.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: national-v2-once-manifest-${{ github.run_id }}
+          path: national-output/
+          retention-days: 30
+          if-no-files-found: error
