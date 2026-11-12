@@ -1,0 +1,170 @@
+{
+  "scope": "Read-only catalog literals and unmatched operation IDs; dynamic references and human approvals remain UNKNOWN",
+  "runs": [
+    {
+      "run_uuid": "06f09809-61f7-4653-94f3-f7417f4aed33",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "26556e29-7a3b-450e-9169-3f894f231077",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "28c6cb35-06da-4eb1-ab56-cf5b27dfaa5a",
+      "functions_with_literal_run_reference": [
+        "orulo_audit.batch_prerequisite_result(text)"
+      ],
+      "intents_without_result": 0,
+      "authorizations": 1,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "2bea2a3c-4cff-4d3b-bc6f-ded6fbf33dfc",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "2e30e874-5eb9-40dc-9532-832f47cd01de",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "32a88632-5f4a-4302-9411-0df42269b8ac",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "3317c6e4-07c3-4aef-8432-7ecacf844c9d",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "343bce25-07f7-4ff2-af4c-ac854d4f3838",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 1,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "55c664a5-e24d-4527-a7aa-68b0da01f039",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "6e5290ce-971a-404c-ae18-881a01e30f7c",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "72279b09-ad08-45c9-b229-e7b35ac5e890",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 1,
+      "terminal_kind": "FINISHED"
+    },
+    {
+      "run_uuid": "73aab281-30a6-443c-98e7-71e0212d4fe8",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "80075d5c-12a6-4109-9573-8f25a2598e00",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "8057f532-8a78-40e2-bfe4-1d542e962cbf",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "8c3b6881-69fa-4737-a29f-6aeebe1b94b9",
+      "functions_with_literal_run_reference": [
+        "orulo_audit.batch_prerequisite_result(text)"
+      ],
+      "intents_without_result": 0,
+      "authorizations": 1,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "98a9afa9-a08d-46f1-bef9-4d4e670c786f",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 1,
+      "terminal_kind": "FINISHED"
+    },
+    {
+      "run_uuid": "a613aae9-4a99-47bd-b7c4-d58b9f0c7c72",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "a94d942c-9bbe-4fd3-ab98-3e7a87d91627",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "bcc8512e-87c3-46dd-9f0c-8e6a27172f73",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "d6061f6d-5dac-448e-bce2-90d38780cc3b",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "dbc2b806-3c1f-4c61-b4cd-d1f65d882900",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 1,
+      "terminal_kind": "ABORTED"
+    },
+    {
+      "run_uuid": "e6dcb9f6-8b7c-41a5-9d8f-c5aff8a8a153",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "FINISHED"
+    },
+    {
+      "run_uuid": "ff26cfd1-85ac-4ea8-a98a-9f55b5585d3d",
+      "functions_with_literal_run_reference": null,
+      "intents_without_result": 0,
+      "authorizations": 0,
+      "terminal_kind": "FINISHED"
+    }
+  ]
+}

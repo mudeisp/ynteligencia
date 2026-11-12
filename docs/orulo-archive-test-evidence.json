@@ -1,0 +1,39 @@
+{
+  "tests": {
+    "archiveAndRealIsolatedRestore": 24,
+    "originalCasProtocol": 153,
+    "failed": 0,
+    "totalPassed": 177
+  },
+  "postgresImage": "postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929",
+  "production": {
+    "inspection": "READ_ONLY",
+    "runsAnalyzed": 23,
+    "runsFinished": 4,
+    "runsAborted": 19,
+    "entries": 7732,
+    "snapshotRecords": 348344,
+    "exportedBytes": 0,
+    "durablyVerifiedBytes": 0,
+    "runsRestored": 0,
+    "eligibleRuns": 0,
+    "bytesFreed": 0,
+    "databaseBytesMeasured": 547228819,
+    "auditPhysicalBytesMeasured": 345980928,
+    "datumBytesEstimate": 278565848,
+    "physicalRecoverableBytes": "UNKNOWN",
+    "guaranteedPhysicalReclaimBytes": 0
+  },
+  "blocks": [
+    "NO_RUN_SPECIFIC_DURABLE_COPY",
+    "NO_PRODUCTION_RUN_RESTORE",
+    "LIVE_CAS_PREREQUISITES_REQUIRE_ONLINE_EVIDENCE",
+    "DEPENDENCY_AND_APPROVAL_REVIEW_INCOMPLETE",
+    "APPEND_ONLY_TRIGGERS_PROHIBIT_CLEANUP",
+    "CLEANUP_EXECUTOR_DISABLED",
+    "PHYSICAL_MAINTENANCE_REQUIRES_SEPARATE_CAPACITY_PLAN_AND_AUTHORIZATION"
+  ],
+  "workflow": "TESTS_AND_DRY_RUN_ONLY_NO_SECRETS",
+  "protectedNationalManifestModified": false,
+  "v4Modified": false
+}
