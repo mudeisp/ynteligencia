@@ -1,0 +1,51 @@
+name: Orulo V5 queue safety tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/orulo-v5-*.mjs'
+      - 'sql/orulo-v5-*.sql'
+      - '.github/workflows/orulo-v5-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: orulo_v5_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d orulo_v5_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: orulo_v5_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run V5 queue, provenance and CAS preflight tests
+        run: node --test scripts/orulo-v5-queue.test.mjs scripts/orulo-v5-reports.test.mjs scripts/orulo-v5-artifacts.test.mjs scripts/orulo-v5-cas-preflight.test.mjs scripts/orulo-v5-runner.test.mjs scripts/orulo-v5-legacy-compat.test.mjs scripts/orulo-v5-postgres-readiness.test.mjs scripts/orulo-v5-recovery-to-cas.test.mjs scripts/orulo-v5-orulo-source.test.mjs
+      - name: Validate V5 registry on disposable PostgreSQL 17
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-manifest-registry.staging.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-manifest-registry.test.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-authorization.staging.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-authorization.test.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-cas-fixture.staging.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-cas-fixture.test.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-ledger-fixture.staging.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-ledger-fixture.seed.sql
+          psql -X -v ON_ERROR_STOP=1 -f sql/orulo-v5-ledger-fixture.test.sql
