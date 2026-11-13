@@ -1,4 +1,5 @@
 -- Durable receipt and stable payload for retries, restricted to the server role.
+grant update (metadata) on public.leads to service_role;
 create or replace function public.whatsapp_email_state(contact_lead_id uuid, receipt_id text default null)
 returns jsonb language plpgsql set search_path = pg_catalog, public as $$
 declare l public.leads; state jsonb;
