@@ -9,7 +9,8 @@
   }
 
   gtag('js', new Date());
-  gtag('config', 'G-Y2W11SX5VV');
+  gtag('config', 'G-2ZDJCLSSDN');
+  gtag('config', 'AW-18371236623');
 
 
   !function(f,b,e,v,n,t,s){

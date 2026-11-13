@@ -8,8 +8,8 @@ if(!preview){
   try{tracking=await import('./portal-session.js');}catch{console.warn('RENTAL_TELEMETRY_UNAVAILABLE');}
   // Preserve the rental GA destination. No sale conversions or new analytics backend.
   window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments);};
-  window.gtag('js',new Date());window.gtag('config','G-Y2W11SX5VV');
-  const script=document.createElement('script');script.async=true;script.src='https://www.googletagmanager.com/gtag/js?id=G-Y2W11SX5VV';document.head.append(script);
+  window.gtag('js',new Date());window.gtag('config','G-2ZDJCLSSDN');window.gtag('config','AW-18371236623');
+  const script=document.createElement('script');script.async=true;script.src='https://www.googletagmanager.com/gtag/js?id=G-2ZDJCLSSDN';document.head.append(script);
 }
 const intent=()=>({purpose:'LOCACAO',operation:'LOCACAO',inventory_source:'nonstop',neighborhood:property?.neighborhood||'',development:property?.name||''});
 const trackedProperty=()=>property?{...property,property_id:property.external_id||property.id,property_uuid:property.id}:null;
@@ -109,7 +109,9 @@ form?.addEventListener('submit',async event=>{
   const message=property?`Olá, tenho interesse neste imóvel para alugar em ${property.neighborhood||property.city}. ${property.name} | Código ${propertyId} | ${canonical}`:'Olá, tenho interesse em encontrar um imóvel para alugar pela Yincorp. https://www.yincorp.com.br/alugar';
   const payload={nome:form.elements.nome.value.trim(),telefone:phone,email:form.elements.email.value.trim(),origem:'portal_locacao',perfil:'Locação',purpose:'LOCACAO',operation:'LOCACAO',pagina:location.href,empreendimento:form.dataset.name,property_id:propertyId,property_uuid:property?.id||'',property_value:Number(form.dataset.price),neighborhood:form.dataset.neighborhood,inventory_source:'nonstop',mensagem:message,visitor_id:tracking.visitorId,session_id:tracking.sessionId,lead_event_id:id,...tracking.attribution(),touches:tracking.touches,session:{number:tracking.session.session_number,is_returning:tracking.session.is_returning,previous_session_id:tracking.session.previous_session_id,days_since_last_visit:tracking.session.days_since_last_visit}};
   try{
-    await submitInterest(payload);
+    const savedLead=await submitInterest(payload);
+    if(savedLead.lead_id)window.gtag?.('event','conversion',{send_to:'AW-18371236623/Icu-CMS18_ccEI-mi7hE',transaction_id:savedLead.lead_id});
+    window.gtag?.('event','generate_lead',{lead_source:'rental'});
     await track('rental_lead_created',{lead_event_id:id,success:true});
     feedback.textContent='Interesse registrado. ';const link=document.createElement('a');link.textContent='Continuar no WhatsApp ↗';
     link.href=window.YntWhatsAppContact.url(`Olá, meu nome é ${payload.nome}. ${message}`);link.rel='noopener noreferrer';

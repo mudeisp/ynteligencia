@@ -849,6 +849,8 @@ export default async function handler(req, res) {
     let supabaseOk =
       false;
 
+    let persistedLeadId = null;
+
     let leadConflict =
       false;
 
@@ -893,7 +895,8 @@ export default async function handler(req, res) {
             : "absent";
 
 
-        if (leadLookup === "match") {
+        if (leadLookup?.status === "match") {
+          persistedLeadId = leadLookup.id;
 
           supabaseOk =
             true;
@@ -1049,7 +1052,7 @@ export default async function handler(req, res) {
         const supabaseResponse =
           await fetch(
 
-            `${supabaseUrl}/rest/v1/leads`,
+            `${supabaseUrl}/rest/v1/leads?select=id`,
 
             {
 
@@ -1068,7 +1071,7 @@ export default async function handler(req, res) {
                   "application/json",
 
                 Prefer:
-                  "return=minimal"
+                  "return=representation"
 
               },
 
@@ -1104,10 +1107,13 @@ export default async function handler(req, res) {
           );
 
         } else {
+          try {
+            persistedLeadId = JSON.parse(supabaseText)?.[0]?.id || null;
+          } catch {
+            console.warn("SUPABASE_LEAD_ID_UNAVAILABLE");
+          }
 
-          supabaseOk =
-            true;
-
+          supabaseOk = true;
 
           console.log(
 
@@ -1669,6 +1675,8 @@ export default async function handler(req, res) {
         supabase:
           supabaseOk,
 
+        lead_id: persistedLeadId,
+
         email_sent:
           emailSent,
 
@@ -1948,19 +1956,19 @@ function classifyOperationalLead(rows, sessionId, visitorId, propertyId) {
   const wantedSession = clean(sessionId);
   const wantedVisitor = clean(visitorId);
   const wantedProperty = clean(propertyId);
-  const match = rows.some(row =>
+  const match = rows.find(row =>
     clean(row && row.session_id) === wantedSession &&
     clean(row && row.visitor_id) === wantedVisitor &&
     clean(row && row.property_id) === wantedProperty
   );
-  return match ? "match" : "conflict";
+  return match ? { status: "match", id: match.id || null } : "conflict";
 }
 
 async function findOperationalLead(supabaseUrl, supabaseKey, leadEventId, sessionId, visitorId, propertyId) {
   const params = new URLSearchParams();
   params.set(
     "select",
-    "session_id,visitor_id:metadata->>visitor_id,property_id:metadata->property->>id"
+    "id,session_id,visitor_id:metadata->>visitor_id,property_id:metadata->property->>id"
   );
   params.set("metadata->>lead_event_id", `eq.${leadEventId}`);
   params.set("limit", "20");
