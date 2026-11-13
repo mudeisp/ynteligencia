@@ -79,32 +79,43 @@ citySelect?.addEventListener('change',()=>{
   const city=config.cities?.find(c=>c.slug===citySelect.value);
   for(const n of city?.neighborhoods || [])neighborhoodSelect.add(new Option(n.name,n.slug));
 });
-if(project){
-const whatsappFloat=globalThis.YntWhatsAppContact.mountFloating({
-  resolveProperty:()=>{
-    const unit=project.units.find(u=>u.db_id===config.selectedUnit);
-    return unit ? {...unit,development_name:project.name} : {
-      name:project.name,development_name:project.name,city:project.city,
-      neighborhood:project.neighborhood,development_id:project.token
-    };
-  },
-  getOptions:()=>({
-    adsTrack:tracking?.adsTrack,
-    track:(name,metadata)=>tracking?.track(name,metadata,{keepalive:true}),
-    intent:intent(),metadata:tracked({portal:true,development_id:project.token})
-  })
-});
-if(preview && whatsappFloat)whatsappFloat.disabled=true;
-}
-document.querySelectorAll('[data-contact]').forEach(button=>button.addEventListener('click',()=>{
-  const unit=project?.units.find(u=>u.db_id===button.dataset.contact);
-  form.elements.unit.value=unit?.db_id || config.selectedUnit || '';
+function openContact(unit, source) {
+  if (!form || !dialog || dialog.open) return;
+  form.elements.unit.value = unit?.db_id || config.selectedUnit || '';
   document.getElementById('contact-feedback').replaceChildren();
-  form.querySelector('[type=submit]').hidden=false;
+  form.querySelector('[type=submit]').hidden = false;
+  form.dataset.contactSource = source;
   dialog.showModal();
-  void tracking?.adsTrack('specialist_cta_opened',{intent:intent(),property:property(unit)});
-  if(unit)void tracking?.track('property_interest',tracked({property_id:unit.id,property_uuid:unit.db_id,portal:true}));
-}));
+  void tracking?.adsTrack('specialist_cta_opened', {
+    intent: intent(), property: property(unit), metadata: { contact_source: source }
+  });
+  if (unit) void tracking?.track('property_interest', tracked({
+    property_id: unit.id, property_uuid: unit.db_id, portal: true, contact_source: source
+  }));
+}
+
+if (project) {
+  const whatsappFloat = globalThis.YntWhatsAppContact.mountFloating({
+    resolveProperty: () => project.units.find(unit => unit.db_id === config.selectedUnit) || project,
+    getOptions: () => ({
+      onContact: selected => {
+        const unit = selected.db_id ? selected : null;
+        void tracking?.track('whatsapp_contact_requested', tracked({
+          portal: true, development_id: project.token, property_uuid: unit?.db_id
+        }));
+        openContact(unit, 'whatsapp_floating');
+      }
+    })
+  });
+  if (preview && whatsappFloat) whatsappFloat.disabled = true;
+}
+
+document.querySelectorAll('[data-contact]').forEach(button => {
+  button.addEventListener('click', () => {
+    const unit = project?.units.find(item => item.db_id === button.dataset.contact);
+    openContact(unit, 'property_contact');
+  });
+});
 document.querySelector('.dialog-close')?.addEventListener('click',()=>dialog.close());
 dialog?.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left || event.clientX>r.right || event.clientY<r.top || event.clientY>r.bottom)dialog.close();}});
 form?.addEventListener('submit',async event=>{
@@ -142,7 +153,13 @@ form?.addEventListener('submit',async event=>{
     const link=document.createElement('a');link.className='button primary';link.textContent='Continuar no WhatsApp ↗';
     link.href=`https://wa.me/5511992976368?text=${encodeURIComponent(`Olá, meu nome é ${payload.nome}. Tenho interesse em ${project.name}, ${u.city}/${u.state}. Código: ${u.id}.${investment?' Quero analisar esta opção para locação curta.':''}${simulationSummary} ${location.origin+project.path}`)}`;
     link.target='_blank';link.rel='noopener noreferrer';
-    link.addEventListener('click',()=>{void tracking.track('property_whatsapp_click',tracked({property_id:u.id,property_uuid:u.db_id,portal:true}));window.gtag?.('event','property_whatsapp_click',{property_id:u.id,acquisition_channel:acquisitionContext.channel});});
+    const contactSource = form.dataset.contactSource;
+    link.addEventListener('click', () => {
+      const metadata = tracked({ property_id: u.id, property_uuid: u.db_id, portal: true, lead_event_id: id, contact_source: contactSource });
+      void tracking.adsTrack('whatsapp_cta_clicked', { intent: intent(), property: property(u), metadata });
+      void tracking.track('property_whatsapp_click', metadata, { keepalive: true });
+      window.gtag?.('event', 'property_whatsapp_click', { property_id: u.id, acquisition_channel: acquisitionContext.channel });
+    });
     feedback.append(link);button.hidden=true;
   }catch(error) {
     feedback.textContent=error.message;feedback.className='form-error';

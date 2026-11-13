@@ -69,7 +69,10 @@
     const refresh=()=>{button.hidden=!property() || Boolean(document.querySelector('dialog[open],#leadModal,#allGalleryShell,#floorplanLightbox'));};
     button.addEventListener('click',()=>{
       const selected=property();
-      if(selected && !button.hidden)void api.open(selected,button.yntContact.getOptions());
+      if (!selected || button.hidden) return;
+      const options = button.yntContact.getOptions();
+      if (options.onContact) options.onContact(selected);
+      else void api.open(selected, options);
     });
     button.yntRefresh=refresh;
     document.body.appendChild(button);
