@@ -41,9 +41,12 @@
       city:property.city,neighborhood:property.neighborhood,price:property.price,
       inventory_source:property.inventory_source,page:location.pathname,url:location.href,
       timestamp:new Date().toISOString()};
-    const destination=url(message(p));
+    const reference = globalThis.crypto?.randomUUID?.();
+    const destination = url(reference && options.adsTrack
+      ? `${message(p)}\nRef. Yincorp: ${reference}`
+      : message(p));
     const requests=[
-      attempt(()=>options.adsTrack?.('whatsapp_cta_clicked',{intent:options.intent,property,metadata})),
+      attempt(()=>options.adsTrack?.('whatsapp_cta_clicked',{event_id:reference,intent:options.intent,property,metadata})),
       attempt(()=>options.track?.('whatsapp_cta_clicked',metadata))
     ];
     let timer;
