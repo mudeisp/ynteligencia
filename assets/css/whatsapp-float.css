@@ -12,3 +12,21 @@ body > .whatsapp-direct-float:focus-visible{outline:3px solid #fff;outline-offse
 body > .whatsapp-direct-float[hidden],body:has(dialog[open]) > .whatsapp-direct-float{display:none!important}
 /* Keep the existing availability bar untouched; place the independent icon above it. */
 @media(max-width:768px){body > .whatsapp-direct-float{bottom:calc(88px + env(safe-area-inset-bottom))}}
+.whatsapp-registration{padding:0;border:0;border-radius:18px;width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;color:#18352c;font:16px/1.5 system-ui,sans-serif;box-shadow:0 20px 80px #0004}
+.whatsapp-registration::backdrop{background:#10282099}
+.wa-registration-header{display:flex;align-items:center;gap:12px;background:#176b42;color:white;padding:18px 20px}
+.wa-registration-avatar{display:grid;place-items:center;border-radius:50%;width:42px;height:42px;background:#ffffff24;font-weight:700;font-size:22px}
+.wa-registration-header strong,.wa-registration-header small{display:block}
+.wa-registration-header small{font-size:12px;opacity:.85}
+.wa-registration-close{margin-left:auto;background:transparent;border:0;color:white;font-size:28px;cursor:pointer;min-width:36px;min-height:36px}
+.wa-registration-chat{padding:24px 20px;background:#f1eee7}
+.wa-registration-bubble{background:white;padding:14px 16px;border-radius:0 14px 14px;margin:0 0 12px;box-shadow:0 1px 2px #0001}
+.wa-registration-property{font-size:13px;color:#52635c;margin:0 0 20px}
+.wa-registration-chat label{display:block;font-size:14px;font-weight:600;margin-bottom:8px}
+.wa-registration-chat input{display:block;box-sizing:border-box;width:100%;padding:14px;border:1px solid #a9b8ae;border-radius:10px;background:white;font:inherit;color:#18352c}
+.wa-registration-chat input:focus-visible{outline:3px solid #176b4250;outline-offset:2px}
+.wa-registration-note{font-size:12px;color:#52635c;line-height:1.5;margin:12px 0}
+.wa-registration-note a{color:#176b42;text-decoration:underline}
+.wa-registration-status{font-size:13px;min-height:20px;margin:10px 0}
+.wa-registration-submit{display:flex;justify-content:center;gap:12px;align-items:center;width:100%;padding:14px;border:0;border-radius:24px;background:#176b42;color:white;font:600 15px/1.4 system-ui;cursor:pointer}
+.wa-registration-submit:disabled{opacity:.65;cursor:wait}
