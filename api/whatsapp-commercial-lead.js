@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
     return res.status(401).json({ error: "unauthorized" });
   }
-  const { id, phone, occurredAt } = req.body || {};
+  const { id, phone, occurredAt, clickRef } = req.body || {};
   if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id) ||
       typeof phone !== "string" || !/^[1-9]\d{7,14}$/.test(phone) ||
       typeof occurredAt !== "string" || !Number.isFinite(Date.parse(occurredAt))) {
@@ -20,10 +20,10 @@ export default async function handler(req, res) {
   if (!key || !url) return res.status(503).json({ error: "database_not_configured" });
 
   try {
-    const rpc = await fetch(`${url}/rest/v1/rpc/register_whatsapp_commercial_lead`, {
+    const rpc = await fetch(`${url}/rest/v1/rpc/register_whatsapp_contact`, {
       method: "POST",
       headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ inbox_lead_id: id, contact_phone: phone, received_at: occurredAt }),
+      body: JSON.stringify({ contact_id: id, phone, received_at: occurredAt, click_ref: typeof clickRef === 'string' && /^[0-9a-f-]{36}$/i.test(clickRef) ? clickRef : null }),
       signal: AbortSignal.timeout(5000)
     });
     if (!rpc.ok) throw new Error("registration_failed");
