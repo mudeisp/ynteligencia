@@ -72,7 +72,7 @@
     const refresh=()=>{button.hidden=!property() || Boolean(document.querySelector('dialog[open],#leadModal,#allGalleryShell,#floorplanLightbox'));};
     button.addEventListener('click',()=>{
       const selected=property();
-      if(selected && !button.hidden)void api.open(selected,button.yntContact.getOptions());
+      if(selected && !button.hidden)preRegister(selected,button.yntContact.getOptions());
     });
     button.yntRefresh=refresh;
     document.body.appendChild(button);
@@ -81,6 +81,50 @@
     });
     refresh();
     return button;
+  }
+  function preRegister(p,options={}){
+    if(document.getElementById('ynt-whatsapp-registration'))return;
+    const dialog=document.createElement('dialog');
+    dialog.id='ynt-whatsapp-registration';dialog.className='whatsapp-registration';
+    dialog.setAttribute('aria-labelledby','ynt-whatsapp-registration-title');
+    dialog.innerHTML=`<div class="wa-registration-header"><span class="wa-registration-avatar" aria-hidden="true">Y</span><div><strong id="ynt-whatsapp-registration-title">Yincorp</strong><small>Atendimento pelo WhatsApp</small></div><button type="button" class="wa-registration-close" aria-label="Fechar">×</button></div>
+      <div class="wa-registration-chat"><p class="wa-registration-bubble">Olá! 👋 Qual é o seu WhatsApp com DDD?</p><p class="wa-registration-property"></p>
+      <form><label for="ynt-whatsapp-phone">Seu número de WhatsApp</label><input id="ynt-whatsapp-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999" required maxlength="22">
+      <p class="wa-registration-note">Ao continuar, você autoriza a Yincorp a entrar em contato sobre seu interesse. <a href="https://www.yincorp.com.br/politica-de-privacidade" target="_blank" rel="noopener">Privacidade</a></p>
+      <p class="wa-registration-status" role="status" aria-live="polite"></p>
+      <button type="submit" class="wa-registration-submit">Confirmar e continuar <span aria-hidden="true">➤</span></button></form></div>`;
+    const form=dialog.querySelector('form'),input=dialog.querySelector('input'),submit=dialog.querySelector('[type="submit"]');
+    const status=dialog.querySelector('[role="status"]'),close=dialog.querySelector('.wa-registration-close');
+    const name=propertyContext(p).development||propertyContext(p).name;
+    dialog.querySelector('.wa-registration-property').textContent=name?'Sobre: '+name:'Vamos ajudar você a encontrar seu imóvel.';
+    let saving=false;
+    close.addEventListener('click',()=>{if(!saving)dialog.close();});
+    dialog.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
+    dialog.addEventListener('close',()=>{dialog.remove();document.getElementById('ynt-whatsapp-float')?.focus();});
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();if(saving)return;
+      let phone=input.value.replace(/\D/g,'');
+      if(phone.length===10||phone.length===11)phone='55'+phone;
+      if(!/^55[1-9][0-9]{9,10}$/.test(phone)){status.textContent='Confira o número e inclua o DDD.';input.focus();return;}
+      saving=true;submit.disabled=true;close.disabled=true;input.readOnly=true;
+      status.textContent='Salvando seu contato…';
+      try{
+        const response=await fetch('https://app.yincorp.com.br/api/whatsapp-pre-registration',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({phone,property:propertyContext(p),page:location.href}),
+          signal:AbortSignal.timeout(20000)
+        });
+        const receipt=await response.json();
+        if(!response.ok||!receipt.success)throw new Error('registration_failed');
+        dialog.close();
+        await api.open(p,options);
+      }catch{
+        status.textContent='Não conseguimos salvar agora. Tente novamente.';
+      }finally{
+        saving=false;submit.disabled=false;close.disabled=false;input.readOnly=false;
+      }
+    });
+    document.body.appendChild(dialog);dialog.showModal();input.focus();
   }
   const api={url,message,propertyContext,open,mountFloating};
   return api;

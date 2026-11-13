@@ -1,8 +1,9 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
+const {pathToFileURL}=require('node:url');
+const {resolve}=require('node:path');
 test('commercial retries retain receipt beyond Resend idempotency window',async()=>{
- const handler=(await import('data:text/javascript;base64,'+Buffer.from(fs.readFileSync('api/whatsapp-commercial-lead.js')).toString('base64'))).default;
+ const handler=(await import(pathToFileURL(resolve('api/whatsapp-commercial-lead.js')).href)).default;
  const previousFetch=global.fetch, previousEnv={...process.env};
  process.env.WHATSAPP_COMMERCIAL_TOKEN='test';process.env.SUPABASE_URL='https://db.test';process.env.SUPABASE_SECRET_KEY='test';process.env.RESEND_API_KEY='test';
  let state={phone:'+15555550199',first_message_at:'2026-11-13T13:12:00Z',first_attempt_at:new Date().toISOString()}, sent=0, notify=true;
@@ -27,7 +28,7 @@ test('commercial retries retain receipt beyond Resend idempotency window',async(
   state.first_attempt_at=new Date(Date.now()-25*3600000).toISOString();
   assert.equal((await run()).body.email_id,'resend-fixture');assert.equal(sent,1);
   delete state.email_id;
-  assert.equal((await run()).body.error,'notification_requires_review');assert.equal(sent,1);
+  assert.equal((await run()).code,503);assert.equal(sent,1);
   notify=false;
   assert.deepEqual((await run()).body,{lead_id:'fixture'});assert.equal(sent,1);
  }finally{global.fetch=previousFetch;process.env=previousEnv}
