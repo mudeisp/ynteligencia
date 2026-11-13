@@ -7,6 +7,19 @@
   const PHONE='5511992976368';
   let pending=null;
   let lastNavigation=0;
+  const referenceCode=()=>crypto.randomUUID().replaceAll('-','').slice(0,12).toUpperCase();
+  function measurementContext(){
+    const allowed=['gclid','gbraid','wbraid','utm_source','utm_medium','utm_campaign','utm_term','utm_content','utm_id'];
+    const now=new Date().toISOString();
+    const page=location.origin+location.pathname;
+    const incoming=Object.fromEntries([...new URLSearchParams(location.search)].filter(([key,value])=>allowed.includes(key)&&value));
+    let state={first:{landing_page:page,timestamp:now,...incoming},current:{}};
+    try{state=JSON.parse(localStorage.getItem('ynt-whatsapp-attribution'))||state;}catch{}
+    if(Object.keys(incoming).length)state.current=incoming;
+    try{localStorage.setItem('ynt-whatsapp-attribution',JSON.stringify(state));}catch{}
+    return state;
+  }
+  measurementContext();
   const text=value=>String(value??'').replace(/\s+/g,' ').trim();
   function propertyContext(p={}){
     return {
@@ -39,11 +52,14 @@
     const metadata={...options.metadata,property_id:property.property_id,property_uuid:property.db_id,
       external_id:property.external_id,development_name:property.development,property_name:property.name,
       city:property.city,neighborhood:property.neighborhood,price:property.price,
-      inventory_source:property.inventory_source,page:location.pathname,url:location.href,
+      inventory_source:property.inventory_source,page:location.pathname,url:location.origin+location.pathname,
       timestamp:new Date().toISOString()};
-    const reference = globalThis.crypto?.randomUUID?.();
-    const destination = url(reference && options.adsTrack
-      ? `${message(p)}\nRef. Yincorp: ${reference}`
+    const reference = options.reference || referenceCode();
+    metadata.click_ref=reference;
+    metadata.pre_registration_saved=Boolean(options.persisted);
+    window.gtag?.('event','whatsapp_click',{pre_registration_saved:Boolean(options.persisted)});
+    const destination = url(reference
+      ? `${message(p)}\nRef ${reference}`
       : message(p));
     const requests=[
       attempt(()=>options.adsTrack?.('whatsapp_cta_clicked',{event_id:reference,intent:options.intent,property,metadata})),
@@ -90,14 +106,16 @@
     dialog.innerHTML=`<div class="wa-registration-header"><span class="wa-registration-avatar" aria-hidden="true">Y</span><div><strong id="ynt-whatsapp-registration-title">Yincorp</strong><small>Atendimento pelo WhatsApp</small></div><button type="button" class="wa-registration-close" aria-label="Fechar">×</button></div>
       <div class="wa-registration-chat"><p class="wa-registration-bubble">Olá! 👋 Qual é o seu WhatsApp com DDD?</p><p class="wa-registration-property"></p>
       <form><label for="ynt-whatsapp-phone">Seu número de WhatsApp</label><input id="ynt-whatsapp-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999" required maxlength="22">
-      <p class="wa-registration-note">Ao continuar, você autoriza a Yincorp a entrar em contato sobre seu interesse. <a href="https://www.yincorp.com.br/politica-de-privacidade" target="_blank" rel="noopener">Privacidade</a></p>
+      <p class="wa-registration-note">Ao confirmar, você autoriza a Yincorp a guardar seu telefone e a origem da visita para atender seu interesse e medir a captação. <a href="https://www.yincorp.com.br/politica-de-privacidade" target="_blank" rel="noopener">Privacidade</a></p>
       <p class="wa-registration-status" role="status" aria-live="polite"></p>
-      <button type="submit" class="wa-registration-submit">Confirmar e continuar <span aria-hidden="true">➤</span></button></form></div>`;
+      <button type="submit" class="wa-registration-submit">Confirmar e continuar <span aria-hidden="true">➤</span></button><button type="button" class="wa-registration-skip">Continuar sem cadastro</button></form></div>`;
     const form=dialog.querySelector('form'),input=dialog.querySelector('input'),submit=dialog.querySelector('[type="submit"]');
     const status=dialog.querySelector('[role="status"]'),close=dialog.querySelector('.wa-registration-close');
     const name=propertyContext(p).development||propertyContext(p).name;
     dialog.querySelector('.wa-registration-property').textContent=name?'Sobre: '+name:'Vamos ajudar você a encontrar seu imóvel.';
     let saving=false;
+    const reference=referenceCode();
+    dialog.querySelector('.wa-registration-skip').addEventListener('click',()=>{if(!saving){dialog.close();void api.open(p,{...options,reference});}});
     close.addEventListener('click',()=>{if(!saving)dialog.close();});
     dialog.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
     dialog.addEventListener('close',()=>{dialog.remove();document.getElementById('ynt-whatsapp-float')?.focus();});
@@ -108,20 +126,26 @@
       if(!/^55[1-9][0-9]{9,10}$/.test(phone)){status.textContent='Confira o número e inclua o DDD.';input.focus();return;}
       saving=true;submit.disabled=true;close.disabled=true;input.readOnly=true;
       status.textContent='Salvando seu contato…';
+      let persisted=false;
       try{
+        const touch=measurementContext();
         const response=await fetch('https://app.yincorp.com.br/api/whatsapp-pre-registration',{
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({phone,property:propertyContext(p),page:location.href}),
-          signal:AbortSignal.timeout(20000)
+          body:JSON.stringify({phone,property:propertyContext(p),page:location.origin+location.pathname,consent:true,reference,attribution:touch.current,first_touch:touch.first}),
+          signal:AbortSignal.timeout(16000)
         });
         const receipt=await response.json();
         if(!response.ok||!receipt.success)throw new Error('registration_failed');
-        dialog.close();
-        await api.open(p,options);
+        persisted=Boolean(receipt.lead_id);
+        if(persisted&&receipt.created){
+          window.gtag?.('event','conversion',{send_to:'AW-18371236623/Icu-CMS18_ccEI-mi7hE',transaction_id:receipt.lead_id});
+          window.gtag?.('event','generate_lead',{transaction_id:receipt.lead_id,lead_source:'whatsapp_pre_registration'});
+        }
       }catch{
-        status.textContent='Não conseguimos salvar agora. Tente novamente.';
+        status.textContent='Abrindo o WhatsApp…';
       }finally{
-        saving=false;submit.disabled=false;close.disabled=false;input.readOnly=false;
+        saving=false;dialog.close();
+        await api.open(p,{...options,reference,persisted});
       }
     });
     document.body.appendChild(dialog);dialog.showModal();input.focus();
