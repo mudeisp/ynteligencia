@@ -51,6 +51,10 @@
     {
       "path": "/api/push-daily",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/whatsapp-notification-retry",
+      "schedule": "0 12 * * *"
     }
   ]
 }
