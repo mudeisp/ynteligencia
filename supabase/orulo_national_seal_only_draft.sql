@@ -31,7 +31,13 @@ DECLARE
     }
   }'::jsonb;
 BEGIN
-  PERFORM orulo_audit.require_service();
+  -- Only a direct, trusted PostgreSQL owner session can seal. The existing
+  -- require_service() deliberately accepts service_role, which MUST NOT be
+  -- permitted to invoke this manual seal-only entrypoint via PostgREST.
+  -- SECURITY DEFINER changes current_user, so check the original session.
+  IF session_user IS DISTINCT FROM 'postgres'
+     OR current_setting('role',true) NOT IN ('none','postgres')
+  THEN RAISE EXCEPTION 'SEAL_ONLY_DIRECT_DATABASE_OWNER_REQUIRED'; END IF;
   -- Serialize with all other national actions using the SAME historical run lock.
   PERFORM orulo_audit.lock_run(r);
 
