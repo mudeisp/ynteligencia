@@ -16,7 +16,8 @@ SPEC.loader.exec_module(mod)
 
 class TenLotPreflightTests(unittest.TestCase):
     def test_boundary_assignment_covers_each_lot(self):
-        self.assertEqual([mod.classify_lot(i, 1) for i in range(10)], list(range(1,11)))
+        with patch.object(mod, "TOTAL_PATCHES", 10):
+            self.assertEqual([mod.classify_lot(i, 1) for i in range(10)], list(range(1,11)))
 
     def test_midpoint_keeps_large_property_whole(self):
         with patch.object(mod, "TOTAL_PATCHES", 100):
