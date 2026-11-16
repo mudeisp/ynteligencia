@@ -20,6 +20,8 @@ CREATE TABLE orulo_audit.entries (
  PRIMARY KEY (run_uuid,sequence)
 );
 GRANT SELECT ON orulo_audit.runs,orulo_audit.entries TO orulo_audit_owner;
+-- SELECT FOR UPDATE in the isolated lock_run stub also requires UPDATE on runs.
+GRANT UPDATE ON orulo_audit.runs TO orulo_audit_owner;
 CREATE FUNCTION orulo_audit.require_service() RETURNS void LANGUAGE plpgsql AS $$
 BEGIN IF session_user NOT IN ('postgres','service_role') THEN RAISE EXCEPTION 'SERVICE_REQUIRED'; END IF; END
 $$;
