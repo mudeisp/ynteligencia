@@ -63,8 +63,11 @@ jobs:
           READ_ONLY_PG_URL: ${{ secrets.ORULO_V2_DB_URL }}
         run: |
           set -euo pipefail
+          STAGE=BOOTSTRAP
+          trap 'rc=$?; echo "::error::ORULO_ATTEST_FAILED_STAGE=${STAGE} EXIT_CODE=${rc}" >&2' ERR
           umask 077
           test -n "$PRIVATE_KEY" && test -n "$READ_ONLY_PG_URL"
+          STAGE=PINNED_RECEIPT
           WORK="$(mktemp -d)"
           trap 'rm -rf -- "$WORK"' EXIT
           printf '%s\n' "$PRIVATE_KEY" > "$WORK/key.pem"
@@ -80,12 +83,17 @@ jobs:
           print(x['manifestSha256'])
           PY
           mapfile -t PINS < "$WORK/pins"
+          STAGE=DOWNLOAD_ORIGINAL_ZIP
+          echo '::notice::ORULO_ATTEST_STAGE=DOWNLOAD_ORIGINAL_ZIP'
           curl --fail --silent --show-error --location \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H 'Accept: application/vnd.github+json' \
             "https://api.github.com/repos/mudeisp/ynteligencia/actions/artifacts/${PINS[0]}/zip" \
             -o "$WORK/original.zip"
+          STAGE=ORIGINAL_ZIP_SHA256
           printf '%s  %s\n' "${PINS[1]}" "$WORK/original.zip" | sha256sum -c --status
+          echo '::notice::ORULO_ATTEST_PASS=ORIGINAL_ZIP_SHA256'
+          STAGE=CMS_ARCHIVE_INTEGRITY
           python3 - "$WORK" <<'PY'
           import hashlib,sys,zipfile
           from pathlib import Path
@@ -99,12 +107,19 @@ jobs:
               assert hashlib.sha256(cms).hexdigest()==expected,'CMS_HASH_MISMATCH'
               (work/'manifest.cms').write_bytes(cms)
           PY
+          echo '::notice::ORULO_ATTEST_PASS=CMS_ARCHIVE_INTEGRITY'
+          STAGE=CMS_DECRYPT
           openssl cms -decrypt -binary -inform DER -in "$WORK/manifest.cms" \
             -inkey "$WORK/key.pem" -out "$WORK/manifest.json"
+          STAGE=ORIGINAL_MANIFEST_SHA256
           printf '%s  %s\n' "${PINS[2]}" "$WORK/manifest.json" | sha256sum -c --status
+          echo '::notice::ORULO_ATTEST_PASS=ORIGINAL_MANIFEST_SHA256'
           # New connections cannot write, even if Postgres credentials have DML rights.
           export PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=120000'
+          STAGE=POSTGRES_READONLY_PREFLIGHT
           test "$(psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 -c 'show transaction_read_only')" = 'on'
+          echo '::notice::ORULO_ATTEST_PASS=POSTGRES_READONLY_PREFLIGHT'
+          STAGE=FROZEN_LEDGER_READ
           psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 -c "
             SELECT row_to_json(q)
             FROM (
@@ -114,6 +129,8 @@ jobs:
               ORDER BY sequence
             ) q
           " > "$WORK/frozen-ledger.ndjson"
+          STAGE=ORIGINAL_ARTIFACT_VS_LEDGER
           node scripts/orulo-national-frozen-attestation.mjs \
             "$WORK/manifest.json" "$WORK/frozen-ledger.ndjson"
+          echo '::notice::ORULO_ATTEST_PASS=ORIGINAL_ARTIFACT_VS_LEDGER'
           echo 'PASS: original national manifest attested, zero writes, no seal/CAS.' >> "$GITHUB_STEP_SUMMARY"
