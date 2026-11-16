@@ -1,0 +1,32 @@
+name: Orulo national scope PostgreSQL 17
+on:
+  push:
+    branches: [feat/orulo-national-scoped-authorization]
+  pull_request:
+    paths:
+      - 'supabase/migrations/*orulo_national_scoped_plan.sql'
+      - 'tests/orulo-national-scoped-plan.sql'
+      - '.github/workflows/orulo-national-scoped-plan.yml'
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Test the frozen national scope in disposable PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -Atc 'show server_version'
+          psql -h 127.0.0.1 -U postgres -d postgres -f tests/orulo-national-scoped-plan.sql
