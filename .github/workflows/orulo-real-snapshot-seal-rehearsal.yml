@@ -176,9 +176,9 @@ jobs:
           echo '::notice::REAL_REHEARSAL_PASS=FROZEN_LEDGER_AND_PRODUCTION_ABI'
 
           STAGE=EPHEMERAL_POSTGRES_RESTORE
-          psql -X -v ON_ERROR_STOP=1 -f "$WORK/setup.sql" > "$WORK/setup.log"
-          psql -X -v ON_ERROR_STOP=1 -f "$WORK/historical-definitions.sql" > "$WORK/defs.log"
-          psql -X -v ON_ERROR_STOP=1 -f "$WORK/load-ledger.sql" > "$WORK/load.log"
+          psql -X -v ON_ERROR_STOP=1 -f "$WORK/setup.sql" > "$WORK/setup.log" 2>&1
+          psql -X -v ON_ERROR_STOP=1 -f "$WORK/historical-definitions.sql" > "$WORK/defs.log" 2>&1
+          psql -X -v ON_ERROR_STOP=1 -f "$WORK/load-ledger.sql" > "$WORK/load.log" 2>&1
           # Verify original definitions and head are intact in disposable DB.
           test "$(psql -X -qAt -v ON_ERROR_STOP=1 -c \
             "SELECT count(*) FROM orulo_audit.entries;")" = '6240'
@@ -189,13 +189,13 @@ jobs:
 
           STAGE=INSTALL_REVIEW_DRAFT_LOCALLY
           psql -X -v ON_ERROR_STOP=1 -f draft/supabase/orulo_national_seal_checkpoints_staging.sql \
-            > "$WORK/checkpoint-install.log"
+            > "$WORK/checkpoint-install.log" 2>&1
           psql -X -v ON_ERROR_STOP=1 -f draft/supabase/orulo_national_seal_only_draft.sql \
-            > "$WORK/seal-install.log"
+            > "$WORK/seal-install.log" 2>&1
 
           STAGE=REAL_SNAPSHOT_114_PAGES_AND_SEAL
           psql -X -v ON_ERROR_STOP=1 -f control/scripts/orulo-real-snapshot-seal-rehearsal.sql \
-            > "$WORK/rehearsal.log"
+            > "$WORK/rehearsal.log" 2>&1
           # The ONLY seal produced is in disposable PostgreSQL. No CAS.
           echo '::notice::REAL_REHEARSAL_PASS=ONE_LOCAL_SEAL_6241_ROLLBACK_REPLAY_NO_CAS'
           echo 'PASS: original 6240 production ledger replayed as 6241 seal in disposable PostgreSQL; source READ ONLY.' >> "$GITHUB_STEP_SUMMARY"
