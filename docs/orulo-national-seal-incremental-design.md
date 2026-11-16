@@ -51,3 +51,16 @@ The final seal-only action must ensure:
 `node --test scripts/orulo-national-seal-verifier.test.mjs` — synthetic, read-only tests passed locally. These tests do not yet verify PostgreSQL transactions, checkpoint durability or production-scale behavior.
 
 **Do not run the old DBeaver script again. Do not invoke national_action=execute or continue.**
+## Implementation checkpoint — 16 November 2026
+
+**Added on this branch, NOT deployed:**
+
+- `supabase/orulo_national_seal_checkpoints_staging.sql`: private checkpoint tables and an RPC restricted to the historical run, manifest hash, frozen ledger head and exact page JSONB equality; inserts proof + advances cursor atomically. Rejects gaps, diverged replay, changed page, incorrect manifest/run and unexpected ledger activity. Every individual RPC is bounded to 50 targets, with no global JSONB aggregate. Does **not** modify the original ledger or create a seal, authorization or CAS result.
+- `scripts/orulo-national-checkpoint-staging.mjs`: after independently verifying *original* manifest bytes, fragment stream and frozen target equality via `verifyFrozenNationalSeal`, sends each page to the bounded RPC, validating transport receipts. **Library-only**; there is no production runner wiring or access to credentials.
+- `scripts/orulo-national-checkpoint-staging.test.mjs`: deterministic transport tests for page coverage, tampering, rejection of ambiguous receipts and idempotent replay.
+- Isolated PostgreSQL 17 fixture, SQL regression, concurrent duplicate RPC test, and checkpoint-only rollback. The fixture deliberately uses synthetic target JSON; it verifies actual PostgreSQL transaction and locking semantics, **not** the complete historical 73 MB document.
+- `.github/workflows/orulo-seal-checkpoint-staging.yml`: disposable local PostgreSQL CI, no production secrets. **Passing:** GitHub Actions run [43831984565](https://github.com/mudeisp/ynteligencia/actions/runs/43831984565).
+
+**Benchmark carried forward from 15 November (medians of three):** concatenation 447 ms; full-document SHA-256 331 ms; JSONB parse 5,706 ms; aggregation 2,348 ms; structural comparison 565 ms; image evidence 2,239 ms. Full verification ~13.79 s, parse dominant; the full SHA-256 alone fits 8 s. These measurements must not be confused with the later synthetic CI duration.
+
+**Unresolved gate:** no trusted production attestation binds the decrypted *original artifact* and authentic approved runner to database checkpoints. The SQL page proof is deliberately not itself authorization to seal. The final authenticated seal-only operation, its replay safety and complete production-scale integration are NOT implemented; the draft PR must not be merged. For a production-ready release, add a reviewed trust-bound runner and final seal-only transaction, test against a complete authorized isolated snapshot, and get separate approvals for migration, seal, and image CAS.
