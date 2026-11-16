@@ -82,17 +82,17 @@ TRUNCATE orulo_audit.national_seal_page_proofs,orulo_audit.national_seal_page_pr
 DO $pages$
 DECLARE r uuid:='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid;
  h text:='ef04d42882f69166f5892efc0163a774814f5f26a7defeee83aa681efa725288';
- offset integer; p jsonb; response jsonb;
+ page_offset integer; p jsonb; response jsonb;
 BEGIN
- FOR offset IN SELECT generate_series(0,5650,50) LOOP
+ FOR page_offset IN SELECT generate_series(0,5650,50) LOOP
   SELECT jsonb_agg(target ORDER BY id) INTO p FROM (
    SELECT event->'target' AS target,event->'target'->>'id' id
    FROM orulo_audit.entries WHERE run_uuid=r AND kind='NATIONAL_TARGET'
-   ORDER BY event->'target'->>'id' LIMIT 50 OFFSET offset
+   ORDER BY event->'target'->>'id' LIMIT 50 OFFSET page_offset
   ) q;
-  response:=orulo_audit.national_seal_checkpoint_page(r,h,offset,p);
+  response:=orulo_audit.national_seal_checkpoint_page(r,h,page_offset,p);
   IF response->>'status'<>'VERIFIED'
-    THEN RAISE EXCEPTION 'SYNTHETIC_PAGE_NOT_VERIFIED %',offset; END IF;
+    THEN RAISE EXCEPTION 'SYNTHETIC_PAGE_NOT_VERIFIED %',page_offset; END IF;
  END LOOP;
  IF (SELECT next_offset FROM orulo_audit.national_seal_page_progress WHERE run_uuid=r)<>5684
  THEN RAISE EXCEPTION 'SYNTHETIC_CHECKPOINTS_INCOMPLETE'; END IF;
