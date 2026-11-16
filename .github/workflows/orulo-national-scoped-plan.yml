@@ -5,6 +5,8 @@ on:
   pull_request:
     paths:
       - 'supabase/migrations/*orulo_national_scoped_plan.sql'
+      - 'supabase/migrations/*orulo_national_scope_lease.sql'
+      - 'tests/orulo-national-scope-lease.sql'
       - 'tests/orulo-national-scoped-plan.sql'
       - '.github/workflows/orulo-national-scoped-plan.yml'
 permissions:
@@ -29,4 +31,4 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -Atc 'show server_version'
-          psql -h 127.0.0.1 -U postgres -d postgres -f tests/orulo-national-scoped-plan.sql
+          psql -h 127.0.0.1 -U postgres -d postgres -f tests/orulo-national-scope-lease.sql
