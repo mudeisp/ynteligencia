@@ -1,0 +1,119 @@
+name: Órulo Nacional — atestado do manifesto original (somente leitura)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/orulo-national-artifact-readonly.yml'
+      - 'scripts/orulo-national-frozen-attestation.mjs'
+      - 'scripts/orulo-national-frozen-attestation.test.mjs'
+      - 'scripts/orulo-national-seal-verifier.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-code:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Test strictly read-only artifact verifier
+        run: |
+          node --test scripts/orulo-national-frozen-attestation.test.mjs
+          node --test scripts/orulo-national-seal-verifier.test.mjs
+
+  attest-frozen-manifest:
+    # This job is deliberately NOT eligible on PRs and cannot execute on a feature branch.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/main' &&
+          github.repository == 'mudeisp/ynteligencia' &&
+          github.actor == 'mudeisp' &&
+          github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: orulo-v2-reconciliation
+    permissions:
+      contents: read
+      actions: read
+    concurrency:
+      group: orulo-frozen-national-attestation-readonly
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install PostgreSQL client for read-only SELECT
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Attest the pinned original artifact against the frozen ledger
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
+          READ_ONLY_PG_URL: ${{ secrets.ORULO_V2_DB_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$PRIVATE_KEY" && test -n "$READ_ONLY_PG_URL"
+          WORK="$(mktemp -d)"
+          trap 'rm -rf -- "$WORK"' EXIT
+          printf '%s\n' "$PRIVATE_KEY" > "$WORK/key.pem"
+          unset PRIVATE_KEY
+          python3 - <<'PY' > "$WORK/pins"
+          import json
+          from pathlib import Path
+          x=json.loads(Path('docs/orulo-national-v2-manifest-receipt.json').read_text())
+          assert x['artifactId']==13818623539
+          assert x['manifestSha256']=='ef04d42882f69166f5892efc0163a774814f5f26a7defeee83aa681efa725288'
+          print(x['artifactId'])
+          print(x['artifactSha256'])
+          PY
+          mapfile -t PINS < "$WORK/pins"
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/mudeisp/ynteligencia/actions/artifacts/${PINS[0]}/zip" \
+            -o "$WORK/original.zip"
+          printf '%s  %s\n' "${PINS[1]}" "$WORK/original.zip" | sha256sum -c --status
+          python3 - "$WORK" <<'PY'
+          import hashlib,sys,zipfile
+          from pathlib import Path
+          work=Path(sys.argv[1])
+          with zipfile.ZipFile(work/'original.zip') as z:
+              assert set(z.namelist())=={
+                  'national-manifest.cms','national-manifest.cms.sha256','national-summary.json'
+              },'ARTIFACT_STRUCTURE_DIVERGED'
+              cms=z.read('national-manifest.cms')
+              expected=z.read('national-manifest.cms.sha256').decode().split()[0]
+              assert hashlib.sha256(cms).hexdigest()==expected,'CMS_HASH_MISMATCH'
+              (work/'manifest.cms').write_bytes(cms)
+          PY
+          openssl cms -decrypt -binary -inform DER -in "$WORK/manifest.cms" \
+            -inkey "$WORK/key.pem" -out "$WORK/manifest.json"
+          echo 'ef04d42882f69166f5892ef5f26a7defeee83aa681efa725288  '"$WORK/manifest.json" \
+            | sha256sum -c --status
+          # New connections cannot write, even if Postgres credentials have DML rights.
+          export PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=120000'
+          test "$(psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 -c 'show transaction_read_only')" = 'on'
+          psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 -c "
+            SELECT row_to_json(q)
+            FROM (
+              SELECT sequence, kind, event, hash
+              FROM orulo_audit.entries
+              WHERE run_uuid='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid
+              ORDER BY sequence
+            ) q
+          " > "$WORK/frozen-ledger.ndjson"
+          node scripts/orulo-national-frozen-attestation.mjs \
+            "$WORK/manifest.json" "$WORK/frozen-ledger.ndjson"
+          echo 'PASS: original national manifest attested, zero writes, no seal/CAS.' >> "$GITHUB_STEP_SUMMARY"
