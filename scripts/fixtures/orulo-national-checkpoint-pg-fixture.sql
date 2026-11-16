@@ -12,7 +12,7 @@ CREATE ROLE orulo_audit_owner NOLOGIN;
 CREATE SCHEMA orulo_audit;
 GRANT USAGE ON SCHEMA orulo_audit TO orulo_audit_owner, service_role;
 
-CREATE TABLE orulo_audit.runs (run_uuid uuid PRIMARY KEY);
+CREATE TABLE orulo_audit.runs (run_uuid uuid PRIMARY KEY, metadata jsonb NOT NULL DEFAULT '{}'::jsonb);
 CREATE TABLE orulo_audit.entries (
  run_uuid uuid NOT NULL REFERENCES orulo_audit.runs(run_uuid),
  sequence bigint NOT NULL, kind text NOT NULL,
