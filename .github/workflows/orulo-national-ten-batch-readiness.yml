@@ -1,10 +1,18 @@
 name: "Órulo Nacional — 10 lotes / readiness somente leitura"
 on:
   workflow_dispatch:
+    inputs:
+      lot:
+        description: "Qual lote conferir? (all ou 1 a 10)"
+        required: true
+        type: choice
+        default: "1"
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "all"]
   pull_request:
     paths:
       - ".github/workflows/orulo-national-ten-batch-readiness.yml"
       - "scripts/orulo-national-ten-batch-readiness.py"
+      - "scripts/test-orulo-national-ten-batch-readiness.py"
 permissions: {}
 concurrency:
   group: orulo-national-readonly-ten-lots
@@ -21,6 +29,8 @@ jobs:
           persist-credentials: false
       - name: Check Python syntax without database or secrets
         run: python3 -m py_compile scripts/orulo-national-ten-batch-readiness.py
+      - name: Offline candidate and selection unit tests
+        run: python3 scripts/test-orulo-national-ten-batch-readiness.py -v
       - name: Assert script does not create a second authorization/writer
         run: |
           python3 - <<'PY'
@@ -58,6 +68,7 @@ jobs:
       - name: Frozen seal and ten lots preflight (READ ONLY; no CAS)
         env:
           ORULO_READ_ONLY_DATABASE_URL: ${{ secrets.ORULO_V2_DB_URL }}
+          ORULO_SELECTED_LOT: ${{ inputs.lot }}
         run: |
           set -euo pipefail
           test -n "$ORULO_READ_ONLY_DATABASE_URL"
