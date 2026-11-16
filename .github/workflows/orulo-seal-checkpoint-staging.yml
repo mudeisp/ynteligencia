@@ -52,3 +52,7 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f scripts/orulo-national-checkpoint-pg.test.sql
       - name: Concurrent duplicate RPC replay test
         run: bash scripts/orulo-national-checkpoint-concurrency.sh
+      - name: Test isolated rollback without touching frozen ledger
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/orulo_national_seal_checkpoints_staging_rollback.sql
+          psql -X -v ON_ERROR_STOP=1 -At -c "SELECT COUNT(*) FROM orulo_audit.entries;" | grep -x 6240
