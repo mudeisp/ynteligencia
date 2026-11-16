@@ -70,11 +70,23 @@ BEGIN
    if exists(select 1 from orulo_audit.entries i$old$,
      format($new$   if p_run=%s then
     auth:=orulo_audit.national_scope_context(p_run,(p_event->>'id')::uuid,p_event->'scope');
-    if not exists(select 1 from orulo_audit.entries b where b.run_uuid=p_run and b.kind='BASELINE_V2'
+    if not exists(select 1 from orulo_audit.entries b where b.run_uuid=p_run and b.kind='BASELINE_V2:'||(auth->>'authorizationId')
       and b.sequence>(auth->>'planSequence')::bigint and b.event->'snapshot'->>'membershipStable'='true')
     then raise exception 'NATIONAL_GLOBAL_BASELINE_REQUIRED'; end if;
    else auth:=orulo_audit.national_authorization(p_run); end if;
    if exists(select 1 from orulo_audit.entries i$new$,v_run)),
+    ('orulo_audit.national_control(text,uuid,bigint,text,jsonb)',
+     $old$ if p_action in ('read','recover','snapshot_begin','snapshot_page','snapshot_seal') then$old$,
+     format($new$ if p_run=%s and p_action in ('snapshot_begin','snapshot_page','snapshot_seal','national_scope_snapshot_state') then
+  return orulo_audit.national_scope_snapshot(
+    case when p_action='national_scope_snapshot_state' then 'state' else p_action end,
+    p_run,p_sequence,p_previous_hash,p_event);
+ end if;
+ if p_action in ('read','recover','snapshot_begin','snapshot_page','snapshot_seal') then$new$,v_run)),
+    ('orulo_audit.national_cas(uuid,uuid)',
+     $old$kind='BASELINE_V2' and sequence>(auth->>'planSequence')::bigint$old$,
+     format($new$kind=case when r=%s then 'BASELINE_V2:'||(auth->>'authorizationId') else 'BASELINE_V2' end
+  and sequence>(auth->>'planSequence')::bigint$new$,v_run)),
     ('orulo_audit.national_cas(uuid,uuid)',
      $old$perform orulo_audit.lock_run(r);auth:=orulo_audit.national_authorization(r);$old$,
      format($new$perform orulo_audit.lock_run(r);
