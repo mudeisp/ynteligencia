@@ -142,6 +142,8 @@ def prepare(snapshot_path, manifest_path, output_dir):
         'CREATE TABLE public.properties (' + ', '.join(
            '"' + name + '" ' + typ for name,typ in cols) + ');',
         'GRANT SELECT ON public.properties TO orulo_audit_owner;',
+        "CREATE TABLE public._orulo_ephemeral_rehearsal_guard (stamp text NOT NULL CHECK (stamp='ORULO_EPHEMERAL_ONLY_6240'));",
+        "INSERT INTO public._orulo_ephemeral_rehearsal_guard(stamp) VALUES ('ORULO_EPHEMERAL_ONLY_6240');",
         'INSERT INTO orulo_audit.runs(run_uuid,github_run_id,metadata) VALUES('
            + quote(RUN) + ',' + quote(run['github_run_id']) + ','
            + quote(json.dumps(run['metadata'], ensure_ascii=False)) + '::jsonb);'

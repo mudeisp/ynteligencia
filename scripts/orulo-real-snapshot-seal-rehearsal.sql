@@ -6,7 +6,19 @@
 DO $preflight$
 DECLARE r uuid:='1c8ec62a-9c38-41ac-8091-f1ceef98ca91';
 BEGIN
-  IF current_database()<>'postgres' OR inet_server_addr() IS DISTINCT FROM '127.0.0.1'::inet
+  -- The GitHub runner connects to 127.0.0.1, but inside Docker the server
+  -- has an RFC1918 bridge IP. Require both private networking and the
+  -- fixture-only marker that is created by the offline fixture constructor.
+  IF current_database()<>'postgres'
+     OR inet_server_addr() IS NULL
+     OR NOT (
+       inet_server_addr() <<= '127.0.0.0/8'::cidr OR
+       inet_server_addr() <<= '10.0.0.0/8'::cidr OR
+       inet_server_addr() <<= '172.16.0.0/12'::cidr OR
+       inet_server_addr() <<= '192.168.0.0/16'::cidr)
+     OR to_regclass('public._orulo_ephemeral_rehearsal_guard') IS NULL
+     OR (SELECT count(*) FROM public._orulo_ephemeral_rehearsal_guard
+         WHERE stamp='ORULO_EPHEMERAL_ONLY_6240')<>1
   THEN RAISE EXCEPTION 'REAL_SNAPSHOT_DISPOSABLE_PG_ONLY'; END IF;
   IF (SELECT count(*) FROM orulo_audit.entries WHERE run_uuid=r)<>6240 OR
      (SELECT hash FROM orulo_audit.entries WHERE run_uuid=r AND sequence=6240)
