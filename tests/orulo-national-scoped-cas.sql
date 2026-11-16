@@ -338,13 +338,17 @@ SELECT pg_sleep(greatest(0,
   extract(epoch FROM (
     (SELECT (event->>'expiresAt')::timestamptz FROM orulo_audit.entries
        WHERE event_uuid=:'next_lease'::uuid)-clock_timestamp()))+1));
+SELECT set_config('test.next_target',:'next_target',false);
+SELECT set_config('test.next_scope',:'next_scope',false);
+SELECT set_config('test.next_lease',:'next_lease',false);
 SET ROLE service_role;
 DO $test$
 BEGIN
   BEGIN
     PERFORM orulo_audit.national_control('national_scope_finish',
       current_setting('test.run')::uuid,0,'',
-      jsonb_build_object('id',:'next_target','scope',:'next_scope'::jsonb,
+      jsonb_build_object('id',current_setting('test.next_target'),
+        'scope',current_setting('test.next_scope')::jsonb,
         'eventUuid',gen_random_uuid()));
     RAISE EXCEPTION 'EXPIRED_SCOPED_LEASE_WAS_ACTIVE';
   EXCEPTION WHEN raise_exception THEN
@@ -364,7 +368,7 @@ DO $test$
 BEGIN
  IF NOT EXISTS(
    SELECT 1 FROM orulo_audit.entries WHERE kind='NATIONAL_SCOPE_FINISHED'
-     AND event->>'authorizationId'=:'next_lease'
+     AND event->>'authorizationId'=current_setting('test.next_lease')
      AND event->>'administrativeReconciliation'='true'
  ) THEN RAISE EXCEPTION 'EXPIRED_SCOPE_ADMIN_COMPLETION_FAILED'; END IF;
  RAISE NOTICE 'EXPIRED_SCOPE_ADMIN_COMPLETED_WITHOUT_CAS';
