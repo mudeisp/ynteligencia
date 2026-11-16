@@ -4,7 +4,7 @@ DECLARE
   run uuid := '1c8ec62a-9c38-41ac-8091-f1ceef98ca91';
   manifest text := 'ef04d42882f69166f5892efc0163a774814f5f26a7defeee83aa681efa725288';
   p jsonb; bad jsonb; result jsonb; refused boolean;
-  page_offset integer;
+  cursor_offset integer;
 BEGIN
   SELECT jsonb_agg(target ORDER BY id) INTO p FROM (
     SELECT event->'target' AS target,event->'target'->>'id' AS id
@@ -17,8 +17,8 @@ BEGIN
 
   result := orulo_audit.national_seal_checkpoint_page(run,manifest,0,p);
   IF result->>'status'<>'ALREADY_VERIFIED' THEN RAISE EXCEPTION 'REPLAY_FAILED'; END IF;
-  SELECT count(*) INTO page_offset FROM orulo_audit.national_seal_page_proofs;
-  IF page_offset<>1 THEN RAISE EXCEPTION 'DUPLICATE_PROOF_WRITTEN'; END IF;
+  SELECT count(*) INTO cursor_offset FROM orulo_audit.national_seal_page_proofs;
+  IF cursor_offset<>1 THEN RAISE EXCEPTION 'DUPLICATE_PROOF_WRITTEN'; END IF;
 
   bad := jsonb_set(p,'{0,buildingId}','"changed"'::jsonb);
   refused:=false;
@@ -55,8 +55,8 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN
     NULL;
   END;
-  SELECT next_offset INTO page_offset FROM orulo_audit.national_seal_page_progress WHERE run_uuid=run;
-  IF page_offset<>100 THEN RAISE EXCEPTION 'CRASH_ROLLBACK_DID_NOT_PRESERVE_CURSOR'; END IF;
+  SELECT next_offset INTO cursor_offset FROM orulo_audit.national_seal_page_progress WHERE run_uuid=run;
+  IF cursor_offset<>100 THEN RAISE EXCEPTION 'CRASH_ROLLBACK_DID_NOT_PRESERVE_CURSOR'; END IF;
   IF EXISTS (SELECT 1 FROM orulo_audit.national_seal_page_proofs WHERE page_offset=100)
     THEN RAISE EXCEPTION 'CRASH_LEFT_ORPHAN_PROOF'; END IF;
 
