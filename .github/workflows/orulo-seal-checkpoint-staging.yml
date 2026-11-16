@@ -42,6 +42,7 @@ jobs:
         run: |
           node --test scripts/orulo-national-seal-verifier.test.mjs
           node --test scripts/orulo-national-checkpoint-staging.test.mjs
+          node --test scripts/orulo-national-frozen-attestation.test.mjs
       - name: Install local Postgres client
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
       - name: Build isolated historical-ledger fixture
