@@ -98,6 +98,9 @@ def classify_lot(prior, count):
 
 def main():
     guard()
+    selected = os.environ.get("ORULO_SELECTED_LOT", "all")
+    if selected not in ("all", *(str(n) for n in range(1, 11))):
+        raise RuntimeError("LOT_SELECTION_INVALID")
     lots = defaultdict(lambda: defaultdict(int))
     previous = ""
     prefix = 0
@@ -130,6 +133,15 @@ def main():
                 d["divergent_complete" if exact == n else "divergent_incomplete"] += 1
             else:
                 d["original_baseline"] += 1
+                if exact < n and missing == 0 and conflicting == 0:
+                    # Candidate means the original full-row baseline remains intact.
+                    # It is NOT an authorization nor a write-capability claim.
+                    d["original_baseline_candidate"] += 1
+                    d["candidate_empty_occurrences"] += empty
+                elif exact == n:
+                    d["original_baseline_complete"] += 1
+                else:
+                    d["original_baseline_blocked"] += 1
             prefix += n
             targets += 1
     guard()
@@ -143,7 +155,10 @@ def main():
       "manifestSha256": MANIFEST,
       "sealSequence": 6241,
       "sealHash": HEAD,
-      "lots": [{"lot": i, **lots[i]} for i in range(1, 11)]
+      "selectedLot": selected,
+      "lotExecutionEnabled": False,
+      "lots": [{"lot": i, **lots[i]} for i in range(1, 11)
+               if selected == "all" or str(i) == selected]
     }
     print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
