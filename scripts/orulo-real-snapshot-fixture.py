@@ -151,7 +151,7 @@ def prepare(snapshot_path, manifest_path, output_dir):
        '\n'.join(defs[n].rstrip(';')+';' for n in EXPECTED_DEFS)+'\n',encoding='utf8')
     (output_dir/'load-ledger.sql').write_text(
         r"\copy orulo_audit.entries(run_uuid,sequence,event_uuid,operation_uuid,kind,event,previous_hash,canonical,hash) FROM '" +
-        str(csv_path).replace("'", "''") + "' WITH (FORMAT CSV, NULL '');\n",
+        str(csv_path).replace("'", "''") + "' WITH (FORMAT CSV, NULL '', FORCE_NOT_NULL (previous_hash));\n",
         encoding='utf8'
     )
     # One short receipt; never print the original evidence, URLs, or private metadata.
