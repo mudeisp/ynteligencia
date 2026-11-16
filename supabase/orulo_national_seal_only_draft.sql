@@ -110,7 +110,7 @@ BEGIN
   SELECT count(DISTINCT image #>> '{}') INTO total_urls
   FROM orulo_audit.entries e
   CROSS JOIN LATERAL jsonb_array_elements(e.event->'target'->'patches') patch
-  CROSS JOIN LATERAL jsonb_array_elements(patch->'images') image
+  CROSS JOIN LATERAL jsonb_array_elements(patch->'images') AS images(image)
   WHERE e.run_uuid=r AND e.kind='NATIONAL_TARGET';
   IF total_urls<>39525 THEN RAISE EXCEPTION 'SEAL_ONLY_URL_COUNT_DIVERGED'; END IF;
 
