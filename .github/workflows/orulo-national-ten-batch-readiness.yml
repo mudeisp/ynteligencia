@@ -30,7 +30,7 @@ jobs:
       - name: Check Python syntax without database or secrets
         run: python3 -m py_compile scripts/orulo-national-ten-batch-readiness.py
       - name: Offline candidate and selection unit tests
-        run: python3 -m unittest discover -s scripts -p 'test-orulo-national-ten-batch-readiness.py' -v
+        run: python3 scripts/test-orulo-national-ten-batch-readiness.py -v
       - name: Assert script does not create a second authorization/writer
         run: |
           python3 - <<'PY'
