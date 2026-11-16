@@ -19,6 +19,10 @@ BEGIN
       AND s.sequence=(v_auth->>'sealSequence')::bigint AND s.hash=v_auth->>'sealHash'
       AND s.event->>'manifestHash'=v_auth->>'manifestHash'
   ) THEN RAISE EXCEPTION 'NATIONAL_SCOPE_ORIGINAL_SEAL_REQUIRED'; END IF;
+  IF EXISTS (
+    SELECT 1 FROM orulo_audit.entries WHERE run_uuid=p_run
+      AND kind='NATIONAL_SCOPE_FINISHED' AND event->>'authorizationId'=v_auth->>'authorizationId'
+  ) THEN RAISE EXCEPTION 'NATIONAL_SCOPE_ALREADY_FINISHED'; END IF;
   SELECT sequence INTO STRICT v_sequence FROM orulo_audit.entries
     WHERE run_uuid=p_run AND event_uuid=(v_auth->>'authorizationId')::uuid;
   RETURN v_auth || jsonb_build_object('planSequence',v_sequence);
@@ -73,6 +77,9 @@ BEGIN
     if not exists(select 1 from orulo_audit.entries b where b.run_uuid=p_run and b.kind='BASELINE_V2:'||(auth->>'authorizationId')
       and b.sequence>(auth->>'planSequence')::bigint and b.event->'snapshot'->>'membershipStable'='true')
     then raise exception 'NATIONAL_GLOBAL_BASELINE_REQUIRED'; end if;
+    if exists(select 1 from orulo_audit.snapshot_sets where run_uuid=p_run
+      and kind='READBACK_V2:'||(auth->>'authorizationId'))
+    then raise exception 'NATIONAL_SCOPE_READBACK_ALREADY_STARTED'; end if;
    else auth:=orulo_audit.national_authorization(p_run); end if;
    if exists(select 1 from orulo_audit.entries i$new$,v_run)),
     ('orulo_audit.national_control(text,uuid,bigint,text,jsonb)',
@@ -115,6 +122,17 @@ BEGIN
   auth:=orulo_audit.national_scope_context(r,(intent.event->>'id')::uuid,intent.event->'scope');
  end if;
  select event->'target' into target from orulo_audit.entries where run_uuid=r and kind='NATIONAL_TARGET'$new$,v_run)),
+    ('orulo_audit.national_cas(uuid,uuid)',
+     $old$ if exists(select 1 from orulo_audit.entries where run_uuid=r and kind='CAS_RESULT'$old$,
+     format($new$ if r=%s and (
+  exists(select 1 from orulo_audit.snapshot_sets where run_uuid=r and kind='READBACK_V2:'||(auth->>'authorizationId'))
+  or not exists(select 1 from orulo_audit.snapshot_records where run_uuid=r
+    and kind='BASELINE_V2:'||(auth->>'authorizationId') and id=expected.id
+    and record->>4=md5((to_jsonb(current_row)||jsonb_build_object(
+       'created_at',current_row.created_at at time zone 'UTC',
+       'updated_at',current_row.updated_at at time zone 'UTC'))::text))
+ ) then raise exception 'NATIONAL_SCOPED_SNAPSHOT_ROW_MISMATCH'; end if;
+ if exists(select 1 from orulo_audit.entries where run_uuid=r and kind='CAS_RESULT'$new$,v_run)),
     ('orulo_audit.audited_cas_core(uuid,uuid)',
      $old$ if not exists(select 1 from orulo_audit.entries where run_uuid=p_run and kind='WRITE_AUTHORIZED') then raise exception 'AUDIT_OPERATIONAL_WRITE_BLOCKED'; end if;$old$,
      format($new$ if p_run<>%s and not exists(select 1 from orulo_audit.entries where run_uuid=p_run and kind='WRITE_AUTHORIZED') then raise exception 'AUDIT_OPERATIONAL_WRITE_BLOCKED'; end if;$new$,v_run)),

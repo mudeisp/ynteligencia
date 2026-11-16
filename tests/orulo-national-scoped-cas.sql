@@ -10,32 +10,28 @@ INSERT INTO public.properties VALUES (:'pilot',
   '{"building_id":"30701","building":{"floor_plans":[{"id":"1","images":[]}]}}',
   'novos','orulo:30701:49924','2026-11-01 UTC','2026-11-02 UTC',123450);
 
+-- The pilot has four plans. Compensate the synthetic occurrence count on
+-- another frozen target, keeping the deterministic national total unchanged.
+UPDATE orulo_audit.entries e SET event=jsonb_set(e.event,'{target,patches}',
+  (e.event->'target'->'patches')||'[0,0,0,0]'::jsonb)
+WHERE e.sequence=5684;
+UPDATE public.properties SET raw_data=jsonb_set(raw_data,'{building,floor_plans}',
+  (SELECT jsonb_agg(jsonb_build_object('id',i::text,'images','[]'::jsonb) ORDER BY i) FROM generate_series(1,4) i))
+WHERE id=:'pilot';
 WITH image AS (
  SELECT 'https://static.orulo.com.br/images/properties/large/1.jpg' AS url
-), patch AS (
- SELECT jsonb_build_object('id','1','validation','SOURCE_IMAGE_VALID','sourceChunk',0,
+), patches AS (
+ SELECT jsonb_agg(jsonb_build_object('id',i::text,'validation','SOURCE_IMAGE_VALID','sourceChunk',0,
    'sourceResultSha256',repeat('a',64),'images',jsonb_build_array(url),
    'checks',jsonb_build_array(jsonb_build_object('url',url,'evidenceSha256',repeat('b',64),
-     'evidence',jsonb_build_object('url',url,'status','VALIDATED_PREFIX','prefixSha256',repeat('c',64))))) AS body FROM image
+     'evidence',jsonb_build_object('url',url,'status','VALIDATED_PREFIX','prefixSha256',repeat('c',64)))))
+     ORDER BY i) AS body FROM image CROSS JOIN generate_series(1,4) i
 )
 UPDATE orulo_audit.entries e SET event=jsonb_build_object('target',
   (e.event->'target')||jsonb_build_object('buildingId','30701','baselineSha256',
-    encode(sha256(convert_to(to_jsonb(p)::text,'UTF8')),'hex'),
-    'patches',jsonb_build_array(patch.body)||(e.event->'target'->'patches'-0)))
-FROM public.properties p CROSS JOIN patch
+    encode(sha256(convert_to(to_jsonb(p)::text,'UTF8')),'hex'),'patches',patches.body))
+FROM public.properties p CROSS JOIN patches
 WHERE e.sequence=1 AND p.id=:'pilot';
-
--- Keep the frozen fixture's occurrence counts while exercising one real plan:
--- register the remaining seven synthetic plans and valid distinct patches.
-UPDATE public.properties SET raw_data=jsonb_set(raw_data,'{building,floor_plans}',
-  (SELECT jsonb_agg(jsonb_build_object('id',i::text,'images','[]'::jsonb) ORDER BY i) FROM generate_series(1,8) i))
-WHERE id=:'pilot';
-UPDATE orulo_audit.entries e SET event=jsonb_build_object('target',
-  (e.event->'target')||jsonb_build_object(
-    'baselineSha256',encode(sha256(convert_to(to_jsonb(p)::text,'UTF8')),'hex'),
-    'patches',(SELECT jsonb_agg((e.event->'target'->'patches'->0)||jsonb_build_object('id',i::text) ORDER BY i)
-      FROM generate_series(1,8) i)))
-FROM public.properties p WHERE e.sequence=1 AND p.id=:'pilot';
 
 ALTER FUNCTION orulo_audit.national_policy(jsonb) OWNER TO orulo_audit_owner;
 ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;

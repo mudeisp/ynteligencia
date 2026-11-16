@@ -46,7 +46,7 @@ BEGIN
           (e.event->>'githubRunId'=p_github_run OR
            ((e.event->>'expiresAt')::timestamptz>v_now AND NOT EXISTS (
              SELECT 1 FROM orulo_audit.entries r
-             WHERE r.run_uuid=p_run AND r.kind='NATIONAL_SCOPE_REVOKED'
+             WHERE r.run_uuid=p_run AND r.kind IN ('NATIONAL_SCOPE_REVOKED','NATIONAL_SCOPE_FINISHED')
                AND r.event->>'authorizationId'=e.event->>'authorizationId'
            ))))
         OR (e.kind='INTENT' AND NOT EXISTS (
@@ -58,9 +58,14 @@ BEGIN
   THEN RAISE EXCEPTION 'NATIONAL_SCOPE_APPROVAL_CONFLICT'; END IF;
 
   -- The first lease for the frozen operation is the exact single-property pilot.
-  IF NOT EXISTS (SELECT 1 FROM orulo_audit.entries e WHERE e.run_uuid=p_run
-       AND e.kind='CAS_RESULT' AND e.event->>'id'='000a4d50-a014-4270-bb89-26adb841f142'
-       AND e.event->'result'->>'status'='UPDATED')
+  IF NOT EXISTS (
+    SELECT 1 FROM orulo_audit.entries e
+    JOIN orulo_audit.entries i ON i.run_uuid=e.run_uuid AND i.operation_uuid=e.operation_uuid AND i.kind='INTENT'
+    JOIN orulo_audit.entries f ON f.run_uuid=i.run_uuid AND f.kind='NATIONAL_SCOPE_FINISHED'
+      AND f.event->>'authorizationId'=i.event->'scope'->>'authorizationId'
+    WHERE e.run_uuid=p_run AND e.kind='CAS_RESULT' AND e.event->>'id'='000a4d50-a014-4270-bb89-26adb841f142'
+      AND e.event->'result'->>'status'='UPDATED' AND f.event->'counts'='{"UPDATED":1}'
+  )
      AND (p_lot<>1 OR v_plan->'targetIds' IS DISTINCT FROM
        '["000a4d50-a014-4270-bb89-26adb841f142"]'::jsonb)
   THEN RAISE EXCEPTION 'NATIONAL_SCOPE_PILOT_REQUIRED'; END IF;
