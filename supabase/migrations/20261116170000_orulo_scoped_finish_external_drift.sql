@@ -26,8 +26,43 @@ DECLARE
   v_prior jsonb;
   v_external_count bigint;
   v_external_digest text;
+  v_authorization orulo_audit.entries%ROWTYPE;
 BEGIN
-  v_auth:=orulo_audit.national_scope_context(p_run,(p_event->>'id')::uuid,p_event->'scope');
+  IF p_event->>'adminReconcileExpired'='true' THEN
+    -- Expiry prohibits further writes, not a privileged read-only audit of
+    -- already committed CAS and sealed snapshots. This path does NOT renew
+    -- the lease, authorize CAS, or alter any property.
+    PERFORM orulo_audit.national_scope_admin();
+    PERFORM orulo_audit.lock_run(p_run);
+    SELECT * INTO v_authorization FROM orulo_audit.entries
+    WHERE run_uuid=p_run AND kind='NATIONAL_SCOPE_AUTHORIZED'
+      AND event_uuid=(p_event->'scope'->>'authorizationId')::uuid;
+    v_auth:=v_authorization.event;
+    IF v_auth IS NULL
+      OR (v_auth->>'expiresAt')::timestamptz>clock_timestamp()
+      OR v_auth->>'lot' IS DISTINCT FROM p_event->'scope'->>'lot'
+      OR v_auth->>'githubRunId' IS DISTINCT FROM p_event->'scope'->>'githubRunId'
+      OR v_auth->>'controlSha' IS DISTINCT FROM p_event->'scope'->>'controlSha'
+      OR v_auth->>'planSha256' IS DISTINCT FROM p_event->'scope'->>'planSha256'
+      OR NOT (v_auth->'targetIds' ? (p_event->>'id'))
+      OR EXISTS (
+        SELECT 1 FROM orulo_audit.entries e WHERE e.run_uuid=p_run
+        AND (e.kind IN ('FINISHED','ABORTED') OR
+          (e.kind='NATIONAL_SCOPE_REVOKED'
+            AND e.event->>'authorizationId'=v_auth->>'authorizationId'))
+      )
+      OR NOT EXISTS (
+        SELECT 1 FROM orulo_audit.entries seal
+        WHERE seal.run_uuid=p_run AND seal.kind='NATIONAL_MANIFEST_SEALED'
+        AND seal.sequence=(v_auth->>'sealSequence')::bigint
+        AND seal.hash=v_auth->>'sealHash'
+        AND seal.event->>'manifestHash'=v_auth->>'manifestHash'
+      )
+    THEN RAISE EXCEPTION 'NATIONAL_SCOPE_ADMIN_RECONCILIATION_DENIED'; END IF;
+    v_auth:=v_auth||jsonb_build_object('planSequence',v_authorization.sequence);
+  ELSE
+    v_auth:=orulo_audit.national_scope_context(p_run,(p_event->>'id')::uuid,p_event->'scope');
+  END IF;
   v_suffix:=':'||(v_auth->>'authorizationId');
   SELECT event INTO v_prior FROM orulo_audit.entries WHERE run_uuid=p_run
     AND kind='NATIONAL_SCOPE_FINISHED' AND event->>'authorizationId'=v_auth->>'authorizationId';
@@ -136,6 +171,7 @@ BEGIN
   RETURN orulo_audit.append(p_run,p_sequence,p_previous_hash,jsonb_build_object(
     'type','NATIONAL_SCOPE_FINISHED','eventUuid',p_event->>'eventUuid',
     'authorizationId',v_auth->>'authorizationId','lot',v_auth->'lot',
+    'administrativeReconciliation',coalesce(p_event->>'adminReconcileExpired','false')='true',
     'planSha256',v_auth->>'planSha256','manifestHash',v_auth->>'manifestHash',
     'counts',v_counts,
     'outsideScopeDrift',jsonb_build_object(
