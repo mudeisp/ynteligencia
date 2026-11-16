@@ -86,6 +86,41 @@ BEGIN
 END;
 $test$;
 
+-- The scoped route must reject an external commercial update that races after
+-- a durable INTENT and after the authorization's frozen baseline. This models
+-- another writer committing before the CAS locks the row. The guard must not
+-- issue a CAS_RESULT, alter price back, or partially populate any image.
+RESET ROLE;
+UPDATE public.properties SET price=123451
+WHERE id=:'pilot';
+SET ROLE service_role;
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM orulo_audit.national_cas(
+      current_setting('test.run')::uuid,current_setting('test.op')::uuid);
+    RAISE EXCEPTION 'SCOPED_EXTERNAL_UPDATE_WAS_OVERWRITTEN';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM NOT IN ('NATIONAL_FROZEN_TARGET_DIVERGENCE','NATIONAL_SCOPED_SNAPSHOT_ROW_MISMATCH')
+    THEN RAISE; END IF;
+  END;
+  IF EXISTS (SELECT 1 FROM orulo_audit.entries
+             WHERE operation_uuid=current_setting('test.op')::uuid AND kind='CAS_RESULT')
+    OR (SELECT price FROM public.properties
+        WHERE id=current_setting('test.id')::uuid) <> 123451
+    OR EXISTS (SELECT 1 FROM public.properties p
+      CROSS JOIN LATERAL jsonb_array_elements(p.raw_data#>'{building,floor_plans}') plan
+      WHERE p.id=current_setting('test.id')::uuid AND plan->'images'<>'[]'::jsonb)
+  THEN RAISE EXCEPTION 'SCOPED_EXTERNAL_UPDATE_NOT_ATOMIC'; END IF;
+  RAISE NOTICE 'SCOPED_EXTERNAL_UPDATE_REJECTED';
+END;
+$test$;
+RESET ROLE;
+-- Only the disposable test fixture restores its synthetic price; no production
+-- writer may repair a divergent frozen row this way.
+UPDATE public.properties SET price=123450 WHERE id=:'pilot';
+SET ROLE service_role;
+
 -- The attempted property update and its receipt must roll back together.
 BEGIN;
 DO $test$
@@ -132,6 +167,30 @@ BEGIN
   RAISE NOTICE 'SCOPED_CAS_UPDATED';
 END;
 $test$;
+-- Simulate a lost network response AFTER the previous CAS committed:
+-- the caller receives no result, but a fresh database lookup locates the
+-- durable CAS_RESULT and verifies the exact live hash. It must NOT retry CAS.
+DO $test$
+DECLARE
+  r uuid:=current_setting('test.run')::uuid;
+  id uuid:=current_setting('test.id')::uuid;
+  op uuid:=current_setting('test.op')::uuid;
+  seen jsonb;
+BEGIN
+  seen:=orulo_audit.national_control('national_row',r,0,'',
+    jsonb_build_object('id',id));
+  IF seen->'result'->>'operationId' IS DISTINCT FROM op::text
+     OR seen->'result'->'result'->>'status' IS DISTINCT FROM 'UPDATED'
+     OR seen->'result'->'result'->'receipt'->>'afterSha256' IS DISTINCT FROM seen->>'sha256'
+     OR (SELECT count(*) FROM orulo_audit.entries
+       WHERE run_uuid=r AND operation_uuid=op AND kind='CAS_RESULT')<>1
+     OR EXISTS (SELECT 1 FROM orulo_audit.entries
+       WHERE run_uuid=r AND operation_uuid=op AND kind='CLIENT_READBACK')
+  THEN RAISE EXCEPTION 'SCOPED_LOST_RESPONSE_UNRECOVERABLE'; END IF;
+  RAISE NOTICE 'SCOPED_LOST_RESPONSE_RECOVERED_FROM_LEDGER';
+END;
+$test$;
+
 DO $test$
 DECLARE
   r uuid:=current_setting('test.run')::uuid;
