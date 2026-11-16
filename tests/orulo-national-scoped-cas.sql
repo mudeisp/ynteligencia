@@ -10,6 +10,13 @@ INSERT INTO public.properties VALUES (:'pilot',
   '{"building_id":"30701","building":{"floor_plans":[{"id":"1","images":[]}]}}',
   'novos','orulo:30701:49924','2026-11-01 UTC','2026-11-02 UTC',123450);
 
+-- A distinct, unrelated property is present in BOTH global snapshots.
+-- Its legitimate application update must never be attributed to this pilot.
+INSERT INTO public.properties(id,raw_data,source,external_id,created_at,updated_at,price)
+SELECT 'ff000000-1111-4222-8333-444444444444'::uuid,raw_data,source,
+  'orulo:30702:49925',created_at,updated_at,230000
+FROM public.properties WHERE id=:'pilot';
+
 -- The pilot has four plans. Compensate the synthetic occurrence count on
 -- another frozen target, keeping the deterministic national total unchanged.
 UPDATE orulo_audit.entries e SET event=jsonb_set(e.event,'{target,patches}',
@@ -181,6 +188,13 @@ BEGIN
   RAISE NOTICE 'SCOPED_CAS_UPDATED';
 END;
 $test$;
+-- Outside-scope row drift between the sealed BASELINE and READBACK
+-- is recorded, not silently accepted as a Yincorp CAS write.
+RESET ROLE;
+UPDATE public.properties SET price=230001
+WHERE id='ff000000-1111-4222-8333-444444444444'::uuid;
+SET ROLE service_role;
+
 -- Simulate a lost network response AFTER the previous CAS committed:
 -- the caller receives no result, but a fresh database lookup locates the
 -- durable CAS_RESULT and verifies the exact live hash. It must NOT retry CAS.
@@ -235,6 +249,9 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM orulo_audit.entries WHERE run_uuid=r AND sequence=(ack->>'sequence')::bigint
       AND kind='NATIONAL_SCOPE_FINISHED' AND event->'counts'='{"UPDATED":1}'
+      AND event->'outsideScopeDrift'->>'count'='1'
+      AND event->'outsideScopeDrift'->>'disposition'='EXTERNAL_UNATTRIBUTED_REQUIRES_SEPARATE_REVIEW'
+      AND length(event->'outsideScopeDrift'->>'snapshotPairSha256')=64
   ) THEN RAISE EXCEPTION 'SCOPED_FINISH_INVALID'; END IF;
 END;
 $test$;
