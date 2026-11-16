@@ -1,0 +1,64 @@
+name: "Órulo Nacional — 10 lotes / readiness somente leitura"
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/orulo-national-ten-batch-readiness.yml"
+      - "scripts/orulo-national-ten-batch-readiness.py"
+permissions: {}
+concurrency:
+  group: orulo-national-readonly-ten-lots
+  cancel-in-progress: false
+jobs:
+  syntax:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check Python syntax without database or secrets
+        run: python3 -m py_compile scripts/orulo-national-ten-batch-readiness.py
+      - name: Assert script does not create a second authorization/writer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/orulo-national-ten-batch-readiness.py').read_text()
+          assert 'BEGIN TRANSACTION READ ONLY' in s
+          assert 'executionPermitted": False' in s
+          assert 'ORULO_READ_ONLY_DATABASE_URL' in s
+          assert "national_cas(" not in s
+          assert "national_authorize(" not in s
+          print('PASS: read-only ten-lot report')
+          PY
+  inspect-production:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch'
+          && github.ref == 'refs/heads/main'
+          && github.actor == 'mudeisp'
+          && github.actor_id == '323805541'
+          && github.triggering_actor == 'mudeisp'
+          && github.run_attempt == '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: orulo-v2-reconciliation
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Frozen seal and ten lots preflight (READ ONLY; no CAS)
+        env:
+          ORULO_READ_ONLY_DATABASE_URL: ${{ secrets.ORULO_V2_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$ORULO_READ_ONLY_DATABASE_URL"
+          python3 scripts/orulo-national-ten-batch-readiness.py
