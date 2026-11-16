@@ -39,6 +39,10 @@ CREATE POLICY fixture_read ON public.properties FOR SELECT TO orulo_audit_owner 
 CREATE POLICY fixture_scoped_update ON public.properties FOR UPDATE TO orulo_audit_owner
   USING (orulo_audit.national_policy(to_jsonb(properties)))
   WITH CHECK (orulo_audit.national_policy(to_jsonb(properties)));
+SET ROLE orulo_audit_owner;
+UPDATE orulo_audit.entries SET event=event||jsonb_build_object('columns',orulo_audit.columns_v2())
+WHERE sequence=6241 AND kind='NATIONAL_MANIFEST_SEALED';
+RESET ROLE;
 GRANT SELECT ON orulo_audit.entries TO service_role;
 GRANT SELECT ON public.properties TO service_role;
 CREATE POLICY fixture_service_read ON public.properties FOR SELECT TO service_role USING (true);
@@ -82,6 +86,34 @@ BEGIN
 END;
 $test$;
 
+-- The attempted property update and its receipt must roll back together.
+BEGIN;
+DO $test$
+DECLARE
+  result jsonb;
+BEGIN
+  result:=orulo_audit.national_cas(
+    current_setting('test.run')::uuid,current_setting('test.op')::uuid);
+  IF result->>'status' IS DISTINCT FROM 'UPDATED' THEN
+    RAISE EXCEPTION 'SCOPED_ROLLBACK_CAS_DID_NOT_UPDATE';
+  END IF;
+END;
+$test$;
+ROLLBACK;
+
+DO $test$
+BEGIN
+  IF EXISTS (SELECT 1 FROM orulo_audit.entries
+         WHERE operation_uuid=current_setting('test.op')::uuid AND kind='CAS_RESULT')
+    OR EXISTS (
+      SELECT 1 FROM public.properties p
+      CROSS JOIN LATERAL jsonb_array_elements(p.raw_data#>'{building,floor_plans}') plan
+      WHERE p.id=current_setting('test.id')::uuid AND plan->'images'<>'[]'::jsonb
+    )
+  THEN RAISE EXCEPTION 'SCOPED_CAS_ROLLBACK_NOT_ATOMIC'; END IF;
+END;
+$test$;
+
 -- Separate transactions prove the INTENT is durable before the real CAS.
 DO $test$
 DECLARE
@@ -92,6 +124,8 @@ BEGIN
   result:=orulo_audit.national_cas(r,op);
   IF result->>'status' IS DISTINCT FROM 'UPDATED' OR result->'receipt'->>'verified' IS DISTINCT FROM 'true'
     OR result->'row'->>'price' IS DISTINCT FROM '123450'
+    OR (SELECT count(*) FROM jsonb_array_elements(result->'row'->'raw_data'#>'{building,floor_plans}') p
+        WHERE p->'images'='["https://static.orulo.com.br/images/properties/large/1.jpg"]'::jsonb)<>4
     OR NOT EXISTS(SELECT 1 FROM orulo_audit.entries e WHERE e.run_uuid=r AND e.operation_uuid=op
       AND e.kind='CAS_RESULT' AND e.hash=encode(sha256(convert_to(e.canonical,'UTF8')),'hex'))
   THEN RAISE EXCEPTION 'SCOPED_CAS_RECEIPT_INVALID'; END IF;
