@@ -203,19 +203,28 @@ export async function executeNational({
   const pilotId = "000a4d50-a014-4270-bb89-26adb841f142";
   const scoped = action.startsWith("lot-") || action === "pilot-30701";
   if (run === frozenRun && !scoped) throw Error("NATIONAL_SCOPED_MODE_REQUIRED");
-  const representative = action === "pilot-30701" ? pilotId : env.ORULO_SCOPE_TARGET;
   let scope;
+  let representative;
   if (scoped) {
-    if (run !== frozenRun || !uuid.test(representative || "") ||
-        !uuid.test(env.ORULO_SCOPE_AUTHORIZATION_ID || "") || !hash.test(env.ORULO_SCOPE_PLAN_SHA || ""))
-      throw Error("NATIONAL_SCOPE_CONFIGURATION_INVALID");
-    scope = {id: representative, scope: {
-      authorizationId: env.ORULO_SCOPE_AUTHORIZATION_ID,
+    if (run !== frozenRun) throw Error("NATIONAL_SCOPE_CONFIGURATION_INVALID");
+    const selector = {
       lot: action === "pilot-30701" ? 1 : Number(action.slice(4)),
       githubRunId: env.GITHUB_RUN_ID,
       controlSha: env.GITHUB_WORKFLOW_SHA,
-      planSha256: env.ORULO_SCOPE_PLAN_SHA,
-    }};
+    };
+    await onPlan({scoped: true, runUuid: run, ...selector});
+    const deadline = now() + 600000;
+    do {
+      scope = await transport.control("national_scope_lookup", {p_run:run,p_event:selector});
+      if (scope) break;
+      if (now() >= deadline) throw Error("NATIONAL_SCOPE_APPROVAL_TIMEOUT");
+      await wait(5000);
+    } while (true);
+    representative = scope.id;
+    if (!uuid.test(representative || "") || !uuid.test(scope.scope?.authorizationId || "") ||
+        !hash.test(scope.scope?.planSha256 || "") ||
+        !Object.entries(selector).every(([key,value]) => scope.scope[key] === value))
+      throw Error("NATIONAL_SCOPE_CONFIGURATION_INVALID");
   }
   if (action === "continue") {
     const state = await transport.control("national_report", { p_run: run });
@@ -425,6 +434,13 @@ export async function nationalMain(command, env = process.env) {
             key: env.SUPABASE_SECRET_KEY,
           }),
           onPlan: (p) => {
+            if (p.scoped) {
+              console.log(JSON.stringify({
+                operationUuid:p.runUuid, githubRunId:p.githubRunId, controlSha:p.controlSha,
+                mode:env.ORULO_NATIONAL_ACTION, lot:p.lot, authorizationPending:true,
+              }));
+              return;
+            }
             const view =
               JSON.stringify({
                 operationUuid: p.runUuid,

@@ -80,6 +80,15 @@ BEGIN
      format($new$ if p_run=%1$s and p_action='national_scope_finish' then
   return orulo_audit.national_scope_finish(p_run,p_sequence,p_previous_hash,p_event);
  end if;
+ if p_run=%1$s and p_action='national_scope_lookup' then
+  select * into entry from orulo_audit.entries where run_uuid=p_run and kind='NATIONAL_SCOPE_AUTHORIZED'
+    and event->>'githubRunId'=p_event->>'githubRunId'
+    and event->>'controlSha'=p_event->>'controlSha' and event->>'lot'=p_event->>'lot';
+  if not found then return null; end if;
+  return jsonb_build_object('id',entry.event->'targetIds'->>0,'scope',jsonb_build_object(
+    'authorizationId',entry.event_uuid,'lot',entry.event->'lot','githubRunId',entry.event->>'githubRunId',
+    'controlSha',entry.event->>'controlSha','planSha256',entry.event->>'planSha256'));
+ end if;
  if p_run=%1$s and p_action='national_scope_open' then
   auth:=orulo_audit.national_scope_context(p_run,(p_event->>'id')::uuid,p_event->'scope');
   select * into entry from orulo_audit.entries where run_uuid=p_run order by sequence desc limit 1;

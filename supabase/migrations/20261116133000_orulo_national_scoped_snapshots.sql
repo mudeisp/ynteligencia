@@ -20,7 +20,7 @@ BEGIN
       AND pg_get_userbyid(proowner)='orulo_audit_owner'
       AND proacl::text='{orulo_audit_owner=X/orulo_audit_owner}'
       AND encode(sha256(convert_to(prosrc,'UTF8')),'hex')=
-        'bacb575f3fc131b77246d2e768fccb65da74aee14e4f3b69e4a9f4c129e632'
+        'bacb575f3fc131b77246d2e768fccb65da74aee14e4f3f5b69e4a9f4c129e632'
   ) THEN RAISE EXCEPTION 'NATIONAL_SCOPED_SNAPSHOT_CONTRACT_DRIFT'; END IF;
   v_definition:=pg_get_functiondef(v_oid);
   IF position(v_old IN v_definition)=0 THEN RAISE EXCEPTION 'NATIONAL_SCOPED_SNAPSHOT_ANCHOR_MISSING'; END IF;

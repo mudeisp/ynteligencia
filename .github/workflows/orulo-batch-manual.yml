@@ -11,11 +11,11 @@ on:
         type: choice
         options: [phase1-20, phase2-30-a, phase2-30-b, phase3-rest, pilot-5971-images, terrarium-51496-v7, national-v2-once]
       national_action:
-        description: Same frozen national operation. Continue requires explicit owner continuation grant.
+        description: Select a scoped national lot or reconcile. Legacy modes are for legacy runs.
         required: false
         type: choice
-        default: execute
-        options: [execute, continue, reconcile]
+        default: reconcile
+        options: [pilot-30701, lot-1, lot-2, lot-3, lot-4, lot-5, lot-6, lot-7, lot-8, lot-9, lot-10, reconcile, execute, continue]
       national_run_uuid:
         description: Frozen operation UUID for continuation or reconciliation
         required: false
