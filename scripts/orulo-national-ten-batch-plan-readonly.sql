@@ -1,7 +1,8 @@
 -- Órulo Nacional V2 — PLANO IMUTÁVEL DE 10 LOTES (READ ONLY).
 -- Nenhuma DML, migration, selo ou chamada CAS.
 -- Manifesto original: ef04d42882f69166f5892efc0163a774814f5f26a7defeee83aa681efa725288
--- Ledger congelado: 6240 / a178ff82fab2e666e2ac56e8c6f64483dca0256afcbadcaa36aa17868c3f5df6
+-- Ledger original congelado: 6240 / a178ff82fab2e666e2ac56e8c6f64483dca0256afcbadcaa36aa17868c3f5df6
+-- Selo de produção: 6241 / 80a16b13058c1dcf0e30fe1ef0ecceb5695f9bbd3ee56e740d1001d9514e968f
 -- Política: ordenar target.id ASC; atribuir o imóvel inteiro pelo ponto médio
 -- de suas ocorrências. 10 lotes, sem dividir um imóvel ou duplicar patches.
 -- Este plano NÃO deve ser aplicado contra inventory vivo sem o gate completo.
@@ -23,6 +24,7 @@ totals AS (
 head AS (
  SELECT MAX(sequence) AS sequence,
         MAX(hash) FILTER (WHERE sequence=6240) AS hash,
+        MAX(hash) FILTER (WHERE sequence=6241 AND kind='NATIONAL_MANIFEST_SEALED') AS seal_hash,
         COUNT(*) FILTER (WHERE kind='NATIONAL_MANIFEST_SEALED') AS seals,
         COUNT(*) FILTER (WHERE kind='WRITE_AUTHORIZED') AS authorizations,
         COUNT(*) FILTER (WHERE kind='CAS_RESULT') AS cas
@@ -33,9 +35,10 @@ verified AS (
  SELECT t.occurrences AS total_occurrences FROM totals t CROSS JOIN head h
  WHERE t.target_count=5684 AND t.unique_targets=5684
    AND t.occurrences=42893 AND t.minimum_occurrences>0
-   AND h.sequence=6240
+   AND h.sequence=6241
+   AND h.seal_hash='80a16b13058c1dcf0e30fe1ef0ecceb5695f9bbd3ee56e740d1001d9514e968f'
    AND h.hash='a178ff82fab2e666e2ac56e8c6f64483dca0256afcbadcaa36aa17868c3f5df6'
-   AND h.seals=0 AND h.authorizations=0 AND h.cas=0
+   AND h.seals=1 AND h.authorizations=0 AND h.cas=0
 ),
 ordered AS (
  SELECT f.*,SUM(f.occurrences) OVER (ORDER BY f.target_id ROWS UNBOUNDED PRECEDING)
