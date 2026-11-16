@@ -74,6 +74,9 @@ UPDATE orulo_audit.runs SET metadata=jsonb_build_object(
   'manifestHash',encode(sha256(convert_to(repeat('x',555),'UTF8')),'hex'))
 WHERE run_uuid='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid;
 
+-- Reset any negative-test checkpoints in this disposable database only.
+TRUNCATE orulo_audit.national_seal_page_proofs,orulo_audit.national_seal_page_progress;
+
 -- All 114 page proofs are produced by the real checkpoint RPC, not inserted
 -- manually; 113 pages of 50 plus one of 34 (5,684 target coverage).
 DO $pages$
@@ -94,6 +97,13 @@ BEGIN
  IF (SELECT next_offset FROM orulo_audit.national_seal_page_progress WHERE run_uuid=r)<>5684
  THEN RAISE EXCEPTION 'SYNTHETIC_CHECKPOINTS_INCOMPLETE'; END IF;
 END $pages$;
+
+-- Align the test-only verified page receipts with the synthetic document hash.
+-- There is no such mutation in the real workflow or production function.
+UPDATE orulo_audit.national_seal_page_progress
+ SET manifest_sha256=encode(sha256(convert_to(repeat('x',555),'UTF8')),'hex');
+UPDATE orulo_audit.national_seal_page_proofs
+ SET manifest_sha256=encode(sha256(convert_to(repeat('x',555),'UTF8')),'hex');
 
 -- Override only the test PostgreSQL function's SOURCE SHA and COLUMNS ABI SHA.
 -- The committed draft migration keeps its fixed production constants unchanged.
