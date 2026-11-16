@@ -51,6 +51,12 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f supabase/orulo_national_seal_checkpoints_staging.sql
       - name: Real transaction, replay, tampering and rollback tests
         run: psql -X -v ON_ERROR_STOP=1 -f scripts/orulo-national-checkpoint-pg.test.sql
+      - name: Install REVIEW-ONLY seal-only draft in disposable database
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/orulo_national_seal_only_draft.sql
+      - name: Fail-closed seal-only SQL test (no historic ledger write)
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/orulo-national-seal-only-pg.test.sql
+      - name: Remove seal-only draft without touching historical events
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/orulo_national_seal_only_draft_rollback.sql
       - name: Concurrent duplicate RPC replay test
         run: bash scripts/orulo-national-checkpoint-concurrency.sh
       - name: Test isolated rollback without touching frozen ledger
