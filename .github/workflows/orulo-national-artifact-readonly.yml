@@ -114,21 +114,42 @@ jobs:
           STAGE=ORIGINAL_MANIFEST_SHA256
           printf '%s  %s\n' "${PINS[2]}" "$WORK/manifest.json" | sha256sum -c --status
           echo '::notice::ORULO_ATTEST_PASS=ORIGINAL_MANIFEST_SHA256'
-          # New connections cannot write, even if Postgres credentials have DML rights.
-          export PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=120000'
+          # Pin READ ONLY on the transaction itself. Session startup defaults
+          # can be overridden by libpq URI options or connection poolers.
+          # Do not mistake an off session default for a failed read-only transaction.
+          export PGOPTIONS='-c statement_timeout=120000'
           STAGE=POSTGRES_READONLY_PREFLIGHT
-          test "$(psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 -c 'show transaction_read_only')" = 'on'
+          READONLY_PROOF="$(psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 \
+            -c 'BEGIN TRANSACTION READ ONLY; SHOW transaction_read_only; COMMIT;')"
+          if [[ "$READONLY_PROOF" != 'on' ]]; then
+            echo '::error::ORULO_ATTEST_READ_ONLY_TRANSACTION_NOT_CONFIRMED' >&2
+            exit 1
+          fi
           echo '::notice::ORULO_ATTEST_PASS=POSTGRES_READONLY_PREFLIGHT'
           STAGE=FROZEN_LEDGER_READ
-          psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 -c "
-            SELECT row_to_json(q)
-            FROM (
-              SELECT sequence, kind, event, hash
-              FROM orulo_audit.entries
-              WHERE run_uuid='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid
-              ORDER BY sequence
-            ) q
-          " > "$WORK/frozen-ledger.ndjson"
+          # Keep the verification marker and the SELECT in ONE explicit
+          # READ ONLY transaction; psql unaligned output preserves JSON escapes.
+          # Avoid COPY TO STDOUT, which doubles backslashes in text format.
+          psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 > "$WORK/frozen-ledger-with-proof.ndjson" <<'PSQL'
+          BEGIN TRANSACTION READ ONLY;
+          SELECT CASE WHEN current_setting('transaction_read_only') = 'on'
+                      THEN 'READ_ONLY_CONFIRMED' ELSE 'READ_ONLY_FAILED' END;
+          SELECT row_to_json(q)
+          FROM (
+            SELECT sequence, kind, event, hash
+            FROM orulo_audit.entries
+            WHERE run_uuid='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid
+            ORDER BY sequence
+          ) q;
+          COMMIT;
+          PSQL
+          IFS= read -r READONLY_MARKER < "$WORK/frozen-ledger-with-proof.ndjson"
+          if [[ "$READONLY_MARKER" != 'READ_ONLY_CONFIRMED' ]]; then
+            echo '::error::ORULO_ATTEST_LEDGER_TRANSACTION_NOT_READ_ONLY' >&2
+            exit 1
+          fi
+          tail -n +2 "$WORK/frozen-ledger-with-proof.ndjson" > "$WORK/frozen-ledger.ndjson"
+          echo '::notice::ORULO_ATTEST_PASS=FROZEN_LEDGER_READ'
           STAGE=ORIGINAL_ARTIFACT_VS_LEDGER
           node scripts/orulo-national-frozen-attestation.mjs \
             "$WORK/manifest.json" "$WORK/frozen-ledger.ndjson"
