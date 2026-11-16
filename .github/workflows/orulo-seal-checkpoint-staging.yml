@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'supabase/orulo_national_seal_checkpoints_staging.sql'
+      - 'supabase/orulo_national_seal_only_draft.sql'
+      - 'supabase/orulo_national_seal_only_draft_rollback.sql'
       - 'scripts/orulo-national-*'
       - 'scripts/fixtures/orulo-national-checkpoint-pg-fixture.sql'
       - '.github/workflows/orulo-seal-checkpoint-staging.yml'
