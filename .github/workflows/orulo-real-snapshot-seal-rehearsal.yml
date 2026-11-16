@@ -1,0 +1,201 @@
+name: Órulo — ensaio selo nacional em cópia real isolada (sem produção writes)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/orulo-real-snapshot-seal-rehearsal.yml'
+      - 'scripts/orulo-real-snapshot-fixture.py'
+      - 'scripts/orulo-real-snapshot-seal-rehearsal.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-rehearsal-code:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate Python syntax and guardrails
+        run: |
+          python3 -m py_compile scripts/orulo-real-snapshot-fixture.py
+          grep -F "REAL_SNAPSHOT_DISPOSABLE_PG_ONLY" scripts/orulo-real-snapshot-seal-rehearsal.sql
+          grep -F "REAL_SNAPSHOT_ATOMIC_ROLLBACK_FAILED" scripts/orulo-real-snapshot-seal-rehearsal.sql
+
+  rehearse-frozen-original:
+    # A manually authorized read-only source export + local ephemeral PostgreSQL.
+    # Never dispatch on PRs and never use Supabase credentials for local writes.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/main' &&
+          github.repository == 'mudeisp/ynteligencia' &&
+          github.actor == 'mudeisp' && github.actor_id == '323805541' &&
+          github.triggering_actor == 'mudeisp' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: orulo-v2-reconciliation
+    concurrency:
+      group: orulo-national-real-snapshot-seal-rehearsal
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd 'pg_isready -U postgres'
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Fetch immutable reviewed draft without merging it
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ffef6bf59066b78cf1ed9d107e95af21bbe8671b
+          path: draft
+          persist-credentials: false
+      - name: Ensure draft is pinned and cannot authorize CAS
+        shell: bash
+        run: |
+          test "$(git -C draft rev-parse HEAD)" = 'ffef6bf59066b78cf1ed9d107e95af21bbe8671b'
+          grep -F "SEAL_ONLY_DIRECT_DATABASE_OWNER_REQUIRED" draft/supabase/orulo_national_seal_only_draft.sql
+          test -f draft/supabase/orulo_national_seal_checkpoints_staging.sql
+          ! grep -E '^[[:space:]]*GRANT[[:space:]]+EXECUTE.*national_seal_only' draft/supabase/orulo_national_seal_only_draft.sql
+      - name: Install local PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Verify original encrypted artifact and export frozen evidence read-only
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIVATE_KEY: ${{ secrets.ORULO_V2_PRIVATE_KEY_PEM }}
+          READ_ONLY_PG_URL: ${{ secrets.ORULO_V2_DB_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          STAGE=INPUT
+          trap 'rc=$?; echo "::error::REAL_REHEARSAL_STAGE=${STAGE} EXIT_CODE=${rc}" >&2' ERR
+          test -n "$PRIVATE_KEY" && test -n "$READ_ONLY_PG_URL"
+          WORK="$(mktemp -d)"
+          trap 'rm -rf -- "$WORK"' EXIT
+          printf '%s\n' "$PRIVATE_KEY" > "$WORK/key.pem"
+          unset PRIVATE_KEY
+          python3 - <<'PY' > "$WORK/pins"
+          import json
+          from pathlib import Path
+          x=json.loads(Path('control/docs/orulo-national-v2-manifest-receipt.json').read_text())
+          assert x['artifactId']==13818623539
+          assert x['manifestSha256']=='ef04d42882f69166f5892efc0163a774814f5f26a7defeee83aa681efa725288'
+          print(x['artifactId'])
+          print(x['artifactSha256'])
+          print(x['manifestSha256'])
+          PY
+          mapfile -t PINS < "$WORK/pins"
+          STAGE=ORIGINAL_ENCRYPTED_ARTIFACT
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/mudeisp/ynteligencia/actions/artifacts/${PINS[0]}/zip" \
+            -o "$WORK/manifest.zip"
+          printf '%s  %s\n' "${PINS[1]}" "$WORK/manifest.zip" | sha256sum -c --status
+          python3 - "$WORK" <<'PY'
+          import zipfile,sys,hashlib
+          from pathlib import Path
+          w=Path(sys.argv[1])
+          with zipfile.ZipFile(w/'manifest.zip') as z:
+              assert set(z.namelist())=={
+                  'national-manifest.cms','national-manifest.cms.sha256','national-summary.json'}
+              cms=z.read('national-manifest.cms')
+              assert hashlib.sha256(cms).hexdigest()==z.read('national-manifest.cms.sha256').decode().split()[0]
+              (w/'manifest.cms').write_bytes(cms)
+          PY
+          openssl cms -decrypt -binary -inform DER -in "$WORK/manifest.cms" \
+            -inkey "$WORK/key.pem" -out "$WORK/manifest.json"
+          printf '%s  %s\n' "${PINS[2]}" "$WORK/manifest.json" | sha256sum -c --status
+          echo '::notice::REAL_REHEARSAL_PASS=ORIGINAL_MANIFEST_SHA256'
+
+          STAGE=READONLY_SOURCE_SNAPSHOT
+          # Critical: entire read of runs, function definitions and entries is
+          # enclosed in ONE REPEATABLE READ / READ ONLY transaction.
+          psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 > "$WORK/snapshot.ndjson" <<'SQL'
+          BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
+          SELECT json_build_object('kind','run','row',
+            json_build_object('run_uuid',r.run_uuid,'github_run_id',r.github_run_id,
+                              'metadata',r.metadata))
+          FROM orulo_audit.runs r
+          WHERE r.run_uuid='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid;
+          SELECT json_build_object('kind','definition','row',
+            json_build_object('name',p.proname,'definition',pg_get_functiondef(p.oid)))
+          FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+          WHERE n.nspname='orulo_audit'
+            AND p.proname IN ('append','columns_v2','lock_run','require_service')
+          ORDER BY p.proname;
+          SELECT json_build_object('kind','entry','row',
+            json_build_object(
+              'run_uuid',e.run_uuid,'sequence',e.sequence,
+              'event_uuid',e.event_uuid,'operation_uuid',e.operation_uuid,
+              'kind',e.kind,'event',e.event,'previous_hash',e.previous_hash,
+              'canonical',e.canonical,'hash',e.hash))
+          FROM orulo_audit.entries e
+          WHERE e.run_uuid='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid
+          ORDER BY e.sequence;
+          COMMIT;
+          SQL
+
+          STAGE=VERIFY_FULL_SOURCE_CHAIN
+          python3 - "$WORK" <<'PY'
+          import json,sys
+          from pathlib import Path
+          w=Path(sys.argv[1])
+          with (w/'snapshot.ndjson').open() as source, (w/'ledger-only.ndjson').open('w') as out:
+              for line in source:
+                  item=json.loads(line)
+                  if item['kind']=='entry':
+                      out.write(json.dumps(item['row'],ensure_ascii=False)+'\n')
+          PY
+          node control/scripts/orulo-national-frozen-attestation.mjs \
+            "$WORK/manifest.json" "$WORK/ledger-only.ndjson"
+          python3 control/scripts/orulo-real-snapshot-fixture.py \
+            "$WORK/snapshot.ndjson" "$WORK/manifest.json" "$WORK"
+          echo '::notice::REAL_REHEARSAL_PASS=FROZEN_LEDGER_AND_PRODUCTION_ABI'
+
+          STAGE=EPHEMERAL_POSTGRES_RESTORE
+          psql -X -v ON_ERROR_STOP=1 -f "$WORK/setup.sql" > "$WORK/setup.log"
+          psql -X -v ON_ERROR_STOP=1 -f "$WORK/historical-definitions.sql" > "$WORK/defs.log"
+          psql -X -v ON_ERROR_STOP=1 -f "$WORK/load-ledger.sql" > "$WORK/load.log"
+          # Verify original definitions and head are intact in disposable DB.
+          test "$(psql -X -qAt -v ON_ERROR_STOP=1 -c \
+            "SELECT count(*) FROM orulo_audit.entries;")" = '6240'
+          test "$(psql -X -qAt -v ON_ERROR_STOP=1 -c \
+            "SELECT encode(sha256(convert_to(pg_get_functiondef('orulo_audit.columns_v2()'::regprocedure),'UTF8')),'hex');")" \
+            = '3aa4d73c7a7100a523c23507c836299bd90dee4dacfcf772f6084469b713cea3'
+          echo '::notice::REAL_REHEARSAL_PASS=EPHEMERAL_LEDGER_RESTORED'
+
+          STAGE=INSTALL_REVIEW_DRAFT_LOCALLY
+          psql -X -v ON_ERROR_STOP=1 -f draft/supabase/orulo_national_seal_checkpoints_staging.sql \
+            > "$WORK/checkpoint-install.log"
+          psql -X -v ON_ERROR_STOP=1 -f draft/supabase/orulo_national_seal_only_draft.sql \
+            > "$WORK/seal-install.log"
+
+          STAGE=REAL_SNAPSHOT_114_PAGES_AND_SEAL
+          psql -X -v ON_ERROR_STOP=1 -f control/scripts/orulo-real-snapshot-seal-rehearsal.sql \
+            > "$WORK/rehearsal.log"
+          # The ONLY seal produced is in disposable PostgreSQL. No CAS.
+          echo '::notice::REAL_REHEARSAL_PASS=ONE_LOCAL_SEAL_6241_ROLLBACK_REPLAY_NO_CAS'
+          echo 'PASS: original 6240 production ledger replayed as 6241 seal in disposable PostgreSQL; source READ ONLY.' >> "$GITHUB_STEP_SUMMARY"
