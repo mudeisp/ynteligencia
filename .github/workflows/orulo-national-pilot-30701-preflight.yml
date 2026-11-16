@@ -1,0 +1,72 @@
+name: "Órulo — piloto 30701 / prova de escopo (sem escrita)"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/orulo-national-pilot-30701-preflight.yml"
+      - "scripts/orulo-national-pilot-30701-preflight.sql"
+      - "docs/orulo-national-first-cas-pilot-30701.md"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  contract:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Confirm pilot SQL is read-only and pinned to immutable manifest
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('scripts/orulo-national-pilot-30701-preflight.sql').read_text()
+          assert 'BEGIN TRANSACTION READ ONLY' in s
+          assert "SET LOCAL statement_timeout='12s'" in s
+          assert "LIMIT 1" in s
+          for value in ('1c8ec62a-9c38-41ac-8091-f1ceef98ca91',
+            '80a16b13058c1dcf0e30fe1ef0ecceb5695f9bbd3ee56e740d1001d9514e968f',
+            '000a4d50-a014-4270-bb89-26adb841f142',
+            'ca042e5572ce2421400b4f95e572b4802bf1966f837395103776521963e7e4d6'):
+              assert value in s, 'missing frozen constraint'
+          for verb in (r'\bINSERT\s+INTO\b',r'\bUPDATE\s+public\b',
+              r'\bDELETE\s+FROM\b',r'\bALTER\s+(TABLE|FUNCTION)\b',
+              r'\bTRUNCATE\b',r'\bDROP\s+(TABLE|FUNCTION)\b',
+              r'\bnational_cas\s*\(',r'\bnational_authorize\s*\('):
+              assert not re.search(verb,s,re.I),f'forbidden write: {verb}'
+          print('PASS: fixed pilot, read-only and immutable baseline')
+          PY
+  live-pilot-preflight:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch'
+          && github.ref == 'refs/heads/main'
+          && github.actor == 'mudeisp'
+          && github.actor_id == '323805541'
+          && github.triggering_actor == 'mudeisp'
+          && github.run_attempt == '1' }}
+    environment: orulo-v2-reconciliation
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Verify fixed four-image pilot (READ ONLY)
+        env:
+          PILOT_RO_DB_URL: ${{ secrets.ORULO_V2_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$PILOT_RO_DB_URL"
+          output="$(psql "$PILOT_RO_DB_URL" -X -qAt -F ',' -v ON_ERROR_STOP=1             -f scripts/orulo-national-pilot-30701-preflight.sql)"
+          test "$output" = "t,6241,4,4,0,0,0"
+          printf '%s\n' 'PASS: four images eligible, seal 6241 unchanged, no CAS/writes.'
+          printf '## Piloto 30701 — pré-CAS\n\n%s\n'             'Escopo 1 imóvel / 4 imagens: prova read-only aprovada. Nenhuma escrita ou autorização.' >> "$GITHUB_STEP_SUMMARY"
