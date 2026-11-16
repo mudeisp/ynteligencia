@@ -1,0 +1,40 @@
+name: Orulo five-building source probe (read only)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/orulo-v5-five-source-probe.mjs'
+      - 'scripts/orulo-v5-orulo-source.mjs'
+      - 'scripts/orulo-v5-orulo-source.test.mjs'
+      - '.github/workflows/orulo-five-source-probe.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check scripts/orulo-v5-five-source-probe.mjs && node --test scripts/orulo-v5-orulo-source.test.mjs
+  probe:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'mudeisp' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify real source images, no database writes
+        env:
+          ORULO_CLIENT_ID: ${{ secrets.ORULO_CLIENT_ID }}
+          ORULO_CLIENT_SECRET: ${{ secrets.ORULO_CLIENT_SECRET }}
+        run: node scripts/orulo-v5-five-source-probe.mjs
