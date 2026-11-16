@@ -125,13 +125,15 @@ SET ROLE service_role;
 -- commits while scoped CAS is waiting for its property row lock.
 -- The shell test must leave an explicit database marker; a shell failure
 -- alone is not treated as a passing psql meta-command.
-\\! bash tests/orulo-national-scoped-concurrency.sh
+\! bash tests/orulo-national-scoped-concurrency.sh
+RESET ROLE;
 DO $test$
 BEGIN
  IF (SELECT count(*) FROM orulo_audit.scoped_race_fixture_passed WHERE ok)=0
  THEN RAISE EXCEPTION 'SCOPED_TWO_SESSION_RACE_NOT_VERIFIED'; END IF;
 END;
 $test$;
+SET ROLE service_role;
 
 -- The attempted property update and its receipt must roll back together.
 BEGIN;
