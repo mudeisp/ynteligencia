@@ -55,14 +55,14 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f supabase/orulo_national_seal_only_draft.sql
       - name: Fail-closed seal-only SQL test (no historic ledger write)
         run: psql -X -v ON_ERROR_STOP=1 -f scripts/orulo-national-seal-only-pg.test.sql
-      - name: Positive full-size synthetic seal, atomic rollback and idempotent replay
-        run: psql -X -v ON_ERROR_STOP=1 -f scripts/orulo-national-seal-only-positive-pg.test.sql
-      - name: Concurrent replay of the one and only synthetic seal
-        run: bash scripts/orulo-national-seal-only-concurrency.sh
       - name: Remove seal-only draft without touching historical events
         run: psql -X -v ON_ERROR_STOP=1 -f supabase/orulo_national_seal_only_draft_rollback.sql
       - name: Concurrent duplicate RPC replay test
         run: bash scripts/orulo-national-checkpoint-concurrency.sh
+      - name: Positive full-size synthetic seal, atomic rollback and idempotent replay
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/orulo-national-seal-only-positive-pg.test.sql
+      - name: Concurrent replay of the one and only synthetic seal
+        run: bash scripts/orulo-national-seal-only-concurrency.sh
       - name: Test isolated rollback without touching frozen ledger
         run: |
           psql -X -v ON_ERROR_STOP=1 -f supabase/orulo_national_seal_checkpoints_staging_rollback.sql
