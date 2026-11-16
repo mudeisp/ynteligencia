@@ -9,6 +9,7 @@ on:
       - 'supabase/migrations/*orulo_national_scope_cas_guard.sql'
       - 'test-support/orulo-cas/*'
       - 'supabase/migrations/*orulo_national_scoped_snapshots.sql'
+      - 'supabase/migrations/*orulo_scoped_finish_external_drift.sql'
       - 'tests/orulo-national-scope-guard.sql'
       - 'tests/orulo-national-scoped-cas.sql'
       - 'tests/orulo-national-scope-lease.sql'
@@ -42,5 +43,6 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f "$RUNNER_TEMP/orulo-guard-fixture.sql"
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f supabase/migrations/20261116130000_orulo_national_scope_cas_guard.sql
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f supabase/migrations/20261116133000_orulo_national_scoped_snapshots.sql
+          psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f supabase/migrations/20261116170000_orulo_scoped_finish_external_drift.sql
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f tests/orulo-national-scope-guard.sql
           psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d postgres -f tests/orulo-national-scoped-cas.sql
