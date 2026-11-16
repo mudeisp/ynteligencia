@@ -166,3 +166,41 @@ BEGIN
 END;
 $test$;
 RESET ROLE;
+
+-- A completed authorization must not accept further mutations. Existing CAS
+-- evidence stays available and a separate lot can open its own capture.
+SET ROLE service_role;
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM orulo_audit.national_cas(current_setting('test.run')::uuid,current_setting('test.op')::uuid);
+    RAISE EXCEPTION 'SCOPED_REPLAY_UNEXPECTEDLY_SUCCEEDED';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'NATIONAL_SCOPE_ALREADY_FINISHED' THEN RAISE; END IF;
+  END;
+  IF (SELECT count(*) FROM orulo_audit.entries
+      WHERE operation_uuid=current_setting('test.op')::uuid AND kind='CAS_RESULT')<>1
+  THEN RAISE EXCEPTION 'SCOPED_REPLAY_DUPLICATED_RECEIPT'; END IF;
+END;
+$test$;
+RESET ROLE;
+
+SELECT orulo_audit.national_scoped_plan(:'run',2,NULL,'9002',repeat('a',40)) AS next_plan \gset
+SELECT hash AS next_head FROM orulo_audit.entries ORDER BY sequence DESC LIMIT 1 \gset
+SELECT orulo_audit.authorize_national_scope(:'run',2,NULL,'9002',repeat('a',40),
+  :'next_plan'::jsonb->>'planSha256',:'next_head',10)->>'eventUuid' AS next_lease \gset
+SELECT jsonb_build_object('authorizationId',:'next_lease','lot',2,'githubRunId','9002',
+  'controlSha',repeat('a',40),'planSha256',:'next_plan'::jsonb->>'planSha256') AS next_scope \gset
+SELECT :'next_plan'::jsonb->'targetIds'->>0 AS next_target \gset
+SELECT sequence+1 AS next_sequence,hash AS next_hash FROM orulo_audit.entries ORDER BY sequence DESC LIMIT 1 \gset
+SET ROLE service_role;
+SELECT orulo_audit.national_control('snapshot_begin',:'run',:'next_sequence',:'next_hash',
+  jsonb_build_object('kind','BASELINE_V2','scope',:'next_scope'::jsonb,'id',:'next_target','eventUuid',gen_random_uuid()));
+RESET ROLE;
+DO $test$
+BEGIN
+  IF (SELECT count(*) FROM orulo_audit.snapshot_sets WHERE kind LIKE 'BASELINE_V2:%')<>2
+  THEN RAISE EXCEPTION 'SCOPED_BASELINE_REUSED_ACROSS_LEASES'; END IF;
+  RAISE NOTICE 'SCOPED_NEXT_LOT_ISOLATED';
+END;
+$test$;
