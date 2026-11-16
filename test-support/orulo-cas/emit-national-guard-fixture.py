@@ -3,6 +3,7 @@ import re
 
 migration = Path("supabase/migrations/20261111004340_orulo_national_v2_once.sql").read_text(encoding="utf-8")
 names = ("national_control", "national_authorize", "national_cas", "national_replace")
+print("CREATE TABLE public.properties(id uuid PRIMARY KEY, raw_data jsonb, source text, external_id text);")
 print("SET check_function_bodies = false;")
 for name in names:
     command = re.search(rf"create function orulo_audit\.{name}\(.*?\nend\$\$;", migration, re.DOTALL)

@@ -1,5 +1,4 @@
 \set ON_ERROR_STOP on
-CREATE TABLE public.properties(id uuid PRIMARY KEY, raw_data jsonb, source text, external_id text);
 ALTER TABLE orulo_audit.runs ADD COLUMN metadata jsonb;
 ALTER TABLE orulo_audit.runs ADD COLUMN github_run_id text;
 UPDATE orulo_audit.runs SET metadata='{"mode":"national-v2-once"}';
