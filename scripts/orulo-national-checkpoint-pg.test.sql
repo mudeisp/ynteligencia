@@ -51,9 +51,12 @@ BEGIN
   ) s;
   BEGIN
     result := orulo_audit.national_seal_checkpoint_page(run,manifest,100,p);
+    IF result->>'status' <> 'VERIFIED' THEN
+      RAISE EXCEPTION 'CHECKPOINT_FAILED_BEFORE_INJECTION';
+    END IF;
     RAISE EXCEPTION 'INJECTED_CLIENT_ABORT';
   EXCEPTION WHEN raise_exception THEN
-    NULL;
+    IF SQLERRM <> 'INJECTED_CLIENT_ABORT' THEN RAISE; END IF;
   END;
   SELECT next_offset INTO cursor_offset FROM orulo_audit.national_seal_page_progress WHERE run_uuid=run;
   IF cursor_offset<>100 THEN RAISE EXCEPTION 'CRASH_ROLLBACK_DID_NOT_PRESERVE_CURSOR'; END IF;
