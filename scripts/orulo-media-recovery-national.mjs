@@ -29,7 +29,7 @@ export function validateNationalDispatch(env) {
   )
     throw Error("NATIONAL_REVIEWED_CODE_AND_MANIFEST_REQUIRED");
   if (
-    !["execute", "continue", "reconcile"].includes(
+    !/^(execute|continue|reconcile|pilot-30701|lot-(10|[1-9]))$/.test(
       env.ORULO_NATIONAL_ACTION || "execute",
     )
   )
@@ -199,6 +199,24 @@ export async function executeNational({
       operationUuid: run,
       result: await transport.control("national_report", { p_run: run }),
     };
+  const frozenRun = "1c8ec62a-9c38-41ac-8091-f1ceef98ca91";
+  const pilotId = "000a4d50-a014-4270-bb89-26adb841f142";
+  const scoped = action.startsWith("lot-") || action === "pilot-30701";
+  if (run === frozenRun && !scoped) throw Error("NATIONAL_SCOPED_MODE_REQUIRED");
+  const representative = action === "pilot-30701" ? pilotId : env.ORULO_SCOPE_TARGET;
+  let scope;
+  if (scoped) {
+    if (run !== frozenRun || !uuid.test(representative || "") ||
+        !uuid.test(env.ORULO_SCOPE_AUTHORIZATION_ID || "") || !hash.test(env.ORULO_SCOPE_PLAN_SHA || ""))
+      throw Error("NATIONAL_SCOPE_CONFIGURATION_INVALID");
+    scope = {id: representative, scope: {
+      authorizationId: env.ORULO_SCOPE_AUTHORIZATION_ID,
+      lot: action === "pilot-30701" ? 1 : Number(action.slice(4)),
+      githubRunId: env.GITHUB_RUN_ID,
+      controlSha: env.GITHUB_WORKFLOW_SHA,
+      planSha256: env.ORULO_SCOPE_PLAN_SHA,
+    }};
+  }
   if (action === "continue") {
     const state = await transport.control("national_report", { p_run: run });
     await onPlan({
@@ -229,6 +247,7 @@ export async function executeNational({
     runUuid: run,
     manifestHash: env.ORULO_NATIONAL_MANIFEST_SHA,
     resume: action === "continue",
+    scope,
   });
   if (action === "execute") {
     const text = bytes.toString("utf8");
@@ -267,10 +286,20 @@ export async function executeNational({
     budget = 14400 * 1000,
     checked = new Map();
   let confirmed = 0;
-  const executionOrder = [...manifest.targets].sort(
+  const selected = scoped ? new Set(journal.scopedTargets()) : null;
+  if (scoped && (selected.size !== journal.scopedTargets().length ||
+      !selected.has(representative) || (action === "pilot-30701" &&
+        (selected.size !== 1 || !selected.has(pilotId)))))
+    throw Error("NATIONAL_SCOPE_TARGETS_DIVERGENCE");
+  const executionOrder = manifest.targets.filter(t => !selected || selected.has(t.id)).sort(
     (a, b) =>
       a.buildingId.localeCompare(b.buildingId) || a.id.localeCompare(b.id),
   );
+  if (scoped && executionOrder.length !== selected.size) throw Error("NATIONAL_SCOPE_TARGETS_DIVERGENCE");
+  if (action === "pilot-30701" && (executionOrder[0]?.buildingId !== "30701" ||
+      executionOrder[0]?.patches.length !== 4 ||
+      executionOrder[0]?.baselineSha256 !== "ca042e5572ce2421400b4f95e572b4802bf1966f837395103776521963e7e4d6"))
+    throw Error("NATIONAL_PILOT_FROZEN_TARGET_MISMATCH");
   await journal.nationalSnapshot("BASELINE_V2");
   for (const target of executionOrder) {
     if (now() - started > budget) {
@@ -304,12 +333,17 @@ export async function executeNational({
           type: "CLIENT_READBACK",
           stage: "NATIONAL_ROW_VERIFIED",
           id: target.id,
+          operationId: pre.result.operationId,
           sha256: pre.sha256,
         });
       continue;
     }
-    if (pre.sha256 !== target.baselineSha256)
+    if (pre.sha256 !== target.baselineSha256) {
+      if (scoped && action !== "pilot-30701") continue; // Classified from locked evidence at scope finish.
       throw Error("NATIONAL_FROZEN_BASELINE_CHANGED");
+    }
+    if (action === "pilot-30701" && pre.row?.external_id !== "orulo:30701:49924")
+      throw Error("NATIONAL_PILOT_FROZEN_TARGET_MISMATCH");
     const desired = nationalPlans(pre.row, target),
       checks = target.patches
         .flatMap((p) => p.checks)
@@ -325,6 +359,7 @@ export async function executeNational({
       operationId,
       expected: pre.row,
       desiredPlans: desired,
+      ...(scoped ? {scope:scope.scope} : {}),
     });
     const result = await journal.apply(operationId);
     if (result.status !== "UPDATED" || result.receipt?.verified !== true)
@@ -356,11 +391,12 @@ export async function executeNational({
     });
   }
   await journal.nationalSnapshot("READBACK_V2");
-  const finish = await journal.checkpoint("national_finish", {});
+  const finish = await journal.checkpoint(scoped ? "national_scope_finish" : "national_finish", scope || {});
   return {
     operationUuid: run,
     status: finish.entry.event.type,
-    rowsWritten: finish.entry.event.rowsWritten,
+    rowsWritten: finish.entry.event.rowsWritten ?? finish.entry.event.counts?.UPDATED ?? 0,
+    counts: finish.entry.event.counts,
     manifestHash: env.ORULO_NATIONAL_MANIFEST_SHA,
     head: finish.ack,
   };

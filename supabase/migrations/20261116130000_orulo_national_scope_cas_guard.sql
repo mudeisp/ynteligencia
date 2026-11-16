@@ -77,7 +77,16 @@ BEGIN
    if exists(select 1 from orulo_audit.entries i$new$,v_run)),
     ('orulo_audit.national_control(text,uuid,bigint,text,jsonb)',
      $old$ if p_action in ('read','recover','snapshot_begin','snapshot_page','snapshot_seal') then$old$,
-     format($new$ if p_run=%s and p_action in ('snapshot_begin','snapshot_page','snapshot_seal','national_scope_snapshot_state') then
+     format($new$ if p_run=%1$s and p_action='national_scope_finish' then
+  return orulo_audit.national_scope_finish(p_run,p_sequence,p_previous_hash,p_event);
+ end if;
+ if p_run=%1$s and p_action='national_scope_open' then
+  auth:=orulo_audit.national_scope_context(p_run,(p_event->>'id')::uuid,p_event->'scope');
+  select * into entry from orulo_audit.entries where run_uuid=p_run order by sequence desc limit 1;
+  return jsonb_build_object('scope',auth,'head',jsonb_build_object('runUuid',p_run,
+    'sequence',entry.sequence,'hash',entry.hash,'eventUuid',entry.event_uuid));
+ end if;
+ if p_run=%1$s and p_action in ('snapshot_begin','snapshot_page','snapshot_seal','national_scope_snapshot_state') then
   return orulo_audit.national_scope_snapshot(
     case when p_action='national_scope_snapshot_state' then 'state' else p_action end,
     p_run,p_sequence,p_previous_hash,p_event);

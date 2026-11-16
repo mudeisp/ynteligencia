@@ -26,3 +26,5 @@ start = paged.index("create table orulo_audit.snapshot_sets")
 end = paged.index("create trigger immutable_rows", start)
 print(paged[start:end])
 print("SET check_function_bodies = true;")
+
+print("SELECT pg_get_userbyid(proowner), prosecdef, proacl, encode(sha256(convert_to(prosrc,'UTF8')),'hex') FROM pg_proc WHERE oid='orulo_audit.control_paged(text,uuid,bigint,text,jsonb)'::regprocedure;")

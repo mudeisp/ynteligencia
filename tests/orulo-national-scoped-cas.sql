@@ -102,4 +102,37 @@ BEGIN
   RAISE NOTICE 'SCOPED_CAS_UPDATED';
 END;
 $test$;
+DO $test$
+DECLARE
+  r uuid:=current_setting('test.run')::uuid;
+  id uuid:=current_setting('test.id')::uuid;
+  op uuid:=current_setting('test.op')::uuid;
+  context jsonb:=current_setting('test.scope')::jsonb;
+  ack jsonb;
+  seq bigint;
+  head text;
+  action text;
+  sha text;
+BEGIN
+  SELECT sequence,hash INTO seq,head FROM orulo_audit.entries WHERE run_uuid=r ORDER BY sequence DESC LIMIT 1;
+  SELECT event->'result'->'receipt'->>'afterSha256' INTO sha FROM orulo_audit.entries
+    WHERE run_uuid=r AND operation_uuid=op AND kind='CAS_RESULT';
+  ack:=orulo_audit.national_control('append',r,seq+1,head,jsonb_build_object(
+    'type','CLIENT_READBACK','eventUuid',gen_random_uuid(),'stage','NATIONAL_ROW_VERIFIED',
+    'id',id,'operationId',op,'sha256',sha
+  ));
+  seq:=(ack->>'sequence')::bigint; head:=ack->>'hash';
+  FOREACH action IN ARRAY ARRAY['snapshot_begin','snapshot_page','snapshot_seal'] LOOP
+    ack:=orulo_audit.national_control(action,r,seq+1,head,
+      jsonb_build_object('kind','READBACK_V2','scope',context,'id',id,'offset',0,'eventUuid',gen_random_uuid()));
+    seq:=(ack->>'sequence')::bigint; head:=ack->>'hash';
+  END LOOP;
+  ack:=orulo_audit.national_control('national_scope_finish',r,seq+1,head,
+    jsonb_build_object('scope',context,'id',id,'eventUuid',gen_random_uuid()));
+  IF NOT EXISTS (
+    SELECT 1 FROM orulo_audit.entries WHERE run_uuid=r AND sequence=(ack->>'sequence')::bigint
+      AND kind='NATIONAL_SCOPE_FINISHED' AND event->'counts'='{"UPDATED":1}'
+  ) THEN RAISE EXCEPTION 'SCOPED_FINISH_INVALID'; END IF;
+END;
+$test$;
 RESET ROLE;

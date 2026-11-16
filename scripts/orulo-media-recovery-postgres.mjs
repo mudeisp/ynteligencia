@@ -71,9 +71,15 @@ export async function openPostgresJournal(env,transport,options={}){
  };
  // Existing UUID/GitHub run ID or active interrupted run is never reopened.
  try{
-  head=await transport.control(options.resume?'national_resume':'start',{p_run:run,p_event:options.resume?{githubRunId:env.GITHUB_RUN_ID,controlSha:env.GITHUB_WORKFLOW_SHA}:metadata});
+  if(options.scope){
+   const {head:scopedHead,scope}=await transport.control('national_scope_open',{p_run:run,p_event:options.scope});
+   if(!scopedHead||!scope||scope.authorizationId!==options.scope.scope.authorizationId||
+      scope.manifestHash!==options.manifestHash||!Array.isArray(scope.targetIds)||!scope.targetIds.length)
+    throw Error('NATIONAL_SCOPE_OPEN_DIVERGENCE');
+   head=scopedHead;options.targetIds=scope.targetIds;
+  }else head=await transport.control(options.resume?'national_resume':'start',{p_run:run,p_event:options.resume?{githubRunId:env.GITHUB_RUN_ID,controlSha:env.GITHUB_WORKFLOW_SHA}:metadata});
   const start=await verify(head);
-  if(!options.resume && (head.sequence!==1 || start.event.type!=='START' || JSON.parse(start.canonical).previousHash!==''))throw Error('POSTGRES_AUDIT_START_DIVERGENCE');
+  if(!options.resume && !options.scope && (head.sequence!==1 || start.event.type!=='START' || JSON.parse(start.canonical).previousHash!==''))throw Error('POSTGRES_AUDIT_START_DIVERGENCE');
  }catch(error){error.auditRunUuid=run;throw error;} // Identifier for read-only reconciliation, never an automatic retry.
  const locked=async operation=>{
   if(failed)throw Error('POSTGRES_JOURNAL_FROZEN_RECONCILE_REQUIRED');
@@ -91,6 +97,7 @@ export async function openPostgresJournal(env,transport,options={}){
  };
  return {
   runUuid:run,
+  scopedTargets:()=>options.targetIds,
   head:()=>({...head}),
   checkpoint:(action,event)=>locked(()=>mutate(action,event)),
   adoptNationalAuthorization:()=>locked(async()=>{
@@ -102,11 +109,12 @@ export async function openPostgresJournal(env,transport,options={}){
    head=ack;return true;
   }),
   nationalSnapshot:kind=>locked(async()=>{
-   let state=await transport.control('national_snapshot_state',{p_run:run,p_event:{kind}});
+   const capture={...options.scope,kind};
+   let state=await transport.control(options.scope?'national_scope_snapshot_state':'national_snapshot_state',{p_run:run,p_event:capture});
    if(state?.sealed)return;
-   if(!state){const begin=await mutate('snapshot_begin',{kind});state={keys:begin.entry.event.keys,processed:0};}
-   for(let offset=state.processed;offset<state.keys.length;offset+=50)await mutate('snapshot_page',{kind,offset,size:50});
-   await mutate('snapshot_seal',{kind});
+   if(!state){const begin=await mutate('snapshot_begin',capture);state={keys:begin.entry.event.keys,processed:0};}
+   for(let offset=state.processed;offset<state.keys.length;offset+=50)await mutate('snapshot_page',{...capture,offset,size:50});
+   await mutate('snapshot_seal',capture);
   }),
   record:event=>locked(()=>mutate('append',event)),
   adoptPilotAuthorization:(buildingId,targetIds)=>locked(async()=>{
