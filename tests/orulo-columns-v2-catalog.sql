@@ -3,7 +3,9 @@
 DO $$BEGIN IF current_database()<>'orulo_columns_fast_test' THEN
  RAISE EXCEPTION 'ISOLATED_COLUMNS_TEST_DATABASE_REQUIRED'; END IF; END$$;
 
-CREATE ROLE orulo_audit_owner NOLOGIN;
+DO $BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='orulo_audit_owner') THEN
+ CREATE ROLE orulo_audit_owner NOLOGIN;
+END IF; END $;
 CREATE SCHEMA orulo_audit AUTHORIZATION orulo_audit_owner;
 CREATE TABLE public.properties (
  id uuid PRIMARY KEY, external_id text, source text, title text,
