@@ -18,7 +18,7 @@ trap cleanup EXIT
 psql -X -qAt -v ON_ERROR_STOP=1 >"$tmp/writer.log" 2>&1 <<SQL &
 BEGIN;
 UPDATE public.properties SET price=123451 WHERE id='$id'::uuid;
-\\echo EXTERNAL_ROW_LOCKED
+\echo EXTERNAL_ROW_LOCKED
 SELECT pg_sleep(4);
 COMMIT;
 SQL
