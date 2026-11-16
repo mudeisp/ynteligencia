@@ -287,7 +287,7 @@ RESET ROLE;
 SELECT orulo_audit.national_scoped_plan(:'run',2,NULL,'9002',repeat('a',40)) AS next_plan \gset
 SELECT hash AS next_head FROM orulo_audit.entries ORDER BY sequence DESC LIMIT 1 \gset
 SELECT orulo_audit.authorize_national_scope(:'run',2,NULL,'9002',repeat('a',40),
-  :'next_plan'::jsonb->>'planSha256',:'next_head',10)->>'eventUuid' AS next_lease \gset
+  :'next_plan'::jsonb->>'planSha256',:'next_head',1)->>'eventUuid' AS next_lease \gset
 SELECT jsonb_build_object('authorizationId',:'next_lease','lot',2,'githubRunId','9002',
   'controlSha',repeat('a',40),'planSha256',:'next_plan'::jsonb->>'planSha256') AS next_scope \gset
 SELECT :'next_plan'::jsonb->'targetIds'->>0 AS next_target \gset
@@ -301,5 +301,72 @@ BEGIN
   IF (SELECT count(*) FROM orulo_audit.snapshot_sets WHERE kind LIKE 'BASELINE_V2:%')<>2
   THEN RAISE EXCEPTION 'SCOPED_BASELINE_REUSED_ACROSS_LEASES'; END IF;
   RAISE NOTICE 'SCOPED_NEXT_LOT_ISOLATED';
+END;
+$test$;
+
+-- Legitimate lease expiration must BLOCK new writes yet permit a privileged
+-- completion of previously sealed snapshots. Wait for actual clock expiry;
+-- never rewrite authorization event or fabricate journal hashes.
+SET ROLE service_role;
+SELECT orulo_audit.national_control('snapshot_page',:'run',
+  (SELECT sequence+1 FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  (SELECT hash FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  jsonb_build_object('kind','BASELINE_V2','scope',:'next_scope'::jsonb,
+    'id',:'next_target','offset',0,'eventUuid',gen_random_uuid()));
+SELECT orulo_audit.national_control('snapshot_seal',:'run',
+  (SELECT sequence+1 FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  (SELECT hash FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  jsonb_build_object('kind','BASELINE_V2','scope',:'next_scope'::jsonb,
+    'id',:'next_target','offset',0,'eventUuid',gen_random_uuid()));
+SELECT orulo_audit.national_control('snapshot_begin',:'run',
+  (SELECT sequence+1 FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  (SELECT hash FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  jsonb_build_object('kind','READBACK_V2','scope',:'next_scope'::jsonb,
+    'id',:'next_target','offset',0,'eventUuid',gen_random_uuid()));
+SELECT orulo_audit.national_control('snapshot_page',:'run',
+  (SELECT sequence+1 FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  (SELECT hash FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  jsonb_build_object('kind','READBACK_V2','scope',:'next_scope'::jsonb,
+    'id',:'next_target','offset',0,'eventUuid',gen_random_uuid()));
+SELECT orulo_audit.national_control('snapshot_seal',:'run',
+  (SELECT sequence+1 FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  (SELECT hash FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  jsonb_build_object('kind','READBACK_V2','scope',:'next_scope'::jsonb,
+    'id',:'next_target','offset',0,'eventUuid',gen_random_uuid()));
+RESET ROLE;
+SELECT pg_sleep(greatest(0,
+  extract(epoch FROM (
+    (SELECT (event->>'expiresAt')::timestamptz FROM orulo_audit.entries
+       WHERE event_uuid=:'next_lease'::uuid)-clock_timestamp()))+1));
+SET ROLE service_role;
+DO $test$
+BEGIN
+  BEGIN
+    PERFORM orulo_audit.national_control('national_scope_finish',
+      current_setting('test.run')::uuid,0,'',
+      jsonb_build_object('id',:'next_target','scope',:'next_scope'::jsonb,
+        'eventUuid',gen_random_uuid()));
+    RAISE EXCEPTION 'EXPIRED_SCOPED_LEASE_WAS_ACTIVE';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'NATIONAL_SCOPE_DENIED' THEN RAISE; END IF;
+  END;
+END;
+$test$;
+RESET ROLE;
+SELECT orulo_audit.national_scope_finish(
+  :'run'::uuid,
+  (SELECT sequence+1 FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  (SELECT hash FROM orulo_audit.entries WHERE run_uuid=:'run'::uuid ORDER BY sequence DESC LIMIT 1),
+  jsonb_build_object('id',:'next_target','scope',:'next_scope'::jsonb,
+    'eventUuid',gen_random_uuid(),'adminReconcileExpired',true)
+);
+DO $test$
+BEGIN
+ IF NOT EXISTS(
+   SELECT 1 FROM orulo_audit.entries WHERE kind='NATIONAL_SCOPE_FINISHED'
+     AND event->>'authorizationId'=:'next_lease'
+     AND event->>'administrativeReconciliation'='true'
+ ) THEN RAISE EXCEPTION 'EXPIRED_SCOPE_ADMIN_COMPLETION_FAILED'; END IF;
+ RAISE NOTICE 'EXPIRED_SCOPE_ADMIN_COMPLETED_WITHOUT_CAS';
 END;
 $test$;
