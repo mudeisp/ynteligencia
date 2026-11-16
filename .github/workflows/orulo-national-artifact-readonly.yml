@@ -127,21 +127,20 @@ jobs:
           fi
           echo '::notice::ORULO_ATTEST_PASS=POSTGRES_READONLY_PREFLIGHT'
           STAGE=FROZEN_LEDGER_READ
-          # Keep COPY and the verification marker inside ONE explicit READ ONLY
-          # transaction, so a connection-pool/session setting cannot open writes.
+          # Keep the verification marker and the SELECT in ONE explicit
+          # READ ONLY transaction; psql unaligned output preserves JSON escapes.
+          # Avoid COPY TO STDOUT, which doubles backslashes in text format.
           psql "$READ_ONLY_PG_URL" -X -qAt -v ON_ERROR_STOP=1 > "$WORK/frozen-ledger-with-proof.ndjson" <<'PSQL'
           BEGIN TRANSACTION READ ONLY;
           SELECT CASE WHEN current_setting('transaction_read_only') = 'on'
                       THEN 'READ_ONLY_CONFIRMED' ELSE 'READ_ONLY_FAILED' END;
-          COPY (
-            SELECT row_to_json(q)
-            FROM (
-              SELECT sequence, kind, event, hash
-              FROM orulo_audit.entries
-              WHERE run_uuid='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid
-              ORDER BY sequence
-            ) q
-          ) TO STDOUT;
+          SELECT row_to_json(q)
+          FROM (
+            SELECT sequence, kind, event, hash
+            FROM orulo_audit.entries
+            WHERE run_uuid='1c8ec62a-9c38-41ac-8091-f1ceef98ca91'::uuid
+            ORDER BY sequence
+          ) q;
           COMMIT;
           PSQL
           IFS= read -r READONLY_MARKER < "$WORK/frozen-ledger-with-proof.ndjson"
