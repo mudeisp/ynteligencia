@@ -244,6 +244,15 @@ BEGIN
       jsonb_build_object('kind','READBACK_V2','scope',context,'id',id,'offset',0,'eventUuid',gen_random_uuid()));
     seq:=(ack->>'sequence')::bigint; head:=ack->>'hash';
   END LOOP;
+  -- Service-role callers cannot exercise the privileged expired-lease
+  -- reconciliation path, even if they supply the required flag.
+  BEGIN
+    PERFORM orulo_audit.national_scope_finish(r,seq+1,head,
+      jsonb_build_object('scope',context,'id',id,
+        'eventUuid',gen_random_uuid(),'adminReconcileExpired',true));
+    RAISE EXCEPTION 'SCOPED_ADMIN_RECONCILE_PRIVILEGE_BYPASS';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
   ack:=orulo_audit.national_control('national_scope_finish',r,seq+1,head,
     jsonb_build_object('scope',context,'id',id,'eventUuid',gen_random_uuid()));
   IF NOT EXISTS (
