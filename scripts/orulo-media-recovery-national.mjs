@@ -176,6 +176,35 @@ export function verifyNationalImages(checks) {
   if (body.valid !== true || body.checked !== checks.length)
     throw Error("NATIONAL_SOURCE_IMAGE_UNAVAILABLE");
 }
+
+// A read-only authorization lookup can collide with a short ledger advisory lock
+// held by the administrator recording that very authorization. Only retry that
+// precise, known, non-ambiguous lock failure. Other RPC failures fail closed.
+// No append, authorization, CAS, readback or journal operation is retried.
+export async function waitForNationalScopeAuthorization({
+  transport, run, selector, wait, now,
+}) {
+  const deadline = now() + 600000;
+  do {
+    try {
+      const scope = await transport.control("national_scope_lookup", {
+        p_run: run, p_event: selector,
+      });
+      if (scope) return scope;
+    } catch (error) {
+      if (
+        error?.message !== "POSTGRES_AUDIT_RPC_FAILED" ||
+        error?.rpc !== "orulo_audit_control" ||
+        error?.rpcAction !== "national_scope_lookup" ||
+        error?.databaseCode !== "P0001" ||
+        error?.databaseReason !== "AUDIT_CONCURRENT_ACCESS"
+      ) throw error;
+    }
+    if (now() >= deadline) throw Error("NATIONAL_SCOPE_APPROVAL_TIMEOUT");
+    await wait(5000);
+  } while (true);
+}
+
 export async function executeNational({
   env,
   bytes,
@@ -213,13 +242,9 @@ export async function executeNational({
       controlSha: env.GITHUB_WORKFLOW_SHA,
     };
     await onPlan({scoped: true, runUuid: run, ...selector});
-    const deadline = now() + 600000;
-    do {
-      scope = await transport.control("national_scope_lookup", {p_run:run,p_event:selector});
-      if (scope) break;
-      if (now() >= deadline) throw Error("NATIONAL_SCOPE_APPROVAL_TIMEOUT");
-      await wait(5000);
-    } while (true);
+    scope = await waitForNationalScopeAuthorization({
+      transport, run, selector, wait, now,
+    });
     representative = scope.id;
     if (!uuid.test(representative || "") || !uuid.test(scope.scope?.authorizationId || "") ||
         !hash.test(scope.scope?.planSha256 || "") ||
