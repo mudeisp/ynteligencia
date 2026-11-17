@@ -9,6 +9,7 @@ import {
   nationalPlans,
   executeNational,
   nationalApprovalSql,
+  waitForNationalScopeAuthorization,
 } from "./orulo-media-recovery-national.mjs";
 import { digest, PROJECT_URL } from "./orulo-media-recovery-postgres.mjs";
 const { PGlite } = createRequire(
@@ -608,4 +609,76 @@ test("all missing plans in one property are filled by one CAS while a third exis
   ]);
   assert.equal(after.price, row.price);
   assert.equal(after.updated_at, row.updated_at);
+});
+
+
+test("scoped approval lookup retries only transient advisory-lock contention", async () => {
+  let nowValue = 0;
+  let calls = 0;
+  const selector = {lot: 5, githubRunId: "123", controlSha: "a".repeat(40)};
+  const collision = () => Object.assign(Error("POSTGRES_AUDIT_RPC_FAILED"), {
+    rpc: "orulo_audit_control",
+    rpcAction: "national_scope_lookup",
+    databaseCode: "P0001",
+    databaseReason: "AUDIT_CONCURRENT_ACCESS",
+  });
+  const authorized = {id: "00000000-0000-0000-0000-000000000001", scope: selector};
+  const transport = {control: async (action, args) => {
+    assert.equal(action, "national_scope_lookup");
+    assert.deepEqual(args, {p_run: "run", p_event: selector});
+    calls += 1;
+    if (calls <= 2) throw collision();
+    return authorized;
+  }};
+  const result = await waitForNationalScopeAuthorization({
+    transport, run: "run", selector,
+    now: () => nowValue,
+    wait: async (ms) => {assert.equal(ms, 5000); nowValue += ms;},
+  });
+  assert.equal(result, authorized);
+  assert.equal(calls, 3);
+  assert.equal(nowValue, 10000);
+});
+
+test("scoped approval lookup preserves null-as-pending and fails closed for other RPC errors", async () => {
+  const selector = {lot: 5, githubRunId: "123", controlSha: "a".repeat(40)};
+  let calls = 0;
+  const authorized = {id: "approved"};
+  assert.equal(await waitForNationalScopeAuthorization({
+    transport: {control: async () => (++calls === 1 ? null : authorized)},
+    run: "run", selector, now: () => 0, wait: async () => {},
+  }), authorized);
+  assert.equal(calls, 2);
+  const failures = [
+    Error("POSTGRES_AUDIT_RESPONSE_AMBIGUOUS"),
+    Object.assign(Error("POSTGRES_AUDIT_RPC_FAILED"), {
+      rpc: "orulo_audit_control", rpcAction: "national_scope_open",
+      databaseCode: "P0001", databaseReason: "AUDIT_CONCURRENT_ACCESS",
+    }),
+    Object.assign(Error("POSTGRES_AUDIT_RPC_FAILED"), {
+      rpc: "orulo_audit_control", rpcAction: "national_scope_lookup",
+      databaseCode: "P0001", databaseReason: "NATIONAL_SCOPE_DENIED",
+    }),
+  ];
+  for (const error of failures) {
+    let attempted = 0;
+    await assert.rejects(waitForNationalScopeAuthorization({
+      transport: {control: async () => {attempted += 1; throw error;}},
+      run: "run", selector, now: () => 0,
+      wait: async () => {assert.fail("unsafe RPC failure retried");},
+    }), e => e === error);
+    assert.equal(attempted, 1);
+  }
+});
+
+test("scoped approval lookup stops at original ten-minute deadline", async () => {
+  let time = 0;
+  let attempts = 0;
+  await assert.rejects(waitForNationalScopeAuthorization({
+    transport: {control: async () => {attempts += 1; return null;}},
+    run: "run", selector: {lot: 5},
+    now: () => time, wait: async (ms) => {time += ms;},
+  }), /NATIONAL_SCOPE_APPROVAL_TIMEOUT/);
+  assert.equal(time, 600000);
+  assert.equal(attempts, 121);
 });
