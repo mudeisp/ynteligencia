@@ -2,6 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
+const {webcrypto}=require('node:crypto');
 const source=fs.readFileSync('assets/js/delivery-3.js','utf8');
 const contact=fs.readFileSync('assets/js/whatsapp-contact.js','utf8');
 const portal=fs.readFileSync('assets/js/portal.js','utf8');
@@ -15,7 +16,7 @@ function harness({mode='success',state='SP',paid=true}={}){
   const touch=Object.freeze(paid?{gclid:'paid-click',gbraid:'braid',wbraid:'wbraid',utm_source:'google',utm_medium:'cpc',utm_campaign:'campaign',utm_term:'term',utm_content:'ad'}:{utm_source:'organic'});
   const location={pathname:`/${state.toLowerCase()}/cidade/empreendimento/mandarim`,search:'',href:`https://app.yincorp.com.br/${state.toLowerCase()}/cidade/empreendimento/mandarim`,hostname:'app.yincorp.com.br',origin:'https://app.yincorp.com.br',assign:url=>navigations.push(url)};
   const window={location};
-  const c=vm.createContext({window,location,URL,URLSearchParams,Date,Promise,console,
+  const c=vm.createContext({window,location,URL,URLSearchParams,Date,Promise,console,crypto:webcrypto,
     setTimeout:(f,ms)=>{timers.push(ms);return setTimeout(f,ms);},clearTimeout,
     SUPABASE_URL:"https://telemetry.invalid",SUPABASE_PUBLISHABLE_KEY:"test-public",
     YNTELIGENCIA_VISITOR_ID:visitor,YNTELIGENCIA_SESSION_ID:session,
@@ -30,9 +31,9 @@ function harness({mode='success',state='SP',paid=true}={}){
   vm.runInContext(contact+'\n'+['yntAdsAttribution','yntAdsTrack','supabaseTrack','openPropertySpecialist'].map(fn).join('\n'),c);
   return {c,requests,navigations,events,timers,touch,open:p=>c.openPropertySpecialist(p??unit)};
 }
-test('primary contact persists both canonical lanes before one WhatsApp navigation; no form or lead',async()=>{
+test('primary contact starts tracking and opens WhatsApp immediately without a form',async()=>{
   const h=harness();const pending=h.open();
-  assert.equal(h.requests.length,2);assert.equal(h.navigations.length,0);
+  assert.equal(h.requests.length,2);assert.equal(h.navigations.length,1);
   await pending;
   assert.equal(h.navigations.length,1);
   assert.deepEqual(h.requests.map(r=>r.payload.event_name||r.payload.event_type),['whatsapp_cta_clicked','whatsapp_cta_clicked']);
@@ -57,7 +58,8 @@ test('rapid taps share the same attempt and cannot create two redirects or legac
   assert.doesNotMatch(JSON.stringify(h.requests),/property_whatsapp_click|lead_created|specialist_cta_opened/);
 });
 for(const mode of ['throw','reject','http-error','timeout'])test(`tracking ${mode} never prevents contact`,async()=>{
-  const h=harness({mode});await h.c.YntWhatsAppContact.open(unit,{adsTrack:h.c.yntAdsTrack,track:(n,m)=>h.c.supabaseTrack(n,m,{keepalive:true}),timeoutMs:5});
+  const h=harness({mode});const pending=h.c.YntWhatsAppContact.open(unit,{adsTrack:h.c.yntAdsTrack,track:(n,m)=>h.c.supabaseTrack(n,m,{keepalive:true}),timeoutMs:5});
+  assert.equal(h.navigations.length,1);await pending;
   assert.equal(h.navigations.length,1);assert.equal(h.requests.length,2);
 });
 test('organic attribution is preserved without inventing paid IDs',async()=>{
