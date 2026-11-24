@@ -1,6 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import { presentation } from '../studio/model.mjs';
-import { renderExperience } from '../studio/render.mjs';
 
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const tokenPattern = /^[a-f0-9]{48}$/;
@@ -11,15 +9,13 @@ const fields = ['treatment', 'phone', 'email', 'city', 'neighborhoods', 'minBudg
 function config() {
   if (process.env.STUDIO_ENABLED !== 'true') return null;
   const url = process.env.STUDIO_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.STUDIO_SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const anon = process.env.STUDIO_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-  return url && key && anon ? { url, key, anon } : null;
+  return url && anon ? { url, anon } : null;
 }
 
-async function request(cfg, path, { method = 'GET', body, auth, privileged = false } = {}) {
-  const key = privileged ? cfg.key : cfg.anon;
+async function request(cfg, path, { method = 'GET', body, auth } = {}) {
   const response = await fetch(new URL(path, cfg.url), {
-    method, headers: { apikey: key, ...(auth ? { Authorization: auth } : {}),
+    method, headers: { apikey: cfg.anon, ...(auth ? { Authorization: auth } : {}),
       'Content-Type': 'application/json', Prefer: 'return=representation' },
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(12000)
   });
@@ -33,7 +29,7 @@ async function request(cfg, path, { method = 'GET', body, auth, privileged = fal
 
 function rest(cfg, table, params, options) {
   return request(cfg, '/rest/v1/' + table + '?' + new URLSearchParams(params),
-    { ...options, privileged: true, auth: cfg.key.startsWith('eyJ') ? 'Bearer ' + cfg.key : undefined });
+    { auth: cfg.auth, ...options });
 }
 
 export default async function handler(req, res) {
@@ -49,15 +45,13 @@ export default async function handler(req, res) {
     if (action === 'experience' && req.method === 'GET') {
       res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       if (!tokenPattern.test(token || '')) return fail(404, 'Apresentação indisponível.');
-      const [page] = await rest(cfg, 'studio_presentations', {
-        token: 'eq.' + token, published_revision: 'not.is.null', select: 'id,published_revision,expires_at'
+      const content = await rest(cfg, 'rpc/studio_read_published', {}, {
+        method: 'POST', body: { p_token: token }
       });
-      if (!page || (page.expires_at && Date.parse(page.expires_at) <= Date.now())) return fail(404, 'Apresentação indisponível.');
-      const [version] = await rest(cfg, 'studio_presentation_versions', {
-        presentation_id: 'eq.' + page.id, revision: 'eq.' + page.published_revision, select: 'content'
-      });
-      if (!version) return fail(404, 'Apresentação indisponível.');
-      return res.status(200).setHeader('Content-Type', 'text/html; charset=utf-8').end(renderExperience(version.content));
+      if (!content) return fail(404, 'Apresentação indisponível.');
+      const { renderExperience } = await import('../studio/render.mjs');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(200).end(renderExperience(content));
     }
 
     const body = req.body || {};
@@ -80,6 +74,7 @@ export default async function handler(req, res) {
       throw error;
     }
     if (user.app_metadata?.yincorp_studio !== true) return fail(403, 'Acesso reservado ao comercial.');
+    cfg.auth = authorization;
     const owner = 'eq.' + user.id;
     if (action === 'clients' && req.method === 'GET') {
       return res.json(await rest(cfg, 'studio_clients', { owner, order: 'created_at.desc', limit: 100 }));
@@ -95,6 +90,7 @@ export default async function handler(req, res) {
       return res.json(await rest(cfg, 'studio_presentations', { owner, order: 'updated_at.desc', limit: 100 }));
     }
     if (action === 'presentations' && req.method === 'POST') {
+      const { presentation } = await import('../studio/model.mjs');
       let draft;
       try { draft = presentation(body.draft); } catch (error) { return fail(400, error.message); }
       if (body.id) {
@@ -120,8 +116,10 @@ export default async function handler(req, res) {
       }));
     }
     if (action === 'preview' && req.method === 'POST') {
+      const { presentation } = await import('../studio/model.mjs');
       let draft;
       try { draft = presentation(body.draft); } catch (error) { return fail(400, error.message); }
+      const { renderExperience } = await import('../studio/render.mjs');
       return res.json({ html: renderExperience(draft) });
     }
     if ((action === 'publish' || action === 'unpublish') && req.method === 'POST') {

@@ -38,8 +38,48 @@ alter table public.studio_presentation_versions enable row level security;
 
 revoke all on public.studio_clients, public.studio_presentations, public.studio_presentation_versions
 from public, anon, authenticated;
-grant select, insert, update on public.studio_clients, public.studio_presentations to service_role;
-grant select, insert on public.studio_presentation_versions to service_role;
+grant select, insert on public.studio_clients to authenticated;
+grant select, insert on public.studio_presentations to authenticated;
+grant update (draft, revision, updated_at, published_revision, expires_at) on public.studio_presentations to authenticated;
+grant select, insert on public.studio_presentation_versions to authenticated;
+
+create policy studio_clients_owner on public.studio_clients
+for all to authenticated
+using (owner = (select auth.uid()) and (select auth.jwt() #> '{app_metadata,yincorp_studio}') = 'true'::jsonb)
+with check (owner = (select auth.uid()) and (select auth.jwt() #> '{app_metadata,yincorp_studio}') = 'true'::jsonb);
+
+create policy studio_presentations_owner on public.studio_presentations
+for all to authenticated
+using (owner = (select auth.uid()) and (select auth.jwt() #> '{app_metadata,yincorp_studio}') = 'true'::jsonb)
+with check (
+  owner = (select auth.uid()) and (select auth.jwt() #> '{app_metadata,yincorp_studio}') = 'true'::jsonb
+  and exists (select 1 from public.studio_clients where id = client_id and owner = (select auth.uid()))
+);
+
+create policy studio_versions_owner on public.studio_presentation_versions
+for select to authenticated using (
+  exists (select 1 from public.studio_presentations where id = presentation_id)
+);
+
+create policy studio_versions_insert on public.studio_presentation_versions
+for insert to authenticated with check (
+  exists (select 1 from public.studio_presentations
+    where id = presentation_id and studio_presentations.revision = studio_presentation_versions.revision
+      and draft = content)
+);
+
+create function public.studio_read_published(p_token text)
+returns jsonb language sql stable security definer set search_path = ''
+as $$
+  select versions.content
+  from public.studio_presentations presentations
+  join public.studio_presentation_versions versions
+    on versions.presentation_id = presentations.id and versions.revision = presentations.published_revision
+  where presentations.token = p_token
+    and (presentations.expires_at is null or presentations.expires_at > now())
+$$;
+revoke all on function public.studio_read_published(text) from public;
+grant execute on function public.studio_read_published(text) to anon, authenticated;
 
 create function public.studio_publish(p_owner uuid, p_id uuid, p_revision integer)
 returns boolean
@@ -61,5 +101,5 @@ begin
 end;
 $$;
 revoke all on function public.studio_publish(uuid, uuid, integer) from public, anon, authenticated;
-grant execute on function public.studio_publish(uuid, uuid, integer) to service_role;
+grant execute on function public.studio_publish(uuid, uuid, integer) to authenticated;
 commit;
