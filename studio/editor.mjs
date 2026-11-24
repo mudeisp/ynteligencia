@@ -130,7 +130,61 @@ function renderSelected() {
       property.facts.push({ key: 'arquitetura', value: '', source: '' });
       drawFacts();
     }));
-    row.append(details);
+    const books = element('details');
+    books.append(element('summary', 'Books e fichas técnicas'));
+    const files = element('input');
+    files.type = 'file';
+    files.accept = 'application/pdf';
+    files.setAttribute('aria-label', 'Escolher PDF para ' + property.name);
+    const available = element('div');
+    function drawExtraction(extraction) {
+      const section = element('details');
+      section.append(element('summary', extraction.filename));
+      const list = element('ul');
+      for (const item of extraction.result?.attributes || []) {
+        const line = element('li', dimensions[item.key] + ' · ' + item.value + ' · p. ' + item.page);
+        line.append(element('small', [item.kind, item.scope, item.evidence].filter(Boolean).join(' · ')));
+        if (!['nao_identificada','contraditoria'].includes(item.kind)) {
+          line.append(button('Confirmar e incluir', () => {
+            const source = extraction.filename + ', p. ' + item.page;
+            const value = item.value + (item.unit ? ' ' + item.unit : '');
+            if (!property.facts.some(fact => fact.key === item.key && fact.value === value && fact.source === source)) {
+              property.facts.push({key:item.key,value,source});
+              drawFacts();
+            }
+            status('Informação incluída nos capítulos.');
+          }));
+        }
+        list.append(line);
+      }
+      section.append(list);
+      available.append(section);
+    }
+    books.append(files, button('Importar e processar PDF', run(async () => {
+      const file = files.files[0];
+      if (!file || file.size > 20 * 1024 * 1024) throw new Error('Escolha um PDF de até 20 MB.');
+      const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))]
+        .map(byte => byte.toString(16).padStart(2,'0')).join('');
+      const settings = await api('book-upload');
+      const path = '/storage/v1/object/yincorp-studio-books/' + settings.owner + '/' + digest + '.pdf';
+      const upload = await fetch(new URL(path,settings.url), { method:'POST',
+        headers:{ apikey:settings.key, Authorization:'Bearer ' + accessToken, 'Content-Type':'application/pdf' }, body:file });
+      if (!upload.ok) {
+        const error = await upload.json().catch(() => ({}));
+        if (upload.status !== 409 && error.statusCode !== '409' && error.error !== 'Duplicate') {
+          throw new Error('Não foi possível enviar o PDF.');
+        }
+      }
+      status('Analisando o documento.');
+      drawExtraction(await api('book-process',{ digest, propertyId:property.id, filename:file.name }));
+      status('Extração disponível para revisão.');
+    })), button('Ver extrações anteriores', run(async () => {
+      available.replaceChildren();
+      const results = await api('books&propertyId=' + encodeURIComponent(property.id));
+      for (const extraction of results) drawExtraction(extraction);
+      if (!results.length) available.textContent = 'Nenhuma extração concluída.';
+    })), available);
+    row.append(details, books);
     return row;
   }));
 }

@@ -76,6 +76,20 @@ export default async function handler(req, res) {
     if (user.app_metadata?.yincorp_studio !== true) return fail(403, 'Acesso reservado ao comercial.');
     cfg.auth = authorization;
     const owner = 'eq.' + user.id;
+    if (action === 'book-upload' && req.method === 'GET') {
+      return res.json({ url: cfg.url, key: cfg.anon, owner: user.id });
+    }
+    if (action === 'books' && req.method === 'GET') {
+      const propertyId = req.query.propertyId;
+      if (typeof propertyId !== 'string' || !propertyId || propertyId.length > 160) return fail(400, 'Empreendimento inválido.');
+      return res.json(await rest(cfg, 'studio_book_extractions', { property_id: 'eq.' + propertyId,
+        status:'eq.complete', order:'updated_at.desc', limit:30 }));
+    }
+    if (action === 'book-process' && req.method === 'POST') {
+      const { bookExtraction } = await import('../studio/books.mjs');
+      const result = await bookExtraction({ cfg, user, body, rest });
+      return result.error ? fail(result.status,result.error) : res.json(result.extraction);
+    }
     if (action === 'clients' && req.method === 'GET') {
       return res.json(await rest(cfg, 'studio_clients', { owner, order: 'created_at.desc', limit: 100 }));
     }
