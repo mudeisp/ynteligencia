@@ -1,4 +1,4 @@
-import { dimensions } from './model.mjs';
+import { dimensions, relationships } from './model.mjs';
 
 const $ = id => document.getElementById(id);
 const status = message => { $('status').textContent = message; };
@@ -44,7 +44,7 @@ for (const [key, label] of Object.entries(clientFields)) {
   $('client-fields').append(field);
 }
 
-function renderChapters(keys = Object.keys(dimensions)) {
+function renderChapters(keys = Object.keys(dimensions), weights = {}) {
   const order = [...keys, ...Object.keys(dimensions).filter(key => !keys.includes(key))];
   $('chapters').replaceChildren(element('h3','Capítulos'));
   for (const key of order) {
@@ -59,7 +59,16 @@ function renderChapters(keys = Object.keys(dimensions)) {
     check.checked = keys.includes(key);
     line.append(check, ' ' + dimensions[key]);
     label.append(line);
-    row.append(label, button('Subir', () => {
+    const priority = element('label','Peso (0 a 5)');
+    const weight = element('input');
+    weight.name = 'weight-' + key;
+    weight.type = 'number';
+    weight.min = '0';
+    weight.max = '5';
+    weight.value = weights[key] || 0;
+    weight.setAttribute('aria-label','Peso de ' + dimensions[key]);
+    priority.append(weight);
+    row.append(label, priority, button('Subir', () => {
       const previous = row.previousElementSibling;
       if (previous?.tagName === 'DIV') previous.before(row);
     }));
@@ -81,7 +90,7 @@ async function api(action, body) {
 function draft() {
   const form = new FormData(editor);
   return { ...Object.fromEntries(form), chapters: form.getAll('chapters'),
-    comparison: editor.elements.comparison.checked, properties };
+    comparison:editor.elements.comparison.checked, weights:Object.fromEntries(Object.keys(dimensions).map(key=>[key,form.get('weight-'+key)])), properties };
 }
 
 function renderSelected() {
@@ -95,6 +104,21 @@ function renderSelected() {
       properties.splice(index, 1);
       renderSelected();
     }));
+    const classification = element('select');
+    classification.setAttribute('aria-label','Classificação de ' + property.name);
+    classification.add(new Option('Classificar alternativa',''));
+    for (const [key,label] of Object.entries(relationships)) classification.add(new Option(label,key));
+    classification.value = property.relationship || '';
+    classification.onchange = () => {
+      property.relationship = classification.value;
+      if (property.relationship === 'principal') {
+        for (const item of properties) if (item !== property && item.relationship === 'principal') item.relationship = '';
+        properties.splice(index,1);
+        properties.unshift(property);
+        renderSelected();
+      }
+    };
+    row.append(classification);
     const details = element('details');
     details.append(element('summary', 'Editar informações e fontes'));
     const editing = element('div');
@@ -158,6 +182,27 @@ function renderSelected() {
         list.append(line);
       }
       section.append(list);
+      const visual = element('ul');
+      for (const asset of extraction.result?.visuals || []) {
+        visual.append(element('li',asset.category + ' · p. ' + asset.page + ' · ' + asset.caption));
+      }
+      const visuals = element('details');
+      visuals.append(element('summary','Pranchas identificadas'),visual);
+      section.append(visuals,button('Abrir PDF original',run(async () => {
+        const settings = await api('book-upload');
+        const path = '/storage/v1/object/authenticated/yincorp-studio-books/' + settings.owner + '/' + extraction.digest + '.pdf';
+        const response = await fetch(new URL(path,settings.url),{
+          headers:{apikey:settings.key,Authorization:'Bearer ' + accessToken}
+        });
+        if (!response.ok) throw new Error('PDF indisponível.');
+        const url = URL.createObjectURL(await response.blob());
+        const download = element('a','Abrir PDF em outra aba');
+        download.href = url;
+        download.target = '_blank';
+        download.rel = 'noreferrer';
+        section.append(download);
+        setTimeout(() => { URL.revokeObjectURL(url); download.remove(); },120000);
+      })));
       available.append(section);
     }
     books.append(files, button('Importar e processar PDF', run(async () => {
@@ -202,7 +247,7 @@ function open(row) {
   properties = structuredClone(data.properties || []);
   renderSelected();
   editor.elements.comparison.checked = Boolean(data.comparison);
-  renderChapters(data.chapters);
+  renderChapters(data.chapters,data.weights);
   $('frame').hidden = true;
   $('publish').disabled = !row;
   $('unpublish').disabled = !row?.published_revision;
@@ -275,6 +320,7 @@ $('login').addEventListener('submit', run(async () => {
   $('signin').hidden = true;
   $('workspace').hidden = false;
   $('logout').hidden = false;
+  $('load-pilot').hidden = !location.hostname.endsWith('.vercel.app');
   open();
 }));
 $('logout').onclick = () => location.reload();
@@ -288,9 +334,10 @@ $('create-client').addEventListener('submit', run(async () => {
 }));
 editor.addEventListener('submit', event => event.preventDefault());
 $('search').addEventListener('submit', run(async () => {
-  const query = new FormData($('search')).get('query');
+  const filters = Object.fromEntries(new FormData($('search')));
+  const query = [filters.query,filters.city].filter(Boolean).join(' ');
   const response = await fetch('/api/search-properties', { method: 'POST',
-    headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ query, limit: 20, source: 'all' }) });
+    headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ ...filters,query,limit:50 }) });
   const data = await response.json();
   if (!response.ok) throw new Error('Busca indisponível.');
   $('criteria').textContent = '';
@@ -376,4 +423,17 @@ $('duplicate').onclick = run(async () => {
   await refresh();
   open(copy);
   status('Cópia criada como rascunho.');
+});
+
+$('load-pilot').onclick = run(async () => {
+  const template = await api('pilot-template');
+  open();
+  for (const key of ['title','opening','greeting','verdict','consultant']) editor.elements[key].value = template[key] || '';
+  editor.elements.comparison.checked = true;
+  properties = template.properties.map(property => ({
+    ...property, images:property.images.map(image => ({ ...image,url:new URL(image.url,location.origin).href }))
+  }));
+  renderSelected();
+  renderChapters(template.chapters);
+  status('Piloto carregado como rascunho. Selecione um cliente para salvar.');
 });

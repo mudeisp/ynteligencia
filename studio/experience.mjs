@@ -79,3 +79,24 @@ if (video && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
   },{ threshold:.15 });
   video.querySelectorAll('figure').forEach(figure => reveal.observe(figure));
 }
+const diagnostics = document.getElementById('studio-diagnostics');
+if (diagnostics) {
+  const stats = { lcp: null, cls: 0, interaction: null };
+  const update = () => { diagnostics.dataset.metrics = JSON.stringify(stats); };
+  const supported = PerformanceObserver.supportedEntryTypes || [];
+  if (supported.includes('largest-contentful-paint')) new PerformanceObserver(list => {
+    stats.lcp = Math.round(list.getEntries().at(-1).startTime);
+    update();
+  }).observe({type:'largest-contentful-paint',buffered:true});
+  if (supported.includes('layout-shift')) new PerformanceObserver(list => {
+    for (const entry of list.getEntries()) if (!entry.hadRecentInput) stats.cls += entry.value;
+    update();
+  }).observe({type:'layout-shift',buffered:true});
+  if (supported.includes('event')) new PerformanceObserver(list => {
+    for (const entry of list.getEntries()) {
+      if (entry.interactionId) stats.interaction = Math.max(stats.interaction || 0,entry.duration);
+    }
+    update();
+  }).observe({type:'event',buffered:true,durationThreshold:16});
+  update();
+}

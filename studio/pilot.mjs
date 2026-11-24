@@ -32,7 +32,7 @@ export const pilot = {
       id: 'escape-eden', name: 'Escape Eden · Cyrela', subtitle: 'Referência qualitativa · condomínio dentro de um complexo urbano',
       images: figures('escape-eden', [[18,'Fachada','Perspectiva ilustrada'],[8,'Fachada','Fotomontagem'],[9,'Paisagismo','Fotomontagem da fachada e entorno'],[11,'Acesso','Lobby em perspectiva ilustrada'],[14,'Bem-estar','Piscina interna e Escape SPA'],[24,'Piscina','Perspectiva ilustrada'],[25,'Implantação','Térreo'],[26,'Implantação','Lazer'],[30,'Plantas','94 m², planta padrão e opção'],[33,'Plantas','70 m², planta padrão e opção'],[35,'Plantas','76 m², planta padrão e opção'],[36,'Plantas','Penthouse de 183 m²']]),
       facts: facts('Book Escape Eden', [
-        ['arquitetura','A fachada e o lobby de pé-direito duplo são apresentados em perspectivas ilustradas.',11],
+        ['arquitetura','O lobby com pé-direito duplo é apresentado em perspectiva ilustrada.',11],
         ['natureza','O book descreve área superior a 40 mil m² e um parque no conjunto urbano de seis quarteirões. A área indicada é do complexo.',6],
         ['lazer','A implantação indica Escape SPA, piscina interna, sauna e piscina externa.',26],
         ['plantas','O book apresenta plantas residenciais de 50, 70, 74, 76 e 94 m², além de penthouse de 183 m². O material também apresenta studios em seção própria.', '27–41'],

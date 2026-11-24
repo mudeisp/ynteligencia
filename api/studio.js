@@ -63,8 +63,12 @@ export default async function handler(req, res) {
       if (!result) return fail(404, 'Apresentação indisponível.');
       const { renderExperience, renderPassword } = await import('../studio/render.mjs');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' https:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'");
       if (result.locked) return res.status(200).end(renderPassword(unlock));
-      return res.status(200).end(renderExperience(result.content,token));
+      const previewHost = process.env.VERCEL_URL;
+      const origin = process.env.VERCEL_ENV === 'preview' && /^[a-z0-9-]+\.vercel\.app$/.test(previewHost || '')
+        ? 'https://' + previewHost : 'https://www.yincorp.com.br';
+      return res.status(200).end(renderExperience(result.content,token,origin));
     }
 
     const body = req.body || {};
@@ -89,6 +93,10 @@ export default async function handler(req, res) {
     if (user.app_metadata?.yincorp_studio !== true) return fail(403, 'Acesso reservado ao comercial.');
     cfg.auth = authorization;
     const owner = 'eq.' + user.id;
+    if (action === 'pilot-template' && req.method === 'GET' && process.env.VERCEL_ENV !== 'production') {
+      const { pilot } = await import('../studio/pilot.mjs');
+      return res.json(pilot);
+    }
     if (action === 'similar' && req.method === 'GET') {
       const path = req.query.path;
       if (typeof path !== 'string' ||
