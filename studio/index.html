@@ -1,0 +1,22 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Yincorp Studio</title><link rel="stylesheet" href="/studio/studio.css"></head>
+<body><header class="bar"><strong class="brand">YINCORP STUDIO</strong><button id="logout" hidden>Sair</button></header><main>
+<p id="status" role="status"></p>
+<section id="signin"><h1 class="compact">Área comercial</h1><form id="login"><div class="form-grid"><label>E-mail <input name="email" type="email" autocomplete="username" required></label><label>Senha <input name="password" type="password" autocomplete="current-password" required></label></div><div><button>Entrar</button></div></form></section>
+<div id="workspace" hidden>
+<section class="chapter"><h2>Clientes</h2><label>Cliente da apresentação<select id="client"></select></label><details><summary>Cadastrar cliente</summary><form id="create-client"><div id="client-fields" class="form-grid"></div><div><button>Cadastrar</button></div></form></details></section>
+<section class="chapter"><h2>Apresentações</h2><ul id="presentations"></ul><div class="actions"><button id="new">Nova apresentação</button><button id="load-pilot" hidden>Usar comparativo piloto</button></div></section>
+<section class="chapter"><h2>Editor</h2><form id="editor"><div class="form-grid">
+<label>Título<input name="title"></label><label>Nome na apresentação<input name="greeting"></label>
+<label>Mensagem de abertura<textarea name="opening"></textarea></label><label>Parecer e próximos passos<textarea name="verdict"></textarea></label>
+<label>Nova senha do link<input type="password" name="linkPassword" autocomplete="new-password" minlength="8"></label><label><span><input type="checkbox" name="clearPassword"> Remover senha ao publicar</span></label><label>Expiração do link<input type="datetime-local" name="expiresAt"></label><label>Consultor<input name="consultant"></label><label>WhatsApp do consultor<input name="whatsapp" inputmode="tel"></label>
+</div><label><span><input name="comparison" type="checkbox"> Exigir dois ou mais imóveis</span></label>
+<div id="chapters"></div></form><details><summary>Texto por capítulo e geração assistida</summary>
+<label>Trecho<select id="copy-pick"><option value="opening">Abertura</option><option value="verdict">Parecer e próximos passos</option></select></label>
+<label>Instruções para esta geração<textarea id="copy-briefing" placeholder="Inclua apenas orientações que possam ser usadas na geração."></textarea></label>
+<label>Texto editável<textarea id="copy-text"></textarea></label><button id="copy-generate">Gerar texto deste trecho</button></details>
+<form id="search"><div class="form-grid"><label>Pesquisar no catálogo<input name="query" required></label><label>Cidade<input name="city"></label><label>Bairro<input name="neighborhood"></label><label>Dormitórios<input type="number" min="0" name="bedrooms"></label><label>Preço mínimo<input type="number" min="0" name="min_price"></label><label>Preço máximo<input type="number" min="0" name="max_price"></label><label>Origem<select name="source"><option value="all">Todos</option><option value="novos">Novos</option><option value="usados">Usados</option></select></label></div><div><button>Buscar</button></div></form><form id="similar"><label>Ficha do portal para buscar semelhantes<input name="path" required placeholder="https://www.yincorp.com.br/sp/…"></label><div><button>Buscar semelhantes</button></div></form>
+<p id="criteria"></p><ul id="results"></ul>
+<h3>Empreendimentos selecionados</h3><ol id="selected"></ol>
+<div class="actions"><button id="preview">Prévia</button><button id="save">Salvar versão</button><button id="publish">Aprovar e publicar versão salva</button><button id="unpublish">Despublicar</button><button id="revoke">Revogar link</button><button id="duplicate">Duplicar versão</button></div>
+<div id="history"></div><div id="metrics"></div><p id="share"></p><label><span><input id="mobile" type="checkbox"> Largura mobile</span></label><iframe title="Prévia da apresentação" id="frame" sandbox hidden></iframe>
+</section></div></main><script type="module" src="/studio/editor.mjs"></script></body></html>

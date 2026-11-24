@@ -1,0 +1,47 @@
+{
+  "atypik": {
+    "sha256": "c57dc26cbe3972cf7b0b2bd3dad165b70d3b36b3ea6fa659edbb25cc05b31aed",
+    "pages": 25,
+    "embeddedImageReferences": 130,
+    "pagesWithoutExtractableText": [],
+    "selectedPageRenders": [
+      5,
+      6,
+      7,
+      9,
+      10,
+      14,
+      15,
+      16,
+      18,
+      19,
+      20
+    ]
+  },
+  "escape-eden": {
+    "sha256": "df4ee748fd96f76526064cb2403a5c841a9b7d910c731f79fd3d66c770deb0d3",
+    "pages": 45,
+    "embeddedImageReferences": 243,
+    "pagesWithoutExtractableText": [
+      1,
+      2,
+      37,
+      44,
+      45
+    ],
+    "selectedPageRenders": [
+      8,
+      9,
+      11,
+      14,
+      18,
+      24,
+      25,
+      26,
+      30,
+      33,
+      35,
+      36
+    ]
+  }
+}

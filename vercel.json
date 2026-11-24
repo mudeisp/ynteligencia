@@ -23,6 +23,18 @@
   ],
   "rewrites": [
     {
+      "source": "/studio/piloto",
+      "destination": "/api/studio-pilot"
+    },
+    {
+      "source": "/studio",
+      "destination": "/studio/index.html"
+    },
+    {
+      "source": "/experiencia/:token",
+      "destination": "/api/studio?action=experience&token=:token"
+    },
+    {
       "source": "/api/portal/lead",
       "destination": "/api/lead"
     },
@@ -56,5 +68,14 @@
       "path": "/api/whatsapp-notification-retry",
       "schedule": "0 12 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/studio.js": {
+      "maxDuration": 150,
+      "includeFiles": "studio/studio.css"
+    },
+    "api/studio-pilot.js": {
+      "includeFiles": "studio/studio.css"
+    }
+  }
 }
