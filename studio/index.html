@@ -1,0 +1,18 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Yincorp Studio</title><link rel="stylesheet" href="/studio/studio.css"></head>
+<body><header class="bar"><strong class="brand">YINCORP STUDIO</strong><button id="logout" hidden>Sair</button></header><main>
+<p id="status" role="status"></p>
+<section id="signin"><h1 class="compact">Área comercial</h1><form id="login"><div class="form-grid"><label>E-mail <input name="email" type="email" autocomplete="username" required></label><label>Senha <input name="password" type="password" autocomplete="current-password" required></label></div><div><button>Entrar</button></div></form></section>
+<div id="workspace" hidden>
+<section class="chapter"><h2>Clientes</h2><label>Cliente da apresentação<select id="client"></select></label><details><summary>Cadastrar cliente</summary><form id="create-client"><div id="client-fields" class="form-grid"></div><div><button>Cadastrar</button></div></form></details></section>
+<section class="chapter"><h2>Apresentações</h2><ul id="presentations"></ul><button id="new">Nova apresentação</button></section>
+<section class="chapter"><h2>Editor</h2><form id="editor"><div class="form-grid">
+<label>Título<input name="title"></label><label>Nome na apresentação<input name="greeting"></label>
+<label>Mensagem de abertura<textarea name="opening"></textarea></label><label>Parecer e próximos passos<textarea name="verdict"></textarea></label>
+<label>Consultor<input name="consultant"></label><label>WhatsApp do consultor<input name="whatsapp" inputmode="tel"></label>
+</div><label><span><input name="comparison" type="checkbox"> Exigir dois ou mais imóveis</span></label>
+<div id="chapters"></div></form>
+<form id="search"><label>Pesquisar no catálogo<input name="query" required></label><div><button>Buscar</button></div></form><ul id="results"></ul>
+<h3>Empreendimentos selecionados</h3><ol id="selected"></ol>
+<div class="actions"><button id="preview">Prévia</button><button id="save">Salvar versão</button><button id="publish">Aprovar e publicar versão salva</button><button id="unpublish">Despublicar</button></div>
+<div id="history"></div><p id="share"></p><label><span><input id="mobile" type="checkbox"> Largura mobile</span></label><iframe title="Prévia da apresentação" id="frame" sandbox hidden></iframe>
+</section></div></main><script type="module" src="/studio/editor.mjs"></script></body></html>

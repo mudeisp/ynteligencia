@@ -23,6 +23,18 @@
   ],
   "rewrites": [
     {
+      "source": "/studio/piloto",
+      "destination": "/api/studio-pilot"
+    },
+    {
+      "source": "/studio",
+      "destination": "/studio/index.html"
+    },
+    {
+      "source": "/experiencia/:token",
+      "destination": "/api/studio?action=experience&token=:token"
+    },
+    {
       "source": "/api/portal/lead",
       "destination": "/api/lead"
     },
