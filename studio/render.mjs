@@ -1,4 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { matrix, priorities, relationships } from './model.mjs';
+
+const stylesheet = readFileSync(new URL('./studio.css',import.meta.url),'utf8');
+const styles = '<style>' + stylesheet + '</style>';
+export const stylesheetHash = createHash('sha256').update(stylesheet).digest('base64');
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -12,7 +18,7 @@ export function renderExperience(data, token, origin = 'https://www.yincorp.com.
   const rows = matrix(data);
   const focus = priorities(data);
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta property="og:title" content="Yincorp | Seleção imobiliária"><title>Yincorp | Seleção imobiliária</title><link rel="stylesheet" href="/studio/studio.css"></head><body class="experience">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta property="og:title" content="Yincorp | Seleção imobiliária"><title>Yincorp | Seleção imobiliária</title>${styles}</head><body class="experience">
 <header class="bar"><a class="brand" href="#inicio">YINCORP</a><nav aria-label="Modos de apresentação"><a href="#cinema">Cinema</a><a href="#inteligencia">Inteligência</a><a href="#decisao">Decisão</a></nav></header>
 <main id="inicio"><section class="hero"><div class="kicker">Consultoria imobiliária</div><h1>${e(data.title)}</h1>
 <p>${e(data.greeting ? data.greeting + ', ' : '')}${e(data.opening)}</p></section>
@@ -28,5 +34,5 @@ ${token ? `<p><a id="studio-share" rel="noreferrer" href="https://wa.me/?text=${
 }
 
 export function renderPassword(attempted) {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Yincorp | Apresentação protegida</title><link rel="stylesheet" href="/studio/studio.css"></head><body><header class="bar"><strong class="brand">YINCORP</strong></header><main class="hero"><h1 class="compact">Apresentação protegida</h1><form method="post"><label>Senha da apresentação<input type="password" name="password" required autocomplete="current-password"></label>${attempted ? '<p role="alert">Senha incorreta.</p>' : ''}<div><button>Abrir apresentação</button></div></form></main></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Yincorp | Apresentação protegida</title>${styles}</head><body><header class="bar"><strong class="brand">YINCORP</strong></header><main class="hero"><h1 class="compact">Apresentação protegida</h1><form method="post"><label>Senha da apresentação<input type="password" name="password" required autocomplete="current-password"></label>${attempted ? '<p role="alert">Senha incorreta.</p>' : ''}<div><button>Abrir apresentação</button></div></form></main></body></html>`;
 }

@@ -71,7 +71,11 @@
   ],
   "functions": {
     "api/studio.js": {
-      "maxDuration": 150
+      "maxDuration": 150,
+      "includeFiles": "studio/studio.css"
+    },
+    "api/studio-pilot.js": {
+      "includeFiles": "studio/studio.css"
     }
   }
 }

@@ -61,9 +61,9 @@ export default async function handler(req, res) {
         method:'POST', body:{ p_token:token, p_password:unlock ? req.body.password.slice(0,256) : null }
       });
       if (!result) return fail(404, 'Apresentação indisponível.');
-      const { renderExperience, renderPassword } = await import('../studio/render.mjs');
+      const { renderExperience, renderPassword, stylesheetHash } = await import('../studio/render.mjs');
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' https:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'");
+      res.setHeader('Content-Security-Policy', `default-src 'self'; style-src 'self' 'sha256-${stylesheetHash}'; img-src 'self' https:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'`);
       if (result.locked) return res.status(200).end(renderPassword(unlock));
       const previewHost = process.env.VERCEL_URL;
       const origin = process.env.VERCEL_ENV === 'preview' && /^[a-z0-9-]+\.vercel\.app$/.test(previewHost || '')
