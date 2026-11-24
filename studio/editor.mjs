@@ -206,9 +206,26 @@ function open(row) {
   $('frame').hidden = true;
   $('publish').disabled = !row;
   $('unpublish').disabled = !row?.published_revision;
+  $('revoke').disabled = !row;
+  $('duplicate').disabled = !row;
+  const date = row?.draft_expires_at ? new Date(row.draft_expires_at) : null;
+  editor.elements.expiresAt.value = date ? new Date(date.getTime() - date.getTimezoneOffset()*60000).toISOString().slice(0,16) : '';
   $('share').replaceChildren();
   $('history').replaceChildren();
+  $('metrics').replaceChildren();
   if (row) {
+    $('metrics').replaceChildren(button('Ver sinais de interesse',run(async () => {
+      const result = await api('metrics&id=' + row.id);
+      const names = { superpage_view:'Acessos',chapter_view:'Capítulos visualizados',
+        property_comparison:'Comparações',floorplan_view:'Consultas de plantas',
+        pricing_view:'Consultas de preços',property_favorite:'Favoritos',
+        superpage_share:'Compartilhamentos',whatsapp_click:'Cliques no WhatsApp',visit_requested:'Clicou para pedir visita' };
+      const list = element('ul');
+      list.append(element('li','Sessões consentidas: ' + result.sessions), element('li','Retornos: ' + result.returns));
+      for (const [key,label] of Object.entries(names)) list.append(element('li',label + ': ' + (result.counts[key] || 0)));
+      $('metrics').replaceChildren(list);
+      if (result.limitReached) $('metrics').append(element('p','Leitura dos 1.000 eventos mais recentes.'));
+    })));
     $('history').append(button('Histórico de publicações', run(async () => {
       const versions = await api('history&id=' + row.id);
       const list = element('ul');
@@ -220,7 +237,8 @@ function open(row) {
     })));
   }
   if (row?.published_revision) {
-    const url = new URL('/experiencia/' + row.token, location.origin).href;
+    const origin = location.hostname === 'app.yincorp.com.br' ? 'https://www.yincorp.com.br' : location.origin;
+    const url = new URL('/experiencia/' + row.token, origin).href;
     const link = element('a', 'Abrir apresentação publicada');
     link.href = url;
     link.target = '_blank';
@@ -275,24 +293,49 @@ $('search').addEventListener('submit', run(async () => {
     headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ query, limit: 20, source: 'all' }) });
   const data = await response.json();
   if (!response.ok) throw new Error('Busca indisponível.');
-  const results = data.matches || data.properties || data.results || [];
+  $('criteria').textContent = '';
+  drawResults(data.matches || data.properties || data.results || []);
+}));
+$('similar').addEventListener('submit',run(async () => {
+  const value = new FormData($('similar')).get('path');
+  const url = new URL(value,'https://www.yincorp.com.br');
+  if (!['www.yincorp.com.br','yincorp.com.br'].includes(url.hostname)) throw new Error('Use uma ficha do portal da Yincorp.');
+  const result = await api('similar&path=' + encodeURIComponent(url.pathname));
+  $('criteria').textContent = result.criteria || '';
+  drawResults(result.items,result.checkedAt);
+}));
+
+function drawResults(results,checkedAt) {
   $('results').replaceChildren(...results.map(item => {
     const row = element('li');
-    const id = String(item.building_id || item.id || item.property_id || '');
+    const fromPortal = typeof item.projectPath === 'string';
+    const portalId = /\/orulo-(\d+)\/?$/.exec(item.projectPath || '')?.[1];
+    const id = String(item.building_id || portalId || item.projectPath || item.id || item.property_id || '');
     const name = item.project_name || item.empreendimento || item.name || item.title || item.nome;
-    row.append(document.createTextNode((name || 'Imóvel') + ' '), button('Selecionar', () => {
+    const label = [name,item.neighborhood,item.area > 0 ? item.area + ' m²' : '',item.bedrooms > 0 ? item.bedrooms + ' dorm.' : ''].filter(Boolean).join(' · ');
+    row.append(document.createTextNode((label || 'Imóvel') + ' '), button('Selecionar', () => {
       if (!id || !name) return status('O catálogo retornou um imóvel sem identificação.');
-      if (properties.some(property => property.id === id)) return;
+      if (properties.some(property => property.id === id || property.name === name)) return;
       if (properties.length === 6) return status('Selecione até seis empreendimentos.');
-      const rawImage = item.cover_image_url || item.image_url || item.main_image || item.photos?.[0];
-      const images = typeof rawImage === 'string' ? [{ url: rawImage, category: 'Catálogo', caption: 'Imagem do catálogo' }] : [];
-      properties.push({ id, name, subtitle: item.neighborhood || item.bairro || '', images, facts: [] });
+      const rawImage = item.cover_image_url || item.image_url || item.image || item.main_image || item.photos?.[0];
+      const images = typeof rawImage === 'string' ? [{ url:rawImage, category:'Catálogo', caption:'Imagem do catálogo' }] : [];
+      const facts = [];
+      if (fromPortal && Number.isFinite(item.area) && item.area > 0) {
+        facts.push({key:'plantas',value:label,source:'Yincorp Intelligence · ' + (item.type || 'Tipologia do catálogo')});
+      }
+      if (fromPortal && Number.isFinite(item.price) && item.price > 0 && Number.isFinite(item.area) && item.area > 0 && checkedAt) {
+        const money = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+        const reference = new Date(checkedAt).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'});
+        facts.push({key:'financeiro',value:money.format(item.price) + ' anunciado · ' + money.format(item.price/item.area) +
+          '/m² privativo. Disponibilidade e negociação a confirmar.',source:'Catálogo do portal consultado em ' + reference});
+      }
+      properties.push({ id,name,subtitle:item.neighborhood || item.bairro || '',images,facts });
       renderSelected();
     }));
     return row;
   }));
   if (!results.length) status('Nenhum imóvel encontrado.');
-}));
+}
 $('preview').onclick = run(async () => {
   const { html } = await api('preview', { draft: draft() });
   $('frame').srcdoc = html;
@@ -300,7 +343,10 @@ $('preview').onclick = run(async () => {
 });
 $('mobile').onchange = () => $('frame').classList.toggle('mobile-preview', $('mobile').checked);
 $('save').onclick = run(async () => {
-  const page = await api('presentations', { id: current?.id, revision: current?.revision, clientId: $('client').value, draft: draft() });
+  const localDate = editor.elements.expiresAt.value;
+  const page = await api('presentations', { id:current?.id, revision:current?.revision, clientId:$('client').value,
+    expiresAt: localDate ? new Date(localDate).toISOString() : null,
+    password:editor.elements.linkPassword.value,clearPassword:editor.elements.clearPassword.checked,draft:draft() });
   await refresh();
   open(page);
   status('Versão salva.');
@@ -316,4 +362,18 @@ $('unpublish').onclick = run(async () => {
   await api('unpublish', { id: current.id });
   open((await refresh()).find(page => page.id === current.id));
   status('Link despublicado.');
+});
+
+$('revoke').onclick = run(async () => {
+  if (!current || !confirm('Invalidar definitivamente o link atual e despublicar a apresentação?')) return;
+  await api('revoke',{id:current.id});
+  open((await refresh()).find(page => page.id === current.id));
+  status('Link anterior revogado.');
+});
+$('duplicate').onclick = run(async () => {
+  if (!current) return;
+  const copy = await api('presentations',{clientId:current.client_id,draft:{...current.draft,title:current.draft.title + ' · cópia'}});
+  await refresh();
+  open(copy);
+  status('Cópia criada como rascunho.');
 });

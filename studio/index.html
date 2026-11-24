@@ -8,11 +8,12 @@
 <section class="chapter"><h2>Editor</h2><form id="editor"><div class="form-grid">
 <label>Título<input name="title"></label><label>Nome na apresentação<input name="greeting"></label>
 <label>Mensagem de abertura<textarea name="opening"></textarea></label><label>Parecer e próximos passos<textarea name="verdict"></textarea></label>
-<label>Consultor<input name="consultant"></label><label>WhatsApp do consultor<input name="whatsapp" inputmode="tel"></label>
+<label>Nova senha do link<input type="password" name="linkPassword" autocomplete="new-password" minlength="8"></label><label><span><input type="checkbox" name="clearPassword"> Remover senha ao publicar</span></label><label>Expiração do link<input type="datetime-local" name="expiresAt"></label><label>Consultor<input name="consultant"></label><label>WhatsApp do consultor<input name="whatsapp" inputmode="tel"></label>
 </div><label><span><input name="comparison" type="checkbox"> Exigir dois ou mais imóveis</span></label>
 <div id="chapters"></div></form>
-<form id="search"><label>Pesquisar no catálogo<input name="query" required></label><div><button>Buscar</button></div></form><ul id="results"></ul>
+<form id="search"><label>Pesquisar no catálogo<input name="query" required></label><div><button>Buscar</button></div></form><form id="similar"><label>Ficha do portal para buscar semelhantes<input name="path" required placeholder="https://www.yincorp.com.br/sp/…"></label><div><button>Buscar semelhantes</button></div></form>
+<p id="criteria"></p><ul id="results"></ul>
 <h3>Empreendimentos selecionados</h3><ol id="selected"></ol>
-<div class="actions"><button id="preview">Prévia</button><button id="save">Salvar versão</button><button id="publish">Aprovar e publicar versão salva</button><button id="unpublish">Despublicar</button></div>
-<div id="history"></div><p id="share"></p><label><span><input id="mobile" type="checkbox"> Largura mobile</span></label><iframe title="Prévia da apresentação" id="frame" sandbox hidden></iframe>
+<div class="actions"><button id="preview">Prévia</button><button id="save">Salvar versão</button><button id="publish">Aprovar e publicar versão salva</button><button id="unpublish">Despublicar</button><button id="revoke">Revogar link</button><button id="duplicate">Duplicar versão</button></div>
+<div id="history"></div><div id="metrics"></div><p id="share"></p><label><span><input id="mobile" type="checkbox"> Largura mobile</span></label><iframe title="Prévia da apresentação" id="frame" sandbox hidden></iframe>
 </section></div></main><script type="module" src="/studio/editor.mjs"></script></body></html>
