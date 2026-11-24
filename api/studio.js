@@ -194,6 +194,15 @@ export default async function handler(req, res) {
         presentation_id: 'eq.' + id, select: 'revision,published_at', order: 'revision.desc', limit: 100
       }));
     }
+    if (action === 'narrative' && req.method === 'POST') {
+      const [{ presentation },{ generateNarrative }] = await Promise.all([
+        import('../studio/model.mjs'),import('../studio/narrative.mjs')
+      ]);
+      try {
+        const draft = presentation(body.draft);
+        return res.json({text:await generateNarrative(draft,body.chapter,body.briefing)});
+      } catch (error) { return fail(422,error.message); }
+    }
     if (action === 'preview' && req.method === 'POST') {
       const { presentation } = await import('../studio/model.mjs');
       let draft;

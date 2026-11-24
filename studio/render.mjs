@@ -20,7 +20,7 @@ export function renderExperience(data, token, origin = 'https://www.yincorp.com.
 ${categories.map(category => `<section class="chapter"><h2>${e(category)}</h2><div class="image-grid visual-comparison" tabindex="0" aria-label="Galeria comparativa">${assets.filter(asset => asset.category === category).map(asset => figure(asset)).join('')}</div></section>`).join('')}</section>
 <section id="inteligencia" class="chapter"><h2>${data.properties.length > 1 ? 'Onde os projetos se diferenciam' : 'Conheça o empreendimento'}</h2>
 <nav class="chapter-links" aria-label="Capítulos">${rows.map(row => `<a href="#${row.key}">${e(row.label)}</a>`).join('')}</nav>
-${rows.map(row => `<section id="${row.key}" class="comparison"><h3>${e(row.label)}</h3><div class="comparison-grid">
+${rows.map(row => `<section id="${row.key}" class="comparison"><h3>${e(row.label)}</h3>${data.chapterText?.[row.key] ? `<p>${e(data.chapterText[row.key])}</p>` : ''}<div class="comparison-grid">
 ${row.cells.map((cell, i) => `<article><h4>${e(data.properties[i].name)}</h4>${cell.length ? cell.map(fact => `<p>${e(fact.value)} <small>${e(fact.source)}</small></p>`).join('') : `<p>${row.key === 'financeiro' ? 'Condições comerciais vigentes a confirmar.' : 'Informação a confirmar.'}</p>`}</article>`).join('')}</div></section>`).join('')}</section>
 <section class="chapter conclusion" id="decisao"><h2>Próximos passos</h2>${focus.length ? `<p>Critérios priorizados nesta seleção: ${e(focus.join(', '))}.</p>` : ''}<p>${e(data.verdict)}</p><p>${e(data.consultant)}</p>${link}
 ${token ? `<p><a id="studio-share" rel="noreferrer" href="https://wa.me/?text=${encodeURIComponent('Uma seleção da Yincorp: ' + origin + '/experiencia/' + token)}">Compartilhar pelo WhatsApp</a></p>` : ''}</section></main>

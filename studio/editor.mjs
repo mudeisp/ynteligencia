@@ -5,6 +5,7 @@ const status = message => { $('status').textContent = message; };
 let accessToken;
 let current;
 let properties = [];
+let chapterText = {};
 const editor = $('editor');
 const clientFields = {
   name: 'Nome completo', treatment: 'Nome de tratamento', phone: 'Telefone', email: 'E-mail',
@@ -90,7 +91,7 @@ async function api(action, body) {
 function draft() {
   const form = new FormData(editor);
   return { ...Object.fromEntries(form), chapters: form.getAll('chapters'),
-    comparison:editor.elements.comparison.checked, weights:Object.fromEntries(Object.keys(dimensions).map(key=>[key,form.get('weight-'+key)])), properties };
+    comparison:editor.elements.comparison.checked, chapterText, weights:Object.fromEntries(Object.keys(dimensions).map(key=>[key,form.get('weight-'+key)])), properties };
 }
 
 function renderSelected() {
@@ -245,6 +246,11 @@ function open(row) {
   else $('client').onchange();
   $('client').disabled = Boolean(row);
   properties = structuredClone(data.properties || []);
+  chapterText = {...data.chapterText};
+  $('copy-text').value = '';
+  $('copy-briefing').value = '';
+  $('copy-pick').value = 'opening';
+  $('copy-pick').onchange();
   renderSelected();
   editor.elements.comparison.checked = Boolean(data.comparison);
   renderChapters(data.chapters,data.weights);
@@ -436,4 +442,23 @@ $('load-pilot').onclick = run(async () => {
   renderSelected();
   renderChapters(template.chapters);
   status('Piloto carregado como rascunho. Selecione um cliente para salvar.');
+});
+
+for (const [key,label] of Object.entries(dimensions)) $('copy-pick').add(new Option(label,key));
+$('copy-pick').onchange = () => {
+  const key = $('copy-pick').value;
+  $('copy-text').value = ['opening','verdict'].includes(key) ? editor.elements[key].value : chapterText[key] || '';
+};
+$('copy-text').oninput = () => {
+  const key = $('copy-pick').value;
+  if (['opening','verdict'].includes(key)) editor.elements[key].value = $('copy-text').value;
+  else chapterText[key] = $('copy-text').value;
+};
+$('copy-generate').onclick = run(async () => {
+  const key = $('copy-pick').value;
+  const result = await api('narrative',{draft:draft(),chapter:key,briefing:$('copy-briefing').value});
+  if (['opening','verdict'].includes(key)) editor.elements[key].value = result.text;
+  else chapterText[key] = result.text;
+  $('copy-pick').onchange();
+  status('Sugestão gerada. Revise o texto antes de publicar.');
 });

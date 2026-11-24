@@ -37,6 +37,8 @@ export function presentation(input) {
     opening: text(input.opening, 2400), verdict: text(input.verdict, 4500),
     consultant: text(input.consultant, 100), whatsapp: text(input.whatsapp, 18).replace(/\D/g, ''),
     chapters: [...new Set(chapters)],
+    chapterText: Object.fromEntries(Object.keys(dimensions)
+      .map(key=>[key,text(input.chapterText?.[key],4500)]).filter(([,copy])=>copy)),
     weights: Object.fromEntries(Object.keys(dimensions).map(key => [key,
       Math.max(0, Math.min(5, Math.trunc(Number(input.weights?.[key]) || 0)))])),
     properties

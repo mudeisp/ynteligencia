@@ -16,6 +16,10 @@ A apresentação foi preparada para Mariana, cliente fictícia que valoriza plan
 
 A comparação das plantas favorece a leitura lado a lado de escopos explícitos. As implantações e perspectivas entram como evidência visual. As opções ilustradas permanecem condicionadas ao projeto e ao memorial aplicáveis. O parecer recomenda verificar primeiro a planta familiar de 201 m² e avaliar separadamente as opções de 94 m² e 183 m².
 
+## Extração multimodal na prévia
+
+Os arquivos foram importados e processados na API do Studio. A versão gravada para Atypik trouxe 18 atributos candidatos e 16 marcações visuais. A versão gravada para Escape Eden trouxe 9 atributos candidatos e 25 marcações visuais. A granularidade do Escape Eden ficou abaixo da necessária para publicação direta. Por exemplo, a extração agrupou áreas, configurações, acabamentos e itens previstos na mesma linha. A matriz e as imagens acima foram verificadas nas páginas indicadas e não propagam esses agrupamentos.
+
 ## Inventário e cobertura
 
 - `Apresentação (5)(1).pdf` tem 25 páginas. A leitura do texto abrangeu as 25 páginas, com 130 referências internas a imagens no PDF. A galeria contém 11 pranchas selecionadas.
