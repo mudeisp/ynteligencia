@@ -7,7 +7,7 @@ export function renderExperience(data, token, origin = 'https://www.yincorp.com.
   const e = escape;
   const assets = data.properties.flatMap(property => property.images.map(image => ({ ...image, property: property.name })));
   const categories = [...new Set(assets.map(asset => asset.category))];
-  const figure = (asset, eager = false) => `<figure><img src="${e(asset.url)}" alt="${e(asset.caption || asset.property)}" loading="${eager ? 'eager' : 'lazy'}" ${eager ? 'fetchpriority="high"' : ''}><figcaption>${e(asset.property)} · ${e(asset.caption)}</figcaption></figure>`;
+  const figure = (asset, eager = false) => `<figure><img src="${e(asset.url)}" width="1250" height="781" alt="${e(asset.caption || asset.property)}" loading="${eager ? 'eager' : 'lazy'}" ${eager ? 'fetchpriority="high"' : ''}><figcaption>${e(asset.property)} · ${e(asset.caption)}</figcaption></figure>`;
   const link = data.whatsapp ? `<a class="button" id="studio-visit" rel="noreferrer" href="https://wa.me/${e(data.whatsapp)}?text=${encodeURIComponent('Gostaria de conversar sobre a seleção de imóveis e agendar uma visita.')}">Agendar visita pelo WhatsApp</a>` : '';
   const rows = matrix(data);
   const focus = priorities(data);

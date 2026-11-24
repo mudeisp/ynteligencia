@@ -82,6 +82,9 @@ if (video && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
 const diagnostics = document.getElementById('studio-diagnostics');
 if (diagnostics) {
   const stats = { lcp: null, cls: 0, interaction: null };
+  let firstShift = 0;
+  let lastShift = 0;
+  let shiftWindow = 0;
   const update = () => { diagnostics.dataset.metrics = JSON.stringify(stats); };
   const supported = PerformanceObserver.supportedEntryTypes || [];
   if (supported.includes('largest-contentful-paint')) new PerformanceObserver(list => {
@@ -89,7 +92,16 @@ if (diagnostics) {
     update();
   }).observe({type:'largest-contentful-paint',buffered:true});
   if (supported.includes('layout-shift')) new PerformanceObserver(list => {
-    for (const entry of list.getEntries()) if (!entry.hadRecentInput) stats.cls += entry.value;
+    for (const entry of list.getEntries()) {
+      if (entry.hadRecentInput) continue;
+      if (!shiftWindow || entry.startTime - lastShift > 1000 || entry.startTime - firstShift > 5000) {
+        firstShift = entry.startTime;
+        shiftWindow = 0;
+      }
+      lastShift = entry.startTime;
+      shiftWindow += entry.value;
+      stats.cls = Math.max(stats.cls,shiftWindow);
+    }
     update();
   }).observe({type:'layout-shift',buffered:true});
   if (supported.includes('event')) new PerformanceObserver(list => {
